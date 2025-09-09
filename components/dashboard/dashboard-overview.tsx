@@ -67,33 +67,51 @@ export function DashboardOverview() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}></div>
-          <span className="text-sm text-muted-foreground">
-            {isConnected ? "Live updates connected" : "Connecting..."}
-          </span>
+        <div className="flex items-center space-x-3">
+          <div className={`h-3 w-3 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}></div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">
+              {isConnected ? "Live updates connected" : "Connecting..."}
+            </span>
+            {isConnected && (
+              <Badge variant="default" className="text-xs animate-bounce-gentle">
+                Live
+              </Badge>
+            )}
+          </div>
           {lastUpdate && (
-            <span className="text-xs text-muted-foreground">Last update: {lastUpdate.toLocaleTimeString()}</span>
+            <span className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
+              Last update: {lastUpdate.toLocaleTimeString()}
+            </span>
           )}
         </div>
+        <Button variant="outline" size="sm" onClick={fetchGames} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
+        </Button>
       </div>
 
       {/* Live Games */}
       {liveGames.length > 0 && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="flex items-center space-x-2">
-              <div className="live-indicator h-2 w-2 rounded-full"></div>
-              <span>Live Games</span>
+        <Card className="card-hover-enhanced animate-fade-in">
+          <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-red-50 to-orange-50 border-b">
+            <CardTitle className="flex items-center space-x-3">
+              <div className="live-indicator h-3 w-3 rounded-full animate-pulse"></div>
+              <span className="text-lg">Live Games</span>
+              <Badge variant="destructive" className="animate-pulse">
+                {liveGames.length} Active
+              </Badge>
             </CardTitle>
-            <Button variant="ghost" size="sm" onClick={fetchGames}>
+            <Button variant="ghost" size="sm" onClick={fetchGames} className="hover:bg-red-100">
               <RefreshCw className="h-4 w-4" />
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <div className="space-y-4">
-              {liveGames.map((game) => (
-                <LiveGameCard key={game.id} game={game} />
+              {liveGames.map((game, index) => (
+                <div key={game.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <LiveGameCard game={game} />
+                </div>
               ))}
             </div>
           </CardContent>
@@ -101,26 +119,36 @@ export function DashboardOverview() {
       )}
 
       {/* Upcoming Games */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <span>Upcoming Games</span>
+      <Card className="card-hover-enhanced animate-fade-in" style={{ animationDelay: '0.2s' }}>
+        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
+          <CardTitle className="flex items-center space-x-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Calendar className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-lg">Upcoming Games</span>
+            <Badge variant="secondary">
+              {upcomingGames.length} Scheduled
+            </Badge>
           </CardTitle>
-          <Button variant="ghost" size="sm" onClick={fetchGames}>
+          <Button variant="ghost" size="sm" onClick={fetchGames} className="hover:bg-blue-100">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-6">
           {upcomingGames.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No upcoming games scheduled</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted/50 flex items-center justify-center">
+                <Calendar className="h-8 w-8 opacity-50" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Upcoming Games</h3>
+              <p className="text-sm">Check back later for scheduled matches</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {upcomingGames.map((game) => (
-                <UpcomingGameCard key={game.id} game={game} />
+              {upcomingGames.map((game, index) => (
+                <div key={game.id} className="animate-slide-in" style={{ animationDelay: `${index * 0.1}s` }}>
+                  <UpcomingGameCard game={game} />
+                </div>
               ))}
             </div>
           )}
@@ -132,26 +160,31 @@ export function DashboardOverview() {
 
 function LiveGameCard({ game }: { game: Game }) {
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border border-primary/20 bg-primary/5">
+    <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 transition-all duration-200 group">
       <div className="flex items-center space-x-4">
-        <div className="live-indicator h-3 w-3 rounded-full"></div>
+        <div className="live-indicator h-3 w-3 rounded-full animate-pulse"></div>
         <div>
-          <div className="font-semibold">
+          <div className="font-semibold text-lg group-hover:text-primary transition-colors">
             {game.away_team?.name} @ {game.home_team?.name}
           </div>
           <div className="text-sm text-muted-foreground flex items-center space-x-2">
             <Clock className="h-3 w-3" />
             <span>Live</span>
+            <Badge variant="destructive" className="text-xs animate-pulse">
+              LIVE
+            </Badge>
           </div>
         </div>
       </div>
       <div className="text-right">
         {game.home_score !== null && game.away_score !== null ? (
-          <div className="font-mono text-lg font-bold">
+          <div className="font-mono text-2xl font-bold text-primary">
             {game.away_score} - {game.home_score}
           </div>
         ) : (
-          <Badge variant="secondary">In Progress</Badge>
+          <Badge variant="destructive" className="animate-pulse">
+            In Progress
+          </Badge>
         )}
       </div>
     </div>
@@ -162,14 +195,14 @@ function UpcomingGameCard({ game }: { game: Game }) {
   const gameDate = new Date(game.game_date)
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border card-hover">
+    <div className="flex items-center justify-between p-4 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-200 group">
       <div className="flex items-center space-x-4">
-        <div className="text-center min-w-[60px]">
-          <div className="text-sm font-medium">{format(gameDate, "MMM")}</div>
-          <div className="text-lg font-bold text-primary">{format(gameDate, "d")}</div>
+        <div className="text-center min-w-[60px] p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
+          <div className="text-sm font-medium text-primary">{format(gameDate, "MMM")}</div>
+          <div className="text-xl font-bold text-primary">{format(gameDate, "d")}</div>
         </div>
         <div>
-          <div className="font-semibold">
+          <div className="font-semibold text-lg group-hover:text-primary transition-colors">
             {game.away_team?.name} @ {game.home_team?.name}
           </div>
           <div className="text-sm text-muted-foreground flex items-center space-x-4">
@@ -186,7 +219,14 @@ function UpcomingGameCard({ game }: { game: Game }) {
           </div>
         </div>
       </div>
-      <Badge variant="outline">{game.status}</Badge>
+      <div className="text-right">
+        <Badge variant="outline" className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+          {game.status}
+        </Badge>
+        <div className="text-xs text-muted-foreground mt-1">
+          {Math.abs(Math.round((gameDate.getTime() - new Date().getTime()) / (1000 * 60 * 60)))}h away
+        </div>
+      </div>
     </div>
   )
 }

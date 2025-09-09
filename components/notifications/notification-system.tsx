@@ -62,6 +62,16 @@ export function NotificationSystem() {
     }
   }
 
+  const getTimeAgo = (timestamp: Date) => {
+    const now = new Date()
+    const diffInMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60))
+    
+    if (diffInMinutes < 1) return "Just now"
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    return `${Math.floor(diffInMinutes / 1440)}d ago`
+  }
+
   // Example: Add notifications for demo purposes
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -77,71 +87,157 @@ export function NotificationSystem() {
 
   return (
     <div className="relative">
-      <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)} className="relative">
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        onClick={() => setIsOpen(!isOpen)} 
+        className={cn(
+          "relative transition-all duration-200 hover:bg-muted/50",
+          isOpen && "bg-muted/50"
+        )}
+      >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <Badge
             variant="destructive"
-            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+            className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs animate-pulse"
           >
-            {unreadCount}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </Badge>
         )}
       </Button>
 
       {isOpen && (
-        <Card className="absolute right-0 top-full mt-2 w-80 max-h-96 overflow-y-auto z-50 shadow-lg">
-          <CardContent className="p-0">
-            <div className="p-4 border-b">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Notifications</h3>
-                <Button variant="ghost" size="sm" onClick={() => setIsOpen(false)}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-
-            {notifications.length === 0 ? (
-              <div className="p-4 text-center text-muted-foreground">
-                <Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                <p>No notifications</p>
-              </div>
-            ) : (
-              <div className="divide-y">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-4 hover:bg-muted/50 cursor-pointer ${!notification.read ? "bg-primary/5" : ""}`}
-                    onClick={() => markAsRead(notification.id)}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {getIcon(notification.type)}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <p className="font-medium text-sm">{notification.title}</p>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              removeNotification(notification.id)
-                            }}
-                          >
-                            <X className="h-3 w-3" />
-                          </Button>
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">{notification.message}</p>
-                        <p className="text-xs text-muted-foreground mt-2">
-                          {notification.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 z-40" 
+            onClick={() => setIsOpen(false)}
+          />
+          
+          {/* Notification Panel */}
+          <Card className="absolute right-0 top-full mt-2 w-80 sm:w-96 max-h-[500px] overflow-hidden z-50 shadow-xl border-0 bg-background/95 backdrop-blur-md">
+            <CardContent className="p-0">
+              {/* Header */}
+              <div className="p-4 border-b bg-muted/30">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-lg">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <Badge variant="secondary" className="text-xs">
+                        {unreadCount} new
+                      </Badge>
+                    )}
                   </div>
-                ))}
+                  <div className="flex items-center gap-1">
+                    {unreadCount > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={markAllAsRead}
+                        className="text-xs h-7 px-2"
+                      >
+                        Mark all read
+                      </Button>
+                    )}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setIsOpen(false)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {/* Notifications List */}
+              <div className="max-h-[400px] overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No notifications</p>
+                    <p className="text-sm">You're all caught up!</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-border/50">
+                    {notifications.map((notification, index) => (
+                      <div
+                        key={notification.id}
+                        className={cn(
+                          "p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 group",
+                          !notification.read && "bg-primary/5 border-l-4 border-l-primary",
+                          isAnimating && "opacity-0 transform translate-x-4"
+                        )}
+                        onClick={() => markAsRead(notification.id)}
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <div className={cn(
+                            "flex-shrink-0 mt-0.5",
+                            notification.type === "success" && "text-green-500",
+                            notification.type === "warning" && "text-yellow-500",
+                            notification.type === "error" && "text-red-500",
+                            notification.type === "info" && "text-blue-500"
+                          )}>
+                            {getIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">
+                                  {notification.title}
+                                </p>
+                                <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
+                                  {notification.message}
+                                </p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Clock className="h-3 w-3" />
+                                    <span>{getTimeAgo(notification.timestamp)}</span>
+                                  </div>
+                                  {!notification.read && (
+                                    <div className="w-2 h-2 rounded-full bg-primary" />
+                                  )}
+                                </div>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  removeNotification(notification.id)
+                                }}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              {notifications.length > 0 && (
+                <div className="p-3 border-t bg-muted/20">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setNotifications([])}
+                  >
+                    Clear all notifications
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   )
