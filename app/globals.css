@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens to match Project Apex design brief */
+  --background: oklch(1 0 0); /* #ffffff - Clean white background */
+  --foreground: oklch(0.35 0.02 258); /* #475569 - Primary text color */
+  --card: oklch(0.97 0.01 258); /* #f1f5f9 - Card backgrounds */
+  --card-foreground: oklch(0.35 0.02 258); /* #475569 - Card text */
+  --popover: oklch(1 0 0); /* #ffffff - Popover background */
+  --popover-foreground: oklch(0.35 0.02 258); /* #475569 - Popover text */
+  --primary: oklch(0.45 0.15 162); /* #059669 - Primary emerald color */
+  --primary-foreground: oklch(1 0 0); /* #ffffff - Text on primary */
+  --secondary: oklch(0.55 0.15 162); /* #10b981 - Secondary accent */
+  --secondary-foreground: oklch(1 0 0); /* #ffffff - Text on secondary */
+  --muted: oklch(0.97 0.01 258); /* #f1f5f9 - Muted backgrounds */
+  --muted-foreground: oklch(0.35 0.02 258); /* #475569 - Muted text */
+  --accent: oklch(0.55 0.15 162); /* #10b981 - Accent highlights */
+  --accent-foreground: oklch(1 0 0); /* #ffffff - Text on accent */
+  --destructive: oklch(0.6 0.25 25); /* Red for errors */
+  --destructive-foreground: oklch(1 0 0); /* White text on red */
+  --border: oklch(0.92 0.01 258); /* #e5e7eb - Border color */
+  --input: oklch(0.98 0.005 258); /* #f8fafc - Input backgrounds */
+  --ring: oklch(0.45 0.15 162 / 0.5); /* Primary with opacity for focus rings */
+  --chart-1: oklch(0.45 0.15 162); /* #059669 - Primary chart color */
+  --chart-2: oklch(0.55 0.15 162); /* #10b981 - Secondary chart color */
+  --chart-3: oklch(0.35 0.02 258); /* #475569 - Tertiary chart color */
+  --chart-4: oklch(0.5 0.15 65); /* #a16207 - Fourth chart color */
+  --chart-5: oklch(0.55 0.2 270); /* #6366f1 - Fifth chart color */
+  --radius: 0.5rem;
+  --sidebar: oklch(0.97 0.01 258); /* #f1f5f9 - Sidebar background */
+  --sidebar-foreground: oklch(0.35 0.02 258); /* #475569 - Sidebar text */
+  --sidebar-primary: oklch(0.45 0.15 162); /* #059669 - Sidebar primary */
+  --sidebar-primary-foreground: oklch(1 0 0); /* White text on sidebar primary */
+  --sidebar-accent: oklch(0.55 0.15 162); /* #10b981 - Sidebar accent */
+  --sidebar-accent-foreground: oklch(1 0 0); /* White text on sidebar accent */
+  --sidebar-border: oklch(0.92 0.01 258); /* #e5e7eb - Sidebar borders */
+  --sidebar-ring: oklch(0.45 0.15 162 / 0.5); /* Sidebar focus rings */
+}
+
+@theme inline {
+  --font-sans: var(--font-inter);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Updated custom styles for Project Apex sports analytics theme */
+.gradient-bg {
+  background: linear-gradient(135deg, oklch(0.45 0.15 162) 0%, oklch(0.55 0.15 162) 100%);
+}
+
+.card-hover {
+  transition: all 0.2s ease-in-out;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px oklch(0.45 0.15 162 / 0.1);
+}
+
+.prediction-card {
+  background: linear-gradient(135deg, oklch(0.98 0.005 162) 0%, oklch(0.97 0.01 162) 100%);
+  border: 1px solid oklch(0.45 0.15 162 / 0.2);
+}
+
+.stats-highlight {
+  color: oklch(0.45 0.15 162);
+  font-weight: 600;
+}
+
+.live-indicator {
+  background: oklch(0.6 0.25 25);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
