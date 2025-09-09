@@ -8,6 +8,7 @@ import { apiClient, type Game } from "@/lib/api-client"
 import { Calendar, Clock, MapPin, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
+import { getTeamLogoUrl } from "@/lib/utils/team-utils"
 
 export function DashboardOverview() {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
@@ -159,13 +160,32 @@ export function DashboardOverview() {
 }
 
 function LiveGameCard({ game }: { game: Game }) {
+
   return (
     <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 transition-all duration-200 group">
       <div className="flex items-center space-x-4">
         <div className="live-indicator h-3 w-3 rounded-full animate-pulse"></div>
-        <div>
-          <div className="font-semibold text-lg group-hover:text-primary transition-colors">
-            {game.away_team?.name} @ {game.home_team?.name}
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <img 
+              src={getTeamLogoUrl(game.away_team?.name || '')} 
+              alt={game.away_team?.name}
+              className="h-6 w-6 object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
+              {game.away_team?.name}
+            </span>
+            <span className="text-muted-foreground">@</span>
+            <img 
+              src={getTeamLogoUrl(game.home_team?.name || '')} 
+              alt={game.home_team?.name}
+              className="h-6 w-6 object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
+              {game.home_team?.name}
+            </span>
           </div>
           <div className="text-sm text-muted-foreground flex items-center space-x-2">
             <Clock className="h-3 w-3" />
@@ -201,9 +221,27 @@ function UpcomingGameCard({ game }: { game: Game }) {
           <div className="text-sm font-medium text-primary">{format(gameDate, "MMM")}</div>
           <div className="text-xl font-bold text-primary">{format(gameDate, "d")}</div>
         </div>
-        <div>
-          <div className="font-semibold text-lg group-hover:text-primary transition-colors">
-            {game.away_team?.name} @ {game.home_team?.name}
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-2">
+            <img 
+              src={getTeamLogoUrl(game.away_team?.name || '')} 
+              alt={game.away_team?.name}
+              className="h-6 w-6 object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
+              {game.away_team?.name}
+            </span>
+            <span className="text-muted-foreground">@</span>
+            <img 
+              src={getTeamLogoUrl(game.home_team?.name || '')} 
+              alt={game.home_team?.name}
+              className="h-6 w-6 object-contain"
+              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            />
+            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
+              {game.home_team?.name}
+            </span>
           </div>
           <div className="text-sm text-muted-foreground flex items-center space-x-4">
             <span className="flex items-center space-x-1">

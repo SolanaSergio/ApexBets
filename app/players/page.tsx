@@ -1,0 +1,92 @@
+"use client"
+
+import { useState } from "react"
+import { PlayerSearch } from "@/components/players/player-search"
+import { PlayerStats } from "@/components/players/player-stats"
+import { PlayerComparison } from "@/components/players/player-comparison"
+import { PlayerTrends } from "@/components/players/player-trends"
+import { Navigation } from "@/components/navigation/navigation"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
+import { type BallDontLiePlayer } from "@/lib/sports-apis"
+
+export default function PlayersPage() {
+  const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | null>(null)
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+
+      <main className="container mx-auto px-4 py-8 space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold text-balance bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Player Analytics
+          </h1>
+          <p className="text-xl text-muted-foreground text-pretty max-w-2xl mx-auto">
+            Comprehensive player statistics, trends, and performance analysis
+          </p>
+        </div>
+
+        {/* Search Section */}
+        <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} />
+
+        {/* Main Content Tabs */}
+        <Tabs defaultValue="stats" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+            <TabsTrigger value="stats" className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Statistics</span>
+            </TabsTrigger>
+            <TabsTrigger value="trends" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Trends</span>
+            </TabsTrigger>
+            <TabsTrigger value="comparison" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Compare</span>
+            </TabsTrigger>
+            <TabsTrigger value="predictions" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              <span className="hidden sm:inline">Predictions</span>
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="stats" className="space-y-6">
+            <PlayerStats selectedPlayer={selectedPlayer} />
+          </TabsContent>
+
+          <TabsContent value="trends" className="space-y-6">
+            <PlayerTrends selectedPlayer={selectedPlayer} />
+          </TabsContent>
+
+          <TabsContent value="comparison" className="space-y-6">
+            <PlayerComparison selectedPlayer={selectedPlayer} />
+          </TabsContent>
+
+          <TabsContent value="predictions" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5" />
+                  Player Performance Predictions
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-12 text-muted-foreground">
+                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
+                  <p className="text-sm">AI-powered player performance predictions will be available here</p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+      </main>
+    </div>
+  )
+}
+

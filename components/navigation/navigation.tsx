@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, ChevronDown } from "lucide-react"
+import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, ChevronDown, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
 
 const navigationItems = [
@@ -25,6 +25,13 @@ const navigationItems = [
     badge: "Live",
   },
   {
+    title: "Players",
+    href: "/players",
+    icon: User,
+    description: "Player statistics and analysis",
+    badge: "New",
+  },
+  {
     title: "Teams",
     href: "/teams",
     icon: Users,
@@ -35,7 +42,6 @@ const navigationItems = [
     href: "/predictions",
     icon: Target,
     description: "AI-powered predictions",
-    badge: "New",
   },
   {
     title: "Analytics",

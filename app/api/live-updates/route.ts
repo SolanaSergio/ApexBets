@@ -12,13 +12,16 @@ export async function GET() {
   })
 
   // Create a readable stream for Server-Sent Events
+  let heartbeat: NodeJS.Timeout | null = null
+  let subscription: any = null
+
   const stream = new ReadableStream({
     start(controller) {
       // Send initial connection message
       controller.enqueue(`data: ${JSON.stringify({ type: "connected", timestamp: new Date().toISOString() })}\n\n`)
 
       // Set up real-time subscription for live games
-      const subscription = supabase
+      subscription = supabase
         .channel("live-games")
         .on(
           "postgres_changes",
@@ -29,13 +32,18 @@ export async function GET() {
             filter: "status=eq.in_progress",
           },
           (payload) => {
-            controller.enqueue(
-              `data: ${JSON.stringify({
-                type: "game_update",
-                data: payload.new,
-                timestamp: new Date().toISOString(),
-              })}\n\n`,
-            )
+            try {
+              controller.enqueue(
+                `data: ${JSON.stringify({
+                  type: "game_update",
+                  data: payload.new,
+                  timestamp: new Date().toISOString(),
+                })}\n\n`,
+              )
+            } catch (error) {
+              // Controller might be closed, ignore the error
+              console.warn("Failed to enqueue game update:", error)
+            }
           },
         )
         .on(
@@ -46,26 +54,41 @@ export async function GET() {
             table: "predictions",
           },
           (payload) => {
-            controller.enqueue(
-              `data: ${JSON.stringify({
-                type: "prediction_update",
-                data: payload.new,
-                timestamp: new Date().toISOString(),
-              })}\n\n`,
-            )
+            try {
+              controller.enqueue(
+                `data: ${JSON.stringify({
+                  type: "prediction_update",
+                  data: payload.new,
+                  timestamp: new Date().toISOString(),
+                })}\n\n`,
+              )
+            } catch (error) {
+              // Controller might be closed, ignore the error
+              console.warn("Failed to enqueue prediction update:", error)
+            }
           },
         )
         .subscribe()
 
       // Send periodic heartbeat
-      const heartbeat = setInterval(() => {
-        controller.enqueue(`data: ${JSON.stringify({ type: "heartbeat", timestamp: new Date().toISOString() })}\n\n`)
+      heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(`data: ${JSON.stringify({ type: "heartbeat", timestamp: new Date().toISOString() })}\n\n`)
+        } catch (error) {
+          // Controller might be closed, ignore the error
+          console.warn("Failed to enqueue heartbeat:", error)
+        }
       }, 30000)
-
-      // Cleanup on close
-      return () => {
+    },
+    cancel() {
+      // Cleanup when the stream is cancelled/closed
+      if (heartbeat) {
         clearInterval(heartbeat)
+        heartbeat = null
+      }
+      if (subscription) {
         subscription.unsubscribe()
+        subscription = null
       }
     },
   })

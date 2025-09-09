@@ -1,8 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { analyticsService } from "@/lib/services/analytics-service"
 
 export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const useExternalApi = searchParams.get("external") === "true"
+    
+    if (useExternalApi) {
+      // Use enhanced analytics service
+      const overview = await analyticsService.getAnalyticsOverview()
+      const performance = await analyticsService.getPerformanceMetrics()
+      const predictionAccuracy = await analyticsService.getPredictionAccuracy()
+      const valueBettingStats = await analyticsService.getValueBettingStats()
+      
+      return NextResponse.json({
+        overview,
+        performance,
+        predictionAccuracy,
+        valueBettingStats
+      })
+    }
+
+    // Fallback to Supabase for basic stats
     const supabase = await createClient()
 
     // Get total games

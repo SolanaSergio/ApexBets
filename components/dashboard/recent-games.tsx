@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { apiClient, type Game } from "@/lib/api-client"
-import { Clock, Trophy } from "lucide-react"
+import { Clock, Trophy, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
+import { getTeamLogoUrl } from "@/lib/utils/team-utils"
 
 export function RecentGames() {
   const [recentGames, setRecentGames] = useState<Game[]>([])
@@ -20,14 +21,17 @@ export function RecentGames() {
     try {
       setLoading(true)
 
-      const games = await apiClient.getGames({
+      const response = await apiClient.getGames({
         status: "completed",
         limit: 10,
       })
 
+      // Handle both direct array response and wrapped response
+      const games = Array.isArray(response) ? response : response.data || []
       setRecentGames(games)
     } catch (error) {
       console.error("Error fetching recent games:", error)
+      setRecentGames([]) // Ensure recentGames is always an array
     } finally {
       setLoading(false)
     }
@@ -44,8 +48,8 @@ export function RecentGames() {
           <Trophy className="h-5 w-5 text-primary" />
           <span>Recent Results</span>
         </CardTitle>
-        <Button variant="ghost" size="sm" onClick={fetchRecentGames}>
-          <Clock className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={fetchRecentGames} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </CardHeader>
       <CardContent>
@@ -71,7 +75,7 @@ function RecentGameCard({ game }: { game: Game }) {
   const homeWon = game.home_score && game.away_score && game.home_score > game.away_score
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border card-hover">
+    <div className="flex items-center justify-between p-4 rounded-lg border card-hover hover:shadow-md transition-all duration-200">
       <div className="flex items-center space-x-4">
         <div className="text-center min-w-[60px]">
           <div className="text-xs text-muted-foreground">{format(gameDate, "MMM d")}</div>
@@ -79,10 +83,38 @@ function RecentGameCard({ game }: { game: Game }) {
         </div>
 
         <div className="flex-1">
-          <div className="flex items-center space-x-2">
-            <span className={`font-medium ${!homeWon ? "stats-highlight" : ""}`}>{game.away_team?.name}</span>
-            <span className="text-muted-foreground">@</span>
-            <span className={`font-medium ${homeWon ? "stats-highlight" : ""}`}>{game.home_team?.name}</span>
+          <div className="flex items-center space-x-3">
+            {/* Away Team */}
+            <div className="flex items-center space-x-2">
+              <img 
+                src={getTeamLogoUrl(game.away_team?.name || '')} 
+                alt={game.away_team?.name}
+                className="h-6 w-6 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+              <span className={`font-medium text-sm ${!homeWon ? "stats-highlight" : ""}`}>
+                {game.away_team?.name}
+              </span>
+            </div>
+            
+            <span className="text-muted-foreground text-sm">@</span>
+            
+            {/* Home Team */}
+            <div className="flex items-center space-x-2">
+              <img 
+                src={getTeamLogoUrl(game.home_team?.name || '')} 
+                alt={game.home_team?.name}
+                className="h-6 w-6 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+              <span className={`font-medium text-sm ${homeWon ? "stats-highlight" : ""}`}>
+                {game.home_team?.name}
+              </span>
+            </div>
           </div>
 
           {game.venue && <div className="text-xs text-muted-foreground mt-1">{game.venue}</div>}

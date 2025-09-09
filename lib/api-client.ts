@@ -125,7 +125,10 @@ class ApiClient {
     if (params?.limit) searchParams.set("limit", params.limit.toString())
 
     const query = searchParams.toString()
-    return this.request<Game[]>(`/games${query ? `?${query}` : ""}`)
+    const response = await this.request<{ data: Game[] } | Game[]>(`/games${query ? `?${query}` : ""}`)
+    
+    // Handle both wrapped and direct array responses
+    return Array.isArray(response) ? response : response.data || []
   }
 
   async getGame(gameId: string): Promise<Game> {
@@ -146,7 +149,10 @@ class ApiClient {
     if (params?.limit) searchParams.set("limit", params.limit.toString())
 
     const query = searchParams.toString()
-    return this.request<Prediction[]>(`/predictions${query ? `?${query}` : ""}`)
+    const response = await this.request<{ data: Prediction[] } | Prediction[]>(`/predictions${query ? `?${query}` : ""}`)
+    
+    // Handle both wrapped and direct array responses
+    return Array.isArray(response) ? response : response.data || []
   }
 
   // Odds
