@@ -106,7 +106,7 @@ describe('Comprehensive Predictions API Tests', () => {
             expect(prediction.game_id).toBe(gameId)
           })
         } else {
-          expect(data.game_id).toBe(gameId)
+          expect(data.gameId).toBe(gameId)
         }
       }
     })

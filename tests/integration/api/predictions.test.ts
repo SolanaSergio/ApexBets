@@ -53,7 +53,7 @@ describe('Predictions API Integration Tests', () => {
         })
 
         // Should be a single prediction object
-        expect(data.data.game_id).toBe(gameId)
+        expect(data.data.gameId).toBe(gameId)
       }
     })
 
