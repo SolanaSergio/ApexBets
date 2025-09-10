@@ -8,26 +8,40 @@ export async function GET(request: NextRequest) {
     const useExternalApi = searchParams.get("external") === "true"
     
     if (useExternalApi) {
-      // Use enhanced API client for external data
+      // Use direct API calls to avoid circular dependencies
       const sport = searchParams.get("sport") || "basketball_nba"
       const gameId = searchParams.get("game_id")
       const markets = searchParams.get("markets")?.split(",") || ["h2h", "spreads", "totals"]
       
-      const response = await enhancedApiClient.getOdds({
-        sport,
-        gameId,
-        markets,
-        external: true
-      })
-      
-      return NextResponse.json({
-        data: response.data,
-        meta: {
-          fromCache: response.fromCache,
-          responseTime: response.responseTime,
-          rateLimitInfo: response.rateLimitInfo
-        }
-      })
+      try {
+        const { oddsApiClient } = await import("@/lib/sports-apis/odds-api-client")
+        const oddsData = await oddsApiClient.getOdds({
+          sport,
+          markets: markets.join(','),
+          regions: 'us',
+          oddsFormat: 'american'
+        })
+        
+        return NextResponse.json({
+          data: oddsData,
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "odds_api"
+          }
+        })
+      } catch (error) {
+        console.error('Odds API error:', error)
+        return NextResponse.json({
+          data: [],
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "odds_api",
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        })
+      }
     }
 
     // Fallback to Supabase for stored data

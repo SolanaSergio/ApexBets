@@ -141,34 +141,42 @@ export class SportsDataService {
       const games: GameData[] = []
       
       try {
-        // Try API-SPORTS first for live data
-        if (params.status === 'live' || !params.sport || params.sport === 'basketball') {
-          const fixtures = await apiSportsClient.getFixtures({
-            date: params.date,
-            live: params.status === 'live' ? 'all' : undefined
-          })
-          
-          games.push(...fixtures.map(this.mapApiSportsFixture))
-        }
+        // Try SportsDB first (most reliable free API)
+        const events = await sportsDBClient.getEventsByDate(
+          params.date || new Date().toISOString().split('T')[0],
+          params.sport || 'basketball'
+        )
         
-        // Fallback to SportsDB for broader coverage
-        if (games.length === 0) {
-          const events = await sportsDBClient.getEventsByDate(
-            params.date || new Date().toISOString().split('T')[0],
-            params.sport
-          )
-          
-          games.push(...events.map(this.mapSportsDBEvent))
-        }
+        games.push(...events.map(this.mapSportsDBEvent))
         
-        // Add NBA-specific data from BALLDONTLIE
+        // Add NBA-specific data from BALLDONTLIE if basketball
         if (params.sport === 'basketball' || !params.sport) {
-          const nbaGames = await ballDontLieClient.getGames({
-            start_date: params.date,
-            end_date: params.date
-          })
-          
-          games.push(...nbaGames.data.map(this.mapBallDontLieGame))
+          try {
+            const nbaGames = await ballDontLieClient.getGames({
+              start_date: params.date,
+              end_date: params.date
+            })
+            
+            games.push(...nbaGames.data.map(this.mapBallDontLieGame))
+          } catch (nbaError) {
+            console.warn('BALLDONTLIE API error:', nbaError)
+            // Continue without NBA data
+          }
+        }
+        
+        // Try API-SPORTS only if we have a valid API key and need live data
+        if (params.status === 'live' && process.env.NEXT_PUBLIC_RAPIDAPI_KEY && process.env.NEXT_PUBLIC_RAPIDAPI_KEY !== 'your_rapidapi_key') {
+          try {
+            const fixtures = await apiSportsClient.getFixtures({
+              date: params.date,
+              live: 'all'
+            })
+            
+            games.push(...fixtures.map(this.mapApiSportsFixture))
+          } catch (apiSportsError) {
+            console.warn('API-SPORTS error:', apiSportsError)
+            // Continue without API-SPORTS data
+          }
         }
         
         return games
@@ -268,13 +276,27 @@ export class SportsDataService {
     
     return this.getCachedOrFetch(key, async () => {
       try {
-        const scores = await oddsApiClient.getScores({ sport })
-        return scores.map(this.mapOddsApiScores)
+        // Try to get live games from SportsDB first
+        const liveEvents = await sportsDBClient.getLiveEvents(sport || 'basketball')
+        const liveGames = liveEvents.map(this.mapSportsDBEvent)
+        
+        // If we have a valid Odds API key, try to get additional live scores
+        if (process.env.NEXT_PUBLIC_ODDS_API_KEY && process.env.NEXT_PUBLIC_ODDS_API_KEY !== 'your_odds_api_key') {
+          try {
+            const scores = await oddsApiClient.getScores({ sport })
+            liveGames.push(...scores.map(this.mapOddsApiScores))
+          } catch (oddsError) {
+            console.warn('Odds API error for live scores:', oddsError)
+            // Continue with SportsDB data only
+          }
+        }
+        
+        return liveGames
       } catch (error) {
         console.error('Error fetching live scores:', error)
         return []
       }
-    }, this.LIVE_TTL, 'odds')
+    }, this.LIVE_TTL, 'sportsdb')
   }
 
   // Mappers

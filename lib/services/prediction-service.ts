@@ -3,7 +3,21 @@
  * Handles ML predictions and value betting opportunities
  */
 
-import { sportsDataService, type GameData } from './sports-data-service'
+import { sportsDataService } from './sports-data-service'
+
+interface GameData {
+  id: string
+  homeTeam: string
+  awayTeam: string
+  date: string
+  time?: string
+  status: string
+  homeScore?: number
+  awayScore?: number
+  league: string
+  sport: string
+  venue?: string
+}
 
 interface PredictionResult {
   gameId: string
@@ -82,7 +96,7 @@ export class PredictionService {
           name: 'ApexBets ML Ensemble',
           version: '1.0.0',
           lastTrained: new Date().toISOString(),
-          accuracy: this.calculateModelAccuracy(predictions)
+          accuracy: await this.calculateModelAccuracy(predictions)
         }
       }
     } catch (error) {
@@ -126,24 +140,115 @@ export class PredictionService {
   }
 
   private async getTeamHistoricalData(teamName: string): Promise<any> {
-    // This would typically fetch from your database
-    // For now, return mock data structure
-    return {
-      name: teamName,
-      recentGames: [],
-      seasonStats: {
-        wins: 0,
-        losses: 0,
-        pointsFor: 0,
-        pointsAgainst: 0,
-        homeRecord: { wins: 0, losses: 0 },
-        awayRecord: { wins: 0, losses: 0 }
-      },
-      playerStats: [],
-      trends: {
-        recentForm: [],
-        homeAdvantage: 0,
-        restAdvantage: 0
+    try {
+      // Fetch real team data from sports data service
+      const teams = await sportsDataService.getTeams({ search: teamName })
+      const team = teams.find(t => 
+        t.name.toLowerCase().includes(teamName.toLowerCase()) ||
+        t.abbreviation.toLowerCase() === teamName.toLowerCase()
+      )
+      
+      if (!team) {
+        return {
+          name: teamName,
+          recentGames: [],
+          seasonStats: {
+            wins: 0,
+            losses: 0,
+            pointsFor: 0,
+            pointsAgainst: 0,
+            homeRecord: { wins: 0, losses: 0 },
+            awayRecord: { wins: 0, losses: 0 }
+          },
+          playerStats: [],
+          trends: {
+            recentForm: [],
+            homeAdvantage: 0,
+            restAdvantage: 0
+          }
+        }
+      }
+
+      // Get recent games for this team
+      const recentGames = await sportsDataService.getGames({ 
+        teamId: team.id,
+        status: 'finished'
+      })
+
+      // Calculate real season stats from games
+      const teamGames = recentGames.filter(game => 
+        game.homeTeam.toLowerCase().includes(teamName.toLowerCase()) ||
+        game.awayTeam.toLowerCase().includes(teamName.toLowerCase())
+      )
+
+      const wins = teamGames.filter(game => {
+        const isHome = game.homeTeam.toLowerCase().includes(teamName.toLowerCase())
+        return (isHome && game.homeScore && game.awayScore && game.homeScore > game.awayScore) ||
+               (!isHome && game.homeScore && game.awayScore && game.awayScore > game.homeScore)
+      }).length
+
+      const losses = teamGames.length - wins
+      const pointsFor = teamGames.reduce((sum, game) => {
+        const isHome = game.homeTeam.toLowerCase().includes(teamName.toLowerCase())
+        return sum + (isHome ? (game.homeScore || 0) : (game.awayScore || 0))
+      }, 0)
+
+      const pointsAgainst = teamGames.reduce((sum, game) => {
+        const isHome = game.homeTeam.toLowerCase().includes(teamName.toLowerCase())
+        return sum + (isHome ? (game.awayScore || 0) : (game.homeScore || 0))
+      }, 0)
+
+      const homeGames = teamGames.filter(game => 
+        game.homeTeam.toLowerCase().includes(teamName.toLowerCase())
+      )
+      const homeWins = homeGames.filter(game => 
+        game.homeScore && game.awayScore && game.homeScore > game.awayScore
+      ).length
+
+      const awayGames = teamGames.filter(game => 
+        game.awayTeam.toLowerCase().includes(teamName.toLowerCase())
+      )
+      const awayWins = awayGames.filter(game => 
+        game.homeScore && game.awayScore && game.awayScore > game.homeScore
+      ).length
+
+      return {
+        name: teamName,
+        recentGames: teamGames.slice(-10), // Last 10 games
+        seasonStats: {
+          wins,
+          losses,
+          pointsFor: teamGames.length > 0 ? pointsFor / teamGames.length : 0,
+          pointsAgainst: teamGames.length > 0 ? pointsAgainst / teamGames.length : 0,
+          homeRecord: { wins: homeWins, losses: homeGames.length - homeWins },
+          awayRecord: { wins: awayWins, losses: awayGames.length - awayWins }
+        },
+        playerStats: [], // Would need separate player API calls
+        trends: {
+          recentForm: this.calculateRecentForm(teamGames, teamName),
+          homeAdvantage: this.calculateHomeAdvantage(homeGames, awayGames),
+          restAdvantage: 0 // Would need rest day data
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching team historical data:', error)
+      return {
+        name: teamName,
+        recentGames: [],
+        seasonStats: {
+          wins: 0,
+          losses: 0,
+          pointsFor: 0,
+          pointsAgainst: 0,
+          homeRecord: { wins: 0, losses: 0 },
+          awayRecord: { wins: 0, losses: 0 }
+        },
+        playerStats: [],
+        trends: {
+          recentForm: [],
+          homeAdvantage: 0,
+          restAdvantage: 0
+        }
       }
     }
   }
@@ -321,9 +426,44 @@ export class PredictionService {
     return (b * p - q) / b
   }
 
-  private calculateModelAccuracy(predictions: any): number {
-    // This would be calculated based on historical prediction accuracy
-    return 0.65 // Placeholder
+  private async calculateModelAccuracy(predictions: any): Promise<number> {
+    // Calculate accuracy based on historical data
+    const historicalPredictions = await this.getHistoricalPredictions()
+    if (historicalPredictions.length === 0) {
+      return 0.65 // Default accuracy if no historical data
+    }
+    
+    const correct = historicalPredictions.filter((p: any) => p.correct).length
+    return correct / historicalPredictions.length
+  }
+
+  private calculateRecentForm(games: any[], teamName: string): string[] {
+    return games.slice(-5).map(game => {
+      const isHome = game.homeTeam.toLowerCase().includes(teamName.toLowerCase())
+      const won = (isHome && game.homeScore && game.awayScore && game.homeScore > game.awayScore) ||
+                  (!isHome && game.homeScore && game.awayScore && game.awayScore > game.homeScore)
+      return won ? 'W' : 'L'
+    })
+  }
+
+  private calculateHomeAdvantage(homeGames: any[], awayGames: any[]): number {
+    if (homeGames.length === 0 || awayGames.length === 0) return 0
+    
+    const homeWinRate = homeGames.filter(game => 
+      game.homeScore && game.awayScore && game.homeScore > game.awayScore
+    ).length / homeGames.length
+    
+    const awayWinRate = awayGames.filter(game => 
+      game.homeScore && game.awayScore && game.awayScore > game.homeScore
+    ).length / awayGames.length
+    
+    return homeWinRate - awayWinRate
+  }
+
+  private async getHistoricalPredictions(): Promise<any[]> {
+    // This would fetch from your database
+    // For now, return empty array - will be populated by actual predictions
+    return []
   }
 }
 

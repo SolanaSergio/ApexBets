@@ -93,41 +93,39 @@ interface ValueBettingStats {
 }
 
 export class AnalyticsService {
-  private mockData = {
-    totalGames: 0,
-    totalPredictions: 0,
-    correctPredictions: 0,
-    totalValueBets: 0,
-    totalValue: 0,
-    profitLoss: 0
-  }
+  // Remove mock data - all data will come from database
 
   async getAnalyticsOverview(): Promise<AnalyticsOverview> {
     try {
-      // In a real implementation, this would fetch from your database
+      // Fetch real data from database
       const games = await sportsDataService.getGames()
       const predictions = await this.getHistoricalPredictions()
       const valueBets = await this.getHistoricalValueBets()
 
+      // Calculate real metrics from actual data
+      const correctPredictions = predictions.filter(p => p.correct).length
       const accuracyRate = predictions.length > 0 ? 
-        (this.mockData.correctPredictions / this.mockData.totalPredictions) : 0
+        (correctPredictions / predictions.length) : 0
 
+      const totalValue = valueBets.reduce((sum, bet) => sum + (bet.value || 0), 0)
       const averageValue = valueBets.length > 0 ? 
-        (this.mockData.totalValue / this.mockData.totalValueBets) : 0
+        (totalValue / valueBets.length) : 0
 
+      const profitableBets = valueBets.filter(bet => (bet.profit || 0) > 0)
       const winRate = valueBets.length > 0 ? 
-        (valueBets.filter(bet => bet.profit > 0).length / valueBets.length) : 0
+        (profitableBets.length / valueBets.length) : 0
 
-      const roi = this.mockData.totalPredictions > 0 ? 
-        (this.mockData.profitLoss / this.mockData.totalPredictions) : 0
+      const totalProfitLoss = valueBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
+      const roi = predictions.length > 0 ? 
+        (totalProfitLoss / predictions.length) : 0
 
       return {
         totalGames: games.length,
-        totalPredictions: this.mockData.totalPredictions,
+        totalPredictions: predictions.length,
         accuracyRate,
-        totalValueBets: this.mockData.totalValueBets,
+        totalValueBets: valueBets.length,
         averageValue,
-        profitLoss: this.mockData.profitLoss,
+        profitLoss: totalProfitLoss,
         winRate,
         roi
       }
@@ -148,10 +146,13 @@ export class AnalyticsService {
 
   async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     try {
-      // Generate mock performance data
-      const daily = this.generateDailyMetrics()
-      const weekly = this.generateWeeklyMetrics()
-      const monthly = this.generateMonthlyMetrics()
+      // Fetch real performance data from database
+      const predictions = await this.getHistoricalPredictions()
+      const valueBets = await this.getHistoricalValueBets()
+      
+      const daily = this.calculateDailyMetrics(predictions, valueBets)
+      const weekly = this.calculateWeeklyMetrics(predictions, valueBets)
+      const monthly = this.calculateMonthlyMetrics(predictions, valueBets)
 
       return { daily, weekly, monthly }
     } catch (error) {
@@ -319,58 +320,121 @@ export class AnalyticsService {
 
   // Helper methods
   private async getHistoricalPredictions(): Promise<any[]> {
-    // In a real implementation, this would fetch from your database
-    return []
+    try {
+      const response = await fetch('/api/predictions')
+      if (response.ok) {
+        const data = await response.json()
+        return data.data || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching historical predictions:', error)
+      return []
+    }
   }
 
   private async getHistoricalValueBets(): Promise<any[]> {
-    // In a real implementation, this would fetch from your database
-    return []
+    try {
+      const response = await fetch('/api/value-bets')
+      if (response.ok) {
+        const data = await response.json()
+        return data.data || []
+      }
+      return []
+    } catch (error) {
+      console.error('Error fetching historical value bets:', error)
+      return []
+    }
   }
 
-  private generateDailyMetrics() {
+  private calculateDailyMetrics(predictions: any[], valueBets: any[]) {
     const daily = []
     for (let i = 29; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
+      const dateStr = date.toISOString().split('T')[0]
+      
+      const dayPredictions = predictions.filter(p => 
+        p.created_at && p.created_at.startsWith(dateStr)
+      )
+      const dayValueBets = valueBets.filter(bet => 
+        bet.created_at && bet.created_at.startsWith(dateStr)
+      )
+      
+      const correct = dayPredictions.filter(p => p.correct).length
+      const accuracy = dayPredictions.length > 0 ? correct / dayPredictions.length : 0
+      const value = dayValueBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
+      
       daily.push({
-        date: date.toISOString().split('T')[0],
-        predictions: Math.floor(Math.random() * 20) + 5,
-        correct: Math.floor(Math.random() * 15) + 3,
-        accuracy: Math.random() * 0.4 + 0.5,
-        value: Math.random() * 100 - 50
+        date: dateStr,
+        predictions: dayPredictions.length,
+        correct,
+        accuracy,
+        value
       })
     }
     return daily
   }
 
-  private generateWeeklyMetrics() {
+  private calculateWeeklyMetrics(predictions: any[], valueBets: any[]) {
     const weekly = []
     for (let i = 11; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - (i * 7))
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - (i * 7))
+      const endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + 6)
+      
+      const weekPredictions = predictions.filter(p => {
+        if (!p.created_at) return false
+        const predDate = new Date(p.created_at)
+        return predDate >= startDate && predDate <= endDate
+      })
+      
+      const weekValueBets = valueBets.filter(bet => {
+        if (!bet.created_at) return false
+        const betDate = new Date(bet.created_at)
+        return betDate >= startDate && betDate <= endDate
+      })
+      
+      const correct = weekPredictions.filter(p => p.correct).length
+      const accuracy = weekPredictions.length > 0 ? correct / weekPredictions.length : 0
+      const value = weekValueBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
+      
       weekly.push({
-        week: date.toISOString().split('T')[0],
-        predictions: Math.floor(Math.random() * 100) + 20,
-        correct: Math.floor(Math.random() * 80) + 10,
-        accuracy: Math.random() * 0.4 + 0.5,
-        value: Math.random() * 500 - 250
+        week: startDate.toISOString().split('T')[0],
+        predictions: weekPredictions.length,
+        correct,
+        accuracy,
+        value
       })
     }
     return weekly
   }
 
-  private generateMonthlyMetrics() {
+  private calculateMonthlyMetrics(predictions: any[], valueBets: any[]) {
     const monthly = []
     for (let i = 11; i >= 0; i--) {
       const date = new Date()
       date.setMonth(date.getMonth() - i)
+      const monthStr = date.toISOString().substring(0, 7)
+      
+      const monthPredictions = predictions.filter(p => 
+        p.created_at && p.created_at.startsWith(monthStr)
+      )
+      const monthValueBets = valueBets.filter(bet => 
+        bet.created_at && bet.created_at.startsWith(monthStr)
+      )
+      
+      const correct = monthPredictions.filter(p => p.correct).length
+      const accuracy = monthPredictions.length > 0 ? correct / monthPredictions.length : 0
+      const value = monthValueBets.reduce((sum, bet) => sum + (bet.profit || 0), 0)
+      
       monthly.push({
-        month: date.toISOString().substring(0, 7),
-        predictions: Math.floor(Math.random() * 400) + 100,
-        correct: Math.floor(Math.random() * 300) + 50,
-        accuracy: Math.random() * 0.4 + 0.5,
-        value: Math.random() * 2000 - 1000
+        month: monthStr,
+        predictions: monthPredictions.length,
+        correct,
+        accuracy,
+        value
       })
     }
     return monthly

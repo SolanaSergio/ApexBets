@@ -8,26 +8,66 @@ export async function GET(request: NextRequest) {
     const useExternalApi = searchParams.get("external") === "true"
     
     if (useExternalApi) {
-      // Use enhanced API client for external data
+      // Use direct API calls to avoid circular dependencies
       const sport = searchParams.get("sport") || "basketball"
       const status = searchParams.get("status") as "scheduled" | "live" | "finished" | undefined
-      const date = searchParams.get("date")
-      const teamId = searchParams.get("team_id")
+      const date = searchParams.get("date") || new Date().toISOString().split('T')[0]
       
-      const response = await enhancedApiClient.getGames({
-        sport,
-        status,
-        date,
-        teamId,
-        external: true
-      })
+      const games: any[] = []
+      
+      try {
+        // Get data from SportsDB (most reliable)
+        const { sportsDBClient } = await import("@/lib/sports-apis/sportsdb-client")
+        const events = await sportsDBClient.getEventsByDate(date, sport)
+        games.push(...events.map((event: any) => ({
+          id: event.idEvent,
+          homeTeam: event.strHomeTeam,
+          awayTeam: event.strAwayTeam,
+          date: event.dateEvent,
+          time: event.strTime,
+          status: event.strStatus,
+          homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
+          awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
+          league: event.strLeague,
+          sport: event.strSport,
+          venue: event.strVenue
+        })))
+      } catch (error) {
+        console.error('SportsDB error:', error)
+      }
+      
+      // Add NBA data if basketball
+      if (sport === 'basketball') {
+        try {
+          const { ballDontLieClient } = await import("@/lib/sports-apis/balldontlie-client")
+          const nbaGames = await ballDontLieClient.getGames({
+            start_date: date,
+            end_date: date
+          })
+          games.push(...nbaGames.data.map((game: any) => ({
+            id: game.id.toString(),
+            homeTeam: game.home_team.full_name,
+            awayTeam: game.visitor_team.full_name,
+            date: game.date,
+            time: game.time,
+            status: game.status,
+            homeScore: game.home_team_score,
+            awayScore: game.visitor_team_score,
+            league: 'NBA',
+            sport: 'basketball',
+            venue: undefined
+          })))
+        } catch (error) {
+          console.error('BALLDONTLIE error:', error)
+        }
+      }
       
       return NextResponse.json({
-        data: response.data,
+        data: games,
         meta: {
-          fromCache: response.fromCache,
-          responseTime: response.responseTime,
-          rateLimitInfo: response.rateLimitInfo
+          fromCache: false,
+          responseTime: 0,
+          source: "direct_apis"
         }
       })
     }
@@ -77,6 +117,60 @@ export async function GET(request: NextRequest) {
         source: "supabase"
       }
     })
+  } catch (error) {
+    console.error("API Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const gameData = await request.json()
+
+    // Validate required fields
+    if (!gameData.homeTeam || !gameData.awayTeam) {
+      return NextResponse.json({ error: "Missing required fields: homeTeam, awayTeam" }, { status: 400 })
+    }
+
+    // Find team IDs by name
+    const { data: homeTeam } = await supabase
+      .from("teams")
+      .select("id")
+      .eq("name", gameData.homeTeam)
+      .single()
+
+    const { data: awayTeam } = await supabase
+      .from("teams")
+      .select("id")
+      .eq("name", gameData.awayTeam)
+      .single()
+
+    if (!homeTeam || !awayTeam) {
+      return NextResponse.json({ error: "Teams not found in database" }, { status: 400 })
+    }
+
+    const { data: game, error } = await supabase
+      .from("games")
+      .insert([{
+        home_team_id: homeTeam.id,
+        away_team_id: awayTeam.id,
+        game_date: gameData.date ? new Date(gameData.date).toISOString() : new Date().toISOString(),
+        season: gameData.season || '2024-25',
+        status: gameData.status || 'scheduled',
+        home_score: gameData.homeScore || null,
+        away_score: gameData.awayScore || null,
+        venue: gameData.venue || null
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error inserting game:", error)
+      return NextResponse.json({ error: "Failed to insert game" }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, data: game })
   } catch (error) {
     console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

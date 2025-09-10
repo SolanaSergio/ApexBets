@@ -37,19 +37,18 @@ export function UserAlerts() {
 
   async function fetchAlerts() {
     try {
-      // This would fetch user's alerts from the API
-      // For now, using mock data
-      setAlerts([
-        {
-          id: "1",
-          type: "game_start",
-          team_id: "1",
-          enabled: true,
-          created_at: new Date().toISOString(),
-        },
-      ])
+      // Fetch real user alerts from API
+      const response = await fetch('/api/alerts')
+      if (response.ok) {
+        const data = await response.json()
+        setAlerts(data.alerts || [])
+      } else {
+        console.error('Failed to fetch alerts:', response.statusText)
+        setAlerts([])
+      }
     } catch (error) {
       console.error("Error fetching alerts:", error)
+      setAlerts([])
     }
   }
 
@@ -64,30 +63,66 @@ export function UserAlerts() {
 
   const addAlert = async () => {
     try {
-      // This would create a new alert via API
-      const alert: UserAlert = {
-        id: Math.random().toString(36).substr(2, 9),
-        ...newAlert,
-        created_at: new Date().toISOString(),
-      }
-      setAlerts((prev) => [...prev, alert])
-      setNewAlert({
-        type: "game_start",
-        team_id: "",
-        threshold: 0,
-        enabled: true,
+      // Create new alert via API
+      const response = await fetch('/api/alerts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newAlert),
       })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setAlerts((prev) => [...prev, data.alert])
+        setNewAlert({
+          type: "game_start",
+          team_id: "",
+          threshold: 0,
+          enabled: true,
+        })
+      } else {
+        console.error('Failed to create alert:', response.statusText)
+      }
     } catch (error) {
       console.error("Error creating alert:", error)
     }
   }
 
   const toggleAlert = async (id: string, enabled: boolean) => {
-    setAlerts((prev) => prev.map((alert) => (alert.id === id ? { ...alert, enabled } : alert)))
+    try {
+      const response = await fetch(`/api/alerts/${id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ enabled }),
+      })
+      
+      if (response.ok) {
+        setAlerts((prev) => prev.map((alert) => (alert.id === id ? { ...alert, enabled } : alert)))
+      } else {
+        console.error('Failed to update alert:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error updating alert:', error)
+    }
   }
 
   const deleteAlert = async (id: string) => {
-    setAlerts((prev) => prev.filter((alert) => alert.id !== id))
+    try {
+      const response = await fetch(`/api/alerts/${id}`, {
+        method: 'DELETE',
+      })
+      
+      if (response.ok) {
+        setAlerts((prev) => prev.filter((alert) => alert.id !== id))
+      } else {
+        console.error('Failed to delete alert:', response.statusText)
+      }
+    } catch (error) {
+      console.error('Error deleting alert:', error)
+    }
   }
 
   const getAlertDescription = (alert: UserAlert) => {

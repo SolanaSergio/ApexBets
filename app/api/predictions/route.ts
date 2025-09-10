@@ -48,3 +48,38 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const predictionData = await request.json()
+
+    // Validate required fields
+    if (!predictionData.game_id || !predictionData.predicted_winner) {
+      return NextResponse.json({ error: "Missing required fields: game_id, predicted_winner" }, { status: 400 })
+    }
+
+    const { data: prediction, error } = await supabase
+      .from("predictions")
+      .insert([{
+        game_id: predictionData.game_id,
+        predicted_winner: predictionData.predicted_winner,
+        confidence: predictionData.confidence || 0.5,
+        prediction_type: predictionData.prediction_type || 'winner',
+        reasoning: predictionData.reasoning || 'AI-generated prediction',
+        status: predictionData.status || 'pending'
+      }])
+      .select()
+      .single()
+
+    if (error) {
+      console.error("Error inserting prediction:", error)
+      return NextResponse.json({ error: "Failed to insert prediction" }, { status: 500 })
+    }
+
+    return NextResponse.json({ success: true, data: prediction })
+  } catch (error) {
+    console.error("API Error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

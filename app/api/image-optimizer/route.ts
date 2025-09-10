@@ -8,8 +8,23 @@ export async function GET(request: NextRequest) {
   const quality = parseInt(searchParams.get('q') || '80')
   const format = searchParams.get('f') || 'webp'
 
+  // If no src parameter, return API info instead of error
   if (!src) {
-    return new NextResponse('Missing src parameter', { status: 400 })
+    return NextResponse.json({
+      message: 'Image Optimizer API',
+      description: 'Optimizes images with resizing and format conversion',
+      usage: {
+        required: 'src - Image URL to optimize',
+        optional: {
+          w: 'Width (default: 800)',
+          h: 'Height (default: 600)', 
+          q: 'Quality 1-100 (default: 80)',
+          f: 'Format: webp, jpg, png (default: webp)'
+        },
+        example: '/api/image-optimizer?src=https://example.com/image.jpg&w=400&h=300&q=90'
+      },
+      status: 'ready'
+    })
   }
 
   try {
@@ -35,6 +50,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(src)
   } catch (error) {
     console.error('Image optimization error:', error)
-    return new NextResponse('Image optimization failed', { status: 500 })
+    return NextResponse.json({
+      error: 'Image optimization failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
