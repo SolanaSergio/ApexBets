@@ -246,12 +246,20 @@ class RateLimiter {
     const state = this.getState(service)
     const now = Date.now()
 
-    // Update time-based counters
-    stats.requestsThisMinute = state.requests.filter(time => now - time < 60000).length
-    stats.requestsThisHour = state.requests.filter(time => now - time < 3600000).length
-    stats.requestsToday = state.requests.filter(time => now - time < 86400000).length
+    // Calculate time-based counters
+    const requestsThisMinute = state.requests.filter(time => now - time < 60000).length
+    const requestsThisHour = state.requests.filter(time => now - time < 3600000).length
+    const requestsToday = state.requests.filter(time => now - time < 86400000).length
 
-    return stats
+    return {
+      requestsThisMinute,
+      requestsThisHour,
+      requestsToday,
+      totalRequests: state.requests.length,
+      errorRate: state.errors / Math.max(state.requests.length, 1),
+      isBlocked: state.blockUntil > now,
+      blockUntil: state.blockUntil
+    }
   }
 
   getAllUsageStats(): Record<string, UsageStats> {

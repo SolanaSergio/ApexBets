@@ -22,21 +22,23 @@ describe('Odds API Integration Tests', () => {
         const odds = data.data[0]
         expect(odds).toMatchObject({
           id: expect.any(String),
-          home_team: expect.any(String),
-          away_team: expect.any(String),
-          commence_time: expect.any(String),
-          sport_key: expect.any(String),
-          sport_title: expect.any(String)
+          game_id: expect.any(String),
+          source: expect.any(String),
+          odds_type: expect.any(String),
+          home_odds: expect.any(Number),
+          away_odds: expect.any(Number),
+          sport: expect.any(String),
+          league: expect.any(String)
         })
 
-        // Verify commence_time is a valid ISO string
-        expect(new Date(odds.commence_time)).toBeInstanceOf(Date)
-        expect(new Date(odds.commence_time).getTime()).not.toBeNaN()
+        // Verify timestamp is a valid ISO string
+        expect(new Date(odds.timestamp)).toBeInstanceOf(Date)
+        expect(new Date(odds.timestamp).getTime()).not.toBeNaN()
       }
     })
 
     it('should fetch odds with sport filter', async () => {
-      const response = await fetch(`${baseUrl}/odds?sport=basketball_nba`)
+      const response = await fetch(`${baseUrl}/odds?sport=basketball`)
       const data = await response.json()
 
       expect(response.status).toBe(200)
@@ -47,8 +49,8 @@ describe('Odds API Integration Tests', () => {
 
       // All odds should be for basketball
       data.data.forEach((odds: any) => {
-        expect(odds.sport_key).toBe('basketball_nba')
-        expect(odds.sport_title).toContain('Basketball')
+        expect(odds.sport).toBe('basketball')
+        expect(odds.league).toBe('NBA')
       })
     })
 
@@ -128,13 +130,13 @@ describe('Odds API Integration Tests', () => {
       if (data.data.length > 0) {
         const odds = data.data[0]
         
-        // Team names should be non-empty strings
-        expect(odds.home_team).toBeTruthy()
-        expect(odds.away_team).toBeTruthy()
-        expect(typeof odds.home_team).toBe('string')
-        expect(typeof odds.away_team).toBe('string')
-        expect(odds.home_team.length).toBeGreaterThan(0)
-        expect(odds.away_team.length).toBeGreaterThan(0)
+        // Odds should have valid numeric values
+        expect(odds.home_odds).toBeDefined()
+        expect(odds.away_odds).toBeDefined()
+        expect(typeof odds.home_odds).toBe('number')
+        expect(typeof odds.away_odds).toBe('number')
+        expect(odds.sport).toBeTruthy()
+        expect(odds.league).toBeTruthy()
       }
     })
 
@@ -146,12 +148,12 @@ describe('Odds API Integration Tests', () => {
       
       if (data.data.length > 0) {
         const odds = data.data[0]
-        const commenceTime = new Date(odds.commence_time)
+        const timestamp = new Date(odds.timestamp)
         const now = new Date()
         
-        // Most odds should be for future games
-        // Allow some tolerance for games starting soon
-        const timeDiff = commenceTime.getTime() - now.getTime()
+        // Verify timestamp is valid
+        // Allow some tolerance for recent timestamps
+        const timeDiff = now.getTime() - timestamp.getTime()
         expect(timeDiff).toBeGreaterThan(-3600000) // Within 1 hour tolerance
       }
     })
@@ -165,26 +167,26 @@ describe('Odds API Integration Tests', () => {
       data.data.forEach((odds: any) => {
         // Required fields
         expect(odds.id).toBeDefined()
-        expect(odds.home_team).toBeDefined()
-        expect(odds.away_team).toBeDefined()
-        expect(odds.commence_time).toBeDefined()
-        expect(odds.sport_key).toBeDefined()
-        expect(odds.sport_title).toBeDefined()
+        expect(odds.game_id).toBeDefined()
+        expect(odds.source).toBeDefined()
+        expect(odds.odds_type).toBeDefined()
+        expect(odds.sport).toBeDefined()
+        expect(odds.league).toBeDefined()
         
         // Field types
         expect(typeof odds.id).toBe('string')
-        expect(typeof odds.home_team).toBe('string')
-        expect(typeof odds.away_team).toBe('string')
-        expect(typeof odds.commence_time).toBe('string')
-        expect(typeof odds.sport_key).toBe('string')
-        expect(typeof odds.sport_title).toBe('string')
+        expect(typeof odds.game_id).toBe('string')
+        expect(typeof odds.source).toBe('string')
+        expect(typeof odds.odds_type).toBe('string')
+        expect(typeof odds.sport).toBe('string')
+        expect(typeof odds.league).toBe('string')
         
         // Non-empty strings
         expect(odds.id.length).toBeGreaterThan(0)
-        expect(odds.home_team.length).toBeGreaterThan(0)
-        expect(odds.away_team.length).toBeGreaterThan(0)
-        expect(odds.sport_key.length).toBeGreaterThan(0)
-        expect(odds.sport_title.length).toBeGreaterThan(0)
+        expect(odds.game_id.length).toBeGreaterThan(0)
+        expect(odds.source.length).toBeGreaterThan(0)
+        expect(odds.sport.length).toBeGreaterThan(0)
+        expect(odds.league.length).toBeGreaterThan(0)
       })
     })
   })

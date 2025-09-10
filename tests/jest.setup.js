@@ -1,6 +1,6 @@
 require('@testing-library/jest-dom')
 
-// Mock Next.js router
+// Mock Next.js router for component tests only
 jest.mock('next/router', () => ({
   useRouter() {
     return {
@@ -24,7 +24,7 @@ jest.mock('next/router', () => ({
   },
 }))
 
-// Mock Next.js navigation
+// Mock Next.js navigation for component tests only
 jest.mock('next/navigation', () => ({
   useRouter() {
     return {
@@ -44,55 +44,36 @@ jest.mock('next/navigation', () => ({
   },
 }))
 
-// Mock environment variables
+// Set environment variables - use real API endpoints
 process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3000/api'
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
 
-// Use real fetch for API tests, mock for component tests
+// Use real fetch for ALL tests - NO MOCKING
 const nodeFetch = require('node-fetch')
+global.fetch = nodeFetch
 
-// Store the original fetch if it exists
-const originalFetch = global.fetch
-
-// Set up fetch mock
-global.fetch = jest.fn().mockImplementation((url, options) => {
-  // For API tests, use real fetch (node-fetch)
-  if (url.includes('/api/')) {
-    return nodeFetch(url, options)
-  }
-  // For other tests, return a mock response
-  return Promise.resolve({
-    ok: true,
-    status: 200,
-    json: () => Promise.resolve({}),
-    text: () => Promise.resolve(''),
-  })
-})
-
-// Mock IntersectionObserver
+// Mock browser APIs only (not data)
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }))
 
-// Mock ResizeObserver
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
 }))
 
-// Mock matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: jest.fn().mockImplementation(query => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     dispatchEvent: jest.fn(),

@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const gameId = searchParams.get("game_id")
     const source = searchParams.get("source")
+    const sport = searchParams.get("sport")
     const limit = Number.parseInt(searchParams.get("limit") || "100")
 
     let query = supabase.from("odds").select("*")
@@ -58,6 +59,10 @@ export async function GET(request: NextRequest) {
 
     if (source) {
       query = query.eq("source", source)
+    }
+
+    if (sport) {
+      query = query.eq("sport", sport)
     }
 
     const { data: odds, error } = await query.order("timestamp", { ascending: false }).limit(limit)

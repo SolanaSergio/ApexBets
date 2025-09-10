@@ -119,18 +119,9 @@ function analyzeTrends(gamesData: any[], team: string) {
     const totalScores = totalGames.map(game => game.home_score + game.away_score)
     const avgTotal = totalScores.reduce((a, b) => a + b, 0) / totalScores.length
     
-    // Get sport-specific expected totals
+    // Calculate expected totals based on historical data
     const sport = gamesData[0]?.sport || 'basketball'
-    const expectedTotals = {
-      basketball: 220,
-      football: 45,
-      baseball: 8.5,
-      hockey: 5.5,
-      soccer: 2.5,
-      tennis: 20,
-      golf: 70
-    }
-    const expectedTotal = expectedTotals[sport as keyof typeof expectedTotals] || 220
+    const expectedTotal = calculateExpectedTotal(sport, totalScores)
     const totalVariance = ((avgTotal - expectedTotal) / expectedTotal * 100).toFixed(1)
     
     const varianceNum = parseFloat(totalVariance)
@@ -165,20 +156,31 @@ function analyzeTrends(gamesData: any[], team: string) {
     })
   }
   
-  // Rest Advantage Analysis (simplified - would need actual rest data)
-  if (gamesData.length > 0) {
-    // This is a placeholder calculation - in reality, you'd need rest days data
-    const restAdvantage = 0 // Would calculate based on actual rest days
-    trends.push({
-      category: "Rest Advantage",
-      trend: "neutral",
-      value: "±0%",
-      description: "Rest advantage analysis requires additional data",
-      confidence: 0.5
-    })
-  }
+  // Rest Advantage Analysis - only include if we have actual rest data
+  // This would require additional data from the database
+  // For now, we'll skip this analysis until rest data is available
   
   return trends
+}
+
+function calculateExpectedTotal(sport: string, totalScores: number[]) {
+  // Calculate expected total based on historical data
+  if (totalScores.length === 0) {
+    // Fallback values if no data available
+    const fallbackTotals = {
+      basketball: 220,
+      football: 45,
+      baseball: 8.5,
+      hockey: 5.5,
+      soccer: 2.5,
+      tennis: 20,
+      golf: 70
+    }
+    return fallbackTotals[sport as keyof typeof fallbackTotals] || 220
+  }
+  
+  // Use historical average as expected total
+  return totalScores.reduce((a, b) => a + b, 0) / totalScores.length
 }
 
 function calculateTrendStats(gamesData: any[]) {

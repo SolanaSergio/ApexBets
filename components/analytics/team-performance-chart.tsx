@@ -1,23 +1,78 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Bar, BarChart } from "recharts"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface TeamPerformanceChartProps {
   team: string
   timeRange: string
 }
 
-const performanceData = [
-  { date: "2024-01-01", wins: 15, losses: 5, pointsFor: 112.5, pointsAgainst: 108.2, efficiency: 0.75 },
-  { date: "2024-01-08", wins: 17, losses: 6, pointsFor: 114.2, pointsAgainst: 107.8, efficiency: 0.78 },
-  { date: "2024-01-15", wins: 19, losses: 8, pointsFor: 115.8, pointsAgainst: 109.1, efficiency: 0.76 },
-  { date: "2024-01-22", wins: 22, losses: 9, pointsFor: 113.9, pointsAgainst: 106.5, efficiency: 0.81 },
-  { date: "2024-01-29", wins: 24, losses: 11, pointsFor: 116.3, pointsAgainst: 108.7, efficiency: 0.79 },
-]
-
 export function TeamPerformanceChart({ team, timeRange }: TeamPerformanceChartProps) {
+  const [performanceData, setPerformanceData] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTeamPerformance()
+  }, [team, timeRange])
+
+  const fetchTeamPerformance = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/analytics/team-performance?team=${team}&timeRange=${timeRange}`)
+      if (response.ok) {
+        const data = await response.json()
+        setPerformanceData(data.performance || [])
+      }
+    } catch (error) {
+      console.error('Error fetching team performance:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-32" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-[300px] w-full" />
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (performanceData.length === 0) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-muted-foreground">No performance data available</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-muted-foreground">No performance data available</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <Card>

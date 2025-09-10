@@ -50,6 +50,7 @@ export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartPr
   }
 
   const currentAccuracy = accuracyData.length > 0 ? accuracyData[accuracyData.length - 1] : null
+  const previousAccuracy = accuracyData.length > 1 ? accuracyData[accuracyData.length - 2] : null
 
   if (loading) {
     return (
@@ -103,9 +104,9 @@ export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartPr
                 {currentAccuracy ? (currentAccuracy.gameWinner * 100).toFixed(1) : '--'}%
               </div>
               <div className="text-sm text-muted-foreground">Game Winner</div>
-              <Badge variant="secondary" className="mt-1">
-                {currentAccuracy ? '+4.2% vs last week' : 'No data'}
-              </Badge>
+                    <Badge variant="secondary" className="mt-1">
+                      {currentAccuracy && previousAccuracy ? `+${((currentAccuracy.gameWinner - previousAccuracy.gameWinner) * 100).toFixed(1)}% vs last week` : 'No data'}
+                    </Badge>
             </div>
           </CardContent>
         </Card>
@@ -118,7 +119,7 @@ export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartPr
               </div>
               <div className="text-sm text-muted-foreground">Spread</div>
               <Badge variant="secondary" className="mt-1">
-                {currentAccuracy ? '+2.8% vs last week' : 'No data'}
+                {currentAccuracy && previousAccuracy ? `+${((currentAccuracy.spread - previousAccuracy.spread) * 100).toFixed(1)}% vs last week` : 'No data'}
               </Badge>
             </div>
           </CardContent>
@@ -132,7 +133,7 @@ export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartPr
               </div>
               <div className="text-sm text-muted-foreground">Over/Under</div>
               <Badge variant="secondary" className="mt-1">
-                {currentAccuracy ? '+1.9% vs last week' : 'No data'}
+                {currentAccuracy && previousAccuracy ? `+${((currentAccuracy.total - previousAccuracy.total) * 100).toFixed(1)}% vs last week` : 'No data'}
               </Badge>
             </div>
           </CardContent>
@@ -146,7 +147,7 @@ export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartPr
               </div>
               <div className="text-sm text-muted-foreground">Overall</div>
               <Badge variant="default" className="mt-1">
-                {currentAccuracy ? '+3.1% vs last week' : 'No data'}
+                {currentAccuracy && previousAccuracy ? `+${((currentAccuracy.overall - previousAccuracy.overall) * 100).toFixed(1)}% vs last week` : 'No data'}
               </Badge>
             </div>
           </CardContent>

@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 
 /**
- * Comprehensive Test Runner
- * Runs all tests with proper setup and reporting
+ * Centralized Test Runner for ApexBets
+ * Runs all tests with REAL data - NO MOCK DATA OR PLACEHOLDERS
+ * All tests use actual external APIs and real data
  */
 
 const { execSync } = require('child_process');
@@ -87,37 +88,44 @@ function installDependencies() {
 }
 
 function runUnitTests() {
-  log(`${colors.bright}Running Unit Tests...${colors.reset}`);
+  log(`${colors.bright}Running Unit Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('pnpm test', 'Unit tests');
+  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=unit', 'Unit tests');
   return result;
 }
 
 function runIntegrationTests() {
-  log(`${colors.bright}Running Integration Tests...${colors.reset}`);
+  log(`${colors.bright}Running Integration Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('pnpm test -- --testPathPattern=integration', 'Integration tests');
+  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=integration', 'Integration tests');
   return result;
 }
 
 function runE2ETests() {
-  log(`${colors.bright}Running End-to-End Tests...${colors.reset}`);
+  log(`${colors.bright}Running End-to-End Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('pnpm test:e2e', 'E2E tests');
+  const result = runCommand('playwright test', 'E2E tests');
   return result;
 }
 
 function runPerformanceTests() {
-  log(`${colors.bright}Running Performance Tests...${colors.reset}`);
+  log(`${colors.bright}Running Performance Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('pnpm test -- --testPathPattern=performance', 'Performance tests');
+  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=performance', 'Performance tests');
   return result;
 }
 
 function runSecurityTests() {
-  log(`${colors.bright}Running Security Tests...${colors.reset}`);
+  log(`${colors.bright}Running Security Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('pnpm test -- --testPathPattern=security', 'Security tests');
+  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=security', 'Security tests');
+  return result;
+}
+
+function runAllTests() {
+  log(`${colors.bright}Running All Tests (Real Data Only)...${colors.reset}`);
+  
+  const result = runCommand('npx jest --config tests/jest.config.simple.js', 'All tests');
   return result;
 }
 
@@ -136,7 +144,15 @@ function generateTestReport(results) {
       success: r.success,
       duration: r.duration,
       error: r.error
-    }))
+    })),
+    testCategories: {
+      unit: results.filter(r => r.name.includes('Unit')).length,
+      integration: results.filter(r => r.name.includes('Integration')).length,
+      e2e: results.filter(r => r.name.includes('E2E')).length,
+      performance: results.filter(r => r.name.includes('Performance')).length,
+      security: results.filter(r => r.name.includes('Security')).length,
+      all: results.filter(r => r.name.includes('All')).length
+    }
   };
   
   // Write report to file
@@ -151,12 +167,26 @@ function generateTestReport(results) {
   log(`${colors.red}✗ Failed: ${report.summary.failed}${colors.reset}`);
   log(`${colors.blue}Total: ${report.summary.total}${colors.reset}`);
   
+  // Print category breakdown
+  log(`\n${colors.bright}Test Categories:${colors.reset}`);
+  log(`${colors.cyan}Unit Tests: ${report.testCategories.unit}${colors.reset}`);
+  log(`${colors.cyan}Integration Tests: ${report.testCategories.integration}${colors.reset}`);
+  log(`${colors.cyan}E2E Tests: ${report.testCategories.e2e}${colors.reset}`);
+  log(`${colors.cyan}Performance Tests: ${report.testCategories.performance}${colors.reset}`);
+  log(`${colors.cyan}Security Tests: ${report.testCategories.security}${colors.reset}`);
+  log(`${colors.cyan}All Tests: ${report.testCategories.all}${colors.reset}`);
+  
   return report;
 }
 
 function main() {
-  log(`${colors.bright}${colors.cyan}🚀 Starting Comprehensive Test Suite${colors.reset}`);
+  const args = process.argv.slice(2);
+  const testType = args[0] || 'all';
+  
+  log(`${colors.bright}${colors.cyan}🚀 ApexBets Centralized Test Runner${colors.reset}`);
   log(`${colors.cyan}==========================================${colors.reset}`);
+  log(`${colors.yellow}Testing with REAL data - NO MOCK DATA OR PLACEHOLDERS${colors.reset}`);
+  log(`${colors.blue}Test Type: ${testType}${colors.reset}`);
   
   const startTime = Date.now();
   const results = [];
@@ -168,25 +198,38 @@ function main() {
     // Install dependencies
     installDependencies();
     
-    // Run different test suites
-    const unitResult = runUnitTests();
-    results.push({ name: 'Unit Tests', ...unitResult, duration: Date.now() - startTime });
-    
-    const integrationResult = runIntegrationTests();
-    results.push({ name: 'Integration Tests', ...integrationResult, duration: Date.now() - startTime });
-    
-    const performanceResult = runPerformanceTests();
-    results.push({ name: 'Performance Tests', ...performanceResult, duration: Date.now() - startTime });
-    
-    const securityResult = runSecurityTests();
-    results.push({ name: 'Security Tests', ...securityResult, duration: Date.now() - startTime });
-    
-    // E2E tests are optional (require dev server)
-    try {
-      const e2eResult = runE2ETests();
-      results.push({ name: 'E2E Tests', ...e2eResult, duration: Date.now() - startTime });
-    } catch (error) {
-      log(`${colors.yellow}⚠ E2E tests skipped (dev server not running)${colors.reset}`);
+    // Run tests based on type
+    switch (testType) {
+      case 'unit':
+        const unitResult = runUnitTests();
+        results.push({ name: 'Unit Tests', ...unitResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'integration':
+        const integrationResult = runIntegrationTests();
+        results.push({ name: 'Integration Tests', ...integrationResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'e2e':
+        const e2eResult = runE2ETests();
+        results.push({ name: 'E2E Tests', ...e2eResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'performance':
+        const performanceResult = runPerformanceTests();
+        results.push({ name: 'Performance Tests', ...performanceResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'security':
+        const securityResult = runSecurityTests();
+        results.push({ name: 'Security Tests', ...securityResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'all':
+      default:
+        const allResult = runAllTests();
+        results.push({ name: 'All Tests', ...allResult, duration: Date.now() - startTime });
+        break;
     }
     
     // Generate report
@@ -195,12 +238,12 @@ function main() {
     const totalDuration = Date.now() - startTime;
     log(`\n${colors.bright}Total execution time: ${totalDuration}ms${colors.reset}`);
     
-    // Exit with appropriate code
+    // Print final status
     if (report.summary.failed > 0) {
-      log(`${colors.red}❌ Some tests failed${colors.reset}`);
+      log(`${colors.red}❌ Some tests failed - Check the report for details${colors.reset}`);
       process.exit(1);
     } else {
-      log(`${colors.green}✅ All tests passed!${colors.reset}`);
+      log(`${colors.green}✅ All tests passed! ApexBets is working correctly with real data${colors.reset}`);
       process.exit(0);
     }
     

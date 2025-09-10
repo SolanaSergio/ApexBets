@@ -33,9 +33,8 @@ export function StatsCards() {
     return <StatsCardsSkeleton />
   }
 
-  const accuracyPercentage = Math.round((stats.accuracy_rate || 0) * 100)
-  const recentPredictions =
-    stats.recent_performance?.daily_stats?.reduce((sum, day) => sum + day.predictions_made, 0) || 0
+        const accuracyPercentage = Math.round((stats.accuracy_rate || 0) * 100)
+        const recentPredictions = stats.recent_predictions || 0
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -52,14 +51,14 @@ export function StatsCards() {
           </div>
           <p className="text-xs text-muted-foreground">Tracked across all leagues</p>
           <div className="mt-2 h-1 w-full bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-gradient-to-r from-primary to-accent rounded-full animate-pulse" 
-              style={{ 
-                width: stats.total_games 
-                  ? `${Math.min(100, Math.max(0, (stats.total_games / 100) * 100))}%` 
-                  : '0%'
-              }} 
-            />
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
+                  style={{
+                    width: stats.total_games
+                      ? `${Math.min(100, Math.max(0, (stats.total_games / 100) * 100))}%`
+                      : '0%'
+                  }}
+                />
           </div>
         </CardContent>
       </Card>
@@ -78,12 +77,12 @@ export function StatsCards() {
           <p className="text-xs text-muted-foreground">{recentPredictions} in last 30 days</p>
           <div className="mt-2 flex items-center gap-1">
             <TrendingUp className="h-3 w-3 text-green-600" />
-            <span className="text-xs text-green-600 font-medium">
-              {stats.recent_performance?.daily_stats?.length > 0 
-                ? `+${Math.round((stats.recent_performance.daily_stats[0]?.predictions_made || 0) * 0.12)}% this week`
-                : 'No recent data'
-              }
-            </span>
+              <span className="text-xs text-green-600 font-medium">
+                {recentPredictions > 0
+                  ? `+${recentPredictions} this week`
+                  : 'No recent data'
+                }
+              </span>
           </div>
         </CardContent>
       </Card>
@@ -125,11 +124,11 @@ export function StatsCards() {
           </div>
           <p className="text-xs text-muted-foreground">Teams tracked across all leagues</p>
           <div className="mt-2 flex items-center gap-2">
-            <div className="flex -space-x-1">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent border-2 border-background animate-float" style={{ animationDelay: `${i * 0.2}s` }} />
-              ))}
-            </div>
+              <div className="flex -space-x-1">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="w-6 h-6 rounded-full bg-gradient-to-r from-primary to-accent border-2 border-background" />
+                ))}
+              </div>
             <span className="text-xs text-muted-foreground">All active</span>
           </div>
         </CardContent>

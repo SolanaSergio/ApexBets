@@ -5,124 +5,121 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     const { searchParams } = new URL(request.url)
-    const league = searchParams.get("league")
+
     const sport = searchParams.get("sport")
+    const league = searchParams.get("league")
     const season = searchParams.get("season") || "2024-25"
+    const limit = Number.parseInt(searchParams.get("limit") || "50")
 
-    // Build query for teams
-    let teamsQuery = supabase.from("teams").select("*")
-    
-    if (league) {
-      teamsQuery = teamsQuery.eq("league", league)
-    }
-    if (sport) {
-      teamsQuery = teamsQuery.eq("sport", sport)
-    }
-
-    const { data: teams, error: teamsError } = await teamsQuery
-
-    if (teamsError) {
-      console.error("Error fetching teams:", teamsError)
-      return NextResponse.json({ error: "Failed to fetch teams" }, { status: 500 })
-    }
-
-    if (!teams || teams.length === 0) {
-      return NextResponse.json({
-        data: [],
-        meta: {
-          fromCache: false,
-          responseTime: 0,
-          source: "supabase"
-        }
-      })
-    }
-
-    // Get games for the season, filtered by sport if specified
-    let gamesQuery = supabase
-      .from("games")
+    // Get teams with their game statistics
+    let query = supabase
+      .from("teams")
       .select(`
         *,
-        home_team:teams!games_home_team_id_fkey(id, name, abbreviation, sport, league),
-        away_team:teams!games_away_team_id_fkey(id, name, abbreviation, sport, league)
+        home_games:games!games_home_team_id_fkey(
+          id,
+          home_score,
+          away_score,
+          status,
+          game_date
+        ),
+        away_games:games!games_away_team_id_fkey(
+          id,
+          home_score,
+          away_score,
+          status,
+          game_date
+        )
       `)
-      .eq("season", season)
-      .in("status", ["completed", "in_progress"])
 
-    const { data: games, error: gamesError } = await gamesQuery
+    if (sport) {
+      query = query.eq("sport", sport)
+    }
 
-    if (gamesError) {
-      console.error("Error fetching games:", gamesError)
-      return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
+    if (league) {
+      query = query.eq("league", league)
+    }
+
+    const { data: teams, error } = await query.limit(limit)
+
+    if (error) {
+      console.error("Error fetching standings:", error)
+      return NextResponse.json({ error: "Failed to fetch standings" }, { status: 500 })
     }
 
     // Calculate standings for each team
-    const standings = teams.map(team => {
-      const teamGames = games?.filter(game => 
-        (game.home_team_id === team.id || game.away_team_id === team.id) &&
-        // Filter by sport if specified
-        (!sport || (game.home_team?.sport === sport && game.away_team?.sport === sport))
-      ) || []
+    const standings = teams?.map(team => {
+      const allGames = [
+        ...(team.home_games || []).map(game => ({
+          ...game,
+          isHome: true,
+          teamScore: game.home_score,
+          opponentScore: game.away_score
+        })),
+        ...(team.away_games || []).map(game => ({
+          ...game,
+          isHome: false,
+          teamScore: game.away_score,
+          opponentScore: game.home_score
+        }))
+      ].filter(game => game.status === 'completed' && game.teamScore !== null && game.opponentScore !== null)
 
-      let wins = 0
-      let losses = 0
-      let ties = 0 // Some sports have ties
-
-      teamGames.forEach(game => {
-        if (game.status === "completed" && game.home_score !== null && game.away_score !== null) {
-          const isHomeTeam = game.home_team_id === team.id
-          const teamScore = isHomeTeam ? game.home_score : game.away_score
-          const opponentScore = isHomeTeam ? game.away_score : game.home_score
-
-          if (teamScore > opponentScore) {
-            wins++
-          } else if (teamScore < opponentScore) {
-            losses++
-          } else {
-            ties++
-          }
-        }
-      })
-
+      const wins = allGames.filter(game => game.teamScore > game.opponentScore).length
+      const losses = allGames.filter(game => game.teamScore < game.opponentScore).length
+      const ties = allGames.filter(game => game.teamScore === game.opponentScore).length
       const totalGames = wins + losses + ties
-      const winRate = totalGames > 0 ? wins / totalGames : 0
-      const points = wins * 2 + ties // Most sports: 2 points for win, 1 for tie, 0 for loss
+      const winPercentage = totalGames > 0 ? (wins + ties * 0.5) / totalGames : 0
+
+      const pointsFor = allGames.reduce((sum, game) => sum + (game.teamScore || 0), 0)
+      const pointsAgainst = allGames.reduce((sum, game) => sum + (game.opponentScore || 0), 0)
+      const pointDifferential = pointsFor - pointsAgainst
 
       return {
-        id: team.id,
-        team: team.name,
-        abbreviation: team.abbreviation,
+        team_id: team.id,
+        team_name: team.name,
+        team_abbreviation: team.abbreviation,
+        city: team.city,
+        league: team.league,
+        sport: team.sport,
+        conference: team.conference,
+        division: team.division,
         wins,
         losses,
         ties,
-        points,
-        winRate,
-        gamesBehind: 0, // This would need more complex calculation
-        league: team.league,
-        sport: team.sport,
-        totalGames,
-        rank: 0 // Will be set after sorting
+        total_games: totalGames,
+        win_percentage: Math.round(winPercentage * 1000) / 1000,
+        points_for: pointsFor,
+        points_against: pointsAgainst,
+        point_differential: pointDifferential,
+        home_record: {
+          wins: allGames.filter(game => game.isHome && game.teamScore > game.opponentScore).length,
+          losses: allGames.filter(game => game.isHome && game.teamScore < game.opponentScore).length,
+          ties: allGames.filter(game => game.isHome && game.teamScore === game.opponentScore).length
+        },
+        away_record: {
+          wins: allGames.filter(game => !game.isHome && game.teamScore > game.opponentScore).length,
+          losses: allGames.filter(game => !game.isHome && game.teamScore < game.opponentScore).length,
+          ties: allGames.filter(game => !game.isHome && game.teamScore === game.opponentScore).length
+        },
+        last_10: allGames
+          .sort((a, b) => new Date(b.game_date).getTime() - new Date(a.game_date).getTime())
+          .slice(0, 10)
+          .map(game => game.teamScore > game.opponentScore ? 'W' : game.teamScore < game.opponentScore ? 'L' : 'T')
+          .join(''),
+        streak: calculateStreak(allGames),
+        season
       }
-    })
+    }) || []
 
-    // Sort by points (or win rate for sports without points), then by wins
+    // Sort standings by win percentage, then by point differential
     standings.sort((a, b) => {
-      // For sports with points system (soccer, hockey), sort by points first
-      if (a.sport === 'soccer' || a.sport === 'hockey') {
-        if (b.points !== a.points) {
-          return b.points - a.points
-        }
-        // Tiebreaker: goal difference, then goals for
-        return b.wins - a.wins
-      } else {
-        // For other sports, sort by win rate, then wins
-        if (b.winRate !== a.winRate) {
-          return b.winRate - a.winRate
-        }
-        return b.wins - a.wins
+      if (b.win_percentage !== a.win_percentage) {
+        return b.win_percentage - a.win_percentage
       }
+      return b.point_differential - a.point_differential
     })
 
-    // Add rank
+    // Add rank to each team
     standings.forEach((team, index) => {
       team.rank = index + 1
     })
@@ -133,13 +130,35 @@ export async function GET(request: NextRequest) {
         fromCache: false,
         responseTime: 0,
         source: "supabase",
+        total: standings.length,
         season,
-        league,
-        sport
+        sport: sport || 'all',
+        league: league || 'all'
       }
     })
   } catch (error) {
     console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
+}
+
+function calculateStreak(games: any[]): string {
+  if (games.length === 0) return ''
+  
+  const sortedGames = games.sort((a, b) => new Date(b.game_date).getTime() - new Date(a.game_date).getTime())
+  let streak = 0
+  const lastResult = sortedGames[0].teamScore > sortedGames[0].opponentScore ? 'W' : 
+                    sortedGames[0].teamScore < sortedGames[0].opponentScore ? 'L' : 'T'
+  
+  for (const game of sortedGames) {
+    const result = game.teamScore > game.opponentScore ? 'W' : 
+                  game.teamScore < game.opponentScore ? 'L' : 'T'
+    if (result === lastResult) {
+      streak++
+    } else {
+      break
+    }
+  }
+  
+  return `${lastResult}${streak}`
 }

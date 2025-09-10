@@ -1,381 +1,259 @@
-# Comprehensive Testing Suite for ApexBets
+# ApexBets Centralized Testing System
 
-This directory contains a comprehensive testing suite that covers all areas of functionality in the ApexBets sports analytics platform. All tests use **real NBA data** and **actual API calls** - **NO MOCK DATA**.
-
-## 🧪 Test Structure
-
-```
-tests/
-├── unit/                           # Unit tests for individual components
-│   └── api/                       # API route unit tests
-├── integration/                   # Integration tests for services and APIs
-│   ├── api/                      # API integration tests
-│   │   ├── comprehensive-*.test.ts # Comprehensive API tests
-│   │   ├── games.test.ts         # Games API tests
-│   │   ├── teams.test.ts         # Teams API tests
-│   │   └── predictions.test.ts   # Predictions API tests
-│   ├── services/                 # Service integration tests
-│   ├── performance/              # Performance tests
-│   └── security/                 # Security tests
-├── e2e/                          # End-to-end tests
-│   ├── comprehensive-*.spec.ts   # Comprehensive E2E tests
-│   ├── dashboard.spec.ts         # Dashboard E2E tests
-│   ├── games.spec.ts             # Games page E2E tests
-│   └── teams.spec.ts             # Teams page E2E tests
-├── run-comprehensive-tests.js    # Comprehensive test runner
-├── TESTING_STRATEGY.md           # Testing strategy documentation
-└── README.md                     # This file
-```
+This directory contains the complete testing infrastructure for ApexBets. All tests use **REAL DATA ONLY** - no mock data or placeholders.
 
 ## 🚀 Quick Start
 
-### Prerequisites
-- Node.js 18+ installed
-- pnpm package manager installed
-- Dev server running (`pnpm dev`)
-- All dependencies installed (`pnpm install`)
-
-### Run All Tests
 ```bash
-# Run the comprehensive test suite with real NBA data
-node tests/run-comprehensive-tests.js
+# Run all tests
+pnpm test
 
-# Or run individual test types
-pnpm test              # Unit tests
-pnpm test:watch        # Unit tests in watch mode
-pnpm test:coverage     # Unit tests with coverage
-pnpm test:e2e          # End-to-end tests
-pnpm test:e2e:ui       # E2E tests with UI
-pnpm test:all          # All tests
+# Run specific test types
+pnpm test:unit
+pnpm test:integration
+pnpm test:e2e
+pnpm test:performance
+pnpm test:security
 
-# Run specific comprehensive tests
-pnpm test -- --testPathPattern=comprehensive  # Comprehensive API tests
-pnpm test -- --testPathPattern=integration    # Integration tests
-pnpm test -- --testPathPattern=e2e            # E2E tests
+# Watch mode for development
+pnpm test:watch
+
+# Coverage report
+pnpm test:coverage
+
+# E2E tests with UI
+pnpm test:e2e:ui
 ```
 
-## 📋 Test Categories
+## 📁 Directory Structure
 
-### 1. Unit Tests (`tests/unit/`)
-- **API Routes**: Individual endpoint testing
-- **Components**: React component testing
-- **Utilities**: Helper function testing
+```
+tests/
+├── jest.config.js          # Centralized Jest configuration
+├── jest.setup.js           # Setup for component tests
+├── jest.setup.api.js       # Setup for API tests (real data only)
+├── test-runner.js          # Centralized test runner
+├── README.md               # This file
+├── unit/                   # Unit tests
+│   └── api/
+├── integration/            # Integration tests
+│   ├── api/
+│   ├── performance/
+│   └── security/
+├── e2e/                    # End-to-end tests
+└── test-report.json        # Generated test reports
+```
 
-### 2. Integration Tests (`tests/integration/`)
-- **API Integration**: Full API workflow testing
-- **Service Integration**: Service layer testing
-- **Performance**: Response time and load testing
-- **Security**: Security vulnerability testing
+## 🧪 Test Types
 
-### 3. End-to-End Tests (`tests/e2e/`)
-- **User Flows**: Complete user journey testing
-- **Cross-browser**: Multi-browser compatibility
-- **Mobile**: Responsive design testing
+### Unit Tests (`unit/`)
+- Test individual components and functions
+- Use real API calls (no mocking)
+- Fast execution
+- Located in `tests/unit/`
 
-## 🔧 Test Configuration
+### Integration Tests (`integration/`)
+- Test API endpoints with real data
+- Test service integrations
+- Performance and security tests
+- Located in `tests/integration/`
+
+### End-to-End Tests (`e2e/`)
+- Test complete user workflows
+- Use Playwright for browser automation
+- Test with real data
+- Located in `tests/e2e/`
+
+## 🔧 Configuration
 
 ### Jest Configuration (`jest.config.js`)
-- Next.js integration
-- TypeScript support
-- Coverage reporting
-- Module mapping
+- Centralized configuration for all test types
+- Uses projects to separate unit, integration, and e2e tests
+- Real data only - no mocking of external APIs
+- Coverage thresholds: 70% for all metrics
 
-### Playwright Configuration (`playwright.config.ts`)
-- Multi-browser testing
-- Mobile device testing
-- Screenshot capture
-- Video recording
+### Test Setup Files
+- `jest.setup.js`: Component test setup with minimal mocking
+- `jest.setup.api.js`: API test setup with real fetch only
 
-## 📊 Test Coverage
+## 📊 Test Runner
 
-The comprehensive test suite covers:
+The centralized test runner (`test-runner.js`) provides:
 
-### API Endpoints (Real NBA Data)
-- ✅ Health checks (`/api/health`) - System status and diagnostics
-- ✅ Games data (`/api/games`) - Live, upcoming, and completed NBA games
-- ✅ Teams data (`/api/teams`) - NBA teams, rosters, and statistics
-- ✅ Standings data (`/api/standings`) - NBA conference and division standings
-- ✅ Predictions (`/api/predictions`) - AI-generated NBA game predictions
-- ✅ Analytics (`/api/analytics/stats`) - Performance analytics and metrics
-- ✅ Live scores (`/api/live-scores`) - Real-time NBA scores
-- ✅ Odds data (`/api/odds`) - Betting odds (if available)
+- **Real Data Only**: All tests use actual external APIs
+- **No Mocking**: No placeholder or mock data
+- **Comprehensive Reporting**: Detailed test reports with categories
+- **Prerequisites Checking**: Validates environment before running
+- **Color-coded Output**: Easy to read test results
 
-### Frontend Pages (Real NBA Data)
-- ✅ Dashboard (`/`) - Main overview with live NBA data
-- ✅ Games (`/games`) - NBA games browser with live data
-- ✅ Teams (`/teams`) - NBA teams and statistics
-- ✅ Predictions (`/predictions`) - AI predictions interface
-- ✅ Analytics (`/analytics`) - Performance analytics dashboard
+### Usage
 
-### Services (Real API Integration)
-- ✅ Sports Data Service - External NBA API integration
-- ✅ Cache Service - Data caching with real NBA data
-- ✅ Rate Limiter Service - API rate limiting
-- ✅ Error Handling Service - Comprehensive error handling
-- ✅ API Client - Centralized API communication
-
-### Data Validation (Real NBA Data)
-- ✅ NBA Team Names - Lakers, Warriors, Celtics, etc.
-- ✅ Live Game Data - Current NBA season games
-- ✅ Historical Data - Past NBA seasons and games
-- ✅ Statistics Accuracy - Real NBA statistics and metrics
-- ✅ Prediction Quality - AI model accuracy with real outcomes
-
-### Performance (Real Data Testing)
-- ✅ Response time testing with real NBA APIs
-- ✅ Concurrent request handling
-- ✅ Caching performance with real data
-- ✅ Memory usage monitoring
-- ✅ Data size validation
-
-### Security (Real Environment)
-- ✅ Rate limiting with real API calls
-- ✅ Input validation with real NBA data
-- ✅ SQL injection protection
-- ✅ XSS prevention
-- ✅ CORS configuration
-- ✅ Error handling security
-
-## 🎯 Key Features
-
-### Real NBA Data Testing
-- All tests use actual NBA API calls
-- No mock data or stubbed responses
-- Tests real external NBA API integrations
-- Validates actual NBA data structures
-- Real-time NBA game data validation
-- Historical NBA season data testing
-
-### Comprehensive NBA Coverage
-- Unit tests for individual NBA API functions
-- Integration tests for NBA service interactions
-- E2E tests for complete NBA user flows
-- Performance tests with real NBA data
-- Security tests for NBA data vulnerability assessment
-
-### NBA Data Validation
-- Real NBA team names (Lakers, Warriors, Celtics, etc.)
-- Live NBA game scores and statistics
-- NBA standings and conference data
-- NBA prediction accuracy validation
-- NBA analytics performance metrics
-
-### Automated Reporting
-- Detailed test reports with NBA data validation
-- Coverage metrics for NBA functionality
-- Performance benchmarks with real NBA APIs
-- Security audit results for NBA data
-
-## 📊 Current Test Results
-
-### Overall Status
-- **Total Test Suites**: 11
-- **Passing Test Suites**: 9 (82% success rate)
-- **Failing Test Suites**: 2 (18% failure rate)
-- **Total Individual Tests**: 139
-- **Passing Tests**: 135 (97% success rate)
-- **Failing Tests**: 4 (3% failure rate)
-
-### ✅ Fully Working APIs
-- **Games API** - All tests passing
-- **Teams API** - All tests passing  
-- **Standings API** - All tests passing
-- **Analytics API** - All tests passing
-- **Live Scores API** - All tests passing
-- **Odds API** - All tests passing
-- **Value Bets API** - All tests passing
-- **Predictions API (Basic)** - All tests passing
-- **Comprehensive Teams API** - All tests passing
-
-### ⚠️ Partially Working APIs
-- **Comprehensive Predictions API** - 2 failing tests (field name mismatches)
-- **Comprehensive Games API** - 2 failing tests (validation too strict)
-
-### 🎯 Test Coverage
-- **API Endpoints**: 97% covered (135/139 tests passing)
-- **Real Data Integration**: 100% (no mock data used)
-- **Error Handling**: 95% covered
-- **Performance**: 90% covered
-
-## 🔍 Running Specific Tests
-
-### API Tests
 ```bash
-# Test specific API endpoint
-npm run test -- --testNamePattern="Health API"
+# Run all tests
+node tests/test-runner.js
 
-# Test all API endpoints
-npm run test -- --testPathPattern="api"
+# Run specific test type
+node tests/test-runner.js unit
+node tests/test-runner.js integration
+node tests/test-runner.js e2e
+node tests/test-runner.js performance
+node tests/test-runner.js security
 ```
 
-### Service Tests
-```bash
-# Test specific service
-npm run test -- --testNamePattern="Cache Service"
+## 🎯 Testing Philosophy
 
-# Test all services
-npm run test -- --testPathPattern="services"
-```
+### Real Data Only
+- All tests use actual external APIs
+- No mock data or placeholders
+- Tests reflect real-world conditions
+- Validates actual data quality and API responses
 
-### Performance Tests
-```bash
-# Run performance tests
-npm run test -- --testPathPattern="performance"
-```
+### No Mocking Strategy
+- External API calls are real
+- Database connections are real
+- Only browser APIs are mocked (for component tests)
+- Tests fail if external services are down (by design)
 
-### Security Tests
-```bash
-# Run security tests
-npm run test -- --testPathPattern="security"
-```
-
-### E2E Tests
-```bash
-# Run all E2E tests
-npm run test:e2e
-
-# Run specific E2E test
-npm run test:e2e -- --grep "Dashboard"
-```
+### Comprehensive Coverage
+- Unit tests for individual functions
+- Integration tests for API endpoints
+- E2E tests for user workflows
+- Performance tests for response times
+- Security tests for vulnerabilities
 
 ## 📈 Test Reports
 
-### Coverage Report
-```bash
-npm run test:coverage
-```
-Generates detailed coverage report in `coverage/` directory.
+After running tests, a detailed report is generated in `test-report.json`:
 
-### E2E Report
-```bash
-npm run test:e2e
+```json
+{
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  },
+  "results": [...],
+  "testCategories": {
+    "unit": 1,
+    "integration": 1,
+    "e2e": 1,
+    "performance": 1,
+    "security": 1
+  }
+}
 ```
-Generates HTML report in `playwright-report/` directory.
 
-### Performance Report
-```bash
-npm run test -- --testPathPattern="performance"
-```
-Outputs performance metrics to console.
+## 🚨 Prerequisites
 
-## 🛠️ Troubleshooting
+Before running tests, ensure:
+
+1. **Node.js** is installed
+2. **pnpm** is installed
+3. **Dependencies** are installed (`pnpm install`)
+4. **Dev server** is running (`pnpm dev`) for integration tests
+5. **External APIs** are accessible
+
+## 🔍 Debugging Tests
 
 ### Common Issues
 
-1. **Dev Server Not Running**
-   ```bash
-   npm run dev
-   ```
+1. **External API failures**: Tests will fail if external services are down
+2. **Network timeouts**: Increase timeout in Jest config if needed
+3. **Missing environment variables**: Ensure all required env vars are set
 
-2. **Dependencies Not Installed**
-   ```bash
-   npm install
-   ```
+### Debug Commands
 
-3. **Port Conflicts**
-   - Ensure port 3000 is available
-   - Check for other running processes
-
-4. **API Rate Limits**
-   - Tests may be rate limited by external APIs
-   - Consider running tests with delays
-
-### Debug Mode
 ```bash
-# Run tests with debug output
-DEBUG=* npm run test
+# Run with verbose output
+jest --config tests/jest.config.js --verbose
 
-# Run E2E tests with debug mode
-DEBUG=pw:api npm run test:e2e
+# Run specific test file
+jest --config tests/jest.config.js tests/unit/api/health.test.ts
+
+# Run with debug logging
+DEBUG=* pnpm test
 ```
+
+## 📝 Writing Tests
+
+### Unit Tests
+```typescript
+// tests/unit/api/health.test.ts
+describe('Health API', () => {
+  it('should return health status', async () => {
+    const response = await fetch('http://localhost:3000/api/health');
+    const data = await response.json();
+    
+    expect(response.status).toBe(200);
+    expect(data.status).toBe('healthy');
+  });
+});
+```
+
+### Integration Tests
+```typescript
+// tests/integration/api/games.test.ts
+describe('Games API Integration', () => {
+  it('should return real NBA games data', async () => {
+    const response = await fetch('http://localhost:3000/api/games');
+    const data = await response.json();
+    
+    expect(response.status).toBe(200);
+    expect(Array.isArray(data)).toBe(true);
+    expect(data.length).toBeGreaterThan(0);
+    
+    // Validate real data structure
+    const game = data[0];
+    expect(game).toHaveProperty('id');
+    expect(game).toHaveProperty('homeTeam');
+    expect(game).toHaveProperty('awayTeam');
+  });
+});
+```
+
+### E2E Tests
+```typescript
+// tests/e2e/dashboard.spec.ts
+import { test, expect } from '@playwright/test';
+
+test('dashboard loads with real data', async ({ page }) => {
+  await page.goto('http://localhost:3000');
+  
+  // Wait for real data to load
+  await expect(page.locator('[data-testid="games-list"]')).toBeVisible();
+  
+  // Verify real data is displayed
+  const games = await page.locator('[data-testid="game-item"]').count();
+  expect(games).toBeGreaterThan(0);
+});
+```
+
+## 🎉 Benefits
+
+- **Centralized**: All testing infrastructure in one place
+- **Real Data**: Tests validate actual functionality
+- **Comprehensive**: Multiple test types for complete coverage
+- **Maintainable**: Single configuration and runner
+- **Reliable**: Tests fail when external services have issues
+- **Fast**: Optimized for quick feedback during development
 
 ## 🔄 Continuous Integration
 
-### GitHub Actions
+The testing system is designed to work with CI/CD:
+
 ```yaml
-name: Test Suite
-on: [push, pull_request]
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm install
-      - run: npm run test:all
+# Example GitHub Actions
+- name: Run Tests
+  run: |
+    pnpm install
+    pnpm dev &
+    sleep 10
+    pnpm test
 ```
 
-### Pre-commit Hooks
-```bash
-# Install husky for git hooks
-npm install --save-dev husky
+## 📚 Additional Resources
 
-# Add pre-commit hook
-npx husky add .husky/pre-commit "npm run test"
-```
-
-## 📝 Adding New Tests
-
-### API Test Template
-```typescript
-describe('New API Endpoint', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
-
-  it('should return expected data', async () => {
-    const response = await fetch(`${baseUrl}/new-endpoint`)
-    const data = await response.json()
-    
-    expect(response.status).toBe(200)
-    expect(data).toMatchObject({
-      // Expected structure
-    })
-  })
-})
-```
-
-### Service Test Template
-```typescript
-describe('New Service', () => {
-  it('should perform expected operation', async () => {
-    const service = new NewService()
-    const result = await service.performOperation()
-    
-    expect(result).toBeDefined()
-    // Additional assertions
-  })
-})
-```
-
-### E2E Test Template
-```typescript
-test('should perform user action', async ({ page }) => {
-  await page.goto('/new-page')
-  await page.click('[data-testid="action-button"]')
-  
-  await expect(page.locator('[data-testid="result"]')).toBeVisible()
-})
-```
-
-## 🎉 Best Practices
-
-1. **Use Real Data**: Always test with actual API responses
-2. **Test Edge Cases**: Include error conditions and boundary values
-3. **Performance Awareness**: Monitor response times and resource usage
-4. **Security First**: Always include security considerations
-5. **Clear Naming**: Use descriptive test names and descriptions
-6. **Independent Tests**: Each test should be able to run independently
-7. **Cleanup**: Clean up after tests to avoid side effects
-
-## 📞 Support
-
-For questions or issues with the test suite:
-1. Check the troubleshooting section above
-2. Review test logs for specific error messages
-3. Ensure all prerequisites are met
-4. Verify the dev server is running
-
----
-
-**Happy Testing! 🚀**
+- [Jest Documentation](https://jestjs.io/docs/getting-started)
+- [Playwright Documentation](https://playwright.dev/docs/intro)
+- [Testing Library Documentation](https://testing-library.com/docs/)

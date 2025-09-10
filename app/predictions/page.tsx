@@ -320,172 +320,202 @@ function UpcomingPredictionsSection() {
 
 // History Section
 function HistorySection() {
-  const historyPredictions = [
-    {
-      id: "6",
-      game: "Lakers vs Warriors",
-      type: "Winner",
-      prediction: "Lakers",
-      actual: "Lakers",
-      confidence: 0.89,
-      result: "correct",
-      date: "Jan 14, 2024"
-    },
-    {
-      id: "7",
-      game: "Celtics vs Heat",
-      type: "Spread",
-      prediction: "Celtics -5.5",
-      actual: "Celtics -8",
-      confidence: 0.76,
-      result: "correct",
-      date: "Jan 13, 2024"
-    },
-    {
-      id: "8",
-      game: "Knicks vs Nets",
-      type: "Total",
-      prediction: "Under 220.5",
-      actual: "Over 220.5",
-      confidence: 0.71,
-      result: "incorrect",
-      date: "Jan 12, 2024"
+  const [historyPredictions, setHistoryPredictions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchHistoryPredictions()
+  }, [])
+
+  const fetchHistoryPredictions = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/predictions/history')
+      if (response.ok) {
+        const data = await response.json()
+        setHistoryPredictions(data.predictions || [])
+      }
+    } catch (error) {
+      console.error('Error fetching history predictions:', error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <HistorySkeleton />
+  }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Prediction History</h2>
 
-      <div className="grid gap-4">
-        {historyPredictions.map((prediction) => (
-          <Card key={prediction.id} className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    prediction.result === "correct" ? "bg-green-100" : "bg-red-100"
-                  }`}>
-                    {prediction.result === "correct" ? (
-                      <CheckCircle className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-red-600" />
-                    )}
+      {historyPredictions.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No History Available</h3>
+            <p className="text-muted-foreground">No prediction history found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {historyPredictions.map((prediction) => (
+            <Card key={prediction.id} className="card-hover">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                      prediction.is_correct === true ? "bg-green-100" : prediction.is_correct === false ? "bg-red-100" : "bg-gray-100"
+                    }`}>
+                      {prediction.is_correct === true ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : prediction.is_correct === false ? (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <Clock className="h-4 w-4 text-gray-600" />
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-semibold">{prediction.game || 'Game Details Loading...'}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {format(new Date(prediction.created_at), "MMM d, yyyy")}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-semibold">{prediction.game}</div>
-                    <div className="text-sm text-muted-foreground">{prediction.date}</div>
+
+                  <div className="text-right">
+                    <div className="font-semibold text-primary">
+                      {prediction.prediction_type === "winner" 
+                        ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
+                        : prediction.prediction_type === "spread"
+                        ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
+                        : `Total: ${prediction.predicted_value.toFixed(1)}`}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Model: {prediction.model_name}
+                    </div>
                   </div>
                 </div>
 
-                <div className="text-right">
-                  <div className="font-semibold text-primary">{prediction.prediction}</div>
-                  <div className="text-sm text-muted-foreground">
-                    Actual: {prediction.actual}
+                <div className="mt-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Confidence:</span>
+                    <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
                   </div>
+                  <Badge variant={
+                    prediction.is_correct === true ? "default" : 
+                    prediction.is_correct === false ? "destructive" : 
+                    "secondary"
+                  }>
+                    {prediction.is_correct === true ? "Correct" : 
+                     prediction.is_correct === false ? "Incorrect" : 
+                     "Pending"}
+                  </Badge>
                 </div>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">Confidence:</span>
-                  <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
-                </div>
-                <Badge variant={prediction.result === "correct" ? "default" : "destructive"}>
-                  {prediction.result === "correct" ? "Correct" : "Incorrect"}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 // Models Section
 function ModelsSection() {
-  const models = [
-    {
-      name: "Neural Network v3.2",
-      accuracy: 0.78,
-      predictions: 1247,
-      lastUpdated: "2 days ago",
-      status: "active",
-      description: "Deep learning model with advanced feature engineering"
-    },
-    {
-      name: "Ensemble v2.1",
-      accuracy: 0.75,
-      predictions: 892,
-      lastUpdated: "1 week ago",
-      status: "active",
-      description: "Combines multiple algorithms for robust predictions"
-    },
-    {
-      name: "Random Forest v1.8",
-      accuracy: 0.72,
-      predictions: 2156,
-      lastUpdated: "2 weeks ago",
-      status: "deprecated",
-      description: "Classic ensemble method with good baseline performance"
+  const [models, setModels] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchModels()
+  }, [])
+
+  const fetchModels = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/predictions/models')
+      if (response.ok) {
+        const data = await response.json()
+        setModels(data.models || [])
+      }
+    } catch (error) {
+      console.error('Error fetching models:', error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <ModelsSkeleton />
+  }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Prediction Models</h2>
 
-      <div className="grid gap-6">
-        {models.map((model) => (
-          <Card key={model.name} className="card-hover">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{model.name}</CardTitle>
-                <Badge variant={model.status === "active" ? "default" : "secondary"}>
-                  {model.status}
-                </Badge>
-              </div>
-              <p className="text-sm text-muted-foreground">{model.description}</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Accuracy</div>
-                  <div className="text-2xl font-bold text-primary">
-                    {Math.round(model.accuracy * 100)}%
+      {models.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Models Available</h3>
+            <p className="text-muted-foreground">No prediction models found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {models.map((model) => (
+            <Card key={model.id || model.name} className="card-hover">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{model.name}</CardTitle>
+                  <Badge variant={model.status === "active" ? "default" : "secondary"}>
+                    {model.status}
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">{model.description}</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">Accuracy</div>
+                    <div className="text-2xl font-bold text-primary">
+                      {Math.round((model.accuracy || 0) * 100)}%
+                    </div>
+                    <Progress value={(model.accuracy || 0) * 100} className="h-2" />
                   </div>
-                  <Progress value={model.accuracy * 100} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Total Predictions</div>
-                  <div className="text-2xl font-bold text-accent">
-                    {model.predictions.toLocaleString()}
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">Total Predictions</div>
+                    <div className="text-2xl font-bold text-accent">
+                      {(model.predictions || 0).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-sm text-muted-foreground">Last Updated</div>
+                    <div className="text-lg font-semibold">
+                      {model.last_updated ? format(new Date(model.last_updated), "MMM d, yyyy") : "Unknown"}
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Last Updated</div>
-                  <div className="text-lg font-semibold">{model.lastUpdated}</div>
-                </div>
-              </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t">
-                <Button variant="outline" size="sm">
-                  View Details
-                </Button>
-                <Button variant="outline" size="sm">
-                  Performance
-                </Button>
-                {model.status === "active" && (
-                  <Button size="sm">
-                    Retrain Model
+                <div className="flex justify-end gap-2 pt-2 border-t">
+                  <Button variant="outline" size="sm">
+                    View Details
                   </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  <Button variant="outline" size="sm">
+                    Performance
+                  </Button>
+                  {model.status === "active" && (
+                    <Button size="sm">
+                      Retrain Model
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
