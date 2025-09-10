@@ -11,6 +11,8 @@ import { TrendingUp, DollarSign, Target, AlertCircle, RefreshCw, Clock } from "l
 
 interface ValueBettingOpportunitiesProps {
   timeRange: string
+  sport?: string
+  league?: string
 }
 
 interface ValueBettingOpportunity {
@@ -27,7 +29,7 @@ interface ValueBettingOpportunity {
   kellyPercentage: number
 }
 
-export function ValueBettingOpportunities({ timeRange }: ValueBettingOpportunitiesProps) {
+export function ValueBettingOpportunities({ timeRange, sport = 'basketball', league }: ValueBettingOpportunitiesProps) {
   const [opportunities, setOpportunities] = useState<ValueBettingOpportunity[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,7 +38,7 @@ export function ValueBettingOpportunities({ timeRange }: ValueBettingOpportuniti
 
   useEffect(() => {
     fetchValueBets()
-  }, [timeRange, filter, minValue])
+  }, [timeRange, filter, minValue, sport, league])
 
   const fetchValueBets = async () => {
     try {
@@ -44,19 +46,28 @@ export function ValueBettingOpportunities({ timeRange }: ValueBettingOpportuniti
       setError(null)
       
       const params = new URLSearchParams({
-        sport: 'basketball',
+        sport,
         min_value: minValue
       })
       
       if (filter !== 'all') {
         params.set('recommendation', filter)
       }
+      
+      if (league) {
+        params.set('league', league)
+      }
 
       const response = await fetch(`/api/value-bets?${params}`)
       const data = await response.json()
       
       if (response.ok) {
-        setOpportunities(data.opportunities || [])
+        if (!data.opportunities || data.opportunities.length === 0) {
+          console.warn(`No value betting opportunities found for ${sport}${league ? ` in ${league}` : ''}`)
+          setOpportunities([])
+        } else {
+          setOpportunities(data.opportunities)
+        }
       } else {
         setError(data.error || 'Failed to fetch value betting opportunities')
       }

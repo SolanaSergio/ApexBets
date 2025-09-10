@@ -28,18 +28,25 @@ interface AnalyticsOverview {
 export function AnalyticsDashboard() {
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [timeRange, setTimeRange] = useState<string>("30d")
+  const [selectedSport, setSelectedSport] = useState<string>("basketball")
+  const [selectedLeague, setSelectedLeague] = useState<string>("")
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   useEffect(() => {
     fetchAnalyticsOverview()
-  }, [timeRange])
+  }, [timeRange, selectedSport, selectedLeague])
 
   const fetchAnalyticsOverview = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/analytics/stats`)
+      const params = new URLSearchParams({
+        sport: selectedSport
+      })
+      if (selectedLeague) params.set('league', selectedLeague)
+      
+      const response = await fetch(`/api/analytics/stats?${params}`)
       const data = await response.json()
       
       // Transform the API response to match our interface
@@ -67,6 +74,46 @@ export function AnalyticsDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Sport and League Selectors */}
+      <div className="flex flex-wrap gap-4 mb-6">
+        <div className="min-w-[200px]">
+          <label className="text-sm font-medium mb-2 block">Sport</label>
+          <Select value={selectedSport} onValueChange={setSelectedSport}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="basketball">Basketball</SelectItem>
+              <SelectItem value="football">Football</SelectItem>
+              <SelectItem value="baseball">Baseball</SelectItem>
+              <SelectItem value="hockey">Hockey</SelectItem>
+              <SelectItem value="soccer">Soccer</SelectItem>
+              <SelectItem value="tennis">Tennis</SelectItem>
+              <SelectItem value="golf">Golf</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="min-w-[200px]">
+          <label className="text-sm font-medium mb-2 block">League</label>
+          <Select value={selectedLeague} onValueChange={setSelectedLeague}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Leagues" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All Leagues</SelectItem>
+              <SelectItem value="nba">NBA</SelectItem>
+              <SelectItem value="nfl">NFL</SelectItem>
+              <SelectItem value="mlb">MLB</SelectItem>
+              <SelectItem value="nhl">NHL</SelectItem>
+              <SelectItem value="premier-league">Premier League</SelectItem>
+              <SelectItem value="atp">ATP</SelectItem>
+              <SelectItem value="pga">PGA</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {/* Overview Stats */}
       {overview && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -196,27 +243,55 @@ export function AnalyticsDashboard() {
         </TabsList>
 
         <TabsContent value="performance" className="space-y-6">
-          <TeamPerformanceChart team={selectedTeam} timeRange={timeRange} />
+          <TeamPerformanceChart 
+            team={selectedTeam} 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
 
         <TabsContent value="predictions" className="space-y-6">
-          <PredictionAccuracyChart timeRange={timeRange} />
+          <PredictionAccuracyChart 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
 
         <TabsContent value="odds" className="space-y-6">
-          <OddsAnalysisChart team={selectedTeam} timeRange={timeRange} />
+          <OddsAnalysisChart 
+            team={selectedTeam} 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
-          <TrendAnalysis team={selectedTeam} timeRange={timeRange} />
+          <TrendAnalysis 
+            team={selectedTeam} 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
 
         <TabsContent value="players" className="space-y-6">
-          <PlayerAnalytics team={selectedTeam} timeRange={timeRange} />
+          <PlayerAnalytics 
+            team={selectedTeam} 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
 
         <TabsContent value="betting" className="space-y-6">
-          <ValueBettingOpportunities timeRange={timeRange} />
+          <ValueBettingOpportunities 
+            timeRange={timeRange} 
+            sport={selectedSport}
+            league={selectedLeague}
+          />
         </TabsContent>
       </Tabs>
     </div>

@@ -10,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface OddsAnalysisChartProps {
   team: string
   timeRange: string
+  sport?: string
+  league?: string
 }
 
 interface OddsDataPoint {
@@ -28,7 +30,7 @@ interface ValueOpportunity {
   odds: string
 }
 
-export function OddsAnalysisChart({ team, timeRange }: OddsAnalysisChartProps) {
+export function OddsAnalysisChart({ team, timeRange, sport = 'basketball', league }: OddsAnalysisChartProps) {
   const [oddsData, setOddsData] = useState<OddsDataPoint[]>([])
   const [valueOpportunities, setValueOpportunities] = useState<ValueOpportunity[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,21 +45,47 @@ export function OddsAnalysisChart({ team, timeRange }: OddsAnalysisChartProps) {
       setLoading(true)
       setError(null)
 
+      const params = new URLSearchParams({
+        team,
+        timeRange,
+        sport
+      })
+      if (league) params.set('league', league)
+
       // Fetch odds analysis data
-      const oddsResponse = await fetch(`/api/analytics/odds-analysis?team=${team}&timeRange=${timeRange}`)
+      const oddsResponse = await fetch(`/api/analytics/odds-analysis?${params}`)
       if (!oddsResponse.ok) {
         throw new Error('Failed to fetch odds data')
       }
       const oddsResult = await oddsResponse.json()
-      setOddsData(oddsResult.data || [])
+      
+      if (!oddsResult.data || oddsResult.data.length === 0) {
+        console.warn(`No odds data available for ${team} in ${sport}`)
+        setOddsData([])
+      } else {
+        setOddsData(oddsResult.data)
+      }
 
       // Fetch value betting opportunities
-      const valueResponse = await fetch(`/api/value-bets?team=${team}&min_value=0.1`)
+      const valueParams = new URLSearchParams({
+        sport,
+        min_value: '0.1'
+      })
+      if (team !== 'all') valueParams.set('team', team)
+      if (league) valueParams.set('league', league)
+
+      const valueResponse = await fetch(`/api/value-bets?${valueParams}`)
       if (!valueResponse.ok) {
         throw new Error('Failed to fetch value opportunities')
       }
       const valueResult = await valueResponse.json()
-      setValueOpportunities(valueResult.opportunities || [])
+      
+      if (!valueResult.opportunities || valueResult.opportunities.length === 0) {
+        console.warn(`No value betting opportunities found for ${team} in ${sport}`)
+        setValueOpportunities([])
+      } else {
+        setValueOpportunities(valueResult.opportunities)
+      }
 
     } catch (err) {
       console.error('Error fetching odds data:', err)

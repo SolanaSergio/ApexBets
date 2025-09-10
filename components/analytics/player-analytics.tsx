@@ -9,9 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface PlayerAnalyticsProps {
   team: string
   timeRange: string
+  sport?: string
+  league?: string
 }
 
-export function PlayerAnalytics({ team, timeRange }: PlayerAnalyticsProps) {
+export function PlayerAnalytics({ team, timeRange, sport = 'basketball', league }: PlayerAnalyticsProps) {
   const [topPerformers, setTopPerformers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -22,13 +24,29 @@ export function PlayerAnalytics({ team, timeRange }: PlayerAnalyticsProps) {
   const fetchTopPerformers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/analytics/top-performers?team=${team}&timeRange=${timeRange}`)
+      const params = new URLSearchParams({
+        team,
+        timeRange,
+        sport
+      })
+      if (league) params.set('league', league)
+      
+      const response = await fetch(`/api/analytics/top-performers?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setTopPerformers(data.players || [])
+        if (!data.players || data.players.length === 0) {
+          console.warn(`No player data available for ${team} in ${sport}`)
+          setTopPerformers([])
+        } else {
+          setTopPerformers(data.players)
+        }
+      } else {
+        console.error('Failed to fetch top performers:', response.statusText)
+        setTopPerformers([])
       }
     } catch (error) {
       console.error('Error fetching top performers:', error)
+      setTopPerformers([])
     } finally {
       setLoading(false)
     }

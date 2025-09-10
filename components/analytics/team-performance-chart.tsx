@@ -9,9 +9,11 @@ import { Skeleton } from "@/components/ui/skeleton"
 interface TeamPerformanceChartProps {
   team: string
   timeRange: string
+  sport?: string
+  league?: string
 }
 
-export function TeamPerformanceChart({ team, timeRange }: TeamPerformanceChartProps) {
+export function TeamPerformanceChart({ team, timeRange, sport = 'basketball', league }: TeamPerformanceChartProps) {
   const [performanceData, setPerformanceData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -22,13 +24,29 @@ export function TeamPerformanceChart({ team, timeRange }: TeamPerformanceChartPr
   const fetchTeamPerformance = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/analytics/team-performance?team=${team}&timeRange=${timeRange}`)
+      const params = new URLSearchParams({
+        team,
+        timeRange,
+        sport
+      })
+      if (league) params.set('league', league)
+      
+      const response = await fetch(`/api/analytics/team-performance?${params}`)
       if (response.ok) {
         const data = await response.json()
-        setPerformanceData(data.performance || [])
+        if (!data.performance || data.performance.length === 0) {
+          console.warn(`No performance data available for ${team} in ${sport}`)
+          setPerformanceData([])
+        } else {
+          setPerformanceData(data.performance)
+        }
+      } else {
+        console.error('Failed to fetch team performance:', response.statusText)
+        setPerformanceData([])
       }
     } catch (error) {
       console.error('Error fetching team performance:', error)
+      setPerformanceData([])
     } finally {
       setLoading(false)
     }

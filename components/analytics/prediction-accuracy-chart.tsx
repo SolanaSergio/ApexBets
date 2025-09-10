@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 interface PredictionAccuracyChartProps {
   timeRange: string
+  sport?: string
+  league?: string
 }
 
 interface AccuracyDataPoint {
@@ -19,27 +21,39 @@ interface AccuracyDataPoint {
   overall: number
 }
 
-export function PredictionAccuracyChart({ timeRange }: PredictionAccuracyChartProps) {
+export function PredictionAccuracyChart({ timeRange, sport = 'basketball', league }: PredictionAccuracyChartProps) {
   const [accuracyData, setAccuracyData] = useState<AccuracyDataPoint[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAccuracyData()
-  }, [timeRange])
+  }, [timeRange, sport, league])
 
   const fetchAccuracyData = async () => {
     try {
       setLoading(true)
       setError(null)
 
+      const params = new URLSearchParams({
+        timeRange,
+        sport
+      })
+      if (league) params.set('league', league)
+
       // Fetch prediction accuracy data
-      const response = await fetch(`/api/analytics/prediction-accuracy?timeRange=${timeRange}`)
+      const response = await fetch(`/api/analytics/prediction-accuracy?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch accuracy data')
       }
       const result = await response.json()
-      setAccuracyData(result.data || [])
+      
+      if (!result.data || result.data.length === 0) {
+        console.warn(`No prediction accuracy data available for ${sport}${league ? ` in ${league}` : ''}`)
+        setAccuracyData([])
+      } else {
+        setAccuracyData(result.data)
+      }
 
     } catch (err) {
       console.error('Error fetching accuracy data:', err)

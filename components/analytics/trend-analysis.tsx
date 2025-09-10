@@ -9,6 +9,8 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react"
 interface TrendAnalysisProps {
   team: string
   timeRange: string
+  sport?: string
+  league?: string
 }
 
 interface Trend {
@@ -25,7 +27,7 @@ interface TrendStats {
   gamesAnalyzed: number
 }
 
-export function TrendAnalysis({ team, timeRange }: TrendAnalysisProps) {
+export function TrendAnalysis({ team, timeRange, sport = 'basketball', league }: TrendAnalysisProps) {
   const [trends, setTrends] = useState<Trend[]>([])
   const [stats, setStats] = useState<TrendStats | null>(null)
   const [loading, setLoading] = useState(true)
@@ -40,14 +42,28 @@ export function TrendAnalysis({ team, timeRange }: TrendAnalysisProps) {
       setLoading(true)
       setError(null)
 
+      const params = new URLSearchParams({
+        team,
+        timeRange,
+        sport
+      })
+      if (league) params.set('league', league)
+
       // Fetch trend analysis data
-      const response = await fetch(`/api/analytics/trends?team=${team}&timeRange=${timeRange}`)
+      const response = await fetch(`/api/analytics/trends?${params}`)
       if (!response.ok) {
         throw new Error('Failed to fetch trend data')
       }
       const result = await response.json()
-      setTrends(result.trends || [])
-      setStats(result.stats || null)
+      
+      if (!result.trends || result.trends.length === 0) {
+        console.warn(`No trend data available for ${team} in ${sport}`)
+        setTrends([])
+        setStats(null)
+      } else {
+        setTrends(result.trends)
+        setStats(result.stats)
+      }
 
     } catch (err) {
       console.error('Error fetching trend data:', err)
