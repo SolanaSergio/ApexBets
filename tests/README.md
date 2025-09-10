@@ -1,255 +1,202 @@
-# ApexBets Centralized Testing System
+# ApexBets Comprehensive Testing Suite
 
-This directory contains the complete testing infrastructure for ApexBets. All tests use **REAL DATA ONLY** - no mock data or placeholders.
+This directory contains a complete testing and verification system for ApexBets, ensuring full accuracy and functionality across all sports data with automatic database monitoring.
 
 ## 🚀 Quick Start
 
+### Run Full Verification
 ```bash
-# Run all tests
+node test-runner-comprehensive.js full
+```
+
+### Run Quick Test
+```bash
+node test-runner-comprehensive.js quick
+```
+
+### Start Continuous Monitoring
+```bash
+node test-runner-comprehensive.js monitor
+```
+
+### Run Data Accuracy Test
+```bash
+node test-runner-comprehensive.js accuracy
+```
+
+## 📁 Test Structure
+
+### Core Testing Files
+- `quick-verification-fixed.js` - **Main verification system** with real data validation
+- `database-monitor.js` - **Automatic database monitoring** for live updates
+- `test-runner-comprehensive.js` - **Comprehensive test runner** with multiple modes
+- `verification-tracker.js` - **Centralized status tracking** system
+- `cleanup-outdated.js` - **Cleanup script** for outdated files
+
+### Test Categories
+- `integration/` - API and service integration tests
+- `e2e/` - End-to-end browser tests  
+- `unit/` - Unit tests for individual components
+
+## 🔍 Verification Features
+
+### Real Data Validation
+- **NO MOCK DATA OR PLACEHOLDERS** - All tests use real data only
+- **Data freshness checks** - Ensures data is up-to-date
+- **Multi-sport coverage** - Tests all sports (Basketball, Football, Baseball, Hockey, Soccer, Tennis, Golf)
+- **Data integrity validation** - Checks for required properties and structure
+
+### Database Monitoring
+- **Automatic updates tracking** - Monitors database refresh cycles
+- **Live data verification** - Ensures real-time updates are working
+- **Data freshness alerts** - Warns when data becomes stale
+- **Continuous monitoring** - Runs indefinitely to track system health
+
+### Comprehensive Coverage
+1. **API Endpoints** - All REST API endpoints with validation
+2. **Data Sources** - External API connectivity (SportsDB, BallDontLie, Odds API, API-SPORTS)
+3. **Database** - Connection, schema, and data integrity
+4. **Sports Data** - Multi-sport data coverage and accuracy
+5. **Live Data** - Real-time updates and live scores
+6. **Player Stats** - Player statistics across all sports
+7. **Team Stats** - Team performance, standings, and historical data
+
+## 🎯 Test Modes
+
+### Full Verification (`full`)
+- Runs complete verification of all systems
+- Tests all API endpoints with real data validation
+- Verifies multi-sport data coverage
+- Checks database health and updates
+- Generates comprehensive report
+
+### Quick Test (`quick`)
+- Fast verification of critical systems
+- Essential API endpoints only
+- Basic data validation
+- Quick feedback for development
+
+### Continuous Monitoring (`monitor`)
+- Runs indefinitely until stopped (Ctrl+C)
+- Monitors database updates every 30 seconds
+- Tracks data freshness across all sources
+- Real-time alerts for issues
+
+### Data Accuracy Test (`accuracy`)
+- Focuses on data accuracy and real data validation
+- Extra validation for placeholder/mock data detection
+- Comprehensive data freshness checks
+- Detailed accuracy reporting
+
+## 📊 Verification Tracker
+
+The verification tracker maintains comprehensive status of all tests:
+
+### Status Types
+- **Working** ✅ - Test passed, system functioning
+- **Broken** ❌ - Test failed, system has issues  
+- **Partial** ⚠️ - Some functionality working, some issues
+- **Unknown** ❓ - Never tested or status unclear
+
+### Tracking Features
+- **Prevents redundant testing** - Skips tests that recently passed
+- **Maintains history** - Tracks when tests were last run
+- **Error tracking** - Records detailed error messages
+- **Performance metrics** - Tracks response times and data counts
+
+## 📈 Reports and Monitoring
+
+### Automatic Reports
+- `verification-status.json` - Current status of all systems
+- `verification-report.json` - Detailed test reports with timestamps
+- **Real-time monitoring** - Live status updates during testing
+
+### Monitoring Features
+- **Data freshness tracking** - Monitors when data was last updated
+- **Update frequency analysis** - Tracks how often data refreshes
+- **Performance monitoring** - Response times and throughput
+- **Error rate tracking** - Monitors failure rates and patterns
+
+## 🔧 Environment Setup
+
+### Required Environment Variables
+```bash
+# Database
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+
+# Sports APIs
+NEXT_PUBLIC_BALLDONTLIE_API_KEY=your_balldontlie_api_key
+NEXT_PUBLIC_RAPIDAPI_KEY=your_rapidapi_key
+NEXT_PUBLIC_ODDS_API_KEY=your_odds_api_key
+NEXT_PUBLIC_SPORTSDB_API_KEY=123  # Free tier
+
+# App Configuration
+NEXT_PUBLIC_API_URL=/api
+NEXT_PUBLIC_APP_NAME=ApexBets
+```
+
+### Development Server
+Make sure your development server is running:
+```bash
+npm run dev
+```
+
+## 🚨 Troubleshooting
+
+### Common Issues
+1. **API Key Errors** - Check environment variables are set correctly
+2. **Database Connection** - Ensure Supabase is configured and accessible
+3. **Data Freshness** - Check if external APIs are responding
+4. **Rate Limiting** - Some APIs have rate limits, tests include delays
+
+### Debug Mode
+Run with detailed logging:
+```bash
+DEBUG=true node test-runner-comprehensive.js full
+```
+
+### Cleanup
+Remove outdated test files:
+```bash
+node cleanup-outdated.js
+```
+
+## 📋 Test Checklist
+
+- [ ] All API endpoints responding
+- [ ] Real data validation passing
+- [ ] Multi-sport coverage working
+- [ ] Database updates functioning
+- [ ] Live data refreshing
+- [ ] No placeholder/mock data
+- [ ] All external APIs connected
+- [ ] Performance within acceptable limits
+
+## 🎉 Success Criteria
+
+A successful verification run should show:
+- ✅ All critical API endpoints working
+- ✅ Multi-sport data coverage (7+ sports)
+- ✅ Database updates functioning
+- ✅ Live data refreshing properly
+- ✅ No mock data or placeholders detected
+- ✅ All external data sources connected
+- ✅ Performance metrics within acceptable ranges
+
+## 🔄 Legacy Test Support
+
+The system also supports the original Jest-based tests:
+
+```bash
+# Run Jest tests
 pnpm test
 
 # Run specific test types
 pnpm test:unit
 pnpm test:integration
 pnpm test:e2e
-pnpm test:performance
-pnpm test:security
-
-# Watch mode for development
-pnpm test:watch
-
-# Coverage report
-pnpm test:coverage
-
-# E2E tests with UI
-pnpm test:e2e:ui
-```
-
-## 📁 Directory Structure
-
-```
-tests/
-├── jest.config.js          # Centralized Jest configuration
-├── jest.setup.js           # Setup for component tests
-├── jest.setup.api.js       # Setup for API tests (real data only)
-├── test-runner.js          # Centralized test runner
-├── README.md               # This file
-├── unit/                   # Unit tests
-│   └── api/
-├── integration/            # Integration tests
-│   ├── api/
-│   ├── performance/
-│   └── security/
-├── e2e/                    # End-to-end tests
-└── test-report.json        # Generated test reports
-```
-
-## 🧪 Test Types
-
-### Unit Tests (`unit/`)
-- Test individual components and functions
-- Use real API calls (no mocking)
-- Fast execution
-- Located in `tests/unit/`
-
-### Integration Tests (`integration/`)
-- Test API endpoints with real data
-- Test service integrations
-- Performance and security tests
-- Located in `tests/integration/`
-
-### End-to-End Tests (`e2e/`)
-- Test complete user workflows
-- Use Playwright for browser automation
-- Test with real data
-- Located in `tests/e2e/`
-
-## 🔧 Configuration
-
-### Jest Configuration (`jest.config.js`)
-- Centralized configuration for all test types
-- Uses projects to separate unit, integration, and e2e tests
-- Real data only - no mocking of external APIs
-- Coverage thresholds: 70% for all metrics
-
-### Test Setup Files
-- `jest.setup.js`: Component test setup with minimal mocking
-- `jest.setup.api.js`: API test setup with real fetch only
-
-## 📊 Test Runner
-
-The centralized test runner (`test-runner.js`) provides:
-
-- **Real Data Only**: All tests use actual external APIs
-- **No Mocking**: No placeholder or mock data
-- **Comprehensive Reporting**: Detailed test reports with categories
-- **Prerequisites Checking**: Validates environment before running
-- **Color-coded Output**: Easy to read test results
-
-### Usage
-
-```bash
-# Run all tests
-node tests/test-runner.js
-
-# Run specific test type
-node tests/test-runner.js unit
-node tests/test-runner.js integration
-node tests/test-runner.js e2e
-node tests/test-runner.js performance
-node tests/test-runner.js security
-```
-
-## 🎯 Testing Philosophy
-
-### Real Data Only
-- All tests use actual external APIs
-- No mock data or placeholders
-- Tests reflect real-world conditions
-- Validates actual data quality and API responses
-
-### No Mocking Strategy
-- External API calls are real
-- Database connections are real
-- Only browser APIs are mocked (for component tests)
-- Tests fail if external services are down (by design)
-
-### Comprehensive Coverage
-- Unit tests for individual functions
-- Integration tests for API endpoints
-- E2E tests for user workflows
-- Performance tests for response times
-- Security tests for vulnerabilities
-
-## 📈 Test Reports
-
-After running tests, a detailed report is generated in `test-report.json`:
-
-```json
-{
-  "timestamp": "2024-01-01T00:00:00.000Z",
-  "summary": {
-    "total": 5,
-    "passed": 5,
-    "failed": 0
-  },
-  "results": [...],
-  "testCategories": {
-    "unit": 1,
-    "integration": 1,
-    "e2e": 1,
-    "performance": 1,
-    "security": 1
-  }
-}
-```
-
-## 🚨 Prerequisites
-
-Before running tests, ensure:
-
-1. **Node.js** is installed
-2. **pnpm** is installed
-3. **Dependencies** are installed (`pnpm install`)
-4. **Dev server** is running (`pnpm dev`) for integration tests
-5. **External APIs** are accessible
-
-## 🔍 Debugging Tests
-
-### Common Issues
-
-1. **External API failures**: Tests will fail if external services are down
-2. **Network timeouts**: Increase timeout in Jest config if needed
-3. **Missing environment variables**: Ensure all required env vars are set
-
-### Debug Commands
-
-```bash
-# Run with verbose output
-jest --config tests/jest.config.js --verbose
-
-# Run specific test file
-jest --config tests/jest.config.js tests/unit/api/health.test.ts
-
-# Run with debug logging
-DEBUG=* pnpm test
-```
-
-## 📝 Writing Tests
-
-### Unit Tests
-```typescript
-// tests/unit/api/health.test.ts
-describe('Health API', () => {
-  it('should return health status', async () => {
-    const response = await fetch('http://localhost:3000/api/health');
-    const data = await response.json();
-    
-    expect(response.status).toBe(200);
-    expect(data.status).toBe('healthy');
-  });
-});
-```
-
-### Integration Tests
-```typescript
-// tests/integration/api/games.test.ts
-describe('Games API Integration', () => {
-  it('should return real NBA games data', async () => {
-    const response = await fetch('http://localhost:3000/api/games');
-    const data = await response.json();
-    
-    expect(response.status).toBe(200);
-    expect(Array.isArray(data)).toBe(true);
-    expect(data.length).toBeGreaterThan(0);
-    
-    // Validate real data structure
-    const game = data[0];
-    expect(game).toHaveProperty('id');
-    expect(game).toHaveProperty('homeTeam');
-    expect(game).toHaveProperty('awayTeam');
-  });
-});
-```
-
-### E2E Tests
-```typescript
-// tests/e2e/dashboard.spec.ts
-import { test, expect } from '@playwright/test';
-
-test('dashboard loads with real data', async ({ page }) => {
-  await page.goto('http://localhost:3000');
-  
-  // Wait for real data to load
-  await expect(page.locator('[data-testid="games-list"]')).toBeVisible();
-  
-  // Verify real data is displayed
-  const games = await page.locator('[data-testid="game-item"]').count();
-  expect(games).toBeGreaterThan(0);
-});
-```
-
-## 🎉 Benefits
-
-- **Centralized**: All testing infrastructure in one place
-- **Real Data**: Tests validate actual functionality
-- **Comprehensive**: Multiple test types for complete coverage
-- **Maintainable**: Single configuration and runner
-- **Reliable**: Tests fail when external services have issues
-- **Fast**: Optimized for quick feedback during development
-
-## 🔄 Continuous Integration
-
-The testing system is designed to work with CI/CD:
-
-```yaml
-# Example GitHub Actions
-- name: Run Tests
-  run: |
-    pnpm install
-    pnpm dev &
-    sleep 10
-    pnpm test
 ```
 
 ## 📚 Additional Resources

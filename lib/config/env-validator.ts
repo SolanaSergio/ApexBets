@@ -1,7 +1,9 @@
 /**
  * Environment Variables Validator
- * Validates and provides fallbacks for all required environment variables
+ * Uses strict rules enforcement - no placeholders, no fallbacks
  */
+
+import { environmentRules } from '../rules'
 
 interface EnvConfig {
   // Database
@@ -30,7 +32,6 @@ interface ApiKeyStatus {
   key: string
   isValid: boolean
   hasValue: boolean
-  fallback?: string
   rateLimit?: {
     requestsPerMinute: number
     requestsPerDay: number
@@ -43,34 +44,13 @@ class EnvValidator {
   private apiKeyStatuses: Map<string, ApiKeyStatus> = new Map()
 
   constructor() {
-    this.config = this.loadConfig()
+    // Enforce environment rules first
+    environmentRules.enforceEnvironmentRules()
+    this.config = environmentRules.getValidatedConfig()
     this.validateApiKeys()
   }
 
-  private loadConfig(): EnvConfig {
-    return {
-      // Database
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-      supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      
-      // Sports APIs
-      rapidApiKey: process.env.NEXT_PUBLIC_RAPIDAPI_KEY || '',
-      oddsApiKey: process.env.NEXT_PUBLIC_ODDS_API_KEY || '',
-      sportsDbApiKey: process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123',
-      ballDontLieApiKey: process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || '',
-      
-      // App Configuration
-      apiUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
-      appName: process.env.NEXT_PUBLIC_APP_NAME || 'ApexBets',
-      appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
-      
-      // Feature Flags
-      enableLiveUpdates: process.env.NEXT_PUBLIC_ENABLE_LIVE_UPDATES === 'true',
-      enableValueBetting: process.env.NEXT_PUBLIC_ENABLE_VALUE_BETTING === 'true',
-      enableMlPredictions: process.env.NEXT_PUBLIC_ENABLE_ML_PREDICTIONS === 'true'
-    }
-  }
+  // loadConfig removed - now using environmentRules.getValidatedConfig()
 
   private validateApiKeys(): void {
     // RapidAPI (API-SPORTS)
@@ -102,7 +82,6 @@ class EnvValidator {
       key: 'NEXT_PUBLIC_SPORTSDB_API_KEY',
       isValid: true, // Always valid, uses '123' as default
       hasValue: true,
-      fallback: '123',
       rateLimit: {
         requestsPerMinute: 30,
         requestsPerDay: 10000,
@@ -131,16 +110,12 @@ class EnvValidator {
   }
 
   private isValidApiKey(key: string): boolean {
-    if (!key || key === 'your_rapidapi_key' || key === 'your_odds_api_key') {
-      return false
-    }
+    if (!key) return false
     return key.length >= 10
   }
 
   private isValidSupabaseUrl(url: string): boolean {
-    if (!url || url === 'your_supabase_url') {
-      return false
-    }
+    if (!url) return false
     return url.includes('supabase.co') && url.startsWith('https://')
   }
 
@@ -157,33 +132,15 @@ class EnvValidator {
   }
 
   getMissingRequiredKeys(): string[] {
-    const missing: string[] = []
-    
-    if (!this.config.supabaseUrl) missing.push('NEXT_PUBLIC_SUPABASE_URL')
-    if (!this.config.supabaseAnonKey) missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
-    if (!this.config.supabaseServiceRoleKey) missing.push('SUPABASE_SERVICE_ROLE_KEY')
-    
-    return missing
+    return environmentRules.getValidationErrors()
   }
 
   getInvalidKeys(): string[] {
-    const invalid: string[] = []
-    
-    if (this.config.rapidApiKey && !this.isValidApiKey(this.config.rapidApiKey)) {
-      invalid.push('NEXT_PUBLIC_RAPIDAPI_KEY')
-    }
-    if (this.config.oddsApiKey && !this.isValidApiKey(this.config.oddsApiKey)) {
-      invalid.push('NEXT_PUBLIC_ODDS_API_KEY')
-    }
-    if (this.config.supabaseUrl && !this.isValidSupabaseUrl(this.config.supabaseUrl)) {
-      invalid.push('NEXT_PUBLIC_SUPABASE_URL')
-    }
-    
-    return invalid
+    return environmentRules.getValidationErrors()
   }
 
   isFullyConfigured(): boolean {
-    return this.getMissingRequiredKeys().length === 0 && this.getInvalidKeys().length === 0
+    return environmentRules.isConfigured()
   }
 
   getConfigurationReport(): {

@@ -102,9 +102,15 @@ class ApiClient {
     const searchParams = new URLSearchParams()
     if (params?.league) searchParams.set("league", params.league)
     if (params?.sport) searchParams.set("sport", params.sport)
+    
+    // Always use external API for real-time data
+    searchParams.set("external", "true")
 
     const query = searchParams.toString()
-    return this.request<Team[]>(`/teams${query ? `?${query}` : ""}`)
+    const response = await this.request<{ data: Team[] } | Team[]>(`/teams${query ? `?${query}` : ""}`)
+    
+    // Handle both wrapped and direct array responses
+    return Array.isArray(response) ? response : response.data || []
   }
 
   async getTeam(teamId: string): Promise<Team> {
@@ -118,6 +124,7 @@ class ApiClient {
     status?: string
     team_id?: string
     limit?: number
+    sport?: string
   }): Promise<Game[]> {
     const searchParams = new URLSearchParams()
     if (params?.date_from) searchParams.set("date_from", params.date_from)
@@ -125,6 +132,7 @@ class ApiClient {
     if (params?.status) searchParams.set("status", params.status)
     if (params?.team_id) searchParams.set("team_id", params.team_id)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
+    if (params?.sport) searchParams.set("sport", params.sport)
     
     // Always use external API for real-time data
     searchParams.set("external", "true")

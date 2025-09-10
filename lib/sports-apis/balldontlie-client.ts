@@ -86,7 +86,7 @@ interface BallDontLieResponse<T> {
 export class BallDontLieClient {
   private baseUrl = 'https://api.balldontlie.io/v1'
   private apiKey: string
-  private rateLimitDelay = 2000 // 2 seconds between requests (free tier: 5 requests per minute)
+  private rateLimitDelay = 12000 // 12 seconds between requests (5 requests/minute = 12 seconds)
   private lastRequestTime = 0
 
   constructor(apiKey: string = '') {

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { enhancedApiClient } from "@/lib/services/enhanced-api-client"
+import { apiRateLimiter } from "@/lib/rules/api-rate-limiter"
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +15,9 @@ export async function GET(request: NextRequest) {
       const markets = searchParams.get("markets")?.split(",") || ["h2h", "spreads", "totals"]
       
       try {
+        // Check rate limit before making request
+        apiRateLimiter.checkRateLimit('odds')
+        
         const { oddsApiClient } = await import("@/lib/sports-apis/odds-api-client")
         const oddsData = await oddsApiClient.getOdds({
           sport,
@@ -21,6 +25,9 @@ export async function GET(request: NextRequest) {
           regions: 'us',
           oddsFormat: 'american'
         })
+        
+        // Record successful request
+        apiRateLimiter.recordRequest('odds')
         
         return NextResponse.json({
           data: oddsData,

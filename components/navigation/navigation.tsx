@@ -91,24 +91,24 @@ export function Navigation() {
         ? "bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm" 
         : "bg-background/80 backdrop-blur-sm border-b border-border/30"
     )}>
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-105">
-              <Target className="h-5 w-5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                Project Apex
-              </span>
-              <span className="text-xs text-muted-foreground -mt-1">Sports Analytics</span>
-            </div>
-          </Link>
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between gap-4">
+            {/* Logo */}
+            <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-105">
+                <Target className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                  Project Apex
+                </span>
+                <span className="text-xs text-muted-foreground -mt-1">Sports Analytics</span>
+              </div>
+            </Link>
 
           {/* Sport Selector */}
-          <div className="hidden lg:block">
-            <SportSelector 
+          <div className="hidden lg:block flex-shrink-0">
+            <SportSelector
               selectedSport={selectedSport}
               onSportChange={setSelectedSport}
               className="w-64"
@@ -116,7 +116,7 @@ export function Navigation() {
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1">
+          <nav className="hidden lg:flex items-center space-x-1 flex-shrink-0">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -155,10 +155,6 @@ export function Navigation() {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-3">
             <NotificationSystem />
-            <Button variant="outline" size="sm" className="gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden xl:inline">Settings</span>
-            </Button>
           </div>
 
           {/* Mobile Navigation */}
@@ -244,10 +240,9 @@ export function Navigation() {
 
                   {/* Mobile Footer */}
                   <div className="pt-6 border-t">
-                    <Button variant="outline" className="w-full justify-start gap-2">
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      Version 1.0.0
+                    </p>
                   </div>
                 </div>
               </SheetContent>

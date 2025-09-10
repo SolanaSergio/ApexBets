@@ -141,7 +141,7 @@ interface ApiSportsStanding {
 export class ApiSportsClient {
   private baseUrl = 'https://api-football-v1.p.rapidapi.com/v3'
   private apiKey: string
-  private rateLimitDelay = 2000 // 2 seconds between requests
+  private rateLimitDelay = 600 // 0.6 seconds between requests (100 requests/minute = 0.6 seconds)
   private lastRequestTime = 0
 
   constructor(apiKey: string) {

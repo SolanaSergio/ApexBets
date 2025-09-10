@@ -16,6 +16,7 @@ import {
 import { rateLimiter } from './rate-limiter'
 import { cacheService } from './cache-service'
 import { errorHandlingService } from './error-handling-service'
+import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
 
 interface GameData {
   id: string
@@ -100,6 +101,14 @@ export class SportsDataService {
       return cached
     }
 
+    // Check API rate limit
+    try {
+      apiRateLimiter.checkRateLimit(service as any)
+    } catch (rateLimitError) {
+      console.warn(`Rate limit exceeded for ${service}:`, rateLimitError.message)
+      throw rateLimitError
+    }
+
     // Wait for rate limit
     await rateLimiter.waitForRateLimit(service)
 
@@ -115,6 +124,9 @@ export class SportsDataService {
 
       const responseTime = Date.now() - startTime
       rateLimiter.recordRequest(service, responseTime, false)
+      
+      // Record successful API request
+      apiRateLimiter.recordRequest(service as any)
 
       // Cache the result
       cacheService.set(key, data, ttl)

@@ -1,0 +1,51 @@
+# ApexBets Cursor Rules
+
+## Environment Variables - NEVER USE PLACEHOLDERS
+- NEVER use placeholder values like "your_api_key", "placeholder", "example"
+- NEVER access .env files directly - user has them configured
+- ALWAYS use real environment variables from process.env
+- ALWAYS validate environment variables before use
+- If environment variable is missing, throw error - never use fallbacks
+
+## Data Handling - NO MOCK DATA
+- NEVER use mock data, sample data, or placeholder data
+- ALWAYS use real data from APIs or database
+- ALWAYS validate data before using it
+- If no real data available, return empty array/object, not mock data
+
+## API Usage Rules
+- ALWAYS respect rate limits from environment configuration
+- ALWAYS handle API errors gracefully
+- ALWAYS use proper error handling for failed API calls
+- NEVER hardcode API endpoints - use configuration
+
+## Code Quality Rules
+- ALWAYS use TypeScript strict mode
+- ALWAYS validate inputs and outputs
+- ALWAYS handle errors properly
+- NEVER leave TODO comments in production code
+- ALWAYS use proper error messages
+
+## Security Rules
+- NEVER log sensitive data (API keys, passwords)
+- ALWAYS validate user inputs
+- ALWAYS use proper authentication checks
+- NEVER expose internal implementation details
+
+## File Creation Rules
+- NEVER create documentation files unless explicitly requested
+- ALWAYS prefer editing existing files over creating new ones
+- ALWAYS use proper file naming conventions
+- NEVER create placeholder files
+
+## Database Rules
+- ALWAYS use proper SQL validation
+- ALWAYS handle database errors
+- ALWAYS use transactions for multi-step operations
+- NEVER use raw SQL without validation
+
+## Testing Rules
+- ALWAYS test with real data
+- NEVER use mock data in tests
+- ALWAYS validate test results
+- ALWAYS clean up test data

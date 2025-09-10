@@ -3,9 +3,63 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const { searchParams } = new URL(request.url)
+    const useExternalApi = searchParams.get("external") === "true"
+    
+    if (useExternalApi) {
+      // Use external APIs for real-time team data
+      const sport = searchParams.get("sport") || "basketball"
+      const teams: any[] = []
+      
+      try {
+        // Get NBA teams from BallDontLie
+        if (sport === 'basketball') {
+          const { ballDontLieClient } = await import("@/lib/sports-apis/balldontlie-client")
+          const nbaTeams = await ballDontLieClient.getTeams()
+          teams.push(...nbaTeams.data.map((team: any) => ({
+            id: team.id.toString(),
+            name: team.full_name,
+            city: team.city,
+            league: 'NBA',
+            sport: 'basketball',
+            abbreviation: team.abbreviation,
+            logo_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })))
+        }
+        
+        // Add other sports teams as needed
+        // For now, return NBA teams for basketball
+        if (sport !== 'basketball') {
+          // Return empty array for other sports until we implement their APIs
+          return NextResponse.json({
+            data: [],
+            meta: {
+              fromCache: false,
+              responseTime: 0,
+              source: "external_apis",
+              note: `No external API implemented for ${sport} teams yet`
+            }
+          })
+        }
+      } catch (error) {
+        console.error('External API error:', error)
+        // Fall through to database fallback
+      }
+      
+      return NextResponse.json({
+        data: teams,
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "external_apis"
+        }
+      })
+    }
 
+    // Fallback to Supabase for stored data
+    const supabase = await createClient()
     const league = searchParams.get("league")
     const sport = searchParams.get("sport")
 

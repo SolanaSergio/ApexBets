@@ -52,7 +52,7 @@ interface OddsApiScores {
 export class OddsApiClient {
   private baseUrl = 'https://api.the-odds-api.com/v4'
   private apiKey: string
-  private rateLimitDelay = 1000 // 1 second between requests
+  private rateLimitDelay = 6000 // 6 seconds between requests (10 requests/minute = 6 seconds)
   private lastRequestTime = 0
 
   constructor(apiKey: string) {
