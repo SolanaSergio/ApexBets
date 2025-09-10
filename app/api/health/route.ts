@@ -95,11 +95,21 @@ async function testApiConnectivity(): Promise<Record<string, any>> {
   
   try {
     // Test games endpoint
-    const gamesTest = await enhancedApiClient.getGames({ external: false })
-    tests.games = {
-      status: "healthy",
-      responseTime: gamesTest.responseTime,
-      fromCache: gamesTest.fromCache
+    const startTime = Date.now()
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/games`)
+    const responseTime = Date.now() - startTime
+    
+    if (response.ok) {
+      tests.games = {
+        status: "healthy",
+        responseTime: responseTime,
+        fromCache: false
+      }
+    } else {
+      tests.games = {
+        status: "error",
+        error: `HTTP ${response.status}: ${response.statusText}`
+      }
     }
   } catch (error) {
     tests.games = {
@@ -110,11 +120,21 @@ async function testApiConnectivity(): Promise<Record<string, any>> {
 
   try {
     // Test teams endpoint
-    const teamsTest = await enhancedApiClient.getTeams({ sport: "basketball" })
-    tests.teams = {
-      status: "healthy",
-      responseTime: teamsTest.responseTime,
-      fromCache: teamsTest.fromCache
+    const startTime = Date.now()
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/teams`)
+    const responseTime = Date.now() - startTime
+    
+    if (response.ok) {
+      tests.teams = {
+        status: "healthy",
+        responseTime: responseTime,
+        fromCache: false
+      }
+    } else {
+      tests.teams = {
+        status: "error",
+        error: `HTTP ${response.status}: ${response.statusText}`
+      }
     }
   } catch (error) {
     tests.teams = {
@@ -125,11 +145,21 @@ async function testApiConnectivity(): Promise<Record<string, any>> {
 
   try {
     // Test analytics endpoint
-    const analyticsTest = await enhancedApiClient.getAnalyticsStats()
-    tests.analytics = {
-      status: "healthy",
-      responseTime: analyticsTest.responseTime,
-      fromCache: analyticsTest.fromCache
+    const startTime = Date.now()
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/analytics/stats`)
+    const responseTime = Date.now() - startTime
+    
+    if (response.ok) {
+      tests.analytics = {
+        status: "healthy",
+        responseTime: responseTime,
+        fromCache: false
+      }
+    } else {
+      tests.analytics = {
+        status: "error",
+        error: `HTTP ${response.status}: ${response.statusText}`
+      }
     }
   } catch (error) {
     tests.analytics = {

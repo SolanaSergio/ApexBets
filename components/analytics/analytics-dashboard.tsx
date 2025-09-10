@@ -39,9 +39,20 @@ export function AnalyticsDashboard() {
   const fetchAnalyticsOverview = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/analytics/stats?external=true&timeRange=${timeRange}`)
+      const response = await fetch(`/api/analytics/stats`)
       const data = await response.json()
-      setOverview(data.overview)
+      
+      // Transform the API response to match our interface
+      setOverview({
+        totalGames: data.total_games || 0,
+        totalPredictions: data.total_predictions || 0,
+        accuracyRate: data.accuracy_rate || 0,
+        totalValueBets: 0, // This would need to be added to the API
+        averageValue: 0, // This would need to be added to the API
+        profitLoss: 0, // This would need to be added to the API
+        winRate: data.accuracy_rate || 0,
+        roi: 0 // This would need to be added to the API
+      })
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching analytics overview:', error)

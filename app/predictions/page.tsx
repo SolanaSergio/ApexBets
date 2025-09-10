@@ -1,11 +1,15 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle } from "lucide-react"
+import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
+import { apiClient, type Prediction, type Game } from "@/lib/api-client"
+import { format } from "date-fns"
 
 export default function PredictionsPage() {
   return (
@@ -138,142 +142,196 @@ export default function PredictionsPage() {
 
 // Today's Predictions Section
 function TodayPredictionsSection() {
-  const todayPredictions = [
-    {
-      id: "1",
-      game: "Lakers vs Warriors",
-      type: "Winner",
-      prediction: "Lakers",
-      confidence: 0.87,
-      odds: "+120",
-      status: "pending",
-      gameTime: "8:00 PM",
-      model: "Neural Network v3.2"
-    },
-    {
-      id: "2",
-      game: "Celtics vs Heat",
-      type: "Spread",
-      prediction: "Celtics -6.5",
-      confidence: 0.82,
-      odds: "-110",
-      status: "pending",
-      gameTime: "7:30 PM",
-      model: "Ensemble v2.1"
-    },
-    {
-      id: "3",
-      game: "Knicks vs Nets",
-      type: "Total",
-      prediction: "Over 225.5",
-      confidence: 0.79,
-      odds: "+105",
-      status: "pending",
-      gameTime: "8:30 PM",
-      model: "Random Forest v1.8"
+  const [predictions, setPredictions] = useState<Prediction[]>([])
+  const [games, setGames] = useState<Record<string, Game>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchTodayPredictions()
+  }, [])
+
+  async function fetchTodayPredictions() {
+    try {
+      setLoading(true)
+      
+      // Fetch today's predictions
+      const predictionsData = await apiClient.getPredictions({
+        limit: 10
+      })
+
+      // Fetch game details for each prediction
+      const gamePromises = predictionsData.map(async (prediction) => {
+        try {
+          const game = await apiClient.getGame(prediction.game_id)
+          return { predictionId: prediction.id, game }
+        } catch {
+          return { predictionId: prediction.id, game: null }
+        }
+      })
+
+      const gameResults = await Promise.all(gamePromises)
+      const gamesMap = gameResults.reduce((acc, { predictionId, game }) => {
+        if (game) acc[predictionId] = game
+        return acc
+      }, {} as Record<string, Game>)
+
+      setPredictions(predictionsData)
+      setGames(gamesMap)
+    } catch (error) {
+      console.error("Error fetching today's predictions:", error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <TodayPredictionsSkeleton />
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Today's Predictions</h2>
-        <Badge variant="secondary" className="gap-1">
-          <Zap className="h-3 w-3" />
-          {todayPredictions.length} Active
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="gap-1">
+            <Zap className="h-3 w-3" />
+            {predictions.length} Active
+          </Badge>
+          <Button variant="ghost" size="sm" onClick={fetchTodayPredictions} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-6">
-        {todayPredictions.map((prediction) => (
-          <Card key={prediction.id} className="card-hover-enhanced">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{prediction.game}</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{prediction.status}</Badge>
-                  <span className="text-sm text-muted-foreground">{prediction.gameTime}</span>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Prediction Type</div>
-                  <div className="font-semibold">{prediction.type}</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Prediction</div>
-                  <div className="font-semibold text-primary">{prediction.prediction}</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Odds</div>
-                  <div className="font-semibold text-accent">{prediction.odds}</div>
-                </div>
-              </div>
+      {predictions.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Predictions Available</h3>
+            <p className="text-muted-foreground">Check back later for new predictions</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {predictions.map((prediction) => {
+            const game = games[prediction.id]
+            const gameDate = game ? new Date(game.game_date) : new Date()
+            
+            return (
+              <Card key={prediction.id} className="card-hover-enhanced">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">
+                      {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
+                    </CardTitle>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        {prediction.is_correct === null ? 'Pending' : prediction.is_correct ? 'Correct' : 'Incorrect'}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        {format(gameDate, "h:mm a")}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Prediction Type</div>
+                      <div className="font-semibold capitalize">{prediction.prediction_type}</div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Prediction</div>
+                      <div className="font-semibold text-primary">
+                        {prediction.prediction_type === "winner" 
+                          ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
+                          : prediction.prediction_type === "spread"
+                          ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
+                          : `Total: ${prediction.predicted_value.toFixed(1)}`}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="text-sm text-muted-foreground">Model</div>
+                      <div className="font-semibold text-accent">{prediction.model_name}</div>
+                    </div>
+                  </div>
 
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">Confidence Level</span>
-                  <span className="text-sm font-bold text-primary">
-                    {Math.round(prediction.confidence * 100)}%
-                  </span>
-                </div>
-                <Progress value={prediction.confidence * 100} className="h-2" />
-              </div>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Confidence Level</span>
+                      <span className="text-sm font-bold text-primary">
+                        {Math.round(prediction.confidence * 100)}%
+                      </span>
+                    </div>
+                    <Progress value={prediction.confidence * 100} className="h-2" />
+                  </div>
 
-              <div className="flex items-center justify-between pt-2 border-t">
-                <div className="text-xs text-muted-foreground">
-                  Model: {prediction.model}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm">
-                    View Analysis
-                  </Button>
-                  <Button size="sm">
-                    Track Prediction
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  <div className="flex items-center justify-between pt-2 border-t">
+                    <div className="text-xs text-muted-foreground">
+                      Created: {format(new Date(prediction.created_at), "MMM d, h:mm a")}
+                    </div>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm">
+                        View Analysis
+                      </Button>
+                      <Button size="sm">
+                        Track Prediction
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // Upcoming Predictions Section
 function UpcomingPredictionsSection() {
-  const upcomingPredictions = [
-    {
-      id: "4",
-      game: "Bulls vs 76ers",
-      type: "Winner",
-      prediction: "76ers",
-      confidence: 0.85,
-      gameDate: "Jan 16, 2024",
-      gameTime: "8:00 PM",
-      model: "Neural Network v3.2"
-    },
-    {
-      id: "5",
-      game: "Nuggets vs Jazz",
-      type: "Spread",
-      prediction: "Nuggets -4.5",
-      confidence: 0.78,
-      gameDate: "Jan 17, 2024",
-      gameTime: "9:00 PM",
-      model: "Ensemble v2.1"
+  const [upcomingPredictions, setUpcomingPredictions] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUpcomingPredictions()
+  }, [])
+
+  async function fetchUpcomingPredictions() {
+    try {
+      setLoading(true)
+      const predictionsData = await apiClient.getUpcomingPredictions({
+        limit: 10,
+        days: 7
+      })
+      setUpcomingPredictions(predictionsData)
+    } catch (error) {
+      console.error("Error fetching upcoming predictions:", error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <UpcomingPredictionsSkeleton />
+  }
 
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Upcoming Predictions</h2>
 
-      <div className="grid gap-6">
-        {upcomingPredictions.map((prediction) => (
+      {upcomingPredictions.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Upcoming Predictions</h3>
+            <p className="text-muted-foreground">Check back later for new predictions</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-6">
+          {upcomingPredictions.map((prediction) => (
           <Card key={prediction.id} className="card-hover">
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -310,8 +368,9 @@ function UpcomingPredictionsSection() {
               </div>
             </CardContent>
           </Card>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

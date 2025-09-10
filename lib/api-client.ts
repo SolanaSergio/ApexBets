@@ -178,6 +178,39 @@ class ApiClient {
   async getTeamAnalytics(teamId: string): Promise<any> {
     return this.request(`/analytics/team/${teamId}`)
   }
+
+  // Standings
+  async getStandings(params?: { league?: string; sport?: string; season?: string }): Promise<any[]> {
+    const searchParams = new URLSearchParams()
+    if (params?.league) searchParams.set("league", params.league)
+    if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.season) searchParams.set("season", params.season)
+
+    const query = searchParams.toString()
+    return this.request<any[]>(`/standings${query ? `?${query}` : ""}`)
+  }
+
+  // Team Stats
+  async getTeamStats(params?: { team_id?: string; league?: string; sport?: string; season?: string }): Promise<any[]> {
+    const searchParams = new URLSearchParams()
+    if (params?.team_id) searchParams.set("team_id", params.team_id)
+    if (params?.league) searchParams.set("league", params.league)
+    if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.season) searchParams.set("season", params.season)
+
+    const query = searchParams.toString()
+    return this.request<any[]>(`/teams/stats${query ? `?${query}` : ""}`)
+  }
+
+  // Upcoming Predictions
+  async getUpcomingPredictions(params?: { limit?: number; days?: number }): Promise<any[]> {
+    const searchParams = new URLSearchParams()
+    if (params?.limit) searchParams.set("limit", params.limit.toString())
+    if (params?.days) searchParams.set("days", params.days.toString())
+
+    const query = searchParams.toString()
+    return this.request<any[]>(`/predictions/upcoming${query ? `?${query}` : ""}`)
+  }
 }
 
 export const apiClient = new ApiClient()

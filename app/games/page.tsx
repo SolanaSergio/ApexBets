@@ -1,4 +1,6 @@
-import { Suspense } from "react"
+"use client"
+
+import { Suspense, useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -6,8 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp } from "lucide-react"
+import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, RefreshCw } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
+import { apiClient, type Game } from "@/lib/api-client"
+import { format } from "date-fns"
 
 export default function GamesPage() {
   return (
@@ -113,30 +117,31 @@ export default function GamesPage() {
 
 // Live Games Section
 function LiveGamesSection() {
-  const liveGames = [
-    {
-      id: "1",
-      homeTeam: { name: "Lakers", abbreviation: "LAL" },
-      awayTeam: { name: "Warriors", abbreviation: "GSW" },
-      homeScore: 98,
-      awayScore: 95,
-      quarter: "4th",
-      timeRemaining: "2:34",
-      status: "live",
-      venue: "Crypto.com Arena"
-    },
-    {
-      id: "2",
-      homeTeam: { name: "Celtics", abbreviation: "BOS" },
-      awayTeam: { name: "Heat", abbreviation: "MIA" },
-      homeScore: 112,
-      awayScore: 108,
-      quarter: "3rd",
-      timeRemaining: "5:12",
-      status: "live",
-      venue: "TD Garden"
+  const [liveGames, setLiveGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchLiveGames()
+  }, [])
+
+  async function fetchLiveGames() {
+    try {
+      setLoading(true)
+      const games = await apiClient.getGames({
+        status: "in_progress",
+        limit: 10
+      })
+      setLiveGames(games)
+    } catch (error) {
+      console.error("Error fetching live games:", error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <LiveGamesSkeleton />
+  }
 
   return (
     <div className="space-y-4">
@@ -145,9 +150,14 @@ function LiveGamesSection() {
           <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
           Live Games
         </h2>
-        <Badge variant="destructive" className="animate-pulse">
-          {liveGames.length} Live
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="destructive" className="animate-pulse">
+            {liveGames.length} Live
+          </Badge>
+          <Button variant="ghost" size="sm" onClick={fetchLiveGames} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
       </div>
 
       {liveGames.length === 0 ? (
@@ -166,21 +176,21 @@ function LiveGamesSection() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
-                      <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={32} height={32} className="mx-auto mb-2" />
-                      <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
-                      <div className="text-2xl font-bold">{game.awayScore}</div>
+                      <TeamLogo teamName={game.away_team?.name || ''} alt={game.away_team?.abbreviation || 'Away'} width={32} height={32} className="mx-auto mb-2" />
+                      <div className="text-sm text-muted-foreground mb-1">{game.away_team?.abbreviation || 'Away'}</div>
+                      <div className="text-2xl font-bold">{game.away_score || 0}</div>
                     </div>
 
                     <div className="text-center">
                       <div className="text-xs text-muted-foreground mb-1">VS</div>
-                      <div className="text-sm font-medium">{game.quarter}</div>
-                      <div className="text-xs text-muted-foreground">{game.timeRemaining}</div>
+                      <div className="text-sm font-medium">Live</div>
+                      <div className="text-xs text-muted-foreground">In Progress</div>
                     </div>
 
                     <div className="text-center">
-                      <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={32} height={32} className="mx-auto mb-2" />
-                      <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
-                      <div className="text-2xl font-bold">{game.homeScore}</div>
+                      <TeamLogo teamName={game.home_team?.name || ''} alt={game.home_team?.abbreviation || 'Home'} width={32} height={32} className="mx-auto mb-2" />
+                      <div className="text-sm text-muted-foreground mb-1">{game.home_team?.abbreviation || 'Home'}</div>
+                      <div className="text-2xl font-bold">{game.home_score || 0}</div>
                     </div>
                   </div>
 
@@ -189,7 +199,7 @@ function LiveGamesSection() {
                       <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                       <span className="text-sm font-medium text-red-600">LIVE</span>
                     </div>
-                    <div className="text-xs text-muted-foreground">{game.venue}</div>
+                    <div className="text-xs text-muted-foreground">{game.venue || 'TBD'}</div>
                   </div>
                 </div>
               </CardContent>
@@ -203,131 +213,191 @@ function LiveGamesSection() {
 
 // Upcoming Games Section
 function UpcomingGamesSection() {
-  const upcomingGames = [
-    {
-      id: "3",
-      homeTeam: { name: "Knicks", abbreviation: "NYK" },
-      awayTeam: { name: "Nets", abbreviation: "BKN" },
-      gameDate: "2024-01-15T20:00:00Z",
-      status: "scheduled",
-      venue: "Madison Square Garden"
-    },
-    {
-      id: "4",
-      homeTeam: { name: "Bulls", abbreviation: "CHI" },
-      awayTeam: { name: "76ers", abbreviation: "PHI" },
-      gameDate: "2024-01-15T22:30:00Z",
-      status: "scheduled",
-      venue: "United Center"
+  const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchUpcomingGames()
+  }, [])
+
+  async function fetchUpcomingGames() {
+    try {
+      setLoading(true)
+      const games = await apiClient.getGames({
+        status: "scheduled",
+        limit: 10
+      })
+      setUpcomingGames(games)
+    } catch (error) {
+      console.error("Error fetching upcoming games:", error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <UpcomingGamesSkeleton />
+  }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold flex items-center gap-2">
-        <Clock className="h-6 w-6" />
-        Upcoming Games
-      </h2>
-
-      <div className="grid gap-4">
-        {upcomingGames.map((game) => (
-          <Card key={game.id} className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <div className="text-center">
-                    <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
-                    <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
-                    <div className="font-semibold">{game.awayTeam.name}</div>
-                  </div>
-
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">VS</div>
-                    <div className="text-sm font-medium">
-                      {new Date(game.gameDate).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(game.gameDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
-                    <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
-                    <div className="font-semibold">{game.homeTeam.name}</div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <Badge variant="outline">{game.status}</Badge>
-                  <div className="text-xs text-muted-foreground mt-1">{game.venue}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Clock className="h-6 w-6" />
+          Upcoming Games
+        </h2>
+        <Button variant="ghost" size="sm" onClick={fetchUpcomingGames} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
       </div>
+
+      {upcomingGames.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Upcoming Games</h3>
+            <p className="text-muted-foreground">Check back later for scheduled matches</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {upcomingGames.map((game) => {
+            const gameDate = new Date(game.game_date)
+            return (
+              <Card key={game.id} className="card-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-6">
+                      <div className="text-center">
+                        <TeamLogo teamName={game.away_team?.name || ''} alt={game.away_team?.abbreviation || 'Away'} width={24} height={24} className="mx-auto mb-1" />
+                        <div className="text-sm text-muted-foreground mb-1">{game.away_team?.abbreviation || 'Away'}</div>
+                        <div className="font-semibold">{game.away_team?.name || 'Away Team'}</div>
+                      </div>
+
+                      <div className="text-center">
+                        <div className="text-xs text-muted-foreground mb-1">VS</div>
+                        <div className="text-sm font-medium">
+                          {format(gameDate, "MMM d")}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(gameDate, "h:mm a")}
+                        </div>
+                      </div>
+
+                      <div className="text-center">
+                        <TeamLogo teamName={game.home_team?.name || ''} alt={game.home_team?.abbreviation || 'Home'} width={24} height={24} className="mx-auto mb-1" />
+                        <div className="text-sm text-muted-foreground mb-1">{game.home_team?.abbreviation || 'Home'}</div>
+                        <div className="font-semibold">{game.home_team?.name || 'Home Team'}</div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <Badge variant="outline">{game.status}</Badge>
+                      <div className="text-xs text-muted-foreground mt-1">{game.venue || 'TBD'}</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
 
 // Completed Games Section
 function CompletedGamesSection() {
-  const completedGames = [
-    {
-      id: "5",
-      homeTeam: { name: "Lakers", abbreviation: "LAL" },
-      awayTeam: { name: "Warriors", abbreviation: "GSW" },
-      homeScore: 120,
-      awayScore: 115,
-      status: "completed",
-      gameDate: "2024-01-14T20:00:00Z",
-      venue: "Crypto.com Arena"
+  const [completedGames, setCompletedGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchCompletedGames()
+  }, [])
+
+  async function fetchCompletedGames() {
+    try {
+      setLoading(true)
+      const games = await apiClient.getGames({
+        status: "completed",
+        limit: 10
+      })
+      setCompletedGames(games)
+    } catch (error) {
+      console.error("Error fetching completed games:", error)
+    } finally {
+      setLoading(false)
     }
-  ]
+  }
+
+  if (loading) {
+    return <CompletedGamesSkeleton />
+  }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold flex items-center gap-2">
-        <Trophy className="h-6 w-6" />
-        Recent Results
-      </h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold flex items-center gap-2">
+          <Trophy className="h-6 w-6" />
+          Recent Results
+        </h2>
+        <Button variant="ghost" size="sm" onClick={fetchCompletedGames} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        </Button>
+      </div>
 
-      <div className="grid gap-4">
-        {completedGames.map((game) => (
-          <Card key={game.id} className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-6">
-                  <div className="text-center">
-                    <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
-                    <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
-                    <div className="text-2xl font-bold">{game.awayScore}</div>
-                  </div>
+      {completedGames.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">No Recent Results</h3>
+            <p className="text-muted-foreground">No completed games found</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4">
+          {completedGames.map((game) => {
+            const gameDate = new Date(game.game_date)
+            const homeWon = game.home_score && game.away_score && game.home_score > game.away_score
+            return (
+              <Card key={game.id} className="card-hover">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-6">
+                      <div className="text-center">
+                        <TeamLogo teamName={game.away_team?.name || ''} alt={game.away_team?.abbreviation || 'Away'} width={24} height={24} className="mx-auto mb-1" />
+                        <div className="text-sm text-muted-foreground mb-1">{game.away_team?.abbreviation || 'Away'}</div>
+                        <div className={`text-2xl font-bold ${!homeWon ? "text-primary" : ""}`}>{game.away_score || 0}</div>
+                      </div>
 
-                  <div className="text-center">
-                    <div className="text-xs text-muted-foreground mb-1">FINAL</div>
-                    <div className="text-sm font-medium">
-                      {new Date(game.gameDate).toLocaleDateString()}
+                      <div className="text-center">
+                        <div className="text-xs text-muted-foreground mb-1">FINAL</div>
+                        <div className="text-sm font-medium">
+                          {format(gameDate, "MMM d")}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {format(gameDate, "h:mm a")}
+                        </div>
+                      </div>
+
+                      <div className="text-center">
+                        <TeamLogo teamName={game.home_team?.name || ''} alt={game.home_team?.abbreviation || 'Home'} width={24} height={24} className="mx-auto mb-1" />
+                        <div className="text-sm text-muted-foreground mb-1">{game.home_team?.abbreviation || 'Home'}</div>
+                        <div className={`text-2xl font-bold ${homeWon ? "text-primary" : ""}`}>{game.home_score || 0}</div>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <Badge variant="secondary">Completed</Badge>
+                      <div className="text-xs text-muted-foreground mt-1">{game.venue || 'TBD'}</div>
                     </div>
                   </div>
-
-                  <div className="text-center">
-                    <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
-                    <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
-                    <div className="text-2xl font-bold">{game.homeScore}</div>
-                  </div>
-                </div>
-
-                <div className="text-right">
-                  <Badge variant="secondary">Completed</Badge>
-                  <div className="text-xs text-muted-foreground mt-1">{game.venue}</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
