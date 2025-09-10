@@ -1,18 +1,20 @@
 "use client"
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { 
-  getTeamLogoUrl, 
+  getTeamLogoUrl as getApiTeamLogoUrl, 
   getPlayerPhotoUrl, 
   getSportsImageUrl, 
   getFallbackImageUrl,
   getImageWithFallback,
+  IMAGE_SOURCES,
   type SportsLeague,
   type TeamLogoConfig,
   type PlayerPhotoConfig
 } from '@/lib/services/image-service'
+import { getTeamLogoUrl, getTeamLogoData, type LogoResult } from '@/lib/services/dynamic-team-service'
 
 interface SportsImageProps {
   src?: string
@@ -30,6 +32,8 @@ interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {
   teamName: string
   league?: SportsLeague
   config?: TeamLogoConfig
+  sport?: string
+  dynamicGeneration?: boolean // Enable for custom teams/leagues not in mappings
 }
 
 interface PlayerPhotoProps extends Omit<SportsImageProps, 'src'> {
@@ -39,7 +43,7 @@ interface PlayerPhotoProps extends Omit<SportsImageProps, 'src'> {
 }
 
 interface SportsImageGenericProps extends Omit<SportsImageProps, 'src'> {
-  category: keyof typeof import('@/lib/services/image-service').IMAGE_SOURCES.SPORTS_IMAGES
+  category: keyof typeof IMAGE_SOURCES
 }
 
 /**
@@ -110,8 +114,29 @@ export function TeamLogo({
   priority = false,
   quality = 80
 }: TeamLogoProps) {
-  const [imgSrc, setImgSrc] = useState(() => getTeamLogoUrl(teamName, league, config))
+  const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
+  const [logoData, setLogoData] = useState<LogoResult | null>(null)
+
+  // Load logo using dynamic service
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const result = await getTeamLogoData(teamName, league, config)
+        setLogoData(result)
+        setImgSrc(result.url)
+      } catch (error) {
+        console.warn('Failed to load team logo:', error)
+        // Fallback to API service
+        const fallbackUrl = getApiTeamLogoUrl(teamName, league, config)
+        setImgSrc(fallbackUrl)
+      }
+    }
+
+    if (teamName) {
+      loadLogo()
+    }
+  }, [teamName, league, config])
 
   const handleError = useCallback(() => {
     if (!hasError) {
@@ -222,7 +247,7 @@ export function SportsImageGeneric({
   priority = false,
   quality = 80
 }: SportsImageGenericProps) {
-  const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(category, { width, height }))
+  const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(category as any, { width, height }))
   const [hasError, setHasError] = useState(false)
 
   const handleError = useCallback(() => {
@@ -237,7 +262,7 @@ export function SportsImageGeneric({
     <div className={cn("relative overflow-hidden", className)}>
       <Image
         src={imgSrc}
-        alt={alt || `${category} image`}
+        alt={alt || `${String(category)} image`}
         width={width}
         height={height}
         className={cn(

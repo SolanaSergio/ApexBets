@@ -9,6 +9,7 @@ import { Calendar, Clock, MapPin, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 import { TeamLogo } from "@/components/ui/sports-image"
+import { SportsLeague } from "@/lib/services/image-service"
 
 export function DashboardOverview() {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
@@ -160,56 +161,336 @@ export function DashboardOverview() {
 }
 
 function LiveGameCard({ game }: { game: Game }) {
+  const formatQuarter = (quarter?: number, timeRemaining?: string) => {
+    if (!quarter) return "Q1"
+    if (quarter > 4) return `OT${quarter - 4}`
+    return `Q${quarter}`
+  }
+
+  const getPossessionIcon = (possession?: string) => {
+    if (!possession) return null
+    if (possession === game.home_team?.abbreviation) return "🏠"
+    if (possession === game.away_team?.abbreviation) return "✈️"
+    return "🏀"
+  }
+
+  const getScoreDifferential = () => {
+    if (!game.away_score || !game.home_score) return 0
+    return game.away_score - game.home_score
+  }
+
+  const isAwayWinning = getScoreDifferential() > 0
+  const isHomeWinning = getScoreDifferential() < 0
+  const isTied = getScoreDifferential() === 0
 
   return (
-    <div className="flex items-center justify-between p-4 rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 hover:from-red-100 hover:to-orange-100 transition-all duration-200 group">
-      <div className="flex items-center space-x-4">
-        <div className="live-indicator h-3 w-3 rounded-full animate-pulse"></div>
-        <div className="flex-1">
-          <div className="flex items-center space-x-3 mb-2">
-            <TeamLogo 
-              teamName={game.away_team?.name || ''} 
-              alt={game.away_team?.name || 'Away Team'}
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
-            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
-              {game.away_team?.name}
-            </span>
-            <span className="text-muted-foreground">@</span>
-            <TeamLogo 
-              teamName={game.home_team?.name || ''} 
-              alt={game.home_team?.name || 'Home Team'}
-              width={24}
-              height={24}
-              className="h-6 w-6"
-            />
-            <span className="font-semibold text-lg group-hover:text-primary transition-colors">
-              {game.home_team?.name}
-            </span>
+    <Card className="group hover:shadow-xl transition-all duration-300 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/50 to-orange-50/50 dark:from-red-950/50 dark:to-orange-950/50">
+      <CardContent className="p-3 md:p-6">
+        {/* Mobile Layout - Stacked */}
+        <div className="block md:hidden space-y-4">
+          {/* Header Section */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse"></div>
+                <div className="absolute -inset-1 bg-red-500/20 rounded-full animate-ping"></div>
+              </div>
+              <Badge variant="destructive" className="animate-pulse text-xs">
+                LIVE
+              </Badge>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {game.league?.toUpperCase()} • {game.sport?.toUpperCase()}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground flex items-center space-x-2">
-            <Clock className="h-3 w-3" />
-            <span>Live</span>
-            <Badge variant="destructive" className="text-xs animate-pulse">
-              LIVE
-            </Badge>
+
+          {/* Game Time and Possession */}
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              {game.quarter && game.time_remaining && (
+                <Badge variant="outline" className="text-xs">
+                  {formatQuarter(game.quarter)} - {game.time_remaining}
+                </Badge>
+              )}
+              {game.possession && game.quarter && (
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">{getPossessionIcon(game.possession)}</span>
+                  <span>{game.possession}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Teams Section */}
+          <div className="space-y-3">
+            {/* Away Team */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="relative">
+                  <TeamLogo
+                    teamName={game.away_team?.name || ''}
+                    league={game.sport || 'NBA'}
+                    alt={`${game.away_team?.name || 'Away Team'} logo`}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-lg shadow-sm"
+                  />
+                  {game.possession === game.away_team?.abbreviation && (
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-xs text-white">⚡</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-bold truncate group-hover:text-primary transition-colors duration-200 ${isAwayWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                    {game.away_team?.city ? `${game.away_team.city} ` : ''}{game.away_team?.name}
+                  </div>
+                  {game.away_team?.record && (
+                    <div className="text-xs text-muted-foreground">
+                      Record: {game.away_team.record}
+                    </div>
+                  )}
+                </div>
+                <div className={`text-2xl font-bold font-mono tabular-nums ${isAwayWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                  {game.away_score ?? 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Home Team */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 flex-1">
+                <div className="relative">
+                  <TeamLogo
+                    teamName={game.home_team?.name || ''}
+                    league={game.sport || 'NBA'}
+                    alt={`${game.home_team?.name || 'Home Team'} logo`}
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 rounded-lg shadow-sm"
+                  />
+                  {game.possession === game.home_team?.abbreviation && (
+                    <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-red-500 rounded-full flex items-center justify-center">
+                      <span className="text-xs text-white">⚡</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-sm font-bold truncate group-hover:text-primary transition-colors duration-200 ${isHomeWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                    {game.home_team?.city ? `${game.home_team.city} ` : ''}{game.home_team?.name}
+                  </div>
+                  {game.home_team?.record && (
+                    <div className="text-xs text-muted-foreground">
+                      Record: {game.home_team.record}
+                    </div>
+                  )}
+                </div>
+                <div className={`text-2xl font-bold font-mono tabular-nums ${isHomeWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                  {game.home_score ?? 0}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Score Differential */}
+          {!isTied && (
+            <div className={`text-xs text-center px-2 py-1 rounded ${isAwayWinning ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+              {isAwayWinning ? game.away_team?.name : game.home_team?.name} leads by {Math.abs(getScoreDifferential())}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Layout */}
+        <div className="hidden md:block">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <div className="h-3 w-3 bg-red-500 rounded-full animate-pulse"></div>
+                <div className="absolute -inset-1 bg-red-500/20 rounded-full animate-ping"></div>
+              </div>
+              <Badge variant="destructive" className="animate-pulse">
+                LIVE
+              </Badge>
+              {game.quarter && game.time_remaining && (
+                <Badge variant="outline" className="text-xs">
+                  {formatQuarter(game.quarter)} - {game.time_remaining}
+                </Badge>
+              )}
+              {game.possession && game.quarter && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <span>Poss:</span>
+                  <span className="font-semibold">{getPossessionIcon(game.possession)}</span>
+                  <span>{game.possession}</span>
+                </div>
+              )}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {game.league?.toUpperCase()} • {game.sport?.toUpperCase()}
+            </div>
+          </div>
+
+          {/* Main Game Content for Desktop */}
+          <div className="flex items-center justify-between">
+            {/* Away Team */}
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3">
+              <div className="relative">
+                <TeamLogo
+                  teamName={game.away_team?.name || ''}
+                  league={game.sport as SportsLeague || 'NBA'}
+                  alt={`${game.away_team?.name || 'Away Team'} logo`}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-200"
+                />
+                {game.possession === game.away_team?.abbreviation && (
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-xs text-white">⚡</span>
+                  </div>
+                )}
+              </div>
+                <div>
+                  <div className={`text-xl font-bold group-hover:text-primary transition-colors duration-200 ${isAwayWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                    {game.away_team?.city ? `${game.away_team.city} ` : ''}{game.away_team?.name}
+                  </div>
+                  {game.away_team?.record && (
+                    <div className="text-xs text-muted-foreground">
+                      Record: {game.away_team.record}
+                    </div>
+                  )}
+                  {game.away_team?.abbreviation && (
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      {game.away_team.abbreviation}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              {/* Away Team Stats */}
+              {game.away_team_stats && (
+                <div className="grid grid-cols-3 gap-2 text-xs bg-muted/30 rounded-lg p-2">
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.away_team_stats.points || 0}</div>
+                    <div className="text-muted-foreground">PTS</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.away_team_stats.rebounds || 0}</div>
+                    <div className="text-muted-foreground">REB</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.away_team_stats.assists || 0}</div>
+                    <div className="text-muted-foreground">AST</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Score Display */}
+            <div className="px-6 text-center">
+              <div className={`text-4xl font-bold font-mono mb-1 ${isTied ? 'text-muted-foreground' : 'text-primary'} group-hover:scale-110 transition-transform duration-200`}>
+                {game.away_score ?? 0}
+              </div>
+              <div className="text-xs text-muted-foreground font-medium">vs</div>
+              <div className={`text-4xl font-bold font-mono mt-1 ${isTied ? 'text-muted-foreground' : 'text-primary'} group-hover:scale-110 transition-transform duration-200`}>
+                {game.home_score ?? 0}
+              </div>
+
+              {/* Score Differential */}
+              {!isTied && (
+                <div className={`text-xs mt-2 ${isAwayWinning ? 'text-green-600' : 'text-red-600'}`}>
+                  {Math.abs(getScoreDifferential()) > 0 && `+${Math.abs(getScoreDifferential())}`}
+                </div>
+              )}
+            </div>
+
+            {/* Home Team */}
+            <div className="flex-1">
+              <div className="flex items-center gap-4 mb-3 justify-end">
+                <div>
+                  <div className={`text-xl font-bold text-right group-hover:text-primary transition-colors duration-200 ${isHomeWinning ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`}>
+                    {game.home_team?.city ? `${game.home_team.city} ` : ''}{game.home_team?.name}
+                  </div>
+                  {game.home_team?.record && (
+                    <div className="text-xs text-muted-foreground text-right">
+                    Record: {game.home_team.record}
+                  </div>
+                )}
+                {game.home_team?.abbreviation && (
+                  <Badge variant="secondary" className="text-xs mt-1 ml-auto">
+                    {game.home_team.abbreviation}
+                  </Badge>
+                )}
+              </div>
+              <div className="relative">
+                <TeamLogo
+                  teamName={game.home_team?.name || ''}
+                  league={game.sport || 'NBA'}
+                  alt={`${game.home_team?.name || 'Home Team'} logo`}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 rounded-xl shadow-md group-hover:scale-110 transition-transform duration-200"
+                />
+                {game.possession === game.home_team?.abbreviation && (
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                    <span className="text-xs text-white">⚡</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+              {/* Home Team Stats */}
+              {game.home_team_stats && (
+                <div className="grid grid-cols-3 gap-2 text-xs bg-muted/30 rounded-lg p-2">
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.home_team_stats.points || 0}</div>
+                    <div className="text-muted-foreground">PTS</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.home_team_stats.rebounds || 0}</div>
+                    <div className="text-muted-foreground">REB</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-semibold text-primary">{game.home_team_stats.assists || 0}</div>
+                    <div className="text-muted-foreground">AST</div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-      </div>
-      <div className="text-right">
-        {game.home_score !== null && game.away_score !== null ? (
-          <div className="font-mono text-2xl font-bold text-primary">
-            {game.away_score} - {game.home_score}
+
+        {/* Additional Game Info - Same for both layouts */}
+        <div className="mt-4 pt-4 border-t border-border/30">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            {game.venue && (
+              <div className="flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {game.venue}
+              </div>
+            )}
+            {game.broadcast && (
+              <div className="flex items-center gap-1">
+                <span>📺 {game.broadcast}</span>
+              </div>
+            )}
+            {game.attendance && (
+              <div className="flex items-center gap-1">
+                <span>👥 {game.attendance.toLocaleString()} fans</span>
+              </div>
+            )}
           </div>
-        ) : (
-          <Badge variant="destructive" className="animate-pulse">
-            In Progress
-          </Badge>
-        )}
-      </div>
-    </div>
+
+          {/* Last Play */}
+          {game.last_play && (
+            <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-950/30 rounded-md border border-amber-200 dark:border-amber-800">
+              <div className="text-xs font-medium text-amber-800 dark:text-amber-200">
+                🔄 Last Play: {game.last_play}
+              </div>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

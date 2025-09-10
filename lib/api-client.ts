@@ -28,8 +28,46 @@ export interface Game {
   away_score?: number
   status: string
   venue?: string
-  home_team?: { name: string; abbreviation?: string }
-  away_team?: { name: string; abbreviation?: string }
+  league?: string
+  sport?: string
+  broadcast?: string
+  attendance?: number
+  game_time?: string
+  time_remaining?: string
+  quarter?: number
+  possession?: string
+  last_play?: string
+  home_team_stats?: GameStats
+  away_team_stats?: GameStats
+  home_team?: {
+    name: string
+    abbreviation?: string
+    record?: string
+    logo_url?: string
+    city?: string
+  }
+  away_team?: {
+    name: string
+    abbreviation?: string
+    record?: string
+    logo_url?: string
+    city?: string
+  }
+}
+
+export interface GameStats {
+  points?: number
+  rebounds?: number
+  assists?: number
+  steals?: number
+  blocks?: number
+  turnovers?: number
+  field_goals_made?: number
+  field_goals_attempted?: number
+  three_points_made?: number
+  three_points_attempted?: number
+  free_throws_made?: number
+  free_throws_attempted?: number
 }
 
 export interface Prediction {
