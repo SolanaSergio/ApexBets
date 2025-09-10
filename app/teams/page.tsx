@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Users, Search, Filter, Trophy, TrendingUp, Target, Calendar, MapPin } from "lucide-react"
+import { TeamLogo } from "@/components/ui/sports-image"
 
 export default function TeamsPage() {
   return (
@@ -121,7 +122,6 @@ function TeamsOverviewSection() {
       abbreviation: "LAL",
       city: "Los Angeles",
       league: "NBA",
-      logo: "/placeholder-logo.png",
       wins: 25,
       losses: 15,
       winRate: 0.625,
@@ -137,7 +137,6 @@ function TeamsOverviewSection() {
       abbreviation: "GSW",
       city: "San Francisco",
       league: "NBA",
-      logo: "/placeholder-logo.png",
       wins: 22,
       losses: 18,
       winRate: 0.55,
@@ -153,7 +152,6 @@ function TeamsOverviewSection() {
       abbreviation: "BOS",
       city: "Boston",
       league: "NBA",
-      logo: "/placeholder-logo.png",
       wins: 28,
       losses: 12,
       winRate: 0.7,
@@ -178,9 +176,7 @@ function TeamsOverviewSection() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                    <span className="text-lg font-bold text-primary">{team.abbreviation}</span>
-                  </div>
+                  <TeamLogo teamName={team.name} alt={team.abbreviation} width={48} height={48} className="rounded-full" />
                   <div>
                     <CardTitle className="text-lg">{team.name}</CardTitle>
                     <p className="text-sm text-muted-foreground">{team.city}</p>
@@ -295,9 +291,7 @@ function StandingsSection() {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                          <span className="text-sm font-bold">{team.team.split(' ').map(w => w[0]).join('')}</span>
-                        </div>
+                        <TeamLogo teamName={team.team} alt={team.team.split(' ')[0]} width={32} height={32} className="rounded-full" />
                         <span className="font-medium">{team.team}</span>
                       </div>
                     </td>

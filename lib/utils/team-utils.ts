@@ -3,79 +3,15 @@
  * Centralized functions for team-related operations
  */
 
+import { getTeamLogoUrl as getTeamLogoFromService, getPlayerPhotoUrl as getPlayerPhotoFromService } from '@/lib/services/image-service'
+
+// Re-export the enhanced functions from image service
 export const getTeamLogoUrl = (teamName: string): string => {
-  const teamMap: Record<string, string> = {
-    // NBA Teams
-    'Lakers': 'LAL',
-    'Warriors': 'GSW', 
-    'Celtics': 'BOS', 
-    'Heat': 'MIA', 
-    'Bulls': 'CHI',
-    'Knicks': 'NYK', 
-    'Nets': 'BKN', 
-    '76ers': 'PHI', 
-    'Raptors': 'TOR', 
-    'Bucks': 'MIL',
-    'Pacers': 'IND', 
-    'Cavaliers': 'CLE', 
-    'Pistons': 'DET', 
-    'Magic': 'ORL', 
-    'Hawks': 'ATL',
-    'Hornets': 'CHA', 
-    'Wizards': 'WAS', 
-    'Mavericks': 'DAL', 
-    'Spurs': 'SAS', 
-    'Rockets': 'HOU',
-    'Grizzlies': 'MEM', 
-    'Pelicans': 'NOP', 
-    'Thunder': 'OKC', 
-    'Nuggets': 'DEN', 
-    'Trail Blazers': 'POR',
-    'Jazz': 'UTA', 
-    'Timberwolves': 'MIN', 
-    'Suns': 'PHX', 
-    'Kings': 'SAC', 
-    'Clippers': 'LAC',
-    
-    // Alternative names
-    'Los Angeles Lakers': 'LAL',
-    'Golden State Warriors': 'GSW',
-    'Boston Celtics': 'BOS',
-    'Miami Heat': 'MIA',
-    'Chicago Bulls': 'CHI',
-    'New York Knicks': 'NYK',
-    'Brooklyn Nets': 'BKN',
-    'Philadelphia 76ers': 'PHI',
-    'Toronto Raptors': 'TOR',
-    'Milwaukee Bucks': 'MIL',
-    'Indiana Pacers': 'IND',
-    'Cleveland Cavaliers': 'CLE',
-    'Detroit Pistons': 'DET',
-    'Orlando Magic': 'ORL',
-    'Atlanta Hawks': 'ATL',
-    'Charlotte Hornets': 'CHA',
-    'Washington Wizards': 'WAS',
-    'Dallas Mavericks': 'DAL',
-    'San Antonio Spurs': 'SAS',
-    'Houston Rockets': 'HOU',
-    'Memphis Grizzlies': 'MEM',
-    'New Orleans Pelicans': 'NOP',
-    'Oklahoma City Thunder': 'OKC',
-    'Denver Nuggets': 'DEN',
-    'Portland Trail Blazers': 'POR',
-    'Utah Jazz': 'UTA',
-    'Minnesota Timberwolves': 'MIN',
-    'Phoenix Suns': 'PHX',
-    'Sacramento Kings': 'SAC',
-    'Los Angeles Clippers': 'LAC'
-  }
-  
-  const abbreviation = teamMap[teamName] || 'NBA'
-  return `https://cdn.nba.com/logos/nba/${abbreviation}/global/L/logo.svg`
+  return getTeamLogoFromService(teamName, 'NBA')
 }
 
 export const getPlayerPhotoUrl = (playerId: number): string => {
-  return `https://cdn.nba.com/headshots/nba/latest/260x190/${playerId}.png`
+  return getPlayerPhotoFromService(playerId, 'NBA')
 }
 
 export const getTeamColors = (teamName: string): { primary: string; secondary: string } => {

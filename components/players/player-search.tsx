@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieTeam } from "@/lib/sports-apis"
 import { cn } from "@/lib/utils"
-import { getTeamLogoUrl, getPlayerPhotoUrl } from "@/lib/utils/team-utils"
+import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
 interface PlayerSearchProps {
   onPlayerSelect?: (player: BallDontLiePlayer) => void
@@ -194,15 +194,13 @@ export function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerSearchPro
                     onClick={() => handlePlayerSelect(player)}
                   >
                     <div className="flex items-center space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage 
-                          src={getPlayerPhotoUrl(player.id)}
-                          alt={`${player.first_name} ${player.last_name}`}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {getPlayerInitials(player)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PlayerPhoto 
+                        playerId={player.id}
+                        alt={`${player.first_name} ${player.last_name}`}
+                        width={40}
+                        height={40}
+                        className="h-10 w-10 rounded-full"
+                      />
                       <div>
                         <div className="font-medium">
                           {player.first_name} {player.last_name}
@@ -212,13 +210,12 @@ export function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerSearchPro
                             {player.position}
                           </Badge>
                             <span className="flex items-center gap-1">
-                              <img 
-                                src={getTeamLogoUrl(player.team.name)} 
+                              <TeamLogo 
+                                teamName={player.team.name} 
                                 alt={player.team.name}
+                                width={16}
+                                height={16}
                                 className="h-4 w-4"
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none'
-                                }}
                               />
                               {player.team.name}
                             </span>
@@ -250,15 +247,13 @@ export function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerSearchPro
           <div className="mt-4 p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <Avatar className="h-12 w-12">
-                  <AvatarImage 
-                    src={getPlayerPhotoUrl(selectedPlayer.id)}
-                    alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
-                  />
-                  <AvatarFallback>
-                    {getPlayerInitials(selectedPlayer)}
-                  </AvatarFallback>
-                </Avatar>
+                <PlayerPhoto 
+                  playerId={selectedPlayer.id}
+                  alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                  width={48}
+                  height={48}
+                  className="h-12 w-12 rounded-full"
+                />
                 <div>
                   <div className="font-semibold text-lg">
                     {selectedPlayer.first_name} {selectedPlayer.last_name}
@@ -268,13 +263,12 @@ export function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerSearchPro
                       {selectedPlayer.position}
                     </Badge>
                     <span className="flex items-center gap-1">
-                      <img 
-                        src={getTeamLogoUrl(selectedPlayer.team.name)} 
+                      <TeamLogo 
+                        teamName={selectedPlayer.team.name} 
                         alt={selectedPlayer.team.name}
+                        width={16}
+                        height={16}
                         className="h-4 w-4"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
                       />
                       {selectedPlayer.team.name}
                     </span>

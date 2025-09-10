@@ -21,7 +21,7 @@ import {
 } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieStats } from "@/lib/sports-apis"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
-import { getTeamLogoUrl, getPlayerPhotoUrl } from "@/lib/utils/team-utils"
+import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
 interface PlayerStatsProps {
   selectedPlayer?: BallDontLiePlayer | null
@@ -175,15 +175,13 @@ export function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage 
-                  src={getPlayerPhotoUrl(selectedPlayer.id)}
-                  alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
-                />
-                <AvatarFallback className="text-lg">
-                  {getPlayerInitials(selectedPlayer)}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerPhoto 
+                playerId={selectedPlayer.id}
+                alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                width={64}
+                height={64}
+                className="h-16 w-16 rounded-full"
+              />
               <div>
                 <h2 className="text-2xl font-bold">
                   {selectedPlayer.first_name} {selectedPlayer.last_name}
@@ -191,13 +189,12 @@ export function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Badge variant="secondary">{selectedPlayer.position}</Badge>
                   <span className="flex items-center gap-1">
-                    <img 
-                      src={getTeamLogoUrl(selectedPlayer.team.name)} 
+                    <TeamLogo 
+                      teamName={selectedPlayer.team.name} 
                       alt={selectedPlayer.team.name}
+                      width={16}
+                      height={16}
                       className="h-4 w-4"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none'
-                      }}
                     />
                     {selectedPlayer.team.name}
                   </span>

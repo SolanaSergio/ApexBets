@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieStats } from "@/lib/sports-apis"
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts"
-import { getTeamLogoUrl, getPlayerPhotoUrl } from "@/lib/utils/team-utils"
+import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
 interface PlayerComparisonProps {
   selectedPlayer?: BallDontLiePlayer | null
@@ -179,15 +179,13 @@ export function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
           {/* Player 1 (Selected) */}
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center space-x-3">
-              <Avatar className="h-12 w-12">
-                <AvatarImage 
-                  src={getPlayerPhotoUrl(selectedPlayer.id)}
-                  alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
-                />
-                <AvatarFallback>
-                  {getPlayerInitials(selectedPlayer)}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerPhoto 
+                playerId={selectedPlayer.id}
+                alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-full"
+              />
               <div>
                 <div className="font-semibold">
                   {selectedPlayer.first_name} {selectedPlayer.last_name}
@@ -195,13 +193,12 @@ export function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <Badge variant="secondary">{selectedPlayer.position}</Badge>
                     <span className="flex items-center gap-1">
-                      <img 
-                        src={getTeamLogoUrl(selectedPlayer.team.name)} 
+                      <TeamLogo 
+                        teamName={selectedPlayer.team.name} 
                         alt={selectedPlayer.team.name}
+                        width={16}
+                        height={16}
                         className="h-4 w-4"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
                       />
                       {selectedPlayer.team.name}
                     </span>
@@ -254,15 +251,13 @@ export function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
                     }}
                   >
                     <div className="flex items-center space-x-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage 
-                          src={getPlayerPhotoUrl(player.id)}
-                          alt={`${player.first_name} ${player.last_name}`}
-                        />
-                        <AvatarFallback className="text-xs">
-                          {getPlayerInitials(player)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <PlayerPhoto 
+                        playerId={player.id}
+                        alt={`${player.first_name} ${player.last_name}`}
+                        width={32}
+                        height={32}
+                        className="h-8 w-8 rounded-full"
+                      />
                       <div>
                         <div className="font-medium text-sm">
                           {player.first_name} {player.last_name}
@@ -281,15 +276,13 @@ export function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
             {comparisonPlayer && (
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                 <div className="flex items-center space-x-3">
-                  <Avatar className="h-12 w-12">
-                    <AvatarImage 
-                      src={getPlayerPhotoUrl(comparisonPlayer.id)}
-                      alt={`${comparisonPlayer.first_name} ${comparisonPlayer.last_name}`}
-                    />
-                    <AvatarFallback>
-                      {getPlayerInitials(comparisonPlayer)}
-                    </AvatarFallback>
-                  </Avatar>
+                  <PlayerPhoto 
+                    playerId={comparisonPlayer.id}
+                    alt={`${comparisonPlayer.first_name} ${comparisonPlayer.last_name}`}
+                    width={48}
+                    height={48}
+                    className="h-12 w-12 rounded-full"
+                  />
                   <div>
                     <div className="font-semibold">
                       {comparisonPlayer.first_name} {comparisonPlayer.last_name}
@@ -297,13 +290,12 @@ export function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Badge variant="secondary">{comparisonPlayer.position}</Badge>
                       <span className="flex items-center gap-1">
-                        <img 
-                          src={getTeamLogoUrl(comparisonPlayer.team.name)} 
+                        <TeamLogo 
+                          teamName={comparisonPlayer.team.name} 
                           alt={comparisonPlayer.team.name}
+                          width={16}
+                          height={16}
                           className="h-4 w-4"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                          }}
                         />
                         {comparisonPlayer.team.name}
                       </span>

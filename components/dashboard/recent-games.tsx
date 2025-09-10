@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { apiClient, type Game } from "@/lib/api-client"
 import { Clock, Trophy, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
-import { getTeamLogoUrl } from "@/lib/utils/team-utils"
+import { TeamLogo } from "@/components/ui/sports-image"
 
 export function RecentGames() {
   const [recentGames, setRecentGames] = useState<Game[]>([])
@@ -86,13 +86,12 @@ function RecentGameCard({ game }: { game: Game }) {
           <div className="flex items-center space-x-3">
             {/* Away Team */}
             <div className="flex items-center space-x-2">
-              <img 
-                src={getTeamLogoUrl(game.away_team?.name || '')} 
-                alt={game.away_team?.name}
-                className="h-6 w-6 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
+              <TeamLogo 
+                teamName={game.away_team?.name || ''} 
+                alt={game.away_team?.name || 'Away Team'}
+                width={24}
+                height={24}
+                className="h-6 w-6"
               />
               <span className={`font-medium text-sm ${!homeWon ? "stats-highlight" : ""}`}>
                 {game.away_team?.name}
@@ -103,13 +102,12 @@ function RecentGameCard({ game }: { game: Game }) {
             
             {/* Home Team */}
             <div className="flex items-center space-x-2">
-              <img 
-                src={getTeamLogoUrl(game.home_team?.name || '')} 
-                alt={game.home_team?.name}
-                className="h-6 w-6 object-contain"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none'
-                }}
+              <TeamLogo 
+                teamName={game.home_team?.name || ''} 
+                alt={game.home_team?.name || 'Home Team'}
+                width={24}
+                height={24}
+                className="h-6 w-6"
               />
               <span className={`font-medium text-sm ${homeWon ? "stats-highlight" : ""}`}>
                 {game.home_team?.name}

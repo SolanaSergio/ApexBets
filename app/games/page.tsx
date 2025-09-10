@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp } from "lucide-react"
+import { TeamLogo } from "@/components/ui/sports-image"
 
 export default function GamesPage() {
   return (
@@ -115,8 +116,8 @@ function LiveGamesSection() {
   const liveGames = [
     {
       id: "1",
-      homeTeam: { name: "Lakers", abbreviation: "LAL", logo: "/placeholder-logo.png" },
-      awayTeam: { name: "Warriors", abbreviation: "GSW", logo: "/placeholder-logo.png" },
+      homeTeam: { name: "Lakers", abbreviation: "LAL" },
+      awayTeam: { name: "Warriors", abbreviation: "GSW" },
       homeScore: 98,
       awayScore: 95,
       quarter: "4th",
@@ -126,8 +127,8 @@ function LiveGamesSection() {
     },
     {
       id: "2",
-      homeTeam: { name: "Celtics", abbreviation: "BOS", logo: "/placeholder-logo.png" },
-      awayTeam: { name: "Heat", abbreviation: "MIA", logo: "/placeholder-logo.png" },
+      homeTeam: { name: "Celtics", abbreviation: "BOS" },
+      awayTeam: { name: "Heat", abbreviation: "MIA" },
       homeScore: 112,
       awayScore: 108,
       quarter: "3rd",
@@ -165,17 +166,19 @@ function LiveGamesSection() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
+                      <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={32} height={32} className="mx-auto mb-2" />
                       <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
                       <div className="text-2xl font-bold">{game.awayScore}</div>
                     </div>
-                    
+
                     <div className="text-center">
                       <div className="text-xs text-muted-foreground mb-1">VS</div>
                       <div className="text-sm font-medium">{game.quarter}</div>
                       <div className="text-xs text-muted-foreground">{game.timeRemaining}</div>
                     </div>
-                    
+
                     <div className="text-center">
+                      <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={32} height={32} className="mx-auto mb-2" />
                       <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
                       <div className="text-2xl font-bold">{game.homeScore}</div>
                     </div>
@@ -203,16 +206,16 @@ function UpcomingGamesSection() {
   const upcomingGames = [
     {
       id: "3",
-      homeTeam: { name: "Knicks", abbreviation: "NYK", logo: "/placeholder-logo.png" },
-      awayTeam: { name: "Nets", abbreviation: "BKN", logo: "/placeholder-logo.png" },
+      homeTeam: { name: "Knicks", abbreviation: "NYK" },
+      awayTeam: { name: "Nets", abbreviation: "BKN" },
       gameDate: "2024-01-15T20:00:00Z",
       status: "scheduled",
       venue: "Madison Square Garden"
     },
     {
       id: "4",
-      homeTeam: { name: "Bulls", abbreviation: "CHI", logo: "/placeholder-logo.png" },
-      awayTeam: { name: "76ers", abbreviation: "PHI", logo: "/placeholder-logo.png" },
+      homeTeam: { name: "Bulls", abbreviation: "CHI" },
+      awayTeam: { name: "76ers", abbreviation: "PHI" },
       gameDate: "2024-01-15T22:30:00Z",
       status: "scheduled",
       venue: "United Center"
@@ -233,10 +236,11 @@ function UpcomingGamesSection() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
                   <div className="text-center">
+                    <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
                     <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
                     <div className="font-semibold">{game.awayTeam.name}</div>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground mb-1">VS</div>
                     <div className="text-sm font-medium">
@@ -246,8 +250,9 @@ function UpcomingGamesSection() {
                       {new Date(game.gameDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
+                    <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
                     <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
                     <div className="font-semibold">{game.homeTeam.name}</div>
                   </div>
@@ -271,8 +276,8 @@ function CompletedGamesSection() {
   const completedGames = [
     {
       id: "5",
-      homeTeam: { name: "Lakers", abbreviation: "LAL", logo: "/placeholder-logo.png" },
-      awayTeam: { name: "Warriors", abbreviation: "GSW", logo: "/placeholder-logo.png" },
+      homeTeam: { name: "Lakers", abbreviation: "LAL" },
+      awayTeam: { name: "Warriors", abbreviation: "GSW" },
       homeScore: 120,
       awayScore: 115,
       status: "completed",
@@ -295,18 +300,20 @@ function CompletedGamesSection() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-6">
                   <div className="text-center">
+                    <TeamLogo teamName={game.awayTeam.name} alt={game.awayTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
                     <div className="text-sm text-muted-foreground mb-1">{game.awayTeam.abbreviation}</div>
                     <div className="text-2xl font-bold">{game.awayScore}</div>
                   </div>
-                  
+
                   <div className="text-center">
                     <div className="text-xs text-muted-foreground mb-1">FINAL</div>
                     <div className="text-sm font-medium">
                       {new Date(game.gameDate).toLocaleDateString()}
                     </div>
                   </div>
-                  
+
                   <div className="text-center">
+                    <TeamLogo teamName={game.homeTeam.name} alt={game.homeTeam.abbreviation} width={24} height={24} className="mx-auto mb-1" />
                     <div className="text-sm text-muted-foreground mb-1">{game.homeTeam.abbreviation}</div>
                     <div className="text-2xl font-bold">{game.homeScore}</div>
                   </div>

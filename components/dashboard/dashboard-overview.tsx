@@ -8,7 +8,7 @@ import { apiClient, type Game } from "@/lib/api-client"
 import { Calendar, Clock, MapPin, RefreshCw } from "lucide-react"
 import { format } from "date-fns"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
-import { getTeamLogoUrl } from "@/lib/utils/team-utils"
+import { TeamLogo } from "@/components/ui/sports-image"
 
 export function DashboardOverview() {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
@@ -167,21 +167,23 @@ function LiveGameCard({ game }: { game: Game }) {
         <div className="live-indicator h-3 w-3 rounded-full animate-pulse"></div>
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
-            <img 
-              src={getTeamLogoUrl(game.away_team?.name || '')} 
-              alt={game.away_team?.name}
-              className="h-6 w-6 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            <TeamLogo 
+              teamName={game.away_team?.name || ''} 
+              alt={game.away_team?.name || 'Away Team'}
+              width={24}
+              height={24}
+              className="h-6 w-6"
             />
             <span className="font-semibold text-lg group-hover:text-primary transition-colors">
               {game.away_team?.name}
             </span>
             <span className="text-muted-foreground">@</span>
-            <img 
-              src={getTeamLogoUrl(game.home_team?.name || '')} 
-              alt={game.home_team?.name}
-              className="h-6 w-6 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            <TeamLogo 
+              teamName={game.home_team?.name || ''} 
+              alt={game.home_team?.name || 'Home Team'}
+              width={24}
+              height={24}
+              className="h-6 w-6"
             />
             <span className="font-semibold text-lg group-hover:text-primary transition-colors">
               {game.home_team?.name}
@@ -223,21 +225,23 @@ function UpcomingGameCard({ game }: { game: Game }) {
         </div>
         <div className="flex-1">
           <div className="flex items-center space-x-3 mb-2">
-            <img 
-              src={getTeamLogoUrl(game.away_team?.name || '')} 
-              alt={game.away_team?.name}
-              className="h-6 w-6 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            <TeamLogo 
+              teamName={game.away_team?.name || ''} 
+              alt={game.away_team?.name || 'Away Team'}
+              width={24}
+              height={24}
+              className="h-6 w-6"
             />
             <span className="font-semibold text-lg group-hover:text-primary transition-colors">
               {game.away_team?.name}
             </span>
             <span className="text-muted-foreground">@</span>
-            <img 
-              src={getTeamLogoUrl(game.home_team?.name || '')} 
-              alt={game.home_team?.name}
-              className="h-6 w-6 object-contain"
-              onError={(e) => { e.currentTarget.style.display = 'none' }}
+            <TeamLogo 
+              teamName={game.home_team?.name || ''} 
+              alt={game.home_team?.name || 'Home Team'}
+              width={24}
+              height={24}
+              className="h-6 w-6"
             />
             <span className="font-semibold text-lg group-hover:text-primary transition-colors">
               {game.home_team?.name}
