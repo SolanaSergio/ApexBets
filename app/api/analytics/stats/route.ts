@@ -9,17 +9,37 @@ export async function GET(request: NextRequest) {
     
     if (useExternalApi) {
       // Use enhanced analytics service
-      const overview = await analyticsService.getAnalyticsOverview()
-      const performance = await analyticsService.getPerformanceMetrics()
-      const predictionAccuracy = await analyticsService.getPredictionAccuracy()
-      const valueBettingStats = await analyticsService.getValueBettingStats()
-      
-      return NextResponse.json({
-        overview,
-        performance,
-        predictionAccuracy,
-        valueBettingStats
-      })
+      try {
+        const overview = await analyticsService.getAnalyticsOverview()
+        const performance = await analyticsService.getPerformanceMetrics()
+        const predictionAccuracy = await analyticsService.getPredictionAccuracy()
+        const valueBettingStats = await analyticsService.getValueBettingStats()
+        
+        return NextResponse.json({
+          data: {
+            overview,
+            performance,
+            predictionAccuracy,
+            valueBettingStats
+          },
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "analytics_service"
+          }
+        })
+      } catch (error) {
+        console.error("Analytics service error:", error)
+        return NextResponse.json({
+          data: null,
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "analytics_service",
+            error: "Analytics service unavailable"
+          }
+        })
+      }
     }
 
     // Fallback to Supabase for basic stats
@@ -30,6 +50,9 @@ export async function GET(request: NextRequest) {
 
     // Get total predictions
     const { count: totalPredictions } = await supabase.from("predictions").select("*", { count: "exact", head: true })
+
+    // Get total teams
+    const { count: totalTeams } = await supabase.from("teams").select("*", { count: "exact", head: true })
 
     // Get accuracy statistics
     const { data: accuracyData } = await supabase
@@ -102,6 +125,7 @@ export async function GET(request: NextRequest) {
       data: {
         total_games: totalGames || 0,
         total_predictions: totalPredictions || 0,
+        total_teams: totalTeams || 0,
         accuracy_rate: overallAccuracy,
         recent_performance: {
           accuracy_by_type: accuracyByType,

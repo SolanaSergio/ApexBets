@@ -21,16 +21,16 @@ export async function GET(request: NextRequest) {
         const events = await sportsDBClient.getEventsByDate(date, sport)
         games.push(...events.map((event: any) => ({
           id: event.idEvent,
-          homeTeam: event.strHomeTeam,
-          awayTeam: event.strAwayTeam,
-          date: event.dateEvent,
-          time: event.strTime,
-          status: event.strStatus,
-          homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
-          awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
-          league: event.strLeague,
-          sport: event.strSport,
-          venue: event.strVenue
+          home_team_id: 'external_home',
+          away_team_id: 'external_away',
+          game_date: event.dateEvent + (event.strTime ? 'T' + event.strTime : ''),
+          season: '2024-25',
+          home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
+          away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
+          status: event.strStatus === 'FT' ? 'completed' : event.strStatus === 'LIVE' ? 'in_progress' : 'scheduled',
+          venue: event.strVenue,
+          home_team: { name: event.strHomeTeam, abbreviation: event.strHomeTeam.substring(0, 3).toUpperCase() },
+          away_team: { name: event.strAwayTeam, abbreviation: event.strAwayTeam.substring(0, 3).toUpperCase() }
         })))
       } catch (error) {
         console.error('SportsDB error:', error)
@@ -46,16 +46,16 @@ export async function GET(request: NextRequest) {
           })
           games.push(...nbaGames.data.map((game: any) => ({
             id: game.id.toString(),
-            homeTeam: game.home_team.full_name,
-            awayTeam: game.visitor_team.full_name,
-            date: game.date,
-            time: game.time,
-            status: game.status,
-            homeScore: game.home_team_score,
-            awayScore: game.visitor_team_score,
-            league: 'NBA',
-            sport: 'basketball',
-            venue: undefined
+            home_team_id: 'nba_home',
+            away_team_id: 'nba_away',
+            game_date: game.date + (game.time ? 'T' + game.time : ''),
+            season: game.season.toString(),
+            home_score: game.home_team_score,
+            away_score: game.visitor_team_score,
+            status: game.status === 'Final' ? 'completed' : game.status === 'In Progress' ? 'in_progress' : 'scheduled',
+            venue: undefined,
+            home_team: { name: game.home_team.full_name, abbreviation: game.home_team.abbreviation },
+            away_team: { name: game.visitor_team.full_name, abbreviation: game.visitor_team.abbreviation }
           })))
         } catch (error) {
           console.error('BALLDONTLIE error:', error)

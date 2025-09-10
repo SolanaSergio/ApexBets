@@ -14,31 +14,13 @@ export async function GET(request: NextRequest) {
         const prediction = await predictionService.generatePredictions(gameId)
         
         if (!prediction) {
-          // Return a basic prediction structure if service fails
           return NextResponse.json({
-            data: {
-              gameId,
-              homeTeam: "Unknown",
-              awayTeam: "Unknown",
-              predictions: {
-                homeWinProbability: 0.5,
-                awayWinProbability: 0.5,
-                predictedSpread: 0,
-                predictedTotal: 200,
-                confidence: 0.5
-              },
-              valueBets: [],
-              modelInfo: {
-                name: "Fallback Model",
-                version: "1.0.0",
-                lastTrained: new Date().toISOString(),
-                accuracy: 0.5
-              }
-            },
+            data: null,
             meta: {
               fromCache: false,
               responseTime: 0,
-              source: "fallback_service"
+              source: "prediction_service",
+              error: "No prediction available for this game"
             }
           })
         }
@@ -53,31 +35,13 @@ export async function GET(request: NextRequest) {
         })
       } catch (error) {
         console.error("Prediction generation error:", error)
-        // Return a basic prediction structure on error
         return NextResponse.json({
-          data: {
-            gameId,
-            homeTeam: "Unknown",
-            awayTeam: "Unknown",
-            predictions: {
-              homeWinProbability: 0.5,
-              awayWinProbability: 0.5,
-              predictedSpread: 0,
-              predictedTotal: 200,
-              confidence: 0.5
-            },
-            valueBets: [],
-            modelInfo: {
-              name: "Error Fallback Model",
-              version: "1.0.0",
-              lastTrained: new Date().toISOString(),
-              accuracy: 0.5
-            }
-          },
+          data: null,
           meta: {
             fromCache: false,
             responseTime: 0,
-            source: "error_fallback"
+            source: "prediction_service",
+            error: "Failed to generate prediction"
           }
         })
       }
@@ -146,37 +110,21 @@ export async function POST(request: NextRequest) {
 
       if (error) {
         console.error("Error inserting prediction:", error)
-        // Return a mock prediction if database fails
-        const mockPrediction = {
-          id: `pred_${Date.now()}`,
-          game_id: predictionData.game_id,
-          predicted_winner: predictionData.predicted_winner,
-          confidence: predictionData.confidence || 0.5,
-          prediction_type: predictionData.prediction_type || 'winner',
-          reasoning: predictionData.reasoning || 'AI-generated prediction',
-          status: predictionData.status || 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-        return NextResponse.json({ success: true, data: mockPrediction })
+        return NextResponse.json({ 
+          success: false, 
+          error: "Failed to create prediction",
+          details: error.message 
+        }, { status: 500 })
       }
 
       return NextResponse.json({ success: true, data: prediction })
     } catch (dbError) {
       console.error("Database error:", dbError)
-      // Return a mock prediction if database is unavailable
-      const mockPrediction = {
-        id: `pred_${Date.now()}`,
-        game_id: predictionData.game_id,
-        predicted_winner: predictionData.predicted_winner,
-        confidence: predictionData.confidence || 0.5,
-        prediction_type: predictionData.prediction_type || 'winner',
-        reasoning: predictionData.reasoning || 'AI-generated prediction',
-        status: predictionData.status || 'pending',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-      return NextResponse.json({ success: true, data: mockPrediction })
+      return NextResponse.json({ 
+        success: false, 
+        error: "Database unavailable",
+        details: dbError.message 
+      }, { status: 500 })
     }
   } catch (error) {
     console.error("API Error:", error)

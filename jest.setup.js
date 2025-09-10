@@ -50,11 +50,16 @@ process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
 
 // Use real fetch for API tests, mock for component tests
+const nodeFetch = require('node-fetch')
+
+// Store the original fetch if it exists
 const originalFetch = global.fetch
+
+// Set up fetch mock
 global.fetch = jest.fn().mockImplementation((url, options) => {
-  // For API tests, use real fetch
+  // For API tests, use real fetch (node-fetch)
   if (url.includes('/api/')) {
-    return originalFetch(url, options)
+    return nodeFetch(url, options)
   }
   // For other tests, return a mock response
   return Promise.resolve({

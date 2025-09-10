@@ -59,6 +59,7 @@ export interface Odds {
 export interface AnalyticsStats {
   total_games: number
   total_predictions: number
+  total_teams: number
   accuracy_rate: number
   recent_performance: {
     accuracy_by_type: Record<string, number>
@@ -123,6 +124,9 @@ class ApiClient {
     if (params?.status) searchParams.set("status", params.status)
     if (params?.team_id) searchParams.set("team_id", params.team_id)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
+    
+    // Always use external API for real-time data
+    searchParams.set("external", "true")
 
     const query = searchParams.toString()
     const response = await this.request<{ data: Game[] } | Game[]>(`/games${query ? `?${query}` : ""}`)
