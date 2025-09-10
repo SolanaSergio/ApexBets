@@ -84,9 +84,14 @@ interface BallDontLieResponse<T> {
 }
 
 export class BallDontLieClient {
-  private baseUrl = 'https://www.balldontlie.io/api/v1'
-  private rateLimitDelay = 1000 // 1 second between requests
+  private baseUrl = 'https://api.balldontlie.io/v1'
+  private apiKey: string
+  private rateLimitDelay = 2000 // 2 seconds between requests (free tier: 5 requests per minute)
   private lastRequestTime = 0
+
+  constructor(apiKey: string = '') {
+    this.apiKey = apiKey
+  }
 
   private async rateLimit(): Promise<void> {
     const now = Date.now()
@@ -100,11 +105,28 @@ export class BallDontLieClient {
   private async request<T>(endpoint: string): Promise<T> {
     await this.rateLimit()
     
+    // Check if API key is available
+    if (!this.apiKey || this.apiKey === 'your_balldontlie_api_key' || this.apiKey === '') {
+      throw new Error('BALLDONTLIE API Error: API key not configured. Please set NEXT_PUBLIC_BALLDONTLIE_API_KEY in your environment variables.')
+    }
+    
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`)
+      const headers: HeadersInit = {
+        'Authorization': this.apiKey
+      }
+      
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        headers
+      })
       
       if (!response.ok) {
-        throw new Error(`BALLDONTLIE API Error: ${response.status} ${response.statusText}`)
+        if (response.status === 401) {
+          throw new Error('BALLDONTLIE API Error: 401 Unauthorized - Invalid API key')
+        } else if (response.status === 404) {
+          throw new Error('BALLDONTLIE API Error: 404 Not Found - Endpoint not found')
+        } else {
+          throw new Error(`BALLDONTLIE API Error: ${response.status} ${response.statusText}`)
+        }
       }
 
       const data = await response.json()
@@ -252,4 +274,4 @@ export class BallDontLieClient {
   }
 }
 
-export const ballDontLieClient = new BallDontLieClient()
+export const ballDontLieClient = new BallDontLieClient(process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || '')

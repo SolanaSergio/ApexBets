@@ -13,6 +13,7 @@ interface EnvConfig {
   rapidApiKey: string
   oddsApiKey: string
   sportsDbApiKey: string
+  ballDontLieApiKey: string
   
   // App Configuration
   apiUrl: string
@@ -57,6 +58,7 @@ class EnvValidator {
       rapidApiKey: process.env.NEXT_PUBLIC_RAPIDAPI_KEY || '',
       oddsApiKey: process.env.NEXT_PUBLIC_ODDS_API_KEY || '',
       sportsDbApiKey: process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123',
+      ballDontLieApiKey: process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || '',
       
       // App Configuration
       apiUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
@@ -108,15 +110,15 @@ class EnvValidator {
       }
     })
 
-    // BALLDONTLIE (Free, no key required)
+    // BALLDONTLIE (Requires API key)
     this.apiKeyStatuses.set('balldontlie', {
-      key: 'NONE_REQUIRED',
-      isValid: true,
-      hasValue: true,
+      key: 'NEXT_PUBLIC_BALLDONTLIE_API_KEY',
+      isValid: this.isValidApiKey(this.config.ballDontLieApiKey),
+      hasValue: !!this.config.ballDontLieApiKey,
       rateLimit: {
-        requestsPerMinute: 60,
+        requestsPerMinute: 5, // Free tier: 5 requests per minute
         requestsPerDay: 10000,
-        burstLimit: 10
+        burstLimit: 5
       }
     })
 

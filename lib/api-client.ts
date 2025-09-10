@@ -61,6 +61,7 @@ export interface AnalyticsStats {
   total_predictions: number
   total_teams: number
   accuracy_rate: number
+  recent_predictions: number
   recent_performance: {
     accuracy_by_type: Record<string, number>
     daily_stats: Array<{
@@ -176,7 +177,8 @@ class ApiClient {
 
   // Analytics
   async getAnalyticsStats(): Promise<AnalyticsStats> {
-    return this.request<AnalyticsStats>("/analytics/stats")
+    const response = await this.request<{ data: AnalyticsStats }>("/analytics/stats")
+    return response.data
   }
 
   async getTeamAnalytics(teamId: string): Promise<any> {

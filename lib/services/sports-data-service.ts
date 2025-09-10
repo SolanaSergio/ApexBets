@@ -159,7 +159,11 @@ export class SportsDataService {
             
             games.push(...nbaGames.data.map(this.mapBallDontLieGame))
           } catch (nbaError) {
-            console.warn('BALLDONTLIE API error:', nbaError)
+            if (nbaError.message.includes('API key not configured')) {
+              console.warn('BALLDONTLIE API key not configured - skipping NBA data')
+            } else {
+              console.warn('BALLDONTLIE API error:', nbaError.message)
+            }
             // Continue without NBA data
           }
         }
@@ -231,8 +235,17 @@ export class SportsDataService {
       try {
         // Get NBA teams from BALLDONTLIE
         if (params.sport === 'basketball' || !params.sport) {
-          const nbaTeams = await ballDontLieClient.getTeams()
-          teams.push(...nbaTeams.data.map(this.mapBallDontLieTeam))
+          try {
+            const nbaTeams = await ballDontLieClient.getTeams()
+            teams.push(...nbaTeams.data.map(this.mapBallDontLieTeam))
+          } catch (nbaError) {
+            if (nbaError.message.includes('API key not configured')) {
+              console.warn('BALLDONTLIE API key not configured - skipping NBA teams')
+            } else {
+              console.warn('BALLDONTLIE API error:', nbaError.message)
+            }
+            // Continue without NBA teams
+          }
         }
         
         // Get teams from SportsDB for broader coverage

@@ -22,9 +22,15 @@
     "test:e2e": "node tests/test-runner.js e2e",
     "test:performance": "node tests/test-runner.js performance",
     "test:security": "node tests/test-runner.js security",
+    "test:verification": "node tests/test-runner.js verification",
+    "test:quick": "node tests/test-runner.js quick",
     "test:watch": "jest --config tests/jest.config.js --watch",
     "test:coverage": "jest --config tests/jest.config.js --coverage",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "verify": "node tests/quick-verification.js",
+    "verify:full": "node tests/test-runner.js verification",
+    "verify:status": "node tests/verification-tracker.js status",
+    "verify:report": "node tests/generate-verification-report.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

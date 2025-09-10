@@ -42,6 +42,53 @@ const SPORTS = {
   }
 };
 
+// Helper functions for conference and division mapping
+function getConference(team, league) {
+  if (league === 'NBA') {
+    // NBA teams are in Eastern or Western conference
+    const easternTeams = ['Atlanta Hawks', 'Boston Celtics', 'Brooklyn Nets', 'Charlotte Hornets', 'Chicago Bulls', 'Cleveland Cavaliers', 'Detroit Pistons', 'Indiana Pacers', 'Miami Heat', 'Milwaukee Bucks', 'New York Knicks', 'Orlando Magic', 'Philadelphia 76ers', 'Toronto Raptors', 'Washington Wizards'];
+    return easternTeams.includes(team.strTeam) ? 'Eastern' : 'Western';
+  } else if (league === 'NFL') {
+    // NFL teams are in AFC or NFC
+    const afcTeams = ['Buffalo Bills', 'Miami Dolphins', 'New England Patriots', 'New York Jets', 'Baltimore Ravens', 'Cincinnati Bengals', 'Cleveland Browns', 'Pittsburgh Steelers', 'Houston Texans', 'Indianapolis Colts', 'Jacksonville Jaguars', 'Tennessee Titans', 'Denver Broncos', 'Kansas City Chiefs', 'Las Vegas Raiders', 'Los Angeles Chargers'];
+    return afcTeams.includes(team.strTeam) ? 'AFC' : 'NFC';
+  }
+  return null;
+}
+
+function getDivision(team, league) {
+  if (league === 'NBA') {
+    const divisions = {
+      'Atlantic': ['Boston Celtics', 'Brooklyn Nets', 'New York Knicks', 'Philadelphia 76ers', 'Toronto Raptors'],
+      'Central': ['Chicago Bulls', 'Cleveland Cavaliers', 'Detroit Pistons', 'Indiana Pacers', 'Milwaukee Bucks'],
+      'Southeast': ['Atlanta Hawks', 'Charlotte Hornets', 'Miami Heat', 'Orlando Magic', 'Washington Wizards'],
+      'Northwest': ['Denver Nuggets', 'Minnesota Timberwolves', 'Oklahoma City Thunder', 'Portland Trail Blazers', 'Utah Jazz'],
+      'Pacific': ['Golden State Warriors', 'Los Angeles Clippers', 'Los Angeles Lakers', 'Phoenix Suns', 'Sacramento Kings'],
+      'Southwest': ['Dallas Mavericks', 'Houston Rockets', 'Memphis Grizzlies', 'New Orleans Pelicans', 'San Antonio Spurs']
+    };
+    
+    for (const [division, teams] of Object.entries(divisions)) {
+      if (teams.includes(team.strTeam)) {
+        return division;
+      }
+    }
+  } else if (league === 'NFL') {
+    const divisions = {
+      'East': ['Buffalo Bills', 'Miami Dolphins', 'New England Patriots', 'New York Jets', 'Dallas Cowboys', 'New York Giants', 'Philadelphia Eagles', 'Washington Commanders'],
+      'North': ['Baltimore Ravens', 'Cincinnati Bengals', 'Cleveland Browns', 'Pittsburgh Steelers', 'Chicago Bears', 'Detroit Lions', 'Green Bay Packers', 'Minnesota Vikings'],
+      'South': ['Houston Texans', 'Indianapolis Colts', 'Jacksonville Jaguars', 'Tennessee Titans', 'Atlanta Falcons', 'Carolina Panthers', 'New Orleans Saints', 'Tampa Bay Buccaneers'],
+      'West': ['Denver Broncos', 'Kansas City Chiefs', 'Las Vegas Raiders', 'Los Angeles Chargers', 'Arizona Cardinals', 'Los Angeles Rams', 'San Francisco 49ers', 'Seattle Seahawks']
+    };
+    
+    for (const [division, teams] of Object.entries(divisions)) {
+      if (teams.includes(team.strTeam)) {
+        return division;
+      }
+    }
+  }
+  return null;
+}
+
 async function clearExistingData() {
   console.log('🧹 Clearing existing data...');
   
@@ -103,39 +150,24 @@ async function fetchAndPopulateTeams(sport, leagues) {
       try {
         let leagueTeams = [];
         
-        if (sport === 'basketball' && league === 'NBA') {
-          // Use BallDontLie for NBA teams
-          const nbaData = await fetchBallDontLieData('/teams');
-          if (nbaData && nbaData.data) {
-            leagueTeams = nbaData.data.map(team => ({
-              name: team.full_name,
-              city: team.city,
-              league: 'NBA',
-              sport: 'basketball',
-              abbreviation: team.abbreviation,
-              conference: team.conference,
-              division: team.division,
-              logo_url: team.logo
-            }));
-          }
-        } else {
-          // Use SportsDB for other sports
-          const leaguesData = await fetchSportsDBData(`/search_all_leagues.php?s=${sport}`);
-          const targetLeague = leaguesData?.leagues?.find(l => l.strLeague === league);
-          
-          if (targetLeague) {
-            const teamsData = await fetchSportsDBData(`/lookup_all_teams.php?id=${targetLeague.idLeague}`);
-            if (teamsData?.teams) {
-              leagueTeams = teamsData.teams.map(team => ({
-                name: team.strTeam,
-                city: team.strTeam.split(' ').slice(0, -1).join(' '),
-                league: league,
-                sport: sport,
-                abbreviation: team.strTeamShort,
-                logo_url: team.strTeamBadge
-              }));
-            }
-          }
+        // Use SportsDB for all sports
+        const teamsData = await fetchSportsDBData(`/search_all_teams.php?l=${league}`);
+        if (teamsData?.teams) {
+          leagueTeams = teamsData.teams.map(team => ({
+            name: team.strTeam,
+            city: team.strLocation ? team.strLocation.split(',')[0] : team.strTeam.split(' ').slice(0, -1).join(' '),
+            league: league,
+            sport: sport,
+            abbreviation: team.strTeamShort,
+            logo_url: team.strTeamBadge,
+            conference: getConference(team, league),
+            division: getDivision(team, league),
+            founded_year: parseInt(team.intFormedYear) || null,
+            stadium_name: team.strStadium || null,
+            stadium_capacity: parseInt(team.intStadiumCapacity) || null,
+            primary_color: team.strColour1 || null,
+            secondary_color: team.strColour2 || null
+          }));
         }
         
         teams.push(...leagueTeams);

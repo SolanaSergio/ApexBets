@@ -7,39 +7,37 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const useExternalApi = searchParams.get("external") === "true"
     
+    // For now, skip the complex analytics service to avoid hanging
+    // TODO: Implement proper analytics service with timeout handling
     if (useExternalApi) {
-      // Use enhanced analytics service
-      try {
-        const overview = await analyticsService.getAnalyticsOverview()
-        const performance = await analyticsService.getPerformanceMetrics()
-        const predictionAccuracy = await analyticsService.getPredictionAccuracy()
-        const valueBettingStats = await analyticsService.getValueBettingStats()
-        
-        return NextResponse.json({
-          data: {
-            overview,
-            performance,
-            predictionAccuracy,
-            valueBettingStats
+      return NextResponse.json({
+        data: {
+          overview: {
+            totalGames: 0,
+            totalPredictions: 0,
+            accuracyRate: 0
           },
-          meta: {
-            fromCache: false,
-            responseTime: 0,
-            source: "analytics_service"
+          performance: {
+            recentAccuracy: 0,
+            dailyStats: []
+          },
+          predictionAccuracy: {
+            moneyline: 0,
+            spread: 0,
+            total: 0
+          },
+          valueBettingStats: {
+            opportunitiesFound: 0,
+            averageValue: 0
           }
-        })
-      } catch (error) {
-        console.error("Analytics service error:", error)
-        return NextResponse.json({
-          data: null,
-          meta: {
-            fromCache: false,
-            responseTime: 0,
-            source: "analytics_service",
-            error: "Analytics service unavailable"
-          }
-        })
-      }
+        },
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "analytics_service",
+          note: "Simplified response - full implementation pending"
+        }
+      })
     }
 
     // Fallback to Supabase for basic stats
@@ -52,6 +50,7 @@ export async function GET(request: NextRequest) {
           total_predictions: 0,
           total_teams: 0,
           accuracy_rate: 0,
+          recent_predictions: 0,
           recent_performance: {
             accuracy_by_type: {},
             daily_stats: [],
@@ -142,12 +141,16 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.date.localeCompare(a.date))
 
+    // Calculate recent predictions (last 30 days)
+    const recentPredictionsCount = dailyStatsArray.reduce((sum, day) => sum + day.predictions_made, 0)
+
     return NextResponse.json({
       data: {
         total_games: totalGames || 0,
         total_predictions: totalPredictions || 0,
         total_teams: totalTeams || 0,
         accuracy_rate: overallAccuracy,
+        recent_predictions: recentPredictionsCount,
         recent_performance: {
           accuracy_by_type: accuracyByType,
           daily_stats: dailyStatsArray,

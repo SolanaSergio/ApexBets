@@ -90,14 +90,14 @@ function installDependencies() {
 function runUnitTests() {
   log(`${colors.bright}Running Unit Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=unit', 'Unit tests');
+  const result = runCommand('npx jest --config tests/jest.config.js --testPathPattern=unit', 'Unit tests');
   return result;
 }
 
 function runIntegrationTests() {
   log(`${colors.bright}Running Integration Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=integration', 'Integration tests');
+  const result = runCommand('npx jest --config tests/jest.config.js --testPathPattern=integration', 'Integration tests');
   return result;
 }
 
@@ -111,21 +111,35 @@ function runE2ETests() {
 function runPerformanceTests() {
   log(`${colors.bright}Running Performance Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=performance', 'Performance tests');
+  const result = runCommand('npx jest --config tests/jest.config.js --testPathPattern=performance', 'Performance tests');
   return result;
 }
 
 function runSecurityTests() {
   log(`${colors.bright}Running Security Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('npx jest --config tests/jest.config.simple.js --testPathPattern=security', 'Security tests');
+  const result = runCommand('npx jest --config tests/jest.config.js --testPathPattern=security', 'Security tests');
   return result;
 }
 
 function runAllTests() {
   log(`${colors.bright}Running All Tests (Real Data Only)...${colors.reset}`);
   
-  const result = runCommand('npx jest --config tests/jest.config.simple.js', 'All tests');
+  const result = runCommand('npx jest --config tests/jest.config.js', 'All tests');
+  return result;
+}
+
+function runVerificationTests() {
+  log(`${colors.bright}Running Verification Tests (Real Data Only)...${colors.reset}`);
+  
+  const result = runCommand('npx jest --config tests/jest.config.js --testPathPattern=verification', 'Verification tests');
+  return result;
+}
+
+function runQuickVerification() {
+  log(`${colors.bright}Running Quick Verification (Real Data Only)...${colors.reset}`);
+  
+  const result = runCommand('node tests/quick-verification.js', 'Quick verification');
   return result;
 }
 
@@ -223,6 +237,16 @@ function main() {
       case 'security':
         const securityResult = runSecurityTests();
         results.push({ name: 'Security Tests', ...securityResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'verification':
+        const verificationResult = runVerificationTests();
+        results.push({ name: 'Verification Tests', ...verificationResult, duration: Date.now() - startTime });
+        break;
+        
+      case 'quick':
+        const quickResult = runQuickVerification();
+        results.push({ name: 'Quick Verification', ...quickResult, duration: Date.now() - startTime });
         break;
         
       case 'all':
