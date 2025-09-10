@@ -12,10 +12,14 @@ describe('Teams API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(Array.isArray(data.data)).toBe(true)
 
-      if (data.length > 0) {
-        const team = data[0]
+      if (data.data.length > 0) {
+        const team = data.data[0]
         expect(team).toMatchObject({
           id: expect.any(String),
           name: expect.any(String),
@@ -35,10 +39,13 @@ describe('Teams API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All teams should be basketball teams
-      data.forEach((team: any) => {
+      data.data.forEach((team: any) => {
         expect(team.sport).toBe('basketball')
       })
     })
@@ -48,10 +55,13 @@ describe('Teams API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All teams should be NBA teams
-      data.forEach((team: any) => {
+      data.data.forEach((team: any) => {
         expect(team.league).toBe('NBA')
       })
     })
@@ -62,9 +72,9 @@ describe('Teams API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
+      if (data.data.length > 0) {
         // Check for known NBA teams
-        const teamNames = data.map((team: any) => team.name)
+        const teamNames = data.data.map((team: any) => team.name)
         const knownTeams = ['Lakers', 'Warriors', 'Celtics', 'Bulls', 'Heat', 'Spurs']
         
         const hasKnownTeam = knownTeams.some(knownTeam => 
@@ -82,8 +92,8 @@ describe('Teams API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const team = data[0]
+      if (data.data.length > 0) {
+        const team = data.data[0]
         
         // Check for optional stats fields
         if (team.stats) {
@@ -106,11 +116,14 @@ describe('Teams API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // Results should contain Lakers
-      if (data.length > 0) {
-        const hasLakers = data.some((team: any) => 
+      if (data.data.length > 0) {
+        const hasLakers = data.data.some((team: any) => 
           team.name.toLowerCase().includes('lakers')
         )
         expect(hasLakers).toBe(true)
@@ -123,7 +136,7 @@ describe('Teams API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((team: any) => {
+      data.data.forEach((team: any) => {
         // Required fields
         expect(team.id).toBeDefined()
         expect(team.name).toBeDefined()

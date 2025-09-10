@@ -30,9 +30,14 @@ export async function GET(request: NextRequest) {
     }
     
     return NextResponse.json({
-      games: liveGames,
-      total: liveGames.length,
-      lastUpdated: new Date().toISOString()
+      data: liveGames,
+      meta: {
+        fromCache: false,
+        responseTime: 0,
+        source: "sportsdb",
+        total: liveGames.length,
+        lastUpdated: new Date().toISOString()
+      }
     })
   } catch (error) {
     console.error("API Error:", error)

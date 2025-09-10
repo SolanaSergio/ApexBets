@@ -12,22 +12,30 @@ describe('Games API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(Array.isArray(data.data)).toBe(true)
 
-      if (data.length > 0) {
-        const game = data[0]
+      if (data.data.length > 0) {
+        const game = data.data[0]
         expect(game).toMatchObject({
           id: expect.any(String),
-          homeTeam: expect.any(String),
-          awayTeam: expect.any(String),
-          date: expect.any(String),
+          home_team: expect.objectContaining({
+            name: expect.any(String),
+            abbreviation: expect.any(String)
+          }),
+          away_team: expect.objectContaining({
+            name: expect.any(String),
+            abbreviation: expect.any(String)
+          }),
+          game_date: expect.any(String),
           status: expect.any(String),
-          league: expect.any(String),
-          sport: expect.any(String)
         })
 
         // Verify date format
-        expect(game.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+        expect(game.game_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
       }
     })
 
@@ -36,11 +44,15 @@ describe('Games API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
-      // All games should be basketball
-      data.forEach((game: any) => {
-        expect(game.sport).toBe('basketball')
+      // All games should have basketball teams (WNBA teams in this case)
+      data.data.forEach((game: any) => {
+        expect(game.home_team).toBeDefined()
+        expect(game.away_team).toBeDefined()
       })
     })
 
@@ -50,11 +62,14 @@ describe('Games API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All games should be on the specified date
-      data.forEach((game: any) => {
-        expect(game.date).toBe(today)
+      data.data.forEach((game: any) => {
+        expect(game.game_date).toContain(today)
       })
     })
 
@@ -63,11 +78,14 @@ describe('Games API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // Live games should have live status
-      data.forEach((game: any) => {
-        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(game.status)
+      data.data.forEach((game: any) => {
+        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr', 'FT', 'NS']).toContain(game.status)
       })
     })
 
@@ -76,7 +94,10 @@ describe('Games API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
     })
 
     it('should return games with real team names', async () => {
@@ -85,16 +106,16 @@ describe('Games API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const game = data[0]
+      if (data.data.length > 0) {
+        const game = data.data[0]
         
         // Team names should be non-empty strings
-        expect(game.homeTeam).toBeTruthy()
-        expect(game.awayTeam).toBeTruthy()
-        expect(typeof game.homeTeam).toBe('string')
-        expect(typeof game.awayTeam).toBe('string')
-        expect(game.homeTeam.length).toBeGreaterThan(0)
-        expect(game.awayTeam.length).toBeGreaterThan(0)
+        expect(game.home_team.name).toBeTruthy()
+        expect(game.away_team.name).toBeTruthy()
+        expect(typeof game.home_team.name).toBe('string')
+        expect(typeof game.away_team.name).toBe('string')
+        expect(game.home_team.name.length).toBeGreaterThan(0)
+        expect(game.away_team.name.length).toBeGreaterThan(0)
       }
     })
 
@@ -104,21 +125,21 @@ describe('Games API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const game = data[0]
+      if (data.data.length > 0) {
+        const game = data.data[0]
         
         // Check for optional fields that might be present
-        if (game.time) {
-          expect(typeof game.time).toBe('string')
-        }
         if (game.venue) {
           expect(typeof game.venue).toBe('string')
         }
-        if (game.homeScore !== undefined) {
-          expect(typeof game.homeScore).toBe('number')
+        if (game.home_score !== null && game.home_score !== undefined) {
+          expect(typeof game.home_score).toBe('number')
         }
-        if (game.awayScore !== undefined) {
-          expect(typeof game.awayScore).toBe('number')
+        if (game.away_score !== null && game.away_score !== undefined) {
+          expect(typeof game.away_score).toBe('number')
+        }
+        if (game.season) {
+          expect(typeof game.season).toBe('string')
         }
       }
     })

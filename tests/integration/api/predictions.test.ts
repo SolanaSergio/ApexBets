@@ -12,10 +12,14 @@ describe('Predictions API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(Array.isArray(data.data)).toBe(true)
 
-      if (data.length > 0) {
-        const prediction = data[0]
+      if (data.data.length > 0) {
+        const prediction = data.data[0]
         expect(prediction).toMatchObject({
           id: expect.any(String),
           game_id: expect.any(String),
@@ -37,18 +41,19 @@ describe('Predictions API Integration Tests', () => {
       const gamesResponse = await fetch(`${baseUrl}/games`)
       const games = await gamesResponse.json()
       
-      if (games.length > 0) {
-        const gameId = games[0].id
+      if (games.data && games.data.length > 0) {
+        const gameId = games.data[0].id
         const response = await fetch(`${baseUrl}/predictions?game_id=${gameId}`)
         const data = await response.json()
 
         expect(response.status).toBe(200)
-        expect(Array.isArray(data)).toBe(true)
-
-        // All predictions should be for the specified game
-        data.forEach((prediction: any) => {
-          expect(prediction.game_id).toBe(gameId)
+        expect(data).toMatchObject({
+          data: expect.any(Object),
+          meta: expect.any(Object)
         })
+
+        // Should be a single prediction object
+        expect(data.data.game_id).toBe(gameId)
       }
     })
 
@@ -57,10 +62,13 @@ describe('Predictions API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All predictions should be spread predictions
-      data.forEach((prediction: any) => {
+      data.data.forEach((prediction: any) => {
         expect(prediction.prediction_type).toBe('spread')
       })
     })
@@ -70,10 +78,13 @@ describe('Predictions API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All predictions should be from the specified model
-      data.forEach((prediction: any) => {
+      data.data.forEach((prediction: any) => {
         expect(prediction.model_name).toBe('ml_model_v1')
       })
     })
@@ -84,8 +95,8 @@ describe('Predictions API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const prediction = data[0]
+      if (data.data.length > 0) {
+        const prediction = data.data[0]
         
         // Check for optional actual_value field
         if (prediction.actual_value !== undefined) {
@@ -105,7 +116,7 @@ describe('Predictions API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((prediction: any) => {
+      data.data.forEach((prediction: any) => {
         // Verify created_at is a valid ISO string
         const createdAt = new Date(prediction.created_at)
         expect(createdAt).toBeInstanceOf(Date)
@@ -122,8 +133,11 @@ describe('Predictions API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
-      expect(data.length).toBeLessThanOrEqual(5)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(data.data.length).toBeLessThanOrEqual(5)
     })
 
     it('should return consistent prediction data structure', async () => {
@@ -132,7 +146,7 @@ describe('Predictions API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((prediction: any) => {
+      data.data.forEach((prediction: any) => {
         // Required fields
         expect(prediction.id).toBeDefined()
         expect(prediction.game_id).toBeDefined()
@@ -165,8 +179,8 @@ describe('Predictions API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const predictionTypes = [...new Set(data.map((p: any) => p.prediction_type))]
+      if (data.data.length > 0) {
+        const predictionTypes = [...new Set(data.data.map((p: any) => p.prediction_type))]
         
         // Should have at least one prediction type
         expect(predictionTypes.length).toBeGreaterThan(0)
@@ -188,7 +202,10 @@ describe('Predictions API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
       // Empty array is acceptable when no predictions exist
     })
   })

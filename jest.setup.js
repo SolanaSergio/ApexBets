@@ -49,8 +49,21 @@ process.env.NEXT_PUBLIC_API_URL = 'http://localhost:3000/api'
 process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co'
 process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key'
 
-// Mock fetch globally
-global.fetch = jest.fn()
+// Use real fetch for API tests, mock for component tests
+const originalFetch = global.fetch
+global.fetch = jest.fn().mockImplementation((url, options) => {
+  // For API tests, use real fetch
+  if (url.includes('/api/')) {
+    return originalFetch(url, options)
+  }
+  // For other tests, return a mock response
+  return Promise.resolve({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+  })
+})
 
 // Mock IntersectionObserver
 global.IntersectionObserver = jest.fn().mockImplementation(() => ({

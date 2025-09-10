@@ -12,10 +12,14 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(Array.isArray(data.data)).toBe(true)
 
-      if (data.length > 0) {
-        const valueBet = data[0]
+      if (data.data.length > 0) {
+        const valueBet = data.data[0]
         expect(valueBet).toMatchObject({
           id: expect.any(String),
           game_id: expect.any(String),
@@ -43,8 +47,8 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const valueBet = data[0]
+      if (data.data.length > 0) {
+        const valueBet = data.data[0]
         
         // Should have odds information
         if (valueBet.odds) {
@@ -66,8 +70,8 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const valueBet = data[0]
+      if (data.data.length > 0) {
+        const valueBet = data.data[0]
         
         // Should have prediction information
         if (valueBet.prediction) {
@@ -85,10 +89,13 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All value bets should be spread bets
-      data.forEach((valueBet: any) => {
+      data.data.forEach((valueBet: any) => {
         expect(valueBet.bet_type).toBe('spread')
       })
     })
@@ -98,10 +105,13 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All value bets should have value percentage >= 5.0
-      data.forEach((valueBet: any) => {
+      data.data.forEach((valueBet: any) => {
         expect(valueBet.value_percentage).toBeGreaterThanOrEqual(5.0)
       })
     })
@@ -111,10 +121,13 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All value bets should have confidence >= 0.7
-      data.forEach((valueBet: any) => {
+      data.data.forEach((valueBet: any) => {
         expect(valueBet.confidence).toBeGreaterThanOrEqual(0.7)
       })
     })
@@ -125,8 +138,8 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const valueBet = data[0]
+      if (data.data.length > 0) {
+        const valueBet = data.data[0]
         
         // Should have game information
         expect(valueBet.game_id).toBeDefined()
@@ -145,7 +158,7 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((valueBet: any) => {
+      data.data.forEach((valueBet: any) => {
         // Verify created_at is a valid ISO string
         const createdAt = new Date(valueBet.created_at)
         expect(createdAt).toBeInstanceOf(Date)
@@ -162,8 +175,11 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
-      expect(data.length).toBeLessThanOrEqual(10)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(data.data.length).toBeLessThanOrEqual(10)
     })
 
     it('should return consistent value bet data structure', async () => {
@@ -172,7 +188,7 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((valueBet: any) => {
+      data.data.forEach((valueBet: any) => {
         // Required fields
         expect(valueBet.id).toBeDefined()
         expect(valueBet.game_id).toBeDefined()
@@ -208,8 +224,8 @@ describe('Value Bets API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const betTypes = [...new Set(data.map((vb: any) => vb.bet_type))]
+      if (data.data.length > 0) {
+        const betTypes = [...new Set(data.data.map((vb: any) => vb.bet_type))]
         
         // Should have at least one bet type
         expect(betTypes.length).toBeGreaterThan(0)
@@ -231,7 +247,10 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
       // Empty array is acceptable when no value bets exist
     })
   })

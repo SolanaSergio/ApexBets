@@ -16,7 +16,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Failed to generate predictions" }, { status: 500 })
       }
 
-      return NextResponse.json(prediction)
+      return NextResponse.json({
+        data: prediction,
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "prediction_service"
+        }
+      })
     } else {
       // Return recent predictions without game_id
       const supabase = await createClient()
@@ -41,7 +48,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Failed to fetch predictions" }, { status: 500 })
       }
 
-      return NextResponse.json({ data: predictions })
+      return NextResponse.json({
+        data: predictions,
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "supabase"
+        }
+      })
     }
   } catch (error) {
     console.error("API Error:", error)

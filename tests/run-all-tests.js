@@ -57,12 +57,12 @@ function checkPrerequisites() {
     process.exit(1);
   }
   
-  // Check if npm is available
+  // Check if pnpm is available
   try {
-    execSync('npm --version', { stdio: 'pipe' });
-    log(`${colors.green}✓ npm is available${colors.reset}`);
+    execSync('pnpm --version', { stdio: 'pipe' });
+    log(`${colors.green}✓ pnpm is available${colors.reset}`);
   } catch (error) {
-    log(`${colors.red}✗ npm is not available${colors.reset}`);
+    log(`${colors.red}✗ pnpm is not available${colors.reset}`);
     process.exit(1);
   }
   
@@ -72,16 +72,16 @@ function checkPrerequisites() {
     log(`${colors.green}✓ Dev server is running${colors.reset}`);
   } catch (error) {
     log(`${colors.yellow}⚠ Dev server might not be running. Some tests may fail.${colors.reset}`);
-    log(`${colors.yellow}  Please start the dev server with: npm run dev${colors.reset}`);
+    log(`${colors.yellow}  Please start the dev server with: pnpm dev${colors.reset}`);
   }
 }
 
 function installDependencies() {
   log(`${colors.bright}Installing test dependencies...${colors.reset}`);
   
-  const result = runCommand('npm install', 'Installing dependencies');
+  const result = runCommand('pnpm install', 'Installing dependencies');
   if (!result.success) {
-    log(`${colors.red}Failed to install dependencies. Please run: npm install${colors.reset}`);
+    log(`${colors.red}Failed to install dependencies. Please run: pnpm install${colors.reset}`);
     process.exit(1);
   }
 }
@@ -89,35 +89,35 @@ function installDependencies() {
 function runUnitTests() {
   log(`${colors.bright}Running Unit Tests...${colors.reset}`);
   
-  const result = runCommand('npm run test', 'Unit tests');
+  const result = runCommand('pnpm test', 'Unit tests');
   return result;
 }
 
 function runIntegrationTests() {
   log(`${colors.bright}Running Integration Tests...${colors.reset}`);
   
-  const result = runCommand('npm run test -- --testPathPattern=integration', 'Integration tests');
+  const result = runCommand('pnpm test -- --testPathPattern=integration', 'Integration tests');
   return result;
 }
 
 function runE2ETests() {
   log(`${colors.bright}Running End-to-End Tests...${colors.reset}`);
   
-  const result = runCommand('npm run test:e2e', 'E2E tests');
+  const result = runCommand('pnpm test:e2e', 'E2E tests');
   return result;
 }
 
 function runPerformanceTests() {
   log(`${colors.bright}Running Performance Tests...${colors.reset}`);
   
-  const result = runCommand('npm run test -- --testPathPattern=performance', 'Performance tests');
+  const result = runCommand('pnpm test -- --testPathPattern=performance', 'Performance tests');
   return result;
 }
 
 function runSecurityTests() {
   log(`${colors.bright}Running Security Tests...${colors.reset}`);
   
-  const result = runCommand('npm run test -- --testPathPattern=security', 'Security tests');
+  const result = runCommand('pnpm test -- --testPathPattern=security', 'Security tests');
   return result;
 }
 

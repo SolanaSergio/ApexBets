@@ -31,8 +31,9 @@ tests/
 
 ### Prerequisites
 - Node.js 18+ installed
-- Dev server running (`npm run dev`)
-- All dependencies installed (`npm install`)
+- pnpm package manager installed
+- Dev server running (`pnpm dev`)
+- All dependencies installed (`pnpm install`)
 
 ### Run All Tests
 ```bash
@@ -40,17 +41,17 @@ tests/
 node tests/run-comprehensive-tests.js
 
 # Or run individual test types
-npm run test              # Unit tests
-npm run test:watch        # Unit tests in watch mode
-npm run test:coverage     # Unit tests with coverage
-npm run test:e2e          # End-to-end tests
-npm run test:e2e:ui       # E2E tests with UI
-npm run test:all          # All tests
+pnpm test              # Unit tests
+pnpm test:watch        # Unit tests in watch mode
+pnpm test:coverage     # Unit tests with coverage
+pnpm test:e2e          # End-to-end tests
+pnpm test:e2e:ui       # E2E tests with UI
+pnpm test:all          # All tests
 
 # Run specific comprehensive tests
-npm run test -- --testPathPattern=comprehensive  # Comprehensive API tests
-npm run test -- --testPathPattern=integration    # Integration tests
-npm run test -- --testPathPattern=e2e            # E2E tests
+pnpm test -- --testPathPattern=comprehensive  # Comprehensive API tests
+pnpm test -- --testPathPattern=integration    # Integration tests
+pnpm test -- --testPathPattern=e2e            # E2E tests
 ```
 
 ## 📋 Test Categories

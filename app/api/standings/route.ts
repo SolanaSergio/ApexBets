@@ -27,7 +27,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (!teams || teams.length === 0) {
-      return NextResponse.json([])
+      return NextResponse.json({
+        data: [],
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "supabase"
+        }
+      })
     }
 
     // Get games for the season, filtered by sport if specified
@@ -120,7 +127,17 @@ export async function GET(request: NextRequest) {
       team.rank = index + 1
     })
 
-    return NextResponse.json(standings)
+    return NextResponse.json({
+      data: standings,
+      meta: {
+        fromCache: false,
+        responseTime: 0,
+        source: "supabase",
+        season,
+        league,
+        sport
+      }
+    })
   } catch (error) {
     console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

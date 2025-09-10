@@ -97,14 +97,20 @@ describe('Health API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data.cache).toMatchObject({
-        hits: expect.any(Number),
-        misses: expect.any(Number),
-        size: expect.any(Number)
+        totalEntries: expect.any(Number),
+        totalSize: expect.any(Number),
+        hitRate: expect.any(Number),
+        missRate: expect.any(Number),
+        evictionCount: expect.any(Number),
+        compressionRatio: expect.any(Number)
       })
 
-      expect(data.cache.hits).toBeGreaterThanOrEqual(0)
-      expect(data.cache.misses).toBeGreaterThanOrEqual(0)
-      expect(data.cache.size).toBeGreaterThanOrEqual(0)
+      expect(data.cache.totalEntries).toBeGreaterThanOrEqual(0)
+      expect(data.cache.totalSize).toBeGreaterThanOrEqual(0)
+      expect(data.cache.hitRate).toBeGreaterThanOrEqual(0)
+      expect(data.cache.missRate).toBeGreaterThanOrEqual(0)
+      expect(data.cache.evictionCount).toBeGreaterThanOrEqual(0)
+      expect(data.cache.compressionRatio).toBeGreaterThanOrEqual(0)
     })
 
     it('should validate environment configuration', async () => {

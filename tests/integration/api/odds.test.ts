@@ -12,10 +12,14 @@ describe('Odds API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
+      expect(Array.isArray(data.data)).toBe(true)
 
-      if (data.length > 0) {
-        const odds = data[0]
+      if (data.data.length > 0) {
+        const odds = data.data[0]
         expect(odds).toMatchObject({
           id: expect.any(String),
           home_team: expect.any(String),
@@ -36,10 +40,13 @@ describe('Odds API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
       // All odds should be for basketball
-      data.forEach((odds: any) => {
+      data.data.forEach((odds: any) => {
         expect(odds.sport_key).toBe('basketball_nba')
         expect(odds.sport_title).toContain('Basketball')
       })
@@ -51,8 +58,8 @@ describe('Odds API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const odds = data[0]
+      if (data.data.length > 0) {
+        const odds = data.data[0]
         
         // Check for betting markets
         if (odds.bookmakers && odds.bookmakers.length > 0) {
@@ -90,10 +97,13 @@ describe('Odds API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      expect(Array.isArray(data)).toBe(true)
+      expect(data).toMatchObject({
+        data: expect.any(Array),
+        meta: expect.any(Object)
+      })
 
-      if (data.length > 0) {
-        const odds = data[0]
+      if (data.data.length > 0) {
+        const odds = data.data[0]
         
         // Should have bookmakers with different market types
         if (odds.bookmakers && odds.bookmakers.length > 0) {
@@ -115,14 +125,14 @@ describe('Odds API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const odds = data[0]
+      if (data.data.length > 0) {
+        const odds = data.data[0]
         
         // Team names should be non-empty strings
         expect(odds.home_team).toBeTruthy()
         expect(odds.away_team).toBeTruthy()
         expect(typeof odds.home_team).toBe('string')
-        expect(typeof away_team).toBe('string')
+        expect(typeof odds.away_team).toBe('string')
         expect(odds.home_team.length).toBeGreaterThan(0)
         expect(odds.away_team.length).toBeGreaterThan(0)
       }
@@ -134,8 +144,8 @@ describe('Odds API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      if (data.length > 0) {
-        const odds = data[0]
+      if (data.data.length > 0) {
+        const odds = data.data[0]
         const commenceTime = new Date(odds.commence_time)
         const now = new Date()
         
@@ -152,7 +162,7 @@ describe('Odds API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.forEach((odds: any) => {
+      data.data.forEach((odds: any) => {
         // Required fields
         expect(odds.id).toBeDefined()
         expect(odds.home_team).toBeDefined()

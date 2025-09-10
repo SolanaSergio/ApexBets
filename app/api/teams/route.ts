@@ -26,7 +26,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Failed to fetch teams" }, { status: 500 })
     }
 
-    return NextResponse.json(teams)
+    return NextResponse.json({
+      data: teams,
+      meta: {
+        fromCache: false,
+        responseTime: 0,
+        source: "supabase"
+      }
+    })
   } catch (error) {
     console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

@@ -99,13 +99,20 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.date.localeCompare(a.date))
 
     return NextResponse.json({
-      total_games: totalGames || 0,
-      total_predictions: totalPredictions || 0,
-      accuracy_rate: overallAccuracy,
-      recent_performance: {
-        accuracy_by_type: accuracyByType,
-        daily_stats: dailyStatsArray,
+      data: {
+        total_games: totalGames || 0,
+        total_predictions: totalPredictions || 0,
+        accuracy_rate: overallAccuracy,
+        recent_performance: {
+          accuracy_by_type: accuracyByType,
+          daily_stats: dailyStatsArray,
+        },
       },
+      meta: {
+        fromCache: false,
+        responseTime: 0,
+        source: "supabase"
+      }
     })
   } catch (error) {
     console.error("API Error:", error)
