@@ -72,9 +72,13 @@ export class OddsApiClient {
     await this.rateLimit()
     
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      // Add API key as query parameter
+      const separator = endpoint.includes('?') ? '&' : '?'
+      const url = `${this.baseUrl}${endpoint}${separator}apiKey=${this.apiKey}`
+      
+      const response = await fetch(url, {
         headers: {
-          'X-API-Key': this.apiKey
+          'Content-Type': 'application/json'
         }
       })
       
@@ -182,4 +186,4 @@ export class OddsApiClient {
 }
 
 // Create instance with API key from environment
-export const oddsApiClient = new OddsApiClient(process.env.NEXT_PUBLIC_ODDS_API_KEY || '')
+export const oddsApiClient = new OddsApiClient(process.env.ODDS_API_KEY || '')

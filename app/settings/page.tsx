@@ -214,7 +214,7 @@ function NotificationsSection() {
             <div className="flex items-center justify-between">
               <div>
                 <div className="font-medium">High Confidence</div>
-                <div className="text-sm text-muted-foreground">Only for predictions >80% confidence</div>
+                <div className="text-sm text-muted-foreground">Only for predictions &gt;80% confidence</div>
               </div>
               <Switch defaultChecked />
             </div>

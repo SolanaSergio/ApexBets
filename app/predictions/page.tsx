@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import { apiClient, type Prediction, type Game } from "@/lib/api-client"
 import { format } from "date-fns"
@@ -28,67 +29,9 @@ export default function PredictionsPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Overall Accuracy</p>
-                  <p className="text-2xl font-bold text-primary">73.2%</p>
-                </div>
-                <Target className="h-8 w-8 text-primary" />
-              </div>
-              <div className="mt-2">
-                <Progress value={73.2} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Predictions Today</p>
-                  <p className="text-2xl font-bold text-accent">24</p>
-                </div>
-                <Brain className="h-8 w-8 text-accent" />
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                +12% from yesterday
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Win Streak</p>
-                  <p className="text-2xl font-bold text-green-600">7</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-green-600" />
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Current streak
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-hover">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Confidence Avg</p>
-                  <p className="text-2xl font-bold text-blue-600">84%</p>
-                </div>
-                <BarChart3 className="h-8 w-8 text-blue-600" />
-              </div>
-              <div className="mt-2">
-                <Progress value={84} className="h-2" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <Suspense fallback={<QuickStatsSkeleton />}>
+          <QuickStatsSection />
+        </Suspense>
 
         {/* Predictions Tabs */}
         <Tabs defaultValue="today" className="space-y-6">
@@ -686,6 +629,156 @@ function ModelsSkeleton() {
           </Card>
         ))}
       </div>
+    </div>
+  )
+}
+
+// Quick Stats Section
+function QuickStatsSection() {
+  const [stats, setStats] = useState({
+    overallAccuracy: 0,
+    predictionsToday: 0,
+    winStreak: 0,
+    confidenceAvg: 0,
+    loading: true,
+    error: null as string | null
+  })
+
+  useEffect(() => {
+    fetchQuickStats()
+  }, [])
+
+  const fetchQuickStats = async () => {
+    try {
+      setStats(prev => ({ ...prev, loading: true, error: null }))
+      
+      // Fetch analytics data
+      const response = await fetch('/api/analytics/stats')
+      const data = await response.json()
+      
+      if (data.data) {
+        setStats({
+          overallAccuracy: data.data.accuracy_rate || 0,
+          predictionsToday: data.data.total_predictions || 0,
+          winStreak: 0, // This would need to be calculated
+          confidenceAvg: 0, // This would need to be calculated
+          loading: false,
+          error: null
+        })
+      } else {
+        throw new Error('No data received')
+      }
+    } catch (error) {
+      console.error('Error fetching quick stats:', error)
+      setStats(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : 'Failed to load stats'
+      }))
+    }
+  }
+
+  if (stats.loading) {
+    return <QuickStatsSkeleton />
+  }
+
+  if (stats.error) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <div className="text-red-500 mb-2">Error loading stats</div>
+            <div className="text-sm text-muted-foreground">{stats.error}</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <Card className="card-hover">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Overall Accuracy</p>
+              <p className="text-2xl font-bold text-primary">{(stats.overallAccuracy * 100).toFixed(1)}%</p>
+            </div>
+            <Target className="h-8 w-8 text-primary" />
+          </div>
+          <div className="mt-2">
+            <Progress value={stats.overallAccuracy * 100} className="h-2" />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="card-hover">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Predictions</p>
+              <p className="text-2xl font-bold text-accent">{stats.predictionsToday}</p>
+            </div>
+            <Brain className="h-8 w-8 text-accent" />
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            All time predictions
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="card-hover">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Win Streak</p>
+              <p className="text-2xl font-bold text-green-600">{stats.winStreak}</p>
+            </div>
+            <TrendingUp className="h-8 w-8 text-green-600" />
+          </div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Current streak
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="card-hover">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Confidence Avg</p>
+              <p className="text-2xl font-bold text-blue-600">{(stats.confidenceAvg * 100).toFixed(0)}%</p>
+            </div>
+            <BarChart3 className="h-8 w-8 text-blue-600" />
+          </div>
+          <div className="mt-2">
+            <Progress value={stats.confidenceAvg * 100} className="h-2" />
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function QuickStatsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="card-hover">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-8 w-16" />
+              </div>
+              <Skeleton className="h-8 w-8" />
+            </div>
+            <div className="mt-2">
+              <Skeleton className="h-2 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   )
 }

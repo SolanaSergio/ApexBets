@@ -45,6 +45,27 @@ export async function GET(request: NextRequest) {
     // Fallback to Supabase for basic stats
     const supabase = await createClient()
 
+    if (!supabase) {
+      return NextResponse.json({
+        data: {
+          total_games: 0,
+          total_predictions: 0,
+          total_teams: 0,
+          accuracy_rate: 0,
+          recent_performance: {
+            accuracy_by_type: {},
+            daily_stats: [],
+          },
+        },
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "supabase",
+          error: "Database connection failed"
+        }
+      })
+    }
+
     // Get total games
     const { count: totalGames } = await supabase.from("games").select("*", { count: "exact", head: true })
 

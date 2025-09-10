@@ -243,7 +243,6 @@ class RateLimiter {
   }
 
   getUsageStats(service: string): UsageStats {
-    const stats = this.getUsageStats(service)
     const state = this.getState(service)
     const now = Date.now()
 

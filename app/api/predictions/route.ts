@@ -49,6 +49,18 @@ export async function GET(request: NextRequest) {
       // Return recent predictions without game_id
       const supabase = await createClient()
       
+      if (!supabase) {
+        return NextResponse.json({
+          data: [],
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "supabase",
+            error: "Database connection failed"
+          }
+        })
+      }
+      
       const { data: predictions, error } = await supabase
         .from("predictions")
         .select(`
@@ -95,6 +107,15 @@ export async function POST(request: NextRequest) {
 
     try {
       const supabase = await createClient()
+      
+      if (!supabase) {
+        return NextResponse.json({ 
+          success: false, 
+          error: "Database connection failed",
+          details: "Unable to connect to database"
+        }, { status: 500 })
+      }
+      
       const { data: prediction, error } = await supabase
         .from("predictions")
         .insert([{
@@ -123,7 +144,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         error: "Database unavailable",
-        details: dbError.message 
+        details: dbError instanceof Error ? dbError.message : "Unknown database error"
       }, { status: 500 })
     }
   } catch (error) {

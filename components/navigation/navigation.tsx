@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, ChevronDown, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
+import { SportSelector, SportSelectorCompact } from "./sport-selector"
 
 const navigationItems = [
   {
@@ -73,6 +74,7 @@ export function Navigation() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [selectedSport, setSelectedSport] = useState("basketball")
 
   useEffect(() => {
     const handleScroll = () => {
@@ -103,6 +105,15 @@ export function Navigation() {
               <span className="text-xs text-muted-foreground -mt-1">Sports Analytics</span>
             </div>
           </Link>
+
+          {/* Sport Selector */}
+          <div className="hidden lg:block">
+            <SportSelector 
+              selectedSport={selectedSport}
+              onSportChange={setSelectedSport}
+              className="w-64"
+            />
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-1">
@@ -181,6 +192,14 @@ export function Navigation() {
                     >
                       <X className="h-4 w-4" />
                     </Button>
+                  </div>
+
+                  {/* Mobile Sport Selector */}
+                  <div className="px-4 py-4 border-b border-border/50">
+                    <SportSelectorCompact 
+                      selectedSport={selectedSport}
+                      onSportChange={setSelectedSport}
+                    />
                   </div>
 
                   {/* Mobile Navigation */}
