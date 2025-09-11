@@ -100,6 +100,8 @@ export class DatabaseCacheService {
     if (this.supabase) {
       this.cacheDisabled = false
       console.log('Database cache service re-enabled')
+    } else {
+      console.log('Cannot re-enable database cache - Supabase client not available')
     }
   }
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { cacheService } from "@/lib/services/cache-service"
 
 export async function GET(request: NextRequest) {
   try {
@@ -7,6 +8,15 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get("sport") || "basketball"
     const league = searchParams.get("league") || "NBA"
     const status = searchParams.get("status") || "live"
+
+    // Generate cache key
+    const cacheKey = `live_scores:${sport}:${league}:${status}`
+    
+    // Check cache first
+    const cached = cacheService.get(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     const supabase = await createClient()
     
@@ -129,7 +139,7 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5)
 
-    return NextResponse.json({
+    const response = {
       games: gamesWithOdds,
       summary: {
         total: gamesWithOdds.length,
@@ -144,7 +154,13 @@ export async function GET(request: NextRequest) {
         league,
         status
       }
-    })
+    }
+
+    // Cache the response for 2 minutes (live data changes frequently)
+    const cacheTtl = status === 'live' ? 120000 : 300000 // 2 min for live, 5 min for others
+    cacheService.set(cacheKey, response, cacheTtl)
+
+    return NextResponse.json(response)
 
   } catch (error) {
     console.error("Live scores API error:", error)

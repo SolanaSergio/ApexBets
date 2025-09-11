@@ -8,7 +8,7 @@ import { databaseCacheService } from '../database-cache-service'
 import { cacheService } from '../cache-service'
 
 // Re-export types for convenience
-export type { SupportedSport, UnifiedGameData, UnifiedTeamData, UnifiedPlayerData } from './unified-api-client'
+export type { SupportedSport } from './unified-api-client'
 
 export interface ApiResponse<T> {
   success: boolean
@@ -58,7 +58,7 @@ export interface UnifiedTeamData {
   primaryColor?: string
   secondaryColor?: string
   country?: string
-  isActive: boolean
+  isActive?: boolean
   lastUpdated: string
 }
 
@@ -76,14 +76,17 @@ export interface UnifiedPlayerData {
   college?: string
   country?: string
   jerseyNumber?: number
-  isActive: boolean
+  isActive?: boolean
   headshotUrl?: string
   lastUpdated: string
 }
 
 export class CachedUnifiedApiClient {
   private cacheEnabled: boolean = true
-  private defaultCacheTtl: number = 300 // 5 minutes
+  private defaultCacheTtl: number = 300000 // 5 minutes
+  private pendingRequests: Map<string, Promise<any>> = new Map()
+  private lastApiCall: number = 0
+  private minDelayBetweenCalls: number = 1000 // 1 second minimum between API calls (reduced from 2s)
 
   constructor() {
     // Check if database cache is available
@@ -93,16 +96,16 @@ export class CachedUnifiedApiClient {
   // Cache configuration
   private getCacheTtl(dataType: string, sport?: string): number {
     const cacheConfig: Record<string, number> = {
-      'live_games': 30, // 30 seconds for live data
-      'scheduled_games': 300, // 5 minutes for scheduled games
-      'finished_games': 3600, // 1 hour for finished games
-      'teams': 1800, // 30 minutes for team data
-      'players': 1800, // 30 minutes for player data
-      'odds': 120, // 2 minutes for odds
-      'predictions': 600, // 10 minutes for predictions
-      'standings': 1800, // 30 minutes for standings
-      'analytics': 900, // 15 minutes for analytics
-      'api_response': 300 // 5 minutes for general API responses
+      'live_games': 120000, // 2 minutes for live games
+      'scheduled_games': 300000, // 5 minutes for scheduled games
+      'finished_games': 3600000, // 1 hour for finished games
+      'teams': 1800000, // 30 minutes for team data
+      'players': 1800000, // 30 minutes for player data
+      'odds': 120000, // 2 minutes for odds
+      'predictions': 600000, // 10 minutes for predictions
+      'standings': 1800000, // 30 minutes for standings
+      'analytics': 900000, // 15 minutes for analytics
+      'api_response': 300000 // 5 minutes for general API responses
     }
 
     return cacheConfig[dataType] || this.defaultCacheTtl
@@ -116,25 +119,57 @@ export class CachedUnifiedApiClient {
     return `${prefix}:${sortedParams}`
   }
 
+  private async deduplicateRequest<T>(
+    cacheKey: string,
+    fetchFn: () => Promise<T>
+  ): Promise<T> {
+    // Check if request is already pending
+    if (this.pendingRequests.has(cacheKey)) {
+      return this.pendingRequests.get(cacheKey)!
+    }
+
+    // Create new request with rate limiting
+    const request = this.rateLimitedFetch(fetchFn).finally(() => {
+      this.pendingRequests.delete(cacheKey)
+    })
+
+    this.pendingRequests.set(cacheKey, request)
+    return request
+  }
+
+  private async rateLimitedFetch<T>(fetchFn: () => Promise<T>): Promise<T> {
+    const now = Date.now()
+    const timeSinceLastCall = now - this.lastApiCall
+    
+    if (timeSinceLastCall < this.minDelayBetweenCalls) {
+      const delay = this.minDelayBetweenCalls - timeSinceLastCall
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+    
+    this.lastApiCall = Date.now()
+    return fetchFn()
+  }
+
   private async getCachedData<T>(
     cacheKey: string,
     dataType: string,
     sport?: string
   ): Promise<T | null> {
-    if (!this.cacheEnabled) return null
+    if (!this.cacheEnabled) {
+      return null
+    }
 
     try {
       // Try database cache first (only if available)
-      let dbCached = null
       if (databaseCacheService.isAvailable()) {
         try {
-          dbCached = await databaseCacheService.get<T>(cacheKey)
+          const dbCached = await databaseCacheService.get<T>(cacheKey)
           if (dbCached) {
             return dbCached
           }
         } catch (dbError) {
           // Database cache not available, continue with memory cache
-          console.warn('Database cache not available, using memory cache only')
+          console.warn('Database cache error, using memory cache only:', (dbError as Error).message)
         }
       }
 
@@ -153,6 +188,7 @@ export class CachedUnifiedApiClient {
             )
           } catch (dbError) {
             // Database cache not available, just use memory cache
+            console.warn('Database cache set error:', (dbError as Error).message)
           }
         }
         return memCached
@@ -171,7 +207,9 @@ export class CachedUnifiedApiClient {
     dataType: string,
     sport?: string
   ): Promise<void> {
-    if (!this.cacheEnabled) return
+    if (!this.cacheEnabled) {
+      return
+    }
 
     try {
       const ttl = this.getCacheTtl(dataType, sport)
@@ -185,7 +223,7 @@ export class CachedUnifiedApiClient {
           await databaseCacheService.set(cacheKey, data, ttl, dataType, sport)
         } catch (dbError) {
           // Database cache not available, just use memory cache
-          console.warn('Database cache not available, using memory cache only')
+          console.warn('Database cache storage error:', (dbError as Error).message)
         }
       }
     } catch (error) {
@@ -265,19 +303,21 @@ export class CachedUnifiedApiClient {
       return cached
     }
 
-    try {
-      const service = serviceFactory.getService(sport)
-      if (!service) {
-        throw new Error(`No service available for sport: ${sport}`)
-      }
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        const service = serviceFactory.getService(sport)
+        if (!service) {
+          throw new Error(`No service available for sport: ${sport}`)
+        }
 
-      const games = await service.getLiveGames()
-      await this.setCachedData(cacheKey, games, 'live_games', sport)
-      return games
-    } catch (error) {
-      console.error(`Error fetching live games for ${sport}:`, error)
-      return []
-    }
+        const games = await service.getLiveGames()
+        await this.setCachedData(cacheKey, games, 'live_games', sport)
+        return games
+      } catch (error) {
+        console.error(`Error fetching live games for ${sport}:`, error)
+        return []
+      }
+    })
   }
 
   // Teams
@@ -392,7 +432,7 @@ export class CachedUnifiedApiClient {
         throw new Error(`No service available for sport: ${sport}`)
       }
 
-      const predictions = await service.getPredictions(params)
+        const predictions = await (service as any).getPredictions?.(params) || []
       await this.setCachedData(cacheKey, predictions, 'predictions', sport)
       return predictions
     } catch (error) {
@@ -422,7 +462,7 @@ export class CachedUnifiedApiClient {
         throw new Error(`No service available for sport: ${sport}`)
       }
 
-      const standings = await service.getStandings(params)
+      const standings = await service.getStandings(params.season)
       await this.setCachedData(cacheKey, standings, 'standings', sport)
       return standings
     } catch (error) {
@@ -453,7 +493,7 @@ export class CachedUnifiedApiClient {
         throw new Error(`No service available for sport: ${sport}`)
       }
 
-      const analytics = await service.getAnalytics(params)
+      const analytics = await (service as any).getAnalytics?.(params) || []
       await this.setCachedData(cacheKey, analytics, 'analytics', sport)
       return analytics
     } catch (error) {

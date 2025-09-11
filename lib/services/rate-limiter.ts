@@ -17,6 +17,7 @@ interface RateLimitState {
   lastReset: number
   isBlocked: boolean
   blockUntil?: number
+  errors: number
 }
 
 interface UsageStats {
@@ -27,6 +28,8 @@ interface UsageStats {
   lastRequestTime: number
   averageResponseTime: number
   errorRate: number
+  isBlocked?: boolean
+  blockUntil?: number
 }
 
 class RateLimiter {
@@ -67,13 +70,13 @@ class RateLimiter {
       burstWindow: 10000 // 10 seconds
     })
 
-    // BALLDONTLIE - Free tier limits (more conservative)
+    // BALLDONTLIE - Free tier limits (very conservative)
     this.limits.set('balldontlie', {
-      requestsPerMinute: 10,
-      requestsPerHour: 200,
+      requestsPerMinute: 6,
+      requestsPerHour: 100,
       requestsPerDay: 10000,
-      burstLimit: 2,
-      burstWindow: 5000 // 5 seconds
+      burstLimit: 1,
+      burstWindow: 10000 // 10 seconds
     })
 
     // Initialize states
@@ -82,7 +85,8 @@ class RateLimiter {
         requests: [],
         burstRequests: [],
         lastReset: Date.now(),
-        isBlocked: false
+        isBlocked: false,
+        errors: 0
       })
 
       this.usageStats.set(service, {
@@ -106,29 +110,14 @@ class RateLimiter {
         requests: [],
         burstRequests: [],
         lastReset: Date.now(),
-        isBlocked: false
+        isBlocked: false,
+        errors: 0
       }
       this.states.set(service, state)
     }
     return state
   }
 
-  private getUsageStats(service: string): UsageStats {
-    let stats = this.usageStats.get(service)
-    if (!stats) {
-      stats = {
-        totalRequests: 0,
-        requestsToday: 0,
-        requestsThisHour: 0,
-        requestsThisMinute: 0,
-        lastRequestTime: 0,
-        averageResponseTime: 0,
-        errorRate: 0
-      }
-      this.usageStats.set(service, stats)
-    }
-    return stats
-  }
 
   private cleanupOldRequests(service: string): void {
     const state = this.getState(service)
@@ -206,7 +195,7 @@ class RateLimiter {
 
   recordRequest(service: string, responseTime: number, isError: boolean = false): void {
     const state = this.getState(service)
-    const stats = this.getUsageStats(service)
+    const stats = this.usageStats.get(service)!
     const now = Date.now()
 
     // Record the request
@@ -229,9 +218,9 @@ class RateLimiter {
 
     // Update error rate
     if (isError) {
+      state.errors++
       const recentRequests = state.requests.filter(time => now - time < 300000) // Last 5 minutes
-      const recentErrors = recentRequests.length * 0.1 // Assume 10% error rate for now
-      stats.errorRate = recentErrors / recentRequests.length
+      stats.errorRate = state.errors / Math.max(recentRequests.length, 1)
     }
 
     // Check if we should block the service due to high error rate
@@ -244,6 +233,7 @@ class RateLimiter {
 
   getUsageStats(service: string): UsageStats {
     const state = this.getState(service)
+    const stats = this.usageStats.get(service)!
     const now = Date.now()
 
     // Calculate time-based counters
@@ -252,12 +242,14 @@ class RateLimiter {
     const requestsToday = state.requests.filter(time => now - time < 86400000).length
 
     return {
-      requestsThisMinute,
-      requestsThisHour,
+      totalRequests: stats.totalRequests,
       requestsToday,
-      totalRequests: state.requests.length,
+      requestsThisHour,
+      requestsThisMinute,
+      lastRequestTime: stats.lastRequestTime,
+      averageResponseTime: stats.averageResponseTime,
       errorRate: state.errors / Math.max(state.requests.length, 1),
-      isBlocked: state.blockUntil > now,
+      isBlocked: state.blockUntil ? state.blockUntil > now : false,
       blockUntil: state.blockUntil
     }
   }

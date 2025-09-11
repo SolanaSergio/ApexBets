@@ -116,13 +116,13 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       
       // Load API data sequentially to avoid rate limiting
       await loadAllLiveGames()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
       
       await loadAllUpcomingGames()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
       
       await loadAllTeams()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
       
       await loadStats()
     } catch (error) {
@@ -144,7 +144,7 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
           allGames.push(...games)
           
           // Add delay between sports to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await new Promise(resolve => setTimeout(resolve, 1000)) // Reduced delay
         } catch (sportError) {
           console.warn(`Failed to load live games for ${sport}:`, sportError)
         }
@@ -289,12 +289,20 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
   const loadCacheStatus = async () => {
     try {
       const stats = await cachedUnifiedApiClient.getCacheStats()
+      const dbStatus = cachedUnifiedApiClient.getDatabaseCacheStatus()
+      
       if (stats) {
         setCacheStatus({
-          databaseAvailable: stats.database?.totalEntries !== undefined,
+          databaseAvailable: dbStatus.available,
           memoryAvailable: stats.memory?.totalEntries !== undefined,
           totalEntries: stats.totalEntries || 0
         })
+      }
+      
+      // Try to re-enable database cache if it was disabled due to 406 errors
+      if (!dbStatus.available && dbStatus.supabaseConnected && dbStatus.disabled) {
+        console.log('Re-enabling database cache...')
+        cachedUnifiedApiClient.reEnableDatabaseCache()
       }
     } catch (error) {
       console.error('Error loading cache status:', error)
@@ -361,6 +369,14 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
 
   const handleRefresh = async () => {
     setRefreshing(true)
+    
+    // Clear cache before refreshing
+    try {
+      await cachedUnifiedApiClient.clearCache()
+    } catch (error) {
+      console.warn('Error clearing cache:', error)
+    }
+    
     await loadDashboardData()
     setRefreshing(false)
   }
@@ -431,6 +447,21 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
                 Cache: {cacheStatus.totalEntries} entries
                 {cacheStatus.databaseAvailable ? " (DB)" : " (Memory)"}
               </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  console.log('Current cache status:', {
+                    databaseAvailable: cacheStatus.databaseAvailable,
+                    memoryAvailable: cacheStatus.memoryAvailable,
+                    totalEntries: cacheStatus.totalEntries
+                  })
+                  console.log('Database cache status:', cachedUnifiedApiClient.getDatabaseCacheStatus())
+                }}
+                className="text-xs"
+              >
+                Debug Cache
+              </Button>
             </div>
           </div>
         </div>

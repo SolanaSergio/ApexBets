@@ -39,7 +39,7 @@ interface SportsDBPlayer {
 export class SportsDBClient {
   private baseUrl = 'https://www.thesportsdb.com/api/v1/json'
   private apiKey: string
-  private rateLimitDelay = 2000 // 2 seconds between requests (30 req/min = 2 sec)
+  private rateLimitDelay = 1000 // 1 second between requests (60 req/min = 1 sec)
   private lastRequestTime = 0
 
   constructor(apiKey: string = '123') {
@@ -67,7 +67,7 @@ export class SportsDBClient {
         throw new Error(`Invalid SportsDB API URL: ${url}`)
       }
 
-      console.log(`Making SportsDB API request to: ${url}`)
+      // Making SportsDB API request
       
       const response = await fetch(url, {
         method: 'GET',
