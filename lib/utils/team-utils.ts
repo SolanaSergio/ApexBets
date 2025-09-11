@@ -14,77 +14,56 @@ export const getPlayerPhotoUrl = (playerId: number): string => {
   return getPlayerPhotoFromService(playerId, 'NBA')
 }
 
-export const getTeamColors = (teamName: string): { primary: string; secondary: string } => {
-  const teamColors: Record<string, { primary: string; secondary: string }> = {
-    'Lakers': { primary: '#552583', secondary: '#FDB927' },
-    'Warriors': { primary: '#1D428A', secondary: '#FFC72C' },
-    'Celtics': { primary: '#007A33', secondary: '#BA9653' },
-    'Heat': { primary: '#98002E', secondary: '#F9A01B' },
-    'Bulls': { primary: '#CE1141', secondary: '#000000' },
-    'Knicks': { primary: '#006BB6', secondary: '#F58426' },
-    'Nets': { primary: '#000000', secondary: '#FFFFFF' },
-    '76ers': { primary: '#006BB6', secondary: '#ED174C' },
-    'Raptors': { primary: '#CE1141', secondary: '#000000' },
-    'Bucks': { primary: '#00471B', secondary: '#EEE1C6' },
-    'Pacers': { primary: '#002D62', secondary: '#FDBB30' },
-    'Cavaliers': { primary: '#860038', secondary: '#FDBB30' },
-    'Pistons': { primary: '#C8102E', secondary: '#1D42BA' },
-    'Magic': { primary: '#0077C0', secondary: '#C4CED4' },
-    'Hawks': { primary: '#E03A3E', secondary: '#C1D32F' },
-    'Hornets': { primary: '#1D1160', secondary: '#00788C' },
-    'Wizards': { primary: '#002B5C', secondary: '#E31837' },
-    'Mavericks': { primary: '#00538C', secondary: '#002B5E' },
-    'Spurs': { primary: '#C4CED4', secondary: '#000000' },
-    'Rockets': { primary: '#CE1141', secondary: '#000000' },
-    'Grizzlies': { primary: '#5D76A9', secondary: '#12173F' },
-    'Pelicans': { primary: '#0C2340', secondary: '#C8102E' },
-    'Thunder': { primary: '#007AC1', secondary: '#EF3B24' },
-    'Nuggets': { primary: '#0E2240', secondary: '#FEC524' },
-    'Trail Blazers': { primary: '#E03A3E', secondary: '#000000' },
-    'Jazz': { primary: '#002B5C', secondary: '#F9A01B' },
-    'Timberwolves': { primary: '#0C2340', secondary: '#236192' },
-    'Suns': { primary: '#1D1160', secondary: '#E56020' },
-    'Kings': { primary: '#5A2D81', secondary: '#63727A' },
-    'Clippers': { primary: '#C8102E', secondary: '#1D428A' }
+export const getTeamColors = async (teamName: string, sport: string = 'basketball'): Promise<{ primary: string; secondary: string }> => {
+  try {
+    // Try to get team colors from database first
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('teams')
+      .select('primary_color, secondary_color')
+      .eq('name', teamName)
+      .eq('sport', sport)
+      .single()
+    
+    if (response && !response.error && response.data?.primary_color && response.data?.secondary_color) {
+      return {
+        primary: response.data.primary_color,
+        secondary: response.data.secondary_color
+      }
+    }
+    
+    // Fallback to API if not in database
+    const apiColors = await getTeamColorsFromAPI(teamName, sport)
+    if (apiColors) {
+      return apiColors
+    }
+    
+    // Final fallback to default colors
+    return { primary: '#1D428A', secondary: '#C4CED4' }
+  } catch (error) {
+    console.warn(`Could not get team colors for ${teamName}:`, error)
+    return { primary: '#1D428A', secondary: '#C4CED4' }
   }
-  
-  return teamColors[teamName] || { primary: '#1D428A', secondary: '#C4CED4' }
+}
+
+const getTeamColorsFromAPI = async (teamName: string, sport: string): Promise<{ primary: string; secondary: string } | null> => {
+  try {
+    // This would call the appropriate API to get team colors
+    // For now, return null as this is a fallback
+    return null
+  } catch (error) {
+    console.warn(`Error fetching team colors from API: ${teamName}`, error)
+    return null
+  }
 }
 
 export const formatTeamName = (teamName: string): string => {
-  // Handle common team name variations
-  const nameMap: Record<string, string> = {
-    'Los Angeles Lakers': 'Lakers',
-    'Golden State Warriors': 'Warriors',
-    'Boston Celtics': 'Celtics',
-    'Miami Heat': 'Heat',
-    'Chicago Bulls': 'Bulls',
-    'New York Knicks': 'Knicks',
-    'Brooklyn Nets': 'Nets',
-    'Philadelphia 76ers': '76ers',
-    'Toronto Raptors': 'Raptors',
-    'Milwaukee Bucks': 'Bucks',
-    'Indiana Pacers': 'Pacers',
-    'Cleveland Cavaliers': 'Cavaliers',
-    'Detroit Pistons': 'Pistons',
-    'Orlando Magic': 'Magic',
-    'Atlanta Hawks': 'Hawks',
-    'Charlotte Hornets': 'Hornets',
-    'Washington Wizards': 'Wizards',
-    'Dallas Mavericks': 'Mavericks',
-    'San Antonio Spurs': 'Spurs',
-    'Houston Rockets': 'Rockets',
-    'Memphis Grizzlies': 'Grizzlies',
-    'New Orleans Pelicans': 'Pelicans',
-    'Oklahoma City Thunder': 'Thunder',
-    'Denver Nuggets': 'Nuggets',
-    'Portland Trail Blazers': 'Trail Blazers',
-    'Utah Jazz': 'Jazz',
-    'Minnesota Timberwolves': 'Timberwolves',
-    'Phoenix Suns': 'Suns',
-    'Sacramento Kings': 'Kings',
-    'Los Angeles Clippers': 'Clippers'
+  // Extract the last word as the team identifier (e.g., "Lakers" from "Los Angeles Lakers")
+  const words = teamName.trim().split(' ')
+  if (words.length > 1) {
+    return words[words.length - 1]
   }
-  
-  return nameMap[teamName] || teamName
+  return teamName
 }

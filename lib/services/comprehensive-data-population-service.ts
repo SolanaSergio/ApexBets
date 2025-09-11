@@ -599,39 +599,68 @@ export class ComprehensiveDataPopulationService {
   }
 
   // Helper methods
-  private getConference(teamName: string, league: string): string | null {
-    // Implementation for determining conference based on team name and league
-    if (league === 'NBA') {
-      const easternTeams = [
-        'Atlanta Hawks', 'Boston Celtics', 'Brooklyn Nets', 'Charlotte Hornets',
-        'Chicago Bulls', 'Cleveland Cavaliers', 'Detroit Pistons', 'Indiana Pacers',
-        'Miami Heat', 'Milwaukee Bucks', 'New York Knicks', 'Orlando Magic',
-        'Philadelphia 76ers', 'Toronto Raptors', 'Washington Wizards'
-      ]
-      return easternTeams.includes(teamName) ? 'Eastern' : 'Western'
-    }
-    return null
-  }
-
-  private getDivision(teamName: string, league: string): string | null {
-    // Implementation for determining division based on team name and league
-    if (league === 'NBA') {
-      const divisions = {
-        'Atlantic': ['Boston Celtics', 'Brooklyn Nets', 'New York Knicks', 'Philadelphia 76ers', 'Toronto Raptors'],
-        'Central': ['Chicago Bulls', 'Cleveland Cavaliers', 'Detroit Pistons', 'Indiana Pacers', 'Milwaukee Bucks'],
-        'Southeast': ['Atlanta Hawks', 'Charlotte Hornets', 'Miami Heat', 'Orlando Magic', 'Washington Wizards'],
-        'Northwest': ['Denver Nuggets', 'Minnesota Timberwolves', 'Oklahoma City Thunder', 'Portland Trail Blazers', 'Utah Jazz'],
-        'Pacific': ['Golden State Warriors', 'Los Angeles Clippers', 'Los Angeles Lakers', 'Phoenix Suns', 'Sacramento Kings'],
-        'Southwest': ['Dallas Mavericks', 'Houston Rockets', 'Memphis Grizzlies', 'New Orleans Pelicans', 'San Antonio Spurs']
+  private async getConference(teamName: string, league: string): Promise<string | null> {
+    // Get conference from team data or API instead of hardcoded list
+    try {
+      // Try to get team data from database first
+      const teamData = await this.getTeamFromDatabase(teamName, league)
+      if (teamData?.conference) {
+        return teamData.conference
       }
       
-      for (const [division, teams] of Object.entries(divisions)) {
-        if (teams.includes(teamName)) {
-          return division
-        }
-      }
+      // Fallback to API if not in database
+      const apiData = await this.getTeamFromAPI(teamName, league)
+      return apiData?.conference || null
+    } catch (error) {
+      console.warn(`Could not determine conference for ${teamName} in ${league}:`, error)
+      return null
     }
-    return null
+  }
+
+  private async getDivision(teamName: string, league: string): Promise<string | null> {
+    // Get division from team data or API instead of hardcoded list
+    try {
+      // Try to get team data from database first
+      const teamData = await this.getTeamFromDatabase(teamName, league)
+      if (teamData?.division) {
+        return teamData.division
+      }
+      
+      // Fallback to API if not in database
+      const apiData = await this.getTeamFromAPI(teamName, league)
+      return apiData?.division || null
+    } catch (error) {
+      console.warn(`Could not determine division for ${teamName} in ${league}:`, error)
+      return null
+    }
+  }
+
+  private async getTeamFromDatabase(teamName: string, league: string): Promise<any> {
+    try {
+      const { data, error } = await this.supabase
+        .from('teams')
+        .select('*')
+        .eq('name', teamName)
+        .eq('league', league)
+        .single()
+      
+      if (error) return null
+      return data
+    } catch (error) {
+      console.warn(`Error fetching team from database: ${teamName}`, error)
+      return null
+    }
+  }
+
+  private async getTeamFromAPI(teamName: string, league: string): Promise<any> {
+    try {
+      // This would call the appropriate API based on the league
+      // For now, return null as this is a fallback
+      return null
+    } catch (error) {
+      console.warn(`Error fetching team from API: ${teamName}`, error)
+      return null
+    }
   }
 
   private getCurrentSeason(sport: string): string {

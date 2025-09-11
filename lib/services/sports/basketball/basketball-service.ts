@@ -206,8 +206,31 @@ export class BasketballService extends SportSpecificService {
   // Abstract method implementations
   protected async fetchGameById(gameId: string): Promise<GameData | null> {
     try {
+      // Check if gameId is a valid numeric ID for BallDontLie
+      const numericId = parseInt(gameId)
+      if (isNaN(numericId)) {
+        // If it's a UUID, try to find the game in our database first
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        
+        const response = await supabase
+          ?.from('games')
+          .select('*')
+          .eq('id', gameId)
+          .single()
+        
+        if (!response || response.error || !response.data) {
+          return null
+        }
+        
+        const gameData = response.data
+        
+        // Return the game data from our database
+        return this.mapGameData(gameData)
+      }
+      
       if (this.hasBallDontLieKey()) {
-        const game = await ballDontLieClient.getGameById(parseInt(gameId))
+        const game = await ballDontLieClient.getGameById(numericId)
         return this.mapGameData(game)
       }
       return null
@@ -219,8 +242,31 @@ export class BasketballService extends SportSpecificService {
 
   protected async fetchTeamById(teamId: string): Promise<TeamData | null> {
     try {
+      // Check if teamId is a valid numeric ID for BallDontLie
+      const numericId = parseInt(teamId)
+      if (isNaN(numericId)) {
+        // If it's a UUID, try to find the team in our database first
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        
+        const response = await supabase
+          ?.from('teams')
+          .select('*')
+          .eq('id', teamId)
+          .single()
+        
+        if (!response || response.error || !response.data) {
+          return null
+        }
+        
+        const teamData = response.data
+        
+        // Return the team data from our database
+        return this.mapTeamData(teamData)
+      }
+      
       if (this.hasBallDontLieKey()) {
-        const team = await ballDontLieClient.getTeamById(parseInt(teamId))
+        const team = await ballDontLieClient.getTeamById(numericId)
         return this.mapTeamData(team)
       }
       return null
@@ -232,8 +278,31 @@ export class BasketballService extends SportSpecificService {
 
   protected async fetchPlayerById(playerId: string): Promise<PlayerData | null> {
     try {
+      // Check if playerId is a valid numeric ID for BallDontLie
+      const numericId = parseInt(playerId)
+      if (isNaN(numericId)) {
+        // If it's a UUID, try to find the player in our database first
+        const { createClient } = await import('@/lib/supabase/client')
+        const supabase = createClient()
+        
+        const response = await supabase
+          ?.from('players')
+          .select('*')
+          .eq('id', playerId)
+          .single()
+        
+        if (!response || response.error || !response.data) {
+          return null
+        }
+        
+        const playerData = response.data
+        
+        // Return the player data from our database
+        return this.mapPlayerData(playerData)
+      }
+      
       if (this.hasBallDontLieKey()) {
-        const player = await ballDontLieClient.getPlayerById(parseInt(playerId))
+        const player = await ballDontLieClient.getPlayerById(numericId)
         return this.mapPlayerData(player)
       }
       return null

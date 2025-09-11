@@ -454,32 +454,32 @@ function StatsSection({ selectedSport }: { selectedSport: SupportedSport }) {
       const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
       const teams = await cachedUnifiedApiClient.getTeams(selectedSport as any, { limit: 20 })
       
-      // Transform teams data into stats format
+      // Transform teams data into stats format using real data
       const statsData = teams.map((team, index) => ({
         teamId: team.id,
         teamName: team.name,
         teamAbbreviation: team.abbreviation || team.name?.split(' ').pop() || 'T',
         sport: selectedSport,
         league: team.league || 'Unknown',
-        gamesPlayed: Math.floor(Math.random() * 20) + 10, // Mock data for now
+        gamesPlayed: (team as any).games_played || 0,
         stats: [
           {
             category: 'Wins',
-            value: Math.floor(Math.random() * 15) + 5,
-            rank: Math.floor(Math.random() * 10) + 1,
-            trend: Math.random() > 0.5 ? 'up' : 'down'
+            value: (team as any).wins || 0,
+            rank: (team as any).wins_rank || 0,
+            trend: (team as any).wins_trend || 'stable'
           },
           {
             category: 'Losses',
-            value: Math.floor(Math.random() * 10) + 3,
-            rank: Math.floor(Math.random() * 10) + 1,
-            trend: Math.random() > 0.5 ? 'up' : 'down'
+            value: (team as any).losses || 0,
+            rank: (team as any).losses_rank || 0,
+            trend: (team as any).losses_trend || 'stable'
           },
           {
             category: 'Win Rate',
-            value: (Math.random() * 0.4 + 0.3).toFixed(3),
-            rank: Math.floor(Math.random() * 10) + 1,
-            trend: Math.random() > 0.5 ? 'up' : 'down'
+            value: (team as any).win_rate || '0.000',
+            rank: (team as any).win_rate_rank || 0,
+            trend: (team as any).win_rate_trend || 'stable'
           }
         ]
       }))

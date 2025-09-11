@@ -52,38 +52,7 @@ const TEAM_LOGOS = {
       'https://logos-world.net/wp-content/uploads/2020/06/',
       'https://cdn.freebiesupply.com/logos/large/2x/'
     ],
-    teams: {
-      'lakers': '1610612747',
-      'warriors': '1610612744',
-      'celtics': '1610612738',
-      'heat': '1610612748',
-      'bulls': '1610612741',
-      'knicks': '1610612752',
-      'nets': '1610612751',
-      'sixers': '1610612755',
-      'raptors': '1610612761',
-      'bucks': '1610612749',
-      'hawks': '1610612737',
-      'cavaliers': '1610612739',
-      'pistons': '1610612765',
-      'pacers': '1610612754',
-      'magic': '1610612753',
-      'wizards': '1610612764',
-      'hornets': '1610612766',
-      'grizzlies': '1610612763',
-      'pelicans': '1610612740',
-      'thunder': '1610612760',
-      'blazers': '1610612757',
-      'jazz': '1610612762',
-      'kings': '1610612758',
-      'suns': '1610612756',
-      'clippers': '1610612746',
-      'mavericks': '1610612742',
-      'rockets': '1610612745',
-      'spurs': '1610612759',
-      'timberwolves': '1610612750',
-      'nuggets': '1610612743'
-    }
+    teams: {} // Will be populated dynamically from database
   },
   NFL: {
     logos: 'https://a.espncdn.com/i/teamlogos/nfl/500/',
@@ -94,38 +63,7 @@ const TEAM_LOGOS = {
       'https://logos-world.net/wp-content/uploads/2020/06/',
       'https://cdn.freebiesupply.com/logos/large/2x/'
     ],
-    teams: {
-      'patriots': 'NE',
-      'cowboys': 'DAL',
-      'packers': 'GB',
-      'steelers': 'PIT',
-      'niners': 'SF',
-      'chiefs': 'KC',
-      'eagles': 'PHI',
-      'vikings': 'MIN',
-      'chargers': 'LAC',
-      'broncos': 'DEN',
-      'buccaneers': 'TB',
-      'ravens': 'BAL',
-      'washington': 'WSH',
-      'cardinals': 'ARI',
-      'panthers': 'CAR',
-      'falcons': 'ATL',
-      'saints': 'NO',
-      'jets': 'NYJ',
-      'rams': 'LAR',
-      'seahawks': 'SEA',
-      'bears': 'CHI',
-      'lions': 'DET',
-      'bengals': 'CIN',
-      'browns': 'CLE',
-      'texans': 'HOU',
-      'colts': 'IND',
-      'jaguars': 'JAX',
-      'dolphins': 'MIA',
-      'giants': 'NYG',
-      'titans': 'TEN'
-    }
+    teams: {} // Will be populated dynamically from database
   },
   SOCCER: {
     logos: 'https://media.api-sports.io/football/teams/',
@@ -136,22 +74,7 @@ const TEAM_LOGOS = {
       'https://cdn.freebiesupply.com/logos/large/2x/',
       'https://upload.wikimedia.org/wikipedia/en/'
     ],
-    teams: {
-      'arsenal': '42',
-      'chelsea': '49',
-      'liverpool': '40',
-      'manchester-united': '33',
-      'manchester-city': '50',
-      'tottenham': '47',
-      'barcelona': '529',
-      'real-madrid': '541',
-      'atletico-madrid': '530',
-      'ac-milan': '489',
-      'juventus': '496',
-      'bayern-munich': '157',
-      'borussia-dortmund': '165',
-      'paris-saint-germain': '85'
-    }
+    teams: {} // Will be populated dynamically from database
   }
 } as const;
 

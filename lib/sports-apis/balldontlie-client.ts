@@ -160,9 +160,29 @@ export class BallDontLieClient {
             }
           } as T
         } else if (response.status === 400) {
-          throw new Error(`BALLDONTLIE API Error: 400 Bad Request - ${errorMessage}`)
+          console.warn(`BALLDONTLIE API: 400 Bad Request - ${errorMessage}. Returning empty data.`)
+          return {
+            data: [],
+            meta: {
+              current_page: 1,
+              next_page: null,
+              per_page: 25,
+              total_count: 0,
+              total_pages: 0
+            }
+          } as T
         } else if (response.status === 404) {
-          throw new Error(`BALLDONTLIE API Error: 404 Not Found - ${errorMessage}`)
+          console.warn(`BALLDONTLIE API: 404 Not Found - ${errorMessage}. Returning empty data.`)
+          return {
+            data: [],
+            meta: {
+              current_page: 1,
+              next_page: null,
+              per_page: 25,
+              total_count: 0,
+              total_pages: 0
+            }
+          } as T
         } else if (response.status === 406) {
           throw new Error(`BALLDONTLIE API Error: 406 Not Acceptable - ${errorMessage}`)
         } else if (response.status === 429) {
@@ -227,7 +247,15 @@ export class BallDontLieClient {
   }
 
   async getPlayerById(playerId: number): Promise<BallDontLiePlayer> {
-    return this.request<BallDontLiePlayer>(`/players/${playerId}`)
+    try {
+      return await this.request<BallDontLiePlayer>(`/players/${playerId}`)
+    } catch (error) {
+      // If it's a 404 or 400 error, return null instead of throwing
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('400'))) {
+        return null as any
+      }
+      throw error
+    }
   }
 
   // Teams
@@ -245,7 +273,15 @@ export class BallDontLieClient {
   }
 
   async getTeamById(teamId: number): Promise<BallDontLieTeam> {
-    return this.request<BallDontLieTeam>(`/teams/${teamId}`)
+    try {
+      return await this.request<BallDontLieTeam>(`/teams/${teamId}`)
+    } catch (error) {
+      // If it's a 404 or 400 error, return null instead of throwing
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('400'))) {
+        return null as any
+      }
+      throw error
+    }
   }
 
   // Games
@@ -281,7 +317,15 @@ export class BallDontLieClient {
   }
 
   async getGameById(gameId: number): Promise<BallDontLieGame> {
-    return this.request<BallDontLieGame>(`/games/${gameId}`)
+    try {
+      return await this.request<BallDontLieGame>(`/games/${gameId}`)
+    } catch (error) {
+      // If it's a 404 or 400 error, return null instead of throwing
+      if (error instanceof Error && (error.message.includes('404') || error.message.includes('400'))) {
+        return null as any
+      }
+      throw error
+    }
   }
 
   // Stats

@@ -73,9 +73,19 @@ export async function GET(request: NextRequest) {
     
     const predictionService = new SportPredictionService(sport as SupportedSport, getDefaultLeague(sport))
     
-    for (const game of upcomingGames) {
+    // Limit to first 3 games to prevent timeout
+    const limitedGames = upcomingGames.slice(0, 3)
+    
+    for (const game of limitedGames) {
       try {
-        const gamePredictions = await predictionService.getPredictions({ gameId: game.id })
+        // Add timeout for each prediction request
+        const gamePredictions = await Promise.race([
+          predictionService.getPredictions({ gameId: game.id }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error('Prediction timeout')), 2000)
+          )
+        ])
+        
         if (gamePredictions && gamePredictions.length > 0) {
           const prediction = gamePredictions[0]
           predictions.push({

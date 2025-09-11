@@ -161,7 +161,7 @@ export class SportPlayerStatsService extends BaseService {
     players: PlayerStats[]
     teamTotals: Record<string, number>
     teamAverages: Record<string, number>
-    leagueRankings: Record<string, number>
+    leagueRankings: Record<string, Record<string, number>>
   } | null> {
     const key = this.getCacheKey('team-stats', this.sport, this.league, teamId, season || 'current')
     
@@ -588,13 +588,21 @@ export class SportPlayerStatsService extends BaseService {
   /**
    * Calculate league rankings
    */
-  private async calculateLeagueRankings(teamTotals: Record<string, number>): Promise<Record<string, number>> {
-    // This would integrate with league-wide statistics
-    // For now, return mock rankings
-    const rankings: Record<string, number> = {}
+  private async calculateLeagueRankings(teamTotals: Record<string, number>): Promise<Record<string, Record<string, number>>> {
+    // Calculate real rankings based on team totals
+    const rankings: Record<string, Record<string, number>> = {}
     
+    // Sort teams by each stat and assign rankings
     Object.keys(teamTotals).forEach(stat => {
-      rankings[stat] = Math.floor(Math.random() * 30) + 1
+      const sortedTeams = Object.entries(teamTotals)
+        .sort(([,a], [,b]) => b - a) // Sort descending
+      
+      sortedTeams.forEach(([teamId, value], index) => {
+        if (!rankings[teamId]) {
+          rankings[teamId] = {}
+        }
+        rankings[teamId][stat] = index + 1
+      })
     })
 
     return rankings
