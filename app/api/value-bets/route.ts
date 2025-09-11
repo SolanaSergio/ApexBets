@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     })
     
     // Transform data for display - sport-agnostic
-    const opportunities = valueBets.map((bet) => ({
+    const opportunities = valueBets.map((bet: any) => ({
       gameId: bet.gameId,
       homeTeam: bet.homeTeam,
       awayTeam: bet.awayTeam,

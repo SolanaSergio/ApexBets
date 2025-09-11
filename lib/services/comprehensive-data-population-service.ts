@@ -478,6 +478,56 @@ export class ComprehensiveDataPopulationService {
     return predictions
   }
 
+  // Get real standings from external APIs
+  private async getRealStandings(sport: string, teams: any[]): Promise<any[]> {
+    const standings = []
+    
+    try {
+      // Use the sport-specific service to get real standings
+      const serviceFactory = (await import('./core/service-factory')).serviceFactory
+      const service = serviceFactory.getService(sport as any)
+      
+      // Get standings from external API
+      const externalStandings = await (await service).getStandings()
+      
+      for (const standing of externalStandings) {
+        // Find matching team in our database
+        const team = teams.find(t => 
+          t.name === standing.teamName || 
+          t.name === standing.team || 
+          t.abbreviation === standing.abbreviation
+        )
+        
+        if (team) {
+          standings.push({
+            team_id: team.id,
+            season: await this.getCurrentSeason(sport),
+            league: team.league,
+            sport: sport,
+            wins: standing.wins || 0,
+            losses: standing.losses || 0,
+            ties: standing.ties || 0,
+            win_percentage: standing.winPercentage || 0,
+            games_back: standing.gamesBack || 0,
+            streak: standing.streak || '',
+            home_wins: standing.homeWins || 0,
+            home_losses: standing.homeLosses || 0,
+            away_wins: standing.awayWins || 0,
+            away_losses: standing.awayLosses || 0,
+            points_for: standing.pointsFor || 0,
+            points_against: standing.pointsAgainst || 0,
+            point_differential: (standing.pointsFor || 0) - (standing.pointsAgainst || 0)
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error getting real standings:', error)
+      // Return empty array if API fails
+    }
+    
+    return standings
+  }
+
   // Populate predictions
   private async populatePredictions(): Promise<void> {
     console.log('🔮 Populating predictions...')
@@ -533,43 +583,19 @@ export class ComprehensiveDataPopulationService {
           .eq('sport', sport)
         
         if (teams?.length > 0) {
-          const standingsToInsert = []
+          // Get real standings data from external APIs
+          const realStandings = await this.getRealStandings(sport, teams)
           
-          for (const team of teams) {
-            const wins = Math.floor(Math.random() * 30) + 10
-            const losses = Math.floor(Math.random() * 30) + 10
-            const winPercentage = wins / (wins + losses)
-            
-            standingsToInsert.push({
-              team_id: team.id,
-              season: await this.getCurrentSeason(sport),
-              league: team.league,
-              sport: sport,
-              wins: wins,
-              losses: losses,
-              ties: 0,
-              win_percentage: winPercentage,
-              games_back: Math.random() * 10,
-              streak: Math.random() > 0.5 ? 'W' : 'L' + Math.floor(Math.random() * 5) + 1,
-              home_wins: Math.floor(wins * 0.6),
-              home_losses: Math.floor(losses * 0.4),
-              away_wins: Math.floor(wins * 0.4),
-              away_losses: Math.floor(losses * 0.6),
-              points_for: Math.floor(Math.random() * 1000) + 2000,
-              points_against: Math.floor(Math.random() * 1000) + 2000
-            })
-          }
-          
-          if (standingsToInsert.length > 0) {
+          if (realStandings.length > 0) {
             const { error } = await this.supabase
               .from('league_standings')
-              .insert(standingsToInsert)
+              .insert(realStandings)
             
             if (error) {
               this.stats.errors.push(`Standings insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
             } else {
-              this.stats.standings += standingsToInsert.length
-              console.log(`   ✅ ${standingsToInsert.length} ${sport} standings added`)
+              this.stats.standings += realStandings.length
+              console.log(`   ✅ ${realStandings.length} ${sport} standings added`)
             }
           }
         }

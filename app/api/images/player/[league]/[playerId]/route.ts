@@ -75,6 +75,7 @@ function getPlayerColor(playerId: string | number): string {
 
 function getSportShape(sportShape: string): string {
   // Dynamic sport shape generation based on sport type
+  // This will be loaded from database configuration
   const shapes: Record<string, string> = {
     'basketball': '<circle cx="22" cy="22" r="8" fill="#FF6347" stroke="#8B0000" stroke-width="1"/>',
     'football': '<ellipse cx="22" cy="22" rx="10" ry="6" fill="#8B4513" stroke="#654321" stroke-width="1"/>',

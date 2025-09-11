@@ -12,6 +12,21 @@ export interface SportConfig {
   apiKey: string
   dataSource: 'balldontlie' | 'sportsdb' | 'odds' | 'custom'
   positions: string[]
+  scoringFields?: {
+    primary: string
+    for: string
+    against: string
+  }
+  bettingMarkets?: {
+    id: string
+    name: string
+    description: string
+  }[]
+  seasonConfig?: {
+    startMonth: number // 0-11 (January = 0)
+    endMonth: number // 0-11 (December = 11)
+    seasonYearOffset?: number // How many months before January to start season
+  }
   rateLimits: {
     requestsPerMinute: number
     requestsPerHour: number
@@ -70,7 +85,7 @@ export class SportConfigManager {
 
     try {
       // Load basic configs synchronously from environment
-      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
+      const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
       
       for (const sport of sports) {
         const sportUpper = sport.toUpperCase()
@@ -228,5 +243,55 @@ export class SportConfigManager {
       frequencies[sport] = config.updateFrequency
     }
     return frequencies
+  }
+
+  /**
+   * Get betting markets for a specific sport
+   */
+  static async getBettingMarkets(sport: string): Promise<{ id: string; name: string; description: string }[]> {
+    await this.initialize()
+    return this.configs[sport]?.bettingMarkets || []
+  }
+
+  /**
+   * Get season configuration for a specific sport
+   */
+  static async getSeasonConfig(sport: string): Promise<{ startMonth: number; endMonth: number; seasonYearOffset?: number } | null> {
+    await this.initialize()
+    return this.configs[sport]?.seasonConfig || null
+  }
+
+  /**
+   * Calculate current season for a sport based on its configuration
+   */
+  static async getCurrentSeason(sport: string): Promise<string> {
+    const seasonConfig = await this.getSeasonConfig(sport)
+    const year = new Date().getFullYear()
+    const month = new Date().getMonth()
+
+    if (!seasonConfig) {
+      return year.toString()
+    }
+
+    const { startMonth, seasonYearOffset = 0 } = seasonConfig
+    
+    // If current month is before start month, we're in the previous year's season
+    if (month < startMonth) {
+      return (year - 1 + seasonYearOffset).toString()
+    }
+    
+    return (year + seasonYearOffset).toString()
+  }
+
+  /**
+   * Get all betting markets for all sports
+   */
+  static async getAllBettingMarkets(): Promise<Record<string, { id: string; name: string; description: string }[]>> {
+    await this.initialize()
+    const markets: Record<string, { id: string; name: string; description: string }[]> = {}
+    for (const [sport, config] of Object.entries(this.configs)) {
+      markets[sport] = config.bettingMarkets || []
+    }
+    return markets
   }
 }

@@ -109,7 +109,7 @@ export class SportTeamStatsService extends BaseService {
 
         return {
           league: this.league,
-          season: season || this.getCurrentSeason(),
+          season: season || await this.getCurrentSeason(),
           standings,
           lastUpdated: new Date().toISOString()
         }
@@ -172,7 +172,7 @@ export class SportTeamStatsService extends BaseService {
           homeRecord,
           awayRecord,
           streak,
-          last10Games: recentGames.slice(0, 10).map((game: any) => this.mapGameToTeamStats(game, teamId)),
+          last10Games: await Promise.all(recentGames.slice(0, 10).map((game: any) => this.mapGameToTeamStats(game, teamId))),
           seasonHighlights
         }
       } catch (error) {
@@ -272,6 +272,9 @@ export class SportTeamStatsService extends BaseService {
         return []
       }
 
+      // Get current season if not provided
+      const currentSeason = season || (await this.getCurrentSeason())
+      
       // Convert to TeamStats format
       const teamStats: TeamStats[] = (data || []).map(standing => ({
         teamId: standing.team_id,
@@ -279,7 +282,7 @@ export class SportTeamStatsService extends BaseService {
         abbreviation: standing.team?.abbreviation || 'UNK',
         sport: this.sport,
         league: this.league,
-        season: season || this.getCurrentSeason(),
+        season: currentSeason,
         gamesPlayed: (standing.wins || 0) + (standing.losses || 0) + (standing.ties || 0),
         wins: standing.wins || 0,
         losses: standing.losses || 0,
@@ -331,7 +334,7 @@ export class SportTeamStatsService extends BaseService {
       })
 
       // Calculate team statistics
-      const stats = this.calculateTeamStats(games, teamId)
+      const stats = await this.calculateTeamStats(games, teamId)
       const winPercentage = stats.gamesPlayed > 0 ? stats.wins / stats.gamesPlayed : 0
 
       return {
@@ -340,7 +343,7 @@ export class SportTeamStatsService extends BaseService {
         abbreviation: team.abbreviation || team.name.substring(0, 3).toUpperCase(),
         sport: this.sport,
         league: this.league,
-        season: season || this.getCurrentSeason(),
+        season: season || await this.getCurrentSeason(),
         gamesPlayed: stats.gamesPlayed,
         wins: stats.wins,
         losses: stats.losses,
@@ -359,13 +362,13 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Calculate team statistics from games
    */
-  private calculateTeamStats(games: any[], teamId: string): any {
+  private async calculateTeamStats(games: any[], teamId: string): Promise<any> {
     let wins = 0
     let losses = 0
     let ties = 0
     const rawStats: Record<string, number> = {}
 
-    games.forEach(game => {
+    for (const game of games) {
       const isHomeTeam = game.homeTeam === teamId || game.homeTeamId === teamId
       const homeScore = game.homeScore || 0
       const awayScore = game.awayScore || 0
@@ -382,7 +385,7 @@ export class SportTeamStatsService extends BaseService {
 
       // Add sport-specific statistics from real game data
       await this.addSportSpecificStats(rawStats, game, teamId, isHomeTeam)
-    })
+    }
 
     return {
       gamesPlayed: games.length,
@@ -605,7 +608,7 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Map game to team stats
    */
-  private mapGameToTeamStats(game: any, teamId: string): TeamStats {
+  private async mapGameToTeamStats(game: any, teamId: string): Promise<TeamStats> {
     const isHomeTeam = game.homeTeam === teamId || game.homeTeamId === teamId
     const homeScore = game.homeScore || 0
     const awayScore = game.awayScore || 0
@@ -623,7 +626,7 @@ export class SportTeamStatsService extends BaseService {
       abbreviation: (isHomeTeam ? game.homeTeam : game.awayTeam).substring(0, 3).toUpperCase(),
       sport: this.sport,
       league: this.league,
-      season: this.getCurrentSeason(),
+      season: await this.getCurrentSeason(),
       gamesPlayed: 1,
       wins: result === 'win' ? 1 : 0,
       losses: result === 'loss' ? 1 : 0,
@@ -682,23 +685,16 @@ export class SportTeamStatsService extends BaseService {
   }
 
   /**
-   * Get current season
+   * Get current season dynamically based on sport configuration
    */
-  private getCurrentSeason(): string {
-    const year = new Date().getFullYear()
-    const month = new Date().getMonth()
-    
-    // Adjust season based on sport
-    switch (this.sport) {
-      case 'basketball':
-      case 'hockey':
-        return month >= 9 ? year.toString() : (year - 1).toString()
-      case 'football':
-        return month >= 8 ? year.toString() : (year - 1).toString()
-      case 'baseball':
-        return month >= 3 ? year.toString() : (year - 1).toString()
-      default:
-        return year.toString()
+  private async getCurrentSeason(): Promise<string> {
+    try {
+      const { SportConfigManager } = await import('../core/sport-config')
+      return await SportConfigManager.getCurrentSeason(this.sport)
+    } catch (error) {
+      console.error(`Error getting current season for ${this.sport}:`, error)
+      // Fallback to current year
+      return new Date().getFullYear().toString()
     }
   }
 

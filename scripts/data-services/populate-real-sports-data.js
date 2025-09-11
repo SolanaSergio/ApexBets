@@ -15,6 +15,32 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
+async function getSportConfigFromDatabase(sport) {
+  try {
+    const { data, error } = await supabase
+      .from('sports')
+      .select('league, season, country, rapidapi_code, rapidapi_league_id')
+      .eq('name', sport)
+      .eq('is_active', true)
+      .single();
+    
+    if (error || !data) {
+      throw new Error(`No configuration found for sport: ${sport}`);
+    }
+    
+    return {
+      league: data.league,
+      season: data.season || new Date().getFullYear(),
+      country: data.country || 'US',
+      code: data.rapidapi_code,
+      leagueId: data.rapidapi_league_id
+    };
+  } catch (error) {
+    console.error(`Error getting sport config for ${sport}:`, error);
+    throw error;
+  }
+}
+
 // Real API configurations
 const API_CONFIGS = {
   basketball: {
@@ -179,103 +205,33 @@ async function populateSportData(sport, config) {
 
 async function fetchTeamsFromAPI(sport, config) {
   try {
-    let response;
-    
-    switch (sport) {
-      case 'basketball':
-        response = await axios.get(`${config.baseUrl}/teams`, {
-          headers: config.headers,
-          params: { season: '2024' }
-        })
-        return response.data.response?.map(team => ({
-          name: team.name,
-          city: team.city,
-          league: 'nba',
-          sport: 'basketball',
-          abbreviation: team.code,
-          logo_url: team.logo,
-          is_active: true,
-          conference: team.leagues?.standard?.conference || 'Unknown',
-          division: team.leagues?.standard?.division || 'Unknown',
-          founded_year: team.nbaFranchise ? 1946 : null,
-          country: 'US'
-        })) || []
-
-      case 'football':
-        response = await axios.get(`${config.baseUrl}/teams`, {
-          headers: config.headers
-        })
-        return response.data?.map(team => ({
-          name: team.name,
-          city: team.city,
-          league: 'nfl',
-          sport: 'football',
-          abbreviation: team.abbreviation,
-          logo_url: team.logo,
-          is_active: true,
-          conference: team.conference,
-          division: team.division,
-          founded_year: team.founded,
-          country: 'US'
-        })) || []
-
-      case 'baseball':
-        response = await axios.get(`${config.baseUrl}/teams`, {
-          headers: config.headers,
-          params: { season: '2024' }
-        })
-        return response.data.response?.map(team => ({
-          name: team.name,
-          city: team.city,
-          league: 'mlb',
-          sport: 'baseball',
-          abbreviation: team.code,
-          logo_url: team.logo,
-          is_active: true,
-          conference: team.leagues?.standard?.conference || 'Unknown',
-          division: team.leagues?.standard?.division || 'Unknown',
-          founded_year: team.founded,
-          country: 'US'
-        })) || []
-
-      case 'hockey':
-        response = await axios.get(`${config.baseUrl}/teams`, {
-          headers: config.headers
-        })
-        return response.data?.map(team => ({
-          name: team.name,
-          city: team.city,
-          league: 'nhl',
-          sport: 'hockey',
-          abbreviation: team.abbreviation,
-          logo_url: team.logo,
-          is_active: true,
-          conference: team.conference?.name,
-          division: team.division?.name,
-          founded_year: team.firstYearOfPlay,
-          country: 'US'
-        })) || []
-
-      case 'soccer':
-        response = await axios.get(`${config.baseUrl}/teams`, {
-          headers: config.headers,
-          params: { league: '39', season: '2024' } // Premier League
-        })
-        return response.data.response?.map(team => ({
-          name: team.team.name,
-          city: team.team.country,
-          league: 'premier-league',
-          sport: 'soccer',
-          abbreviation: team.team.code,
-          logo_url: team.team.logo,
-          is_active: true,
-          country: team.team.country
-        })) || []
-
-      default:
-        console.warn(`No API endpoint configured for ${sport}`)
-        return []
+    // Get sport configuration from database
+    const sportConfig = await getSportConfigFromDatabase(sport);
+    if (!sportConfig) {
+      throw new Error(`No configuration found for sport: ${sport}`);
     }
+
+    let response;
+    const params = sportConfig.season ? { season: sportConfig.season } : {};
+    
+    response = await axios.get(`${config.baseUrl}/teams`, {
+      headers: config.headers,
+      params: params
+    })
+    
+    return response.data.response?.map(team => ({
+      name: team.name,
+      city: team.city,
+      league: sportConfig.league,
+      sport: sport,
+      abbreviation: team.code || team.abbreviation,
+      logo_url: team.logo,
+      is_active: true,
+      conference: team.leagues?.standard?.conference || team.conference || 'Unknown',
+      division: team.leagues?.standard?.division || team.division || 'Unknown',
+      founded_year: team.nbaFranchise ? 1946 : team.founded || null,
+      country: sportConfig.country || 'US'
+    })) || []
   } catch (error) {
     console.error(`Error fetching teams for ${sport}:`, error.message)
     return []
@@ -284,110 +240,40 @@ async function fetchTeamsFromAPI(sport, config) {
 
 async function fetchGamesFromAPI(sport, config) {
   try {
+    // Get sport configuration from database
+    const sportConfig = await getSportConfigFromDatabase(sport);
+    if (!sportConfig) {
+      throw new Error(`No configuration found for sport: ${sport}`);
+    }
+
     let response;
     const currentDate = new Date()
-    const season = currentDate.getFullYear()
+    const season = sportConfig.season || currentDate.getFullYear()
+    const params = { season: season.toString() };
     
-    switch (sport) {
-      case 'basketball':
-        response = await axios.get(`${config.baseUrl}/games`, {
-          headers: config.headers,
-          params: { season: season.toString() }
-        })
-        return response.data.response?.map(game => ({
-          home_team_id: game.teams.home.id,
-          away_team_id: game.teams.away.id,
-          game_date: game.date.start,
-          season: season.toString(),
-          home_score: game.scores.home.points,
-          away_score: game.scores.away.points,
-          status: game.status.long,
-          venue: game.arena.name,
-          sport: 'basketball',
-          league: 'nba',
-          game_type: 'regular'
-        })) || []
-
-      case 'football':
-        response = await axios.get(`${config.baseUrl}/games`, {
-          headers: config.headers,
-          params: { season: season.toString() }
-        })
-        return response.data?.map(game => ({
-          home_team_id: game.homeTeam.id,
-          away_team_id: game.awayTeam.id,
-          game_date: game.schedule.date,
-          season: season.toString(),
-          home_score: game.score.homeScoreTotal,
-          away_score: game.score.awayScoreTotal,
-          status: game.status,
-          venue: game.venue.name,
-          sport: 'football',
-          league: 'nfl',
-          game_type: 'regular'
-        })) || []
-
-      case 'baseball':
-        response = await axios.get(`${config.baseUrl}/games`, {
-          headers: config.headers,
-          params: { season: season.toString() }
-        })
-        return response.data.response?.map(game => ({
-          home_team_id: game.teams.home.id,
-          away_team_id: game.teams.away.id,
-          game_date: game.date,
-          season: season.toString(),
-          home_score: game.scores.home,
-          away_score: game.scores.away,
-          status: game.status.long,
-          venue: game.venue.name,
-          sport: 'baseball',
-          league: 'mlb',
-          game_type: 'regular'
-        })) || []
-
-      case 'hockey':
-        response = await axios.get(`${config.baseUrl}/games`, {
-          headers: config.headers,
-          params: { season: season.toString() }
-        })
-        return response.data?.map(game => ({
-          home_team_id: game.teams.home.id,
-          away_team_id: game.teams.away.id,
-          game_date: game.gameDate,
-          season: season.toString(),
-          home_score: game.teams.home.score,
-          away_score: game.teams.away.score,
-          status: game.status.detailedState,
-          venue: game.venue.name,
-          sport: 'hockey',
-          league: 'nhl',
-          game_type: 'regular'
-        })) || []
-
-      case 'soccer':
-        response = await axios.get(`${config.baseUrl}/fixtures`, {
-          headers: config.headers,
-          params: { league: '39', season: season.toString() }
-        })
-        return response.data.response?.map(game => ({
-          home_team_id: game.teams.home.id,
-          away_team_id: game.teams.away.id,
-          game_date: game.fixture.date,
-          season: season.toString(),
-          home_score: game.goals.home,
-          away_score: game.goals.away,
-          status: game.fixture.status.long,
-          venue: game.fixture.venue.name,
-          sport: 'soccer',
-          league: 'premier-league',
-          game_type: 'regular'
-        })) || []
-
-      default:
-        console.warn(`No API endpoint configured for ${sport}`)
-        return []
+    // Add league parameter if available
+    if (sportConfig.leagueId) {
+      params.league = sportConfig.leagueId;
     }
+    
+    response = await axios.get(`${config.baseUrl}/games`, {
+      headers: config.headers,
+      params: params
+    })
+    
+    return response.data.response?.map(game => ({
+      home_team_id: game.teams?.home?.id || game.homeTeam?.id,
+      away_team_id: game.teams?.away?.id || game.awayTeam?.id,
+      game_date: game.date?.start || game.schedule?.date || game.gameDate || game.fixture?.date,
+      season: season.toString(),
+      home_score: game.scores?.home?.points || game.score?.homeScoreTotal || game.scores?.home || game.teams?.home?.score || game.goals?.home,
+      away_score: game.scores?.away?.points || game.score?.awayScoreTotal || game.scores?.away || game.teams?.away?.score || game.goals?.away,
+      status: game.status?.long || game.status || game.status?.detailedState || game.fixture?.status?.long,
+      venue: game.arena?.name || game.venue?.name || game.fixture?.venue?.name,
+      sport: sport,
+      league: sportConfig.league,
+      game_type: 'regular'
+    })) || []
   } catch (error) {
     console.error(`Error fetching games for ${sport}:`, error.message)
     return []

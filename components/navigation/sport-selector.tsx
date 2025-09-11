@@ -32,6 +32,12 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
   const supportedSports = unifiedApiClient.getSupportedSportsSync()
   
   const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
+  
+  // Provide consistent fallback values to prevent hydration mismatch
+  const sportIcon = currentSportConfig?.icon || "🏆"
+  const sportColor = currentSportConfig?.color || "text-gray-500"
+  const sportName = currentSportConfig?.name || "Select Sport"
+  const leaguesCount = currentSportConfig?.leagues?.length || 0
 
   return (
     <div className={`relative ${className}`}>
@@ -43,11 +49,11 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
             aria-label="Select sport"
           >
             <div className="flex items-center space-x-3">
-              <span className={`text-2xl ${currentSportConfig?.color}`}>{currentSportConfig?.icon}</span>
+              <span className={`text-2xl ${sportColor}`}>{sportIcon}</span>
               <div className="text-left">
-                <div className="font-medium">{currentSportConfig?.name || "Select Sport"}</div>
+                <div className="font-medium">{sportName}</div>
                 <div className="text-xs text-muted-foreground">
-                  {currentSportConfig?.leagues.length || 0} leagues available
+                  {leaguesCount} leagues available
                 </div>
               </div>
             </div>
@@ -61,6 +67,13 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
               const config = SportConfigManager.getSportConfig(sport)
               const isSelected = sport === selectedSport
               
+              // Provide consistent fallback values
+              const sportIcon = config?.icon || "🏆"
+              const sportColor = config?.color || "text-gray-500"
+              const sportName = config?.name || sport
+              const leagues = config?.leagues || []
+              const leaguesText = leagues.length > 0 ? leagues.join(", ") : "No leagues"
+              
               return (
                 <DropdownMenuItem
                   key={sport}
@@ -72,11 +85,11 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
                 >
                   <div className="flex items-center space-x-3 w-full">
                     <div className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}>
-                      <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
+                      <span className={`text-xl ${sportColor}`}>{sportIcon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium">{config?.name}</span>
+                        <span className="font-medium">{sportName}</span>
                         {isSelected && (
                           <Badge variant="default" className="text-xs">
                             Active
@@ -84,13 +97,13 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {config?.leagues.join(", ")}
+                        {leaguesText}
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Star className="h-3 w-3 text-yellow-500" />
                       <span className="text-xs text-muted-foreground">
-                        {config?.leagues.length}
+                        {leagues.length}
                       </span>
                     </div>
                   </div>
@@ -124,6 +137,11 @@ export function SportSelectorCompact({ selectedSport, onSportChange, className =
         const config = SportConfigManager.getSportConfig(sport)
         const isSelected = sport === selectedSport
         
+        // Provide consistent fallback values
+        const sportIcon = config?.icon || "🏆"
+        const sportColor = config?.color || "text-gray-500"
+        const sportName = config?.name || sport
+        
         return (
           <Button
             key={sport}
@@ -132,8 +150,8 @@ export function SportSelectorCompact({ selectedSport, onSportChange, className =
             onClick={() => onSportChange(sport)}
             className={`flex-shrink-0 ${isSelected ? 'shadow-md' : ''}`}
           >
-            <span className={`text-lg mr-2 ${config?.color}`}>{config?.icon}</span>
-            {config?.name}
+            <span className={`text-lg mr-2 ${sportColor}`}>{sportIcon}</span>
+            {sportName}
           </Button>
         )
       })}

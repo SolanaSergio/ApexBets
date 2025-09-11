@@ -259,7 +259,7 @@ export class SportPlayerStatsService extends BaseService {
             position: stat.position || 'Unknown',
             sport: this.sport,
             league: this.league,
-            season: params.season || this.getCurrentSeason(),
+            season: params.season || await this.getCurrentSeason(),
             gamesPlayed: 0,
             stats: {},
             averages: {},
@@ -282,7 +282,7 @@ export class SportPlayerStatsService extends BaseService {
       }
 
       // Calculate averages
-      for (const player of playerStatsMap.values()) {
+      for (const player of Array.from(playerStatsMap.values())) {
         for (const [key, total] of Object.entries(player.totals)) {
           if (typeof total === 'number' && player.gamesPlayed > 0) {
             player.averages[key] = Math.round((total / player.gamesPlayed) * 100) / 100
@@ -349,7 +349,7 @@ export class SportPlayerStatsService extends BaseService {
         position: player.position || 'Unknown',
         sport: this.sport,
         league: this.league,
-        season: season || this.getCurrentSeason(),
+        season: season || await this.getCurrentSeason(),
         gamesPlayed: stats.gamesPlayed || 0,
         stats: stats.rawStats || {},
         averages,
@@ -390,7 +390,7 @@ export class SportPlayerStatsService extends BaseService {
         return this.getGenericStats(playerId, season)
       }
 
-      const currentSeason = season || this.getCurrentSeason()
+      const currentSeason = season || await this.getCurrentSeason()
       const seasonNumber = parseInt(currentSeason)
       
       const stats = await ballDontLieClient.getStats({
@@ -621,23 +621,16 @@ export class SportPlayerStatsService extends BaseService {
   }
 
   /**
-   * Get current season
+   * Get current season dynamically based on sport configuration
    */
-  private getCurrentSeason(): string {
-    const year = new Date().getFullYear()
-    const month = new Date().getMonth()
-    
-    // Adjust season based on sport
-    switch (this.sport) {
-      case 'basketball':
-      case 'hockey':
-        return month >= 9 ? year.toString() : (year - 1).toString()
-      case 'football':
-        return month >= 8 ? year.toString() : (year - 1).toString()
-      case 'baseball':
-        return month >= 3 ? year.toString() : (year - 1).toString()
-      default:
-        return year.toString()
+  private async getCurrentSeason(): Promise<string> {
+    try {
+      const { SportConfigManager } = await import('../core/sport-config')
+      return await SportConfigManager.getCurrentSeason(this.sport)
+    } catch (error) {
+      console.error(`Error getting current season for ${this.sport}:`, error)
+      // Fallback to current year
+      return new Date().getFullYear().toString()
     }
   }
 

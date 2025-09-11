@@ -110,44 +110,43 @@ async function initializeSportsImages() {
 // ============================================================================
 
 /**
+ * Get league configuration dynamically
+ */
+function getLeagueConfig(league: string): any {
+  // Map league names to their configurations
+  const leagueMap: Record<string, any> = {
+    'NBA': TEAM_LOGOS.NBA,
+    'NFL': TEAM_LOGOS.NFL,
+    'Premier League': TEAM_LOGOS.SOCCER,
+    'La Liga': TEAM_LOGOS.SOCCER,
+    'Serie A': TEAM_LOGOS.SOCCER,
+    'Bundesliga': TEAM_LOGOS.SOCCER,
+    'Ligue 1': TEAM_LOGOS.SOCCER
+  };
+  
+  return leagueMap[league] || null;
+}
+
+/**
  * Get team logo URL for any supported league and team
  * @deprecated Use getTeamLogoUrl from dynamic-team-service.ts for database-first approach
  */
 export function getTeamLogoUrl(
   teamName: string,
-  league: SportsLeague = 'NBA',
+  league: SportsLeague,
   config: TeamLogoConfig = {}
 ): string {
   const { variant = 'primary', format = 'png', quality = 80 } = config;
   const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
 
   try {
-    // Handle different league formats
-    switch (league) {
-      case 'NBA':
-        const nbaTeamId = TEAM_LOGOS.NBA.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NBA.teams];
-        if (nbaTeamId) {
-          return `${TEAM_LOGOS.NBA.logos}${nbaTeamId}/${variant}/L/logo.${format}`;
-        }
-        break;
-
-      case 'NFL':
-        const nflTeamCode = TEAM_LOGOS.NFL.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NFL.teams];
-        if (nflTeamCode) {
-          return `${TEAM_LOGOS.NFL.logos}${nflTeamCode}.png`;
-        }
-        break;
-
-      case 'Premier League':
-      case 'La Liga':
-      case 'Serie A':
-      case 'Bundesliga':
-      case 'Ligue 1':
-        const soccerTeamId = TEAM_LOGOS.SOCCER.teams[normalizedTeam as keyof typeof TEAM_LOGOS.SOCCER.teams];
-        if (soccerTeamId) {
-          return `${TEAM_LOGOS.SOCCER.logos}${soccerTeamId}.png`;
-        }
-        break;
+    // Get league configuration dynamically
+    const leagueConfig = getLeagueConfig(league);
+    if (leagueConfig) {
+      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
+      if (teamId) {
+        return `${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`;
+      }
     }
   } catch (error) {
     console.warn(`Logo lookup failed for ${teamName} in ${league}:`, error);
@@ -162,39 +161,20 @@ export function getTeamLogoUrl(
  */
 export function getApiLogoUrl(
   teamName: string,
-  league: SportsLeague = 'NBA',
+  league: SportsLeague,
   config: TeamLogoConfig = {}
 ): string {
   const { variant = 'primary', format = 'png', quality = 80 } = config;
   const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
 
   try {
-    // Handle different league formats
-    switch (league) {
-      case 'NBA':
-        const nbaTeamId = TEAM_LOGOS.NBA.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NBA.teams];
-        if (nbaTeamId) {
-          return `${TEAM_LOGOS.NBA.logos}${nbaTeamId}/${variant}/L/logo.${format}`;
-        }
-        break;
-
-      case 'NFL':
-        const nflTeamCode = TEAM_LOGOS.NFL.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NFL.teams];
-        if (nflTeamCode) {
-          return `${TEAM_LOGOS.NFL.logos}${nflTeamCode}.png`;
-        }
-        break;
-
-      case 'Premier League':
-      case 'La Liga':
-      case 'Serie A':
-      case 'Bundesliga':
-      case 'Ligue 1':
-        const soccerTeamId = TEAM_LOGOS.SOCCER.teams[normalizedTeam as keyof typeof TEAM_LOGOS.SOCCER.teams];
-        if (soccerTeamId) {
-          return `${TEAM_LOGOS.SOCCER.logos}${soccerTeamId}.png`;
-        }
-        break;
+    // Get league configuration dynamically
+    const leagueConfig = getLeagueConfig(league);
+    if (leagueConfig) {
+      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
+      if (teamId) {
+        return `${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`;
+      }
     }
   } catch (error) {
     console.warn(`API logo lookup failed for ${teamName} in ${league}:`, error);
@@ -209,7 +189,7 @@ export function getApiLogoUrl(
  */
 export function getPotentialLogoUrls(
   teamName: string,
-  league: SportsLeague = 'NBA',
+  league: SportsLeague,
   config: TeamLogoConfig = {}
 ): string[] {
   const { variant = 'primary', format = 'png' } = config;
@@ -217,59 +197,32 @@ export function getPotentialLogoUrls(
   const urls: string[] = [];
 
   try {
-    switch (league) {
-      case 'NBA':
-        const nbaTeamId = TEAM_LOGOS.NBA.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NBA.teams];
-        if (nbaTeamId) {
-          // Primary NBA source
-          urls.push(`${TEAM_LOGOS.NBA.logos}${nbaTeamId}/${variant}/L/logo.${format}`);
-          // ESPN source
+    // Get league configuration dynamically
+    const leagueConfig = getLeagueConfig(league);
+    if (leagueConfig) {
+      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
+      if (teamId) {
+        // Primary source
+        urls.push(`${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`);
+        // ESPN source for NBA
+        if (league === 'NBA') {
           urls.push(`https://a.espncdn.com/i/teamlogos/nba/500/${normalizedTeam}.png`);
         }
-        // Try all sources even without team ID
-        TEAM_LOGOS.NBA.sources.forEach((source: string) => {
+      }
+      // Try all sources even without team ID
+      if (leagueConfig.sources) {
+        leagueConfig.sources.forEach((source: string) => {
           urls.push(`${source}${normalizedTeam}.png`);
           urls.push(`${source}${normalizedTeam}.svg`);
         });
-        break;
-
-      case 'NFL':
-        const nflTeamCode = TEAM_LOGOS.NFL.teams[normalizedTeam as keyof typeof TEAM_LOGOS.NFL.teams];
-        if (nflTeamCode) {
-          // Primary NFL source
-          urls.push(`${TEAM_LOGOS.NFL.logos}${nflTeamCode}.png`);
-        }
-        // Try all sources
-        TEAM_LOGOS.NFL.sources.forEach((source: string) => {
-          urls.push(`${source}${normalizedTeam}.png`);
-          urls.push(`${source}${normalizedTeam}.svg`);
-        });
-        break;
-
-      case 'Premier League':
-      case 'La Liga':
-      case 'Serie A':
-      case 'Bundesliga':
-      case 'Ligue 1':
-        const soccerTeamId = TEAM_LOGOS.SOCCER.teams[normalizedTeam as keyof typeof TEAM_LOGOS.SOCCER.teams];
-        if (soccerTeamId) {
-          // Primary soccer source
-          urls.push(`${TEAM_LOGOS.SOCCER.logos}${soccerTeamId}.png`);
-        }
-        // Try all sources
-        TEAM_LOGOS.SOCCER.sources.forEach((source: string) => {
-          urls.push(`${source}${normalizedTeam}.png`);
-          urls.push(`${source}${normalizedTeam}.svg`);
-        });
-        break;
-
-      default:
-        // Generic sources for unknown leagues
-        urls.push(
-          `https://logos-world.net/wp-content/uploads/2020/06/${normalizedTeam}-Logo.png`,
-          `https://cdn.freebiesupply.com/logos/large/2x/${normalizedTeam}-logo-png-transparent.png`,
-          `https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/${normalizedTeam}_logo.svg/1200px-${normalizedTeam}_logo.svg.png`
-        );
+      }
+    } else {
+      // Generic sources for unknown leagues
+      urls.push(
+        `https://logos-world.net/wp-content/uploads/2020/06/${normalizedTeam}-Logo.png`,
+        `https://cdn.freebiesupply.com/logos/large/2x/${normalizedTeam}-logo-png-transparent.png`,
+        `https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/${normalizedTeam}_logo.svg/1200px-${normalizedTeam}_logo.svg.png`
+      );
     }
   } catch (error) {
     console.warn(`Failed to generate potential URLs for ${teamName} in ${league}:`, error);
@@ -289,19 +242,11 @@ export function getPlayerPhotoUrl(
   const { variant = 'headshot', format = 'jpg', quality = 80 } = config;
 
   try {
-    switch (league) {
-      case 'NBA':
-        return `${TEAM_LOGOS.NBA.headshots}${playerId}.${format}`;
-
-      case 'NFL':
-        return `${TEAM_LOGOS.NFL.headshots}${playerId}.${format}`;
-
-      case 'Premier League':
-      case 'La Liga':
-      case 'Serie A':
-      case 'Bundesliga':
-      case 'Ligue 1':
-        return `${TEAM_LOGOS.SOCCER.headshots}${playerId}.png`;
+    // Dynamic league lookup - will be loaded from database configuration
+    // For now, use fallback to local API endpoint for all leagues
+    const leagueConfig = TEAM_LOGOS[league];
+    if (leagueConfig && leagueConfig.headshots) {
+      return `${leagueConfig.headshots}${playerId}.${format}`;
     }
   } catch (error) {
     console.warn(`Player photo lookup failed for ID ${playerId} in ${league}:`, error);

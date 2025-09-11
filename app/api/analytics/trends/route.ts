@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       }, { status: 400 })
     }
     const league = searchParams.get('league') || undefined
-    const season = searchParams.get('season') || SeasonManager.getCurrentSeason(sport)
+    const season = searchParams.get('season') || await SeasonManager.getCurrentSeason(sport)
     const limit = parseInt(searchParams.get('limit') || '10')
     
     // Validate sport
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get historical data for comparison (previous season)
-    const previousSeason = SeasonManager.getPreviousSeason(sport, season)
+    const previousSeason = SeasonManager.getPreviousSeason(sport, await season)
     const [historicalGames, historicalTeams] = await Promise.all([
       sportService.getGames({ 
         season: previousSeason, 
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate real trends with comprehensive data
-    const trends = await calculateSportTrends(sport, games, teams, players, predictions, season, historicalGames, historicalTeams)
+    const trends = await calculateSportTrends(sport, games, teams, players, predictions, await season, historicalGames, historicalTeams)
     
     return NextResponse.json({
       success: true,
@@ -89,7 +89,7 @@ export async function GET(request: NextRequest) {
         predictions_analyzed: predictions.length,
         historical_games: historicalGames.length,
         historical_teams: historicalTeams.length,
-        season_active: SeasonManager.isSeasonActive(sport, season),
+        season_active: await SeasonManager.isSeasonActive(sport, await season),
         previous_season: previousSeason,
         data_quality: calculateDataQuality(games, teams, players, predictions)
       }

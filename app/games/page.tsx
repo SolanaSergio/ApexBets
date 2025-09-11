@@ -39,8 +39,10 @@ export default function GamesPage() {
   const loadSupportedSports = async () => {
     const sports = await serviceFactory.getSupportedSports()
     setSupportedSports(sports)
-    // Set basketball as default
-    setSelectedSport('basketball')
+    // Set first available sport as default
+    if (sports.length > 0) {
+      setSelectedSport(sports[0])
+    }
   }
 
   const loadLeaguesForSport = async (sport: SupportedSport) => {

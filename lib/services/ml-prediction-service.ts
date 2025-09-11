@@ -150,7 +150,9 @@ export class MLPredictionService {
   private async getHistoricalData(game: any): Promise<any> {
     try {
       // Get sport-specific service
-      const sportService = await serviceFactory.getService(game.sport || 'basketball', game.league || 'NBA')
+      const sport = game.sport || await this.getDefaultSport()
+      const league = game.league || await this.getDefaultLeague(sport)
+      const sportService = await serviceFactory.getService(sport, league)
       
       // Get recent games for both teams
       const [homeTeamGames, awayTeamGames] = await Promise.all([
@@ -245,6 +247,38 @@ export class MLPredictionService {
     
     return Math.max(this.MIN_CONFIDENCE, Math.min(this.MAX_CONFIDENCE,
       this.DEFAULT_CONFIDENCE * (homeConsistency + awayConsistency) / 2))
+  }
+
+  /**
+   * Get default sport from configuration
+   */
+  private async getDefaultSport(): Promise<string> {
+    try {
+      const sports = await serviceFactory.getSupportedSports()
+      if (sports.length === 0) {
+        throw new Error('No supported sports available')
+      }
+      return sports[0]
+    } catch (error) {
+      console.warn('Failed to get default sport:', error)
+      throw new Error('No supported sports available')
+    }
+  }
+
+  /**
+   * Get default league for a sport
+   */
+  private async getDefaultLeague(sport: string): Promise<string> {
+    try {
+      const leagues = await serviceFactory.getLeaguesForSport(sport)
+      if (leagues.length === 0) {
+        throw new Error(`No leagues available for sport: ${sport}`)
+      }
+      return leagues[0]
+    } catch (error) {
+      console.warn(`Failed to get default league for ${sport}:`, error)
+      throw new Error(`No leagues available for sport: ${sport}`)
+    }
   }
 }
 

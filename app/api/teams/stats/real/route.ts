@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
         error: "Sport parameter is required"
       }, { status: 400 })
     }
-    const season = searchParams.get("season") || SeasonManager.getCurrentSeason(sport)
+    const season = searchParams.get("season") || (await SeasonManager.getCurrentSeason(sport))
     const league = searchParams.get("league") || undefined
     
     if (!teamId) {
@@ -59,8 +59,8 @@ export async function GET(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // Calculate real team statistics
-    const stats = calculateTeamStats(sport, team, games, players, season)
+    // Calculate real team statistics dynamically
+    const stats = await calculateTeamStats(sport, team, games, players, season)
     
     return NextResponse.json({
       success: true,
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
       meta: {
         games_analyzed: games.length,
         players_analyzed: players.length,
-        season_active: SeasonManager.isSeasonActive(sport, season),
+        season_active: await SeasonManager.isSeasonActive(sport, await season),
         last_updated: new Date().toISOString()
       }
     })
@@ -92,9 +92,9 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Calculate real team statistics based on actual data
+ * Calculate real team statistics based on actual data dynamically
  */
-function calculateTeamStats(sport: string, team: any, games: any[], players: any[], season: string) {
+async function calculateTeamStats(sport: string, team: any, games: any[], players: any[], season: string) {
   const completedGames = games.filter(g => g.status === 'completed')
   const wins = completedGames.filter(g => {
     if (g.home_team_id === team.id) {
@@ -107,30 +107,31 @@ function calculateTeamStats(sport: string, team: any, games: any[], players: any
   const losses = completedGames.length - wins
   const winPercentage = completedGames.length > 0 ? (wins / completedGames.length) * 100 : 0
   
-  // Calculate sport-specific statistics
-  switch (sport.toLowerCase()) {
-    case 'basketball':
-      return calculateBasketballStats(team, completedGames, players, wins, losses, winPercentage)
+  // Get sport configuration to determine statistics to calculate
+  try {
+    const { SportConfigManager } = await import('@/lib/services/core/sport-config')
+    const sportConfig = await SportConfigManager.getSportConfigAsync(sport)
     
-    case 'football':
-      return calculateFootballStats(team, completedGames, players, wins, losses, winPercentage)
-    
-    case 'baseball':
-      return calculateBaseballStats(team, completedGames, players, wins, losses, winPercentage)
-    
-    case 'hockey':
-      return calculateHockeyStats(team, completedGames, players, wins, losses, winPercentage)
-    
-    case 'soccer':
-      return calculateSoccerStats(team, completedGames, players, wins, losses, winPercentage)
-    
-    default:
-      return calculateGenericStats(team, completedGames, players, wins, losses, winPercentage)
+    if (sportConfig?.scoringFields) {
+      return calculateSportSpecificStats(team, completedGames, players, wins, losses, winPercentage, sportConfig.scoringFields)
+    }
+  } catch (error) {
+    console.error(`Error getting sport config for ${sport}:`, error)
   }
+  
+  // Fallback to generic statistics
+  return calculateGenericStats(team, completedGames, players, wins, losses, winPercentage)
 }
 
-function calculateBasketballStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
-  const totalPoints = games.reduce((sum, game) => {
+/**
+ * Calculate sport-specific statistics based on configuration
+ */
+function calculateSportSpecificStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number, scoringFields: any) {
+  const primaryField = scoringFields.primary || 'score'
+  const forField = scoringFields.for || `${primaryField}For`
+  const againstField = scoringFields.against || `${primaryField}Against`
+  
+  const totalFor = games.reduce((sum, game) => {
     if (game.home_team_id === team.id) {
       return sum + (game.home_score || 0)
     } else {
@@ -138,7 +139,7 @@ function calculateBasketballStats(team: any, games: any[], players: any[], wins:
     }
   }, 0)
   
-  const totalOpponentPoints = games.reduce((sum, game) => {
+  const totalAgainst = games.reduce((sum, game) => {
     if (game.home_team_id === team.id) {
       return sum + (game.away_score || 0)
     } else {
@@ -146,92 +147,20 @@ function calculateBasketballStats(team: any, games: any[], players: any[], wins:
     }
   }, 0)
   
-  const avgPoints = games.length > 0 ? totalPoints / games.length : 0
-  const avgOpponentPoints = games.length > 0 ? totalOpponentPoints / games.length : 0
-  const pointDifferential = avgPoints - avgOpponentPoints
+  const avgFor = games.length > 0 ? totalFor / games.length : 0
+  const avgAgainst = games.length > 0 ? totalAgainst / games.length : 0
+  const differential = avgFor - avgAgainst
   
   return [
     { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
     { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
     { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
-    { category: "Points Per Game", value: avgPoints.toFixed(1), rank: 1, trend: "up" },
-    { category: "Points Allowed", value: avgOpponentPoints.toFixed(1), rank: 1, trend: "down" },
-    { category: "Point Differential", value: pointDifferential.toFixed(1), rank: 1, trend: pointDifferential > 0 ? "up" : "down" }
+    { category: `${forField} Per Game`, value: avgFor.toFixed(1), rank: 1, trend: "up" },
+    { category: `${againstField} Per Game`, value: avgAgainst.toFixed(1), rank: 1, trend: "down" },
+    { category: "Differential", value: differential.toFixed(1), rank: 1, trend: differential > 0 ? "up" : "down" }
   ]
 }
 
-function calculateFootballStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
-  const totalYards = games.reduce((sum, game) => {
-    return sum + (game.home_team_id === team.id ? (game.home_yards || 0) : (game.away_yards || 0))
-  }, 0)
-  
-  const totalOpponentYards = games.reduce((sum, game) => {
-    return sum + (game.home_team_id === team.id ? (game.away_yards || 0) : (game.home_yards || 0))
-  }, 0)
-  
-  const avgYards = games.length > 0 ? totalYards / games.length : 0
-  const avgOpponentYards = games.length > 0 ? totalOpponentYards / games.length : 0
-  
-  return [
-    { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
-    { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
-    { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
-    { category: "Yards Per Game", value: avgYards.toFixed(0), rank: 1, trend: "up" },
-    { category: "Yards Allowed", value: avgOpponentYards.toFixed(0), rank: 1, trend: "down" },
-    { category: "Turnovers", value: "1.2", rank: 1, trend: "down" }
-  ]
-}
-
-function calculateBaseballStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
-  const totalRuns = games.reduce((sum, game) => {
-    return sum + (game.home_team_id === team.id ? (game.home_score || 0) : (game.away_score || 0))
-  }, 0)
-  
-  const avgRuns = games.length > 0 ? totalRuns / games.length : 0
-  
-  return [
-    { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
-    { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
-    { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
-    { category: "Runs Per Game", value: avgRuns.toFixed(1), rank: 1, trend: "up" },
-    { category: "Batting Average", value: ".250", rank: 1, trend: "up" },
-    { category: "ERA", value: "4.20", rank: 1, trend: "down" }
-  ]
-}
-
-function calculateHockeyStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
-  const totalGoals = games.reduce((sum, game) => {
-    return sum + (game.home_team_id === team.id ? (game.home_score || 0) : (game.away_score || 0))
-  }, 0)
-  
-  const avgGoals = games.length > 0 ? totalGoals / games.length : 0
-  
-  return [
-    { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
-    { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
-    { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
-    { category: "Goals Per Game", value: avgGoals.toFixed(1), rank: 1, trend: "up" },
-    { category: "Power Play %", value: "20.5%", rank: 1, trend: "up" },
-    { category: "Penalty Kill %", value: "85.2%", rank: 1, trend: "up" }
-  ]
-}
-
-function calculateSoccerStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
-  const totalGoals = games.reduce((sum, game) => {
-    return sum + (game.home_team_id === team.id ? (game.home_score || 0) : (game.away_score || 0))
-  }, 0)
-  
-  const avgGoals = games.length > 0 ? totalGoals / games.length : 0
-  
-  return [
-    { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
-    { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
-    { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
-    { category: "Goals Per Game", value: avgGoals.toFixed(1), rank: 1, trend: "up" },
-    { category: "Possession %", value: "52.3%", rank: 1, trend: "up" },
-    { category: "Pass Accuracy %", value: "87.1%", rank: 1, trend: "up" }
-  ]
-}
 
 function calculateGenericStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
   return [

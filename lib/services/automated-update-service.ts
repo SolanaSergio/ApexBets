@@ -303,31 +303,13 @@ export class AutomatedUpdateService {
         .limit(20)
       
       if (games?.length > 0) {
-        const predictionsToInsert = []
+        // Get real predictions from prediction service
+        const realPredictions = await this.getRealPredictions(games)
         
-        for (const game of games) {
-          // Generate updated predictions
-          const confidence = Math.random() * 0.4 + 0.6 // 60-100%
-          const predictedValue = Math.random() > 0.5 ? 'home' : 'away'
-          
-          predictionsToInsert.push({
-            game_id: game.id,
-            model_name: 'updated_model_v1',
-            prediction_type: 'moneyline',
-            predicted_value: predictedValue,
-            confidence: confidence,
-            sport: game.sport,
-            league: game.league,
-            reasoning: 'Updated based on latest team performance and injuries',
-            model_version: '1.1.0',
-            updated_at: new Date().toISOString()
-          })
-        }
-        
-        if (predictionsToInsert.length > 0) {
+        if (realPredictions.length > 0) {
           await this.supabase
             .from('predictions')
-            .upsert(predictionsToInsert, { 
+            .upsert(realPredictions, { 
               onConflict: 'game_id,model_name,prediction_type',
               ignoreDuplicates: false 
             })
@@ -474,6 +456,59 @@ export class AutomatedUpdateService {
       league: sportConfig.defaultLeague || 'Unknown',
       created_at: new Date().toISOString()
     }
+  }
+
+  // Get real predictions from prediction service
+  private async getRealPredictions(games: any[]): Promise<any[]> {
+    const predictions = []
+    
+    try {
+      // Group games by sport
+      const gamesBySport = games.reduce((acc: Record<string, any[]>, game: any) => {
+        if (!acc[game.sport]) acc[game.sport] = []
+        acc[game.sport].push(game)
+        return acc
+      }, {} as Record<string, any[]>)
+      
+      for (const [sport, sportGames] of Object.entries(gamesBySport)) {
+        try {
+          // Use the prediction service to get real predictions
+          const { SportPredictionService } = await import('./predictions/sport-prediction-service')
+          const predictionService = new SportPredictionService(sport as any)
+          
+          for (const game of sportGames) {
+            const gamePredictions = await predictionService.getPredictions({ gameId: game.id })
+            
+            for (const prediction of gamePredictions) {
+              predictions.push({
+                game_id: game.id,
+                model_name: prediction.model || 'ml_model_v1',
+                prediction_type: 'moneyline',
+                predicted_value: prediction.homeWinProbability > prediction.awayWinProbability ? 'home' : 'away',
+                confidence: prediction.confidence || 0.7,
+                sport: game.sport,
+                league: game.league,
+                reasoning: prediction.factors ? prediction.factors.join(', ') : 'Updated based on latest team performance and injuries',
+                model_version: '1.1.0',
+                home_win_probability: prediction.homeWinProbability || 0.5,
+                away_win_probability: prediction.awayWinProbability || 0.5,
+                predicted_spread: prediction.predictedSpread || 0,
+                predicted_total: prediction.predictedTotal || 0,
+                updated_at: new Date().toISOString()
+              })
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to get predictions for ${sport}:`, error)
+          // Continue with other sports
+        }
+      }
+    } catch (error) {
+      console.error('Error getting real predictions:', error)
+      // Return empty array if API fails
+    }
+    
+    return predictions
   }
 
   // Helper methods

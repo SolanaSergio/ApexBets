@@ -784,19 +784,12 @@ class ApexDataManager {
   }
 
   async fetchTeamsFromRapidAPI(sport, api) {
-    // Map sport to RapidAPI sport codes and league IDs
-    const sportConfigs = {
-      'football': { code: 'americanfootball_nfl', leagueId: 1, season: 2024 },
-      'baseball': { code: 'baseball_mlb', leagueId: 1, season: 2024 },
-      'hockey': { code: 'icehockey_nhl', leagueId: 1, season: 2024 },
-      'soccer': { code: 'football', leagueId: 39, season: 2024 } // Premier League
-    };
-    
-    const sportConfig = sportConfigs[sport];
+    // Get sport configuration from database
+    const sportConfig = await this.getSportConfigFromDatabase(sport);
     if (!sportConfig) {
-      throw new Error(`Unsupported sport for RapidAPI: ${sport}`);
+      throw new Error(`No configuration found for sport: ${sport}`);
     }
-    
+
     // Get teams directly using league ID
     const teamsUrl = `${api.baseUrl}/${sportConfig.code}/teams?league=${sportConfig.leagueId}&season=${sportConfig.season}`;
     const teamsResponse = await fetch(teamsUrl, {
@@ -805,27 +798,52 @@ class ApexDataManager {
         'X-RapidAPI-Host': 'api-sports.p.rapidapi.com'
       }
     });
-    
+
     if (!teamsResponse.ok) {
       throw new Error(`RapidAPI teams error: ${teamsResponse.status} ${teamsResponse.statusText}`);
     }
-    
+
     const teamsData = await teamsResponse.json();
     const teams = teamsData.response || [];
-    
+    const leagueName = await this.getLeagueName(sport);
+
     return teams.map(team => ({
       name: team.team.name,
       city: team.venue?.city || null,
       abbreviation: team.team.code,
       logo_url: team.team.logo,
       sport: sport,
-      league: await this.getLeagueName(sport),
+      league: leagueName,
       conference: null, // RapidAPI doesn't provide conference info
       division: null, // RapidAPI doesn't provide division info
       stadium_name: team.venue?.name || null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     }));
+  }
+
+  async getSportConfigFromDatabase(sport) {
+    try {
+      const { data, error } = await supabase
+        .from('sports')
+        .select('rapidapi_code, rapidapi_league_id, current_season')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single();
+      
+      if (error || !data) {
+        throw new Error(`No configuration found for sport: ${sport}`);
+      }
+      
+      return {
+        code: data.rapidapi_code,
+        leagueId: data.rapidapi_league_id,
+        season: data.current_season || new Date().getFullYear()
+      };
+    } catch (error) {
+      console.error(`Error getting sport config for ${sport}:`, error);
+      throw error;
+    }
   }
 
   async getLeagueName(sport) {
@@ -1057,6 +1075,8 @@ class ApexDataManager {
     // Get team ID mappings
     const teamIdMap = await this.getTeamIdMappings();
     
+    const leagueName = await this.getLeagueName(sport);
+
     return fixtures.map(fixture => ({
       id: uuidv4(),
       home_team_id: teamIdMap[fixture.teams.home.name] || null,
@@ -1066,7 +1086,7 @@ class ApexDataManager {
       venue: fixture.fixture.venue?.name || null,
       status: fixture.fixture.status.short,
       sport: sport,
-      league: await this.getLeagueName(sport),
+      league: leagueName,
       season: new Date().getFullYear(),
       game_type: 'Regular Season',
       game_date: fixture.fixture.date ? new Date(fixture.fixture.date) : null,

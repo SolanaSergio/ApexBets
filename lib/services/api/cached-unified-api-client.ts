@@ -4,6 +4,7 @@
  */
 
 import { serviceFactory, SupportedSport } from '../core/service-factory'
+import { ServiceRegistry } from '../core/service-registry'
 import { databaseCacheService } from '../database-cache-service'
 import { cacheService } from '../cache-service'
 
@@ -91,6 +92,15 @@ export class CachedUnifiedApiClient {
   constructor() {
     // Check if database cache is available
     this.cacheEnabled = true
+  }
+
+  /**
+   * Ensure service registry is initialized
+   */
+  private async ensureServiceRegistryInitialized(): Promise<void> {
+    if (!ServiceRegistry.isInitialized()) {
+      await ServiceRegistry.initialize()
+    }
   }
 
   // Cache configuration
@@ -252,6 +262,7 @@ export class CachedUnifiedApiClient {
 
     for (const sport of sports) {
       try {
+        await this.ensureServiceRegistryInitialized()
         const service = await serviceFactory.getService(sport)
         health[sport] = !!service
       } catch {
@@ -281,6 +292,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -305,6 +317,7 @@ export class CachedUnifiedApiClient {
 
     return this.deduplicateRequest(cacheKey, async () => {
       try {
+        await this.ensureServiceRegistryInitialized()
         const service = await serviceFactory.getService(sport)
         if (!service) {
           throw new Error(`No service available for sport: ${sport}`)
@@ -336,6 +349,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -367,6 +381,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -397,6 +412,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -427,6 +443,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -457,6 +474,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)
@@ -488,6 +506,7 @@ export class CachedUnifiedApiClient {
     }
 
     try {
+      await this.ensureServiceRegistryInitialized()
       const service = await serviceFactory.getService(sport)
       if (!service) {
         throw new Error(`No service available for sport: ${sport}`)

@@ -5,6 +5,7 @@
 
 import { SportSpecificService } from './sport-specific-service'
 import { SportConfigManager } from './sport-config'
+import { ServiceRegistry } from './service-registry'
 
 export type SupportedSport = string
 
@@ -38,6 +39,11 @@ export class ServiceFactory {
    * Get a sport-specific service
    */
   async getService(sport: SupportedSport, league?: string): Promise<SportSpecificService> {
+    // Ensure service registry is initialized
+    if (!ServiceRegistry.isInitialized()) {
+      await ServiceRegistry.initialize()
+    }
+
     const actualLeague = league || await this.getDefaultLeague(sport)
     const key = `${sport}:${actualLeague}`
     
@@ -92,7 +98,7 @@ export class ServiceFactory {
     const status: Record<string, boolean> = {}
     
     // Perform health checks sequentially to respect burst limits
-    for (const [key, service] of this.services) {
+    for (const [key, service] of Array.from(this.services.entries())) {
       try {
         status[key] = await service.healthCheck()
         
@@ -111,7 +117,7 @@ export class ServiceFactory {
    * Clear cache for all services
    */
   clearAllCaches(): void {
-    for (const service of this.services.values()) {
+    for (const service of Array.from(this.services.values())) {
       service.clearCache()
     }
   }
@@ -120,7 +126,7 @@ export class ServiceFactory {
    * Clear health check cache for all services
    */
   clearAllHealthCheckCaches(): void {
-    for (const service of this.services.values()) {
+    for (const service of Array.from(this.services.values())) {
       if ('clearHealthCheckCache' in service) {
         (service as any).clearHealthCheckCache()
       }
@@ -133,7 +139,7 @@ export class ServiceFactory {
   getAllCacheStats(): Record<string, any> {
     const stats: Record<string, any> = {}
     
-    for (const [key, service] of this.services) {
+    for (const [key, service] of Array.from(this.services.entries())) {
       stats[key] = service.getCacheStats()
     }
 

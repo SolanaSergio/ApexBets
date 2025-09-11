@@ -96,34 +96,62 @@ export class SeasonManager {
   /**
    * Get season information including dates
    */
-  static getSeasonInfo(sport: string, season: string): SeasonInfo {
-    const available = this.getAvailableSeasons(sport)
-    const current = this.getCurrentSeason(sport)
+  static async getSeasonInfo(sport: string, season: string): Promise<SeasonInfo> {
+    const available = await this.getAvailableSeasons(sport)
+    const current = await this.getCurrentSeason(sport)
     
-    // Calculate season dates based on sport and season format
+    // Calculate season dates based on sport configuration
     let startDate: Date
     let endDate: Date
     
-    if (season.includes('-')) {
-      // Format: 2024-25
-      const [startYear, endYear] = season.split('-')
-      const fullStartYear = parseInt('20' + startYear)
-      const fullEndYear = parseInt('20' + endYear)
+    try {
+      // Get sport configuration from database
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
       
-      if (sport.toLowerCase() === 'basketball' || 
-          sport.toLowerCase() === 'football' || 
-          sport.toLowerCase() === 'hockey') {
-        startDate = new Date(fullStartYear, 7, 1) // August 1st
-        endDate = new Date(fullEndYear, 6, 30) // July 31st
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_start_month, season_end_month')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      const seasonConfig = response?.data
+      
+      if (season.includes('-')) {
+        // Format: 2024-25
+        const [startYear, endYear] = season.split('-')
+        const fullStartYear = parseInt('20' + startYear)
+        const fullEndYear = parseInt('20' + endYear)
+        
+        const startMonth = seasonConfig?.season_start_month || 0
+        const endMonth = seasonConfig?.season_end_month || 11
+        
+        startDate = new Date(fullStartYear, startMonth, 1)
+        endDate = new Date(fullEndYear, endMonth, 31)
       } else {
-        startDate = new Date(fullStartYear, 0, 1) // January 1st
-        endDate = new Date(fullEndYear, 11, 31) // December 31st
+        // Format: 2024
+        const year = parseInt(season)
+        const startMonth = seasonConfig?.season_start_month || 0
+        const endMonth = seasonConfig?.season_end_month || 11
+        
+        startDate = new Date(year, startMonth, 1)
+        endDate = new Date(year, endMonth, 31)
       }
-    } else {
-      // Format: 2024
-      const year = parseInt(season)
-      startDate = new Date(year, 0, 1) // January 1st
-      endDate = new Date(year, 11, 31) // December 31st
+    } catch (error) {
+      console.warn(`Failed to get season configuration for ${sport}:`, error)
+      // Fallback to default dates
+      if (season.includes('-')) {
+        const [startYear, endYear] = season.split('-')
+        const fullStartYear = parseInt('20' + startYear)
+        const fullEndYear = parseInt('20' + endYear)
+        startDate = new Date(fullStartYear, 0, 1)
+        endDate = new Date(fullEndYear, 11, 31)
+      } else {
+        const year = parseInt(season)
+        startDate = new Date(year, 0, 1)
+        endDate = new Date(year, 11, 31)
+      }
     }
     
     return {
@@ -137,9 +165,9 @@ export class SeasonManager {
   /**
    * Check if a season is currently active
    */
-  static isSeasonActive(sport: string, season: string): boolean {
+  static async isSeasonActive(sport: string, season: string): Promise<boolean> {
     const now = new Date()
-    const seasonInfo = this.getSeasonInfo(sport, season)
+    const seasonInfo = await this.getSeasonInfo(sport, season)
     
     return now >= seasonInfo.startDate && now <= seasonInfo.endDate
   }
@@ -147,9 +175,9 @@ export class SeasonManager {
   /**
    * Get the next upcoming season
    */
-  static getNextSeason(sport: string): string {
-    const current = this.getCurrentSeason(sport)
-    const available = this.getAvailableSeasons(sport, 1)
+  static async getNextSeason(sport: string): Promise<string> {
+    const current = await this.getCurrentSeason(sport)
+    const available = await this.getAvailableSeasons(sport, 1)
     
     // Find current season index and return next one
     const currentIndex = available.indexOf(current)
@@ -159,12 +187,30 @@ export class SeasonManager {
     
     // If current is the latest, generate next season
     const currentYear = new Date().getFullYear()
-    if (sport.toLowerCase() === 'basketball' || 
-        sport.toLowerCase() === 'football' || 
-        sport.toLowerCase() === 'hockey') {
+    
+    try {
+      // Get season format from database
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_format')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      const seasonFormat = response?.data?.season_format || 'year'
+      
+      if (seasonFormat === 'year-year') {
+        return `${currentYear + 1}-${(currentYear + 2).toString().slice(-2)}`
+      } else {
+        return (currentYear + 1).toString()
+      }
+    } catch (error) {
+      console.warn(`Failed to get season format for ${sport}:`, error)
+      // Fallback to year-year format
       return `${currentYear + 1}-${(currentYear + 2).toString().slice(-2)}`
-    } else {
-      return (currentYear + 1).toString()
     }
   }
   
@@ -203,8 +249,8 @@ export class SeasonManager {
   /**
    * Validate if a season is valid for a sport
    */
-  static isValidSeason(sport: string, season: string): boolean {
-    const available = this.getAvailableSeasons(sport, 5) // Check more years back
+  static async isValidSeason(sport: string, season: string): Promise<boolean> {
+    const available = await this.getAvailableSeasons(sport, 5) // Check more years back
     return available.includes(season)
   }
 }

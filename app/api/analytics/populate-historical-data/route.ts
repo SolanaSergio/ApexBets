@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
             const { error } = await supabase
               .from("predictions")
               .upsert({
-                game_id: prediction.gameId,
+                game_id: prediction.gameId || game.id,
                 model_name: prediction.model,
                 prediction_type: 'game_outcome',
                 predicted_value: prediction.homeWinProbability,
