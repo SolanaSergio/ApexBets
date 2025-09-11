@@ -112,7 +112,7 @@ export class BallDontLieClient {
     
     try {
       const headers: HeadersInit = {
-        'Authorization': `Bearer ${this.apiKey}`,
+        'Authorization': this.apiKey,
         'Accept': 'application/json',
         'User-Agent': 'ApexBets/1.0.0'
       }
@@ -124,8 +124,18 @@ export class BallDontLieClient {
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error('BALLDONTLIE API Error: 401 Unauthorized - Invalid API key')
+        } else if (response.status === 400) {
+          throw new Error('BALLDONTLIE API Error: 400 Bad Request - Invalid request parameters')
         } else if (response.status === 404) {
           throw new Error('BALLDONTLIE API Error: 404 Not Found - Endpoint not found')
+        } else if (response.status === 406) {
+          throw new Error('BALLDONTLIE API Error: 406 Not Acceptable - Requested format not supported')
+        } else if (response.status === 429) {
+          throw new Error('BALLDONTLIE API Error: 429 Too Many Requests - Rate limit exceeded')
+        } else if (response.status === 500) {
+          throw new Error('BALLDONTLIE API Error: 500 Internal Server Error - Server issue, try again later')
+        } else if (response.status === 503) {
+          throw new Error('BALLDONTLIE API Error: 503 Service Unavailable - Server temporarily offline')
         } else {
           throw new Error(`BALLDONTLIE API Error: ${response.status} ${response.statusText}`)
         }
@@ -134,8 +144,16 @@ export class BallDontLieClient {
       const data = await response.json()
       return data
     } catch (error) {
-      console.error('BALLDONTLIE API request failed:', error)
-      throw error
+      if (error instanceof SyntaxError) {
+        console.error('BALLDONTLIE API Error: Invalid JSON response')
+        throw new Error('BALLDONTLIE API Error: Invalid JSON response from server')
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        console.error('BALLDONTLIE API Error: Network error')
+        throw new Error('BALLDONTLIE API Error: Network error - check your internet connection')
+      } else {
+        console.error('BALLDONTLIE API request failed:', error)
+        throw error
+      }
     }
   }
 
@@ -192,9 +210,15 @@ export class BallDontLieClient {
     
     if (params.page) searchParams.set('page', params.page.toString())
     if (params.per_page) searchParams.set('per_page', params.per_page.toString())
-    if (params.dates) searchParams.set('dates[]', params.dates.join(','))
-    if (params.seasons) searchParams.set('seasons[]', params.seasons.join(','))
-    if (params.team_ids) searchParams.set('team_ids[]', params.team_ids.join(','))
+    if (params.dates) {
+      params.dates.forEach(date => searchParams.append('dates[]', date))
+    }
+    if (params.seasons) {
+      params.seasons.forEach(season => searchParams.append('seasons[]', season.toString()))
+    }
+    if (params.team_ids) {
+      params.team_ids.forEach(teamId => searchParams.append('team_ids[]', teamId.toString()))
+    }
     if (params.postseason !== undefined) searchParams.set('postseason', params.postseason.toString())
     if (params.start_date) searchParams.set('start_date', params.start_date)
     if (params.end_date) searchParams.set('end_date', params.end_date)
@@ -225,8 +249,12 @@ export class BallDontLieClient {
     if (params.per_page) searchParams.set('per_page', params.per_page.toString())
     if (params.dates) searchParams.set('dates[]', params.dates.join(','))
     if (params.seasons) searchParams.set('seasons[]', params.seasons.join(','))
-    if (params.player_ids) searchParams.set('player_ids[]', params.player_ids.join(','))
-    if (params.game_ids) searchParams.set('game_ids[]', params.game_ids.join(','))
+    if (params.player_ids) {
+      params.player_ids.forEach(playerId => searchParams.append('player_ids[]', playerId.toString()))
+    }
+    if (params.game_ids) {
+      params.game_ids.forEach(gameId => searchParams.append('game_ids[]', gameId.toString()))
+    }
     if (params.postseason !== undefined) searchParams.set('postseason', params.postseason.toString())
     if (params.start_date) searchParams.set('start_date', params.start_date)
     if (params.end_date) searchParams.set('end_date', params.end_date)
@@ -243,7 +271,9 @@ export class BallDontLieClient {
     const searchParams = new URLSearchParams()
     searchParams.set('season', params.season.toString())
     
-    if (params.player_ids) searchParams.set('player_ids[]', params.player_ids.join(','))
+    if (params.player_ids) {
+      params.player_ids.forEach(playerId => searchParams.append('player_ids[]', playerId.toString()))
+    }
 
     const query = searchParams.toString()
     return this.request<BallDontLieResponse<any>>(`/season_averages?${query}`)

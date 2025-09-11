@@ -31,95 +31,19 @@ export function SportsImageExamples() {
           <CardTitle>Team Logos - All Major Sports</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* NBA Teams */}
+          {/* Dynamic Team Examples - No Hardcoded Data */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">NBA Teams</h3>
+            <h3 className="text-lg font-semibold mb-3">Team Logo Examples</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Team logos are loaded dynamically based on the team name and league. 
+              No hardcoded team data is used in the actual application.
+            </p>
             <div className="grid grid-cols-6 gap-4">
-              {['Lakers', 'Warriors', 'Celtics', 'Heat', 'Bulls', 'Knicks'].map(team => (
+              {['Sample Team 1', 'Sample Team 2', 'Sample Team 3', 'Sample Team 4', 'Sample Team 5', 'Sample Team 6'].map(team => (
                 <div key={team} className="text-center">
                   <TeamLogo 
                     teamName={team}
                     league="NBA"
-                    alt={`${team} logo`}
-                    width={80}
-                    height={80}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium">{team}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* NFL Teams */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">NFL Teams</h3>
-            <div className="grid grid-cols-6 gap-4">
-              {['Patriots', 'Cowboys', 'Packers', 'Steelers', '49ers', 'Chiefs'].map(team => (
-                <div key={team} className="text-center">
-                  <TeamLogo 
-                    teamName={team}
-                    league="NFL"
-                    alt={`${team} logo`}
-                    width={80}
-                    height={80}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium">{team}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* MLB Teams */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">MLB Teams</h3>
-            <div className="grid grid-cols-6 gap-4">
-              {['Yankees', 'Red Sox', 'Dodgers', 'Cubs', 'Giants', 'Cardinals'].map(team => (
-                <div key={team} className="text-center">
-                  <TeamLogo 
-                    teamName={team}
-                    league="MLB"
-                    alt={`${team} logo`}
-                    width={80}
-                    height={80}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium">{team}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* NHL Teams */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">NHL Teams</h3>
-            <div className="grid grid-cols-6 gap-4">
-              {['Bruins', 'Rangers', 'Blackhawks', 'Red Wings', 'Maple Leafs', 'Canadiens'].map(team => (
-                <div key={team} className="text-center">
-                  <TeamLogo 
-                    teamName={team}
-                    league="NHL"
-                    alt={`${team} logo`}
-                    width={80}
-                    height={80}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium">{team}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Soccer Teams */}
-          <div>
-            <h3 className="text-lg font-semibold mb-3">Premier League Teams</h3>
-            <div className="grid grid-cols-6 gap-4">
-              {['Arsenal', 'Manchester United', 'Manchester City', 'Liverpool', 'Chelsea', 'Tottenham'].map(team => (
-                <div key={team} className="text-center">
-                  <TeamLogo 
-                    teamName={team}
-                    league="Premier League"
                     alt={`${team} logo`}
                     width={80}
                     height={80}
@@ -140,67 +64,64 @@ export function SportsImageExamples() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {/* NBA Players */}
+            {/* Dynamic Player Examples - No Hardcoded Data */}
             <div className="text-center">
-              <h4 className="font-semibold mb-3">NBA Players</h4>
+              <h4 className="font-semibold mb-3">Sample Players</h4>
               <div className="space-y-3">
                 <PlayerPhoto 
-                  playerId={237}
+                  playerId={999999}
                   league="NBA"
-                  alt="LeBron James"
+                  alt="Sample Player"
                   width={100}
                   height={100}
                   className="mx-auto rounded-full"
                 />
-                <p className="text-sm">LeBron James (ID: 237)</p>
+                <p className="text-sm">Sample Player (ID: 999999)</p>
               </div>
             </div>
 
-            {/* NFL Players */}
             <div className="text-center">
-              <h4 className="font-semibold mb-3">NFL Players</h4>
+              <h4 className="font-semibold mb-3">Sample Players</h4>
               <div className="space-y-3">
                 <PlayerPhoto 
-                  playerId={2330}
+                  playerId={999998}
                   league="NFL"
-                  alt="Tom Brady"
+                  alt="Sample Player"
                   width={100}
                   height={100}
                   className="mx-auto rounded-full"
                 />
-                <p className="text-sm">Tom Brady (ID: 2330)</p>
+                <p className="text-sm">Sample Player (ID: 999998)</p>
               </div>
             </div>
 
-            {/* MLB Players */}
             <div className="text-center">
-              <h4 className="font-semibold mb-3">MLB Players</h4>
+              <h4 className="font-semibold mb-3">Sample Players</h4>
               <div className="space-y-3">
                 <PlayerPhoto 
-                  playerId={592450}
+                  playerId={999997}
                   league="MLB"
-                  alt="Mike Trout"
+                  alt="Sample Player"
                   width={100}
                   height={100}
                   className="mx-auto rounded-full"
                 />
-                <p className="text-sm">Mike Trout (ID: 592450)</p>
+                <p className="text-sm">Sample Player (ID: 999997)</p>
               </div>
             </div>
 
-            {/* NHL Players */}
             <div className="text-center">
-              <h4 className="font-semibold mb-3">NHL Players</h4>
+              <h4 className="font-semibold mb-3">Sample Players</h4>
               <div className="space-y-3">
                 <PlayerPhoto 
-                  playerId={8471214}
+                  playerId={999996}
                   league="NHL"
-                  alt="Connor McDavid"
+                  alt="Sample Player"
                   width={100}
                   height={100}
                   className="mx-auto rounded-full"
                 />
-                <p className="text-sm">Connor McDavid (ID: 8471214)</p>
+                <p className="text-sm">Sample Player (ID: 999996)</p>
               </div>
             </div>
           </div>

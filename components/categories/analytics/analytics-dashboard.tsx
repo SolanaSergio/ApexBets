@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
+import { cachedUnifiedApiClient, SupportedSport } from "@/lib/services/api/cached-unified-api-client"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
 import TeamPerformanceChart from "./team-performance-chart"
 import PredictionAccuracyChart from "./prediction-accuracy-chart"
 import OddsAnalysisChart from "./odds-analysis-chart"
@@ -25,18 +27,44 @@ interface AnalyticsOverview {
   roi: number
 }
 
-export default function AnalyticsDashboard() {
+interface AnalyticsDashboardProps {
+  selectedSport?: string
+  selectedLeague?: string
+  onSportChange?: (sport: string) => void
+  onLeagueChange?: (league: string) => void
+}
+
+export default function AnalyticsDashboard({ 
+  selectedSport: propSelectedSport, 
+  selectedLeague: propSelectedLeague,
+  onSportChange,
+  onLeagueChange
+}: AnalyticsDashboardProps = {}) {
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [timeRange, setTimeRange] = useState<string>("30d")
-  const [selectedSport, setSelectedSport] = useState<string>("basketball")
-  const [selectedLeague, setSelectedLeague] = useState<string>("")
+  const [selectedSport, setSelectedSport] = useState<string>(propSelectedSport || "basketball")
+  const [selectedLeague, setSelectedLeague] = useState<string>(propSelectedLeague || "")
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
   useEffect(() => {
+    loadSupportedSports()
+  }, [])
+
+  useEffect(() => {
     fetchAnalyticsOverview()
   }, [timeRange, selectedSport, selectedLeague])
+
+  const loadSupportedSports = async () => {
+    try {
+      const sports = cachedUnifiedApiClient.getSupportedSports()
+      setSupportedSports(sports)
+    } catch (error) {
+      console.error('Error loading supported sports:', error)
+    }
+  }
 
   const fetchAnalyticsOverview = async () => {
     try {
@@ -78,37 +106,54 @@ export default function AnalyticsDashboard() {
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="min-w-[200px]">
           <label className="text-sm font-medium mb-2 block">Sport</label>
-          <Select value={selectedSport} onValueChange={setSelectedSport}>
+          <Select 
+            value={selectedSport} 
+            onValueChange={(value) => {
+              setSelectedSport(value)
+              onSportChange?.(value)
+            }}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="basketball">Basketball</SelectItem>
-              <SelectItem value="football">Football</SelectItem>
-              <SelectItem value="baseball">Baseball</SelectItem>
-              <SelectItem value="hockey">Hockey</SelectItem>
-              <SelectItem value="soccer">Soccer</SelectItem>
-              <SelectItem value="tennis">Tennis</SelectItem>
-              <SelectItem value="golf">Golf</SelectItem>
+              {supportedSports.map((sport) => {
+                const config = SportConfigManager.getSportConfig(sport)
+                return (
+                  <SelectItem key={sport} value={sport}>
+                    <div className="flex items-center gap-2">
+                      <span className={config?.color}>{config?.icon}</span>
+                      {config?.name}
+                    </div>
+                  </SelectItem>
+                )
+              })}
             </SelectContent>
           </Select>
         </div>
         
         <div className="min-w-[200px]">
           <label className="text-sm font-medium mb-2 block">League</label>
-          <Select value={selectedLeague} onValueChange={setSelectedLeague}>
+          <Select 
+            value={selectedLeague} 
+            onValueChange={(value) => {
+              setSelectedLeague(value)
+              onLeagueChange?.(value)
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="All Leagues" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="">All Leagues</SelectItem>
-              <SelectItem value="nba">NBA</SelectItem>
-              <SelectItem value="nfl">NFL</SelectItem>
-              <SelectItem value="mlb">MLB</SelectItem>
-              <SelectItem value="nhl">NHL</SelectItem>
-              <SelectItem value="premier-league">Premier League</SelectItem>
-              <SelectItem value="atp">ATP</SelectItem>
-              <SelectItem value="pga">PGA</SelectItem>
+              {(() => {
+                const sportConfig = SportConfigManager.getSportConfig(selectedSport as SupportedSport)
+                return sportConfig?.leagues.map((league) => (
+                  <SelectItem key={league.id} value={league.id}>
+                    {league.name}
+                  </SelectItem>
+                )) || []
+              })()}
             </SelectContent>
           </Select>
         </div>

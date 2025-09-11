@@ -63,7 +63,12 @@ interface ValueBet {
   recommendation: 'strong' | 'moderate' | 'weak'
 }
 
-export function LiveUpdates() {
+interface LiveUpdatesProps {
+  sport?: string
+  className?: string
+}
+
+export function LiveUpdates({ sport = "basketball", className = "" }: LiveUpdatesProps) {
   const [activeTab, setActiveTab] = useState("scores")
   const [isLive, setIsLive] = useState(false)
   const [liveGames, setLiveGames] = useState<LiveGame[]>([])
@@ -89,15 +94,15 @@ export function LiveUpdates() {
       setConnectionStatus('connected')
 
       if (activeTab === 'scores') {
-        const response = await fetch('/api/live-scores?sport=basketball')
+        const response = await fetch(`/api/live-scores?sport=${sport}`)
         const data = await response.json()
         setLiveGames(data.games || [])
       } else if (activeTab === 'odds') {
-        const response = await fetch('/api/odds?external=true&sport=basketball_nba')
+        const response = await fetch(`/api/odds?external=true&sport=${sport}`)
         const data = await response.json()
         setLiveOdds(data || [])
       } else if (activeTab === 'value-bets') {
-        const response = await fetch('/api/value-bets?sport=basketball&min_value=0.1')
+        const response = await fetch(`/api/value-bets?sport=${sport}&min_value=0.1`)
         const data = await response.json()
         setValueBets(data.opportunities || [])
       }

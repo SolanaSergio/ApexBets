@@ -11,30 +11,55 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieTeam } from "@/lib/sports-apis"
+import { cachedUnifiedApiClient, SupportedSport, UnifiedPlayerData, UnifiedTeamData } from "@/lib/services/api/cached-unified-api-client"
 import { cn } from "@/lib/utils"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
 interface PlayerSearchProps {
-  onPlayerSelect?: (player: BallDontLiePlayer) => void
-  selectedPlayer?: BallDontLiePlayer | null
+  onPlayerSelect?: (player: BallDontLiePlayer | UnifiedPlayerData) => void
+  selectedPlayer?: BallDontLiePlayer | UnifiedPlayerData | null
+  sport?: string
+  league?: string
 }
 
-export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerSearchProps) {
+export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "basketball", league }: PlayerSearchProps) {
   const [searchQuery, setSearchQuery] = useState("")
-  const [players, setPlayers] = useState<BallDontLiePlayer[]>([])
-  const [teams, setTeams] = useState<BallDontLieTeam[]>([])
+  const [players, setPlayers] = useState<(BallDontLiePlayer | UnifiedPlayerData)[]>([])
+  const [teams, setTeams] = useState<(BallDontLieTeam | UnifiedTeamData)[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [selectedPosition, setSelectedPosition] = useState<string>("all")
   const [isOpen, setIsOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const positions = ["PG", "SG", "SF", "PF", "C", "G", "F"]
+  // Dynamic positions based on sport
+  const getPositionsForSport = (sport: string) => {
+    switch (sport) {
+      case "basketball":
+        return ["PG", "SG", "SF", "PF", "C", "G", "F"]
+      case "football":
+        return ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "CB", "S", "K", "P"]
+      case "baseball":
+        return ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"]
+      case "hockey":
+        return ["C", "LW", "RW", "D", "G"]
+      case "soccer":
+        return ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LW", "RW", "ST"]
+      case "tennis":
+        return ["Singles", "Doubles"]
+      case "golf":
+        return ["Professional", "Amateur"]
+      default:
+        return []
+    }
+  }
 
-  // Fetch teams on component mount
+  const positions = getPositionsForSport(sport)
+
+  // Fetch teams on component mount and when sport changes
   useEffect(() => {
     fetchTeams()
-  }, [])
+  }, [sport])
 
   // Search players when query changes
   useEffect(() => {
@@ -50,7 +75,14 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerS
 
   const fetchTeams = async () => {
     try {
-      const response = await ballDontLieClient.getTeams({ per_page: 30 })
+      let response
+      if (sport === "basketball") {
+        response = await ballDontLieClient.getTeams({ per_page: 30 })
+      } else {
+        // For other sports, use the unified API client
+        const teams = await cachedUnifiedApiClient.getTeams(sport as SupportedSport, { limit: 30 })
+        response = { data: teams }
+      }
       setTeams(response.data)
     } catch (error) {
       console.error("Error fetching teams:", error)
@@ -65,24 +97,39 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerS
     setError(null)
 
     try {
-      const response = await ballDontLieClient.getPlayers({
-        search: searchQuery,
-        per_page: 20
-      })
+      let filteredPlayers: (BallDontLiePlayer | UnifiedPlayerData)[]
 
-      let filteredPlayers = response.data
+      if (sport === "basketball") {
+        const response = await ballDontLieClient.getPlayers({
+          search: searchQuery,
+          per_page: 20
+        })
+        filteredPlayers = response.data
+      } else {
+        // For other sports, use the unified API client
+        const players = await cachedUnifiedApiClient.getPlayers(sport as SupportedSport, {
+          limit: 20
+        })
+        // Filter by search query on the client side for non-basketball sports
+        filteredPlayers = players.filter(player => 
+          player.name.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      }
 
       // Filter by team
       if (selectedTeam !== "all") {
-        filteredPlayers = filteredPlayers.filter(player => 
-          player.team.abbreviation === selectedTeam
-        )
+        filteredPlayers = filteredPlayers.filter(player => {
+          if ('team' in player && player.team) {
+            return player.team.abbreviation === selectedTeam || player.team.name === selectedTeam
+          }
+          return false
+        })
       }
 
       // Filter by position
       if (selectedPosition !== "all") {
         filteredPlayers = filteredPlayers.filter(player => 
-          player.position === selectedPosition
+          'position' in player && player.position === selectedPosition
         )
       }
 
@@ -95,10 +142,14 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerS
     }
   }
 
-  const handlePlayerSelect = (player: BallDontLiePlayer) => {
+  const handlePlayerSelect = (player: BallDontLiePlayer | UnifiedPlayerData) => {
     onPlayerSelect?.(player)
     setIsOpen(false)
-    setSearchQuery(`${player.first_name} ${player.last_name}`)
+    if ('first_name' in player) {
+      setSearchQuery(`${player.first_name} ${player.last_name}`)
+    } else {
+      setSearchQuery(player.name)
+    }
   }
 
   const clearSelection = () => {
@@ -107,8 +158,20 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerS
     onPlayerSelect?.(null)
   }
 
-  const getPlayerInitials = (player: BallDontLiePlayer) => {
-    return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
+  const getPlayerInitials = (player: BallDontLiePlayer | UnifiedPlayerData) => {
+    if ('first_name' in player) {
+      return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
+    } else {
+      return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    }
+  }
+
+  const getPlayerName = (player: BallDontLiePlayer | UnifiedPlayerData) => {
+    if ('first_name' in player) {
+      return `${player.first_name} ${player.last_name}`
+    } else {
+      return player.name
+    }
   }
 
 
@@ -196,37 +259,41 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer }: PlayerS
                     <div className="flex items-center space-x-3">
                       <PlayerPhoto 
                         playerId={player.id}
-                        alt={`${player.first_name} ${player.last_name}`}
+                        alt={getPlayerName(player)}
                         width={40}
                         height={40}
                         className="h-10 w-10 rounded-full"
                       />
                       <div>
                         <div className="font-medium">
-                          {player.first_name} {player.last_name}
+                          {getPlayerName(player)}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {player.position}
-                          </Badge>
-                            <span className="flex items-center gap-1">
-                              <TeamLogo 
-                                teamName={player.team.name} 
-                                alt={player.team.name}
-                                width={16}
-                                height={16}
-                                className="h-4 w-4"
-                              />
-                              {player.team.name}
-                            </span>
+                          {'position' in player && player.position && (
+                            <Badge variant="outline" className="text-xs">
+                              {player.position}
+                            </Badge>
+                          )}
+                            {'team' in player && player.team && (
+                              <span className="flex items-center gap-1">
+                                <TeamLogo 
+                                  teamName={player.team.name} 
+                                  alt={player.team.name}
+                                  width={16}
+                                  height={16}
+                                  className="h-4 w-4"
+                                />
+                                {player.team.name}
+                              </span>
+                            )}
                         </div>
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {player.height_feet && player.height_inches && (
+                      {'height_feet' in player && player.height_feet && player.height_inches && (
                         <div>{player.height_feet}'{player.height_inches}"</div>
                       )}
-                      {player.weight_pounds && (
+                      {'weight_pounds' in player && player.weight_pounds && (
                         <div>{player.weight_pounds} lbs</div>
                       )}
                     </div>

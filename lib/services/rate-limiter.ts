@@ -67,13 +67,13 @@ class RateLimiter {
       burstWindow: 10000 // 10 seconds
     })
 
-    // BALLDONTLIE - Free tier limits
+    // BALLDONTLIE - Free tier limits (more conservative)
     this.limits.set('balldontlie', {
-      requestsPerMinute: 60,
-      requestsPerHour: 1000,
+      requestsPerMinute: 3,
+      requestsPerHour: 100,
       requestsPerDay: 10000,
-      burstLimit: 10,
-      burstWindow: 5000 // 5 seconds
+      burstLimit: 1,
+      burstWindow: 10000 // 10 seconds
     })
 
     // Initialize states

@@ -20,14 +20,16 @@ import {
   Zap
 } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieStats } from "@/lib/sports-apis"
+import { cachedUnifiedApiClient, SupportedSport, UnifiedPlayerData } from "@/lib/services/api/cached-unified-api-client"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
 interface PlayerStatsProps {
-  selectedPlayer?: BallDontLiePlayer | null
+  selectedPlayer?: BallDontLiePlayer | UnifiedPlayerData | null
+  sport?: SupportedSport
 }
 
-export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
+export default function PlayerStats({ selectedPlayer, sport = "basketball" }: PlayerStatsProps) {
   const [stats, setStats] = useState<BallDontLieStats[]>([])
   const [seasonAverages, setSeasonAverages] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -46,35 +48,42 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
 
     setLoading(true)
     try {
-      const endDate = new Date().toISOString().split('T')[0]
-      let startDate: string
+      // For basketball, use BallDontLie API
+      if (sport === "basketball" && 'first_name' in selectedPlayer) {
+        const endDate = new Date().toISOString().split('T')[0]
+        let startDate: string
 
-      switch (selectedPeriod) {
-        case "last5":
-          startDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          break
-        case "last10":
-          startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          break
-        case "last20":
-          startDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-          break
-        case "season":
-          startDate = `${selectedSeason}-10-01`
-          break
-        default:
-          startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        switch (selectedPeriod) {
+          case "last5":
+            startDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            break
+          case "last10":
+            startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            break
+          case "last20":
+            startDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+            break
+          case "season":
+            startDate = `${selectedSeason}-10-01`
+            break
+          default:
+            startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+        }
+
+        const response = await ballDontLieClient.getStats({
+          player_ids: [selectedPlayer.id],
+          start_date: startDate,
+          end_date: endDate,
+          seasons: [selectedSeason],
+          per_page: 50
+        })
+
+        setStats(response.data)
+      } else {
+        // For other sports, use unified API client
+        const playerStats = await cachedUnifiedApiClient.getPlayerStats(sport, selectedPlayer.id)
+        setStats(playerStats || [])
       }
-
-      const response = await ballDontLieClient.getStats({
-        player_ids: [selectedPlayer.id],
-        start_date: startDate,
-        end_date: endDate,
-        seasons: [selectedSeason],
-        per_page: 50
-      })
-
-      setStats(response.data)
     } catch (error) {
       console.error("Error fetching player stats:", error)
     } finally {
@@ -136,8 +145,20 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
     }
   }
 
-  const getPlayerInitials = (player: BallDontLiePlayer) => {
-    return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
+  const getPlayerInitials = (player: BallDontLiePlayer | UnifiedPlayerData) => {
+    if ('first_name' in player) {
+      return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
+    } else {
+      return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
+    }
+  }
+
+  const getPlayerName = (player: BallDontLiePlayer | UnifiedPlayerData) => {
+    if ('first_name' in player) {
+      return `${player.first_name} ${player.last_name}`
+    } else {
+      return player.name
+    }
   }
 
 
@@ -177,28 +198,32 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
             <div className="flex items-center space-x-4">
               <PlayerPhoto 
                 playerId={selectedPlayer.id}
-                alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                alt={getPlayerName(selectedPlayer)}
                 width={64}
                 height={64}
                 className="h-16 w-16 rounded-full"
               />
               <div>
                 <h2 className="text-2xl font-bold">
-                  {selectedPlayer.first_name} {selectedPlayer.last_name}
+                  {getPlayerName(selectedPlayer)}
                 </h2>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Badge variant="secondary">{selectedPlayer.position}</Badge>
-                  <span className="flex items-center gap-1">
-                    <TeamLogo 
-                      teamName={selectedPlayer.team.name} 
-                      alt={selectedPlayer.team.name}
-                      width={16}
-                      height={16}
-                      className="h-4 w-4"
-                    />
-                    {selectedPlayer.team.name}
-                  </span>
-                  {selectedPlayer.height_feet && selectedPlayer.height_inches && (
+                  {'position' in selectedPlayer && selectedPlayer.position && (
+                    <Badge variant="secondary">{selectedPlayer.position}</Badge>
+                  )}
+                  {'team' in selectedPlayer && selectedPlayer.team && (
+                    <span className="flex items-center gap-1">
+                      <TeamLogo 
+                        teamName={selectedPlayer.team.name} 
+                        alt={selectedPlayer.team.name}
+                        width={16}
+                        height={16}
+                        className="h-4 w-4"
+                      />
+                      {selectedPlayer.team.name}
+                    </span>
+                  )}
+                  {'height_feet' in selectedPlayer && selectedPlayer.height_feet && selectedPlayer.height_inches && (
                     <span>{selectedPlayer.height_feet}'{selectedPlayer.height_inches}"</span>
                   )}
                 </div>
