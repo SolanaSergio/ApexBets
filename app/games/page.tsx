@@ -36,15 +36,15 @@ export default function GamesPage() {
     }
   }, [selectedSport])
 
-  const loadSupportedSports = () => {
-    const sports = serviceFactory.getSupportedSports()
+  const loadSupportedSports = async () => {
+    const sports = await serviceFactory.getSupportedSports()
     setSupportedSports(sports)
     // Set basketball as default
     setSelectedSport('basketball')
   }
 
-  const loadLeaguesForSport = (sport: SupportedSport) => {
-    const leagues = SportConfigManager.getLeaguesForSport(sport)
+  const loadLeaguesForSport = async (sport: SupportedSport) => {
+    const leagues = await SportConfigManager.getLeaguesForSport(sport)
     setAvailableLeagues(leagues)
     if (leagues.length > 0) {
       setSelectedLeague(leagues[0])

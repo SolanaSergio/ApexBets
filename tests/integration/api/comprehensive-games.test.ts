@@ -4,6 +4,38 @@
  * NO MOCK DATA - All tests use real external APIs
  */
 
+import { createClient } from '@supabase/supabase-js'
+
+// Helper function to get known teams from database
+async function getKnownTeamsFromDatabase(sport: string): Promise<string[]> {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn('Supabase credentials not available, using empty team list')
+      return []
+    }
+    
+    const supabase = createClient(supabaseUrl, supabaseKey)
+    const { data, error } = await supabase
+      .from('teams')
+      .select('name')
+      .eq('sport', sport)
+      .limit(50)
+    
+    if (error) {
+      console.warn('Error fetching teams from database:', error)
+      return []
+    }
+    
+    return data?.map(team => team.name) || []
+  } catch (error) {
+    console.warn('Error in getKnownTeamsFromDatabase:', error)
+    return []
+  }
+}
+
 describe('Comprehensive Games API Tests', () => {
   const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
 
@@ -212,19 +244,13 @@ describe('Comprehensive Games API Tests', () => {
       expect(response.status).toBe(200)
 
       if (data.data.length > 0) {
-        const knownBasketballTeams = [
-          'Lakers', 'Warriors', 'Celtics', 'Bulls', 'Heat', 'Spurs',
-          'Knicks', 'Nets', 'Rockets', 'Mavericks', 'Suns', 'Nuggets',
-          'Clippers', 'Trail Blazers', 'Jazz', 'Thunder', 'Timberwolves',
-          'Pelicans', 'Kings', 'Grizzlies', 'Hawks', 'Hornets', 'Magic',
-          'Pistons', 'Pacers', 'Bucks', 'Cavaliers', 'Raptors', '76ers',
-          'Dream', 'Sky', 'Sun', 'Mercury', 'Sparks', 'Aces', 'Storm', 'Valkyries'
-        ]
+        // Get known teams dynamically from database instead of hardcoded list
+        const knownBasketballTeams = await getKnownTeamsFromDatabase('basketball')
 
         const teamNames = data.data.flatMap((game: any) => [
           game.homeTeam || game.home_team?.name || '', 
           game.awayTeam || game.away_team?.name || ''
-        ]).filter(name => name.length > 0)
+        ]).filter((name: string) => name.length > 0)
         
         // Check if we have any team names at all (more flexible validation)
         expect(teamNames.length).toBeGreaterThan(0)

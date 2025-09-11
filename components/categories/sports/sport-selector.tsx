@@ -38,7 +38,7 @@ export default function SportSelector({ selectedSport, onSportChange, className 
   const loadSportData = async () => {
     try {
       setLoading(true)
-      const sports = unifiedApiClient.getSupportedSports()
+      const sports = await unifiedApiClient.getSupportedSports()
       const health = await unifiedApiClient.getHealthStatus()
       
       setSupportedSports(sports)
@@ -165,7 +165,7 @@ export function SportSelectorCompact({ selectedSport, onSportChange, className =
   const loadSportData = async () => {
     try {
       setLoading(true)
-      const sports = unifiedApiClient.getSupportedSports()
+      const sports = await unifiedApiClient.getSupportedSports()
       const health = await unifiedApiClient.getHealthStatus()
       
       setSupportedSports(sports)

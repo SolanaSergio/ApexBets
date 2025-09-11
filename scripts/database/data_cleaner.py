@@ -19,22 +19,26 @@ logger = logging.getLogger(__name__)
 class DataCleaner:
     def __init__(self):
         self.db = DatabaseManager()
-        
-        # Team name mappings for consistency
-        self.team_name_mappings = {
-            'LA Lakers': 'Lakers',
-            'Los Angeles Lakers': 'Lakers',
-            'Golden State Warriors': 'Warriors',
-            'GS Warriors': 'Warriors',
-            'Boston Celtics': 'Celtics',
-            'Miami Heat': 'Heat',
-            'New York Knicks': 'Knicks',
-            'NY Knicks': 'Knicks',
-            'Chicago Bulls': 'Bulls',
-            'Brooklyn Nets': 'Nets',
-            'Philadelphia 76ers': '76ers',
-            'Phila 76ers': '76ers'
-        }
+        self.team_name_mappings = {}
+        self._load_team_mappings()
+    
+    def _load_team_mappings(self):
+        """Load team name mappings from database"""
+        try:
+            with self.db.get_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT original_name, normalized_name 
+                        FROM team_name_mappings
+                    """)
+                    
+                    mappings = cur.fetchall()
+                    self.team_name_mappings = dict(mappings)
+                    
+        except Exception as e:
+            logger.warning(f"Could not load team mappings from database: {e}")
+            # Fallback to empty mappings - will use original names
+            self.team_name_mappings = {}
     
     def normalize_team_name(self, team_name: str) -> str:
         """Normalize team names for consistency"""

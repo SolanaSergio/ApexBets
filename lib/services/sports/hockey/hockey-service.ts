@@ -123,6 +123,9 @@ export class HockeyService extends SportSpecificService {
 
   private async fetchOdds(params: any): Promise<any[]> {
     try {
+      if (!oddsApiClient) {
+        throw new Error('Odds API client not configured')
+      }
       const odds = await oddsApiClient.getOdds({
         sport: 'icehockey_nhl',
         regions: 'us',
@@ -223,7 +226,7 @@ export class HockeyService extends SportSpecificService {
       }
       
       // Test with a simple API call
-      await this.getTeams({ limit: 1 })
+      await this.getTeams()
       return true
     } catch (error) {
       console.error(`${this.sport} service health check failed:`, error)

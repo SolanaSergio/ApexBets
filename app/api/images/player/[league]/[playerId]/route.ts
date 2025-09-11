@@ -8,24 +8,43 @@ interface SportStyles {
   skinTone: string
   hairColor: string
   helmetColor: string
-  sportShape: 'basketball' | 'football' | 'soccer' | 'baseball' | 'hockey'
+  sportShape: string
 }
 
-const SPORT_STYLES: Record<string, SportStyles> = {
-  // Basketball
-  NBA: { jerseyColor: '#DC143C', skinTone: '#F5DEB3', hairColor: '#8B4513', helmetColor: '#FFA500', sportShape: 'basketball' },
-  WNBA: { jerseyColor: '#C8102E', skinTone: '#F4A460', hairColor: '#654321', helmetColor: '#FFD700', sportShape: 'basketball' },
+// Dynamic sport styles - will be loaded from database
+let SPORT_STYLES: Record<string, SportStyles> = {}
 
-  // Football
-  NFL: { jerseyColor: '#013369', skinTone: '#DEB887', hairColor: '#2F1B14', helmetColor: '#333333', sportShape: 'football' },
-
-  // Soccer
-  'Premier League': { jerseyColor: '#DA2248', skinTone: '#D2B48C', hairColor: '#A0522D', helmetColor: '#008000', sportShape: 'soccer' },
-  'La Liga': { jerseyColor: '#FFBF00', skinTone: '#F4C430', hairColor: '#654321', helmetColor: '#FF6347', sportShape: 'soccer' },
-  'Serie A': { jerseyColor: '#008C45', skinTone: '#CD853F', hairColor: '#8B4513', helmetColor: '#4169E1', sportShape: 'soccer' },
-
-  // Default
-  default: { jerseyColor: '#1E3A8A', skinTone: '#D2B48C', hairColor: '#6B4423', helmetColor: '#FFD700', sportShape: 'basketball' }
+// Initialize sport styles from database
+async function initializeSportStyles() {
+  try {
+    // Use Supabase MCP to get sport configurations
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('sports')
+      .select('name, jersey_color, skin_tone, hair_color, helmet_color, sport_shape')
+      .eq('is_active', true)
+    
+    if (response && !response.error && response.data) {
+      SPORT_STYLES = response.data.reduce((acc, sport) => {
+        acc[sport.name] = {
+          jerseyColor: sport.jersey_color || '#1E3A8A',
+          skinTone: sport.skin_tone || '#D2B48C',
+          hairColor: sport.hair_color || '#6B4423',
+          helmetColor: sport.helmet_color || '#FFD700',
+          sportShape: sport.sport_shape || 'circle'
+        }
+        return acc
+      }, {} as Record<string, SportStyles>)
+    }
+  } catch (error) {
+    console.warn('Failed to load sport styles from database, using defaults:', error)
+    // Fallback to minimal default
+    SPORT_STYLES = {
+      default: { jerseyColor: '#1E3A8A', skinTone: '#D2B48C', hairColor: '#6B4423', helmetColor: '#FFD700', sportShape: 'circle' }
+    }
+  }
 }
 
 function getPlayerInitials(playerId: string | number): string {
@@ -55,23 +74,27 @@ function getPlayerColor(playerId: string | number): string {
 }
 
 function getSportShape(sportShape: string): string {
-  switch (sportShape) {
-    case 'basketball':
-      return '<circle cx="22" cy="22" r="8" fill="#FF6347" stroke="#8B0000" stroke-width="1"/>'
-    case 'football':
-      return '<ellipse cx="22" cy="22" rx="10" ry="6" fill="#8B4513" stroke="#654321" stroke-width="1"/>'
-    case 'soccer':
-      return '<circle cx="22" cy="22" r="8" fill="#FFFFFF" stroke="#000000" stroke-width="1"/><path d="M14,22 Q22,14 30,22 Q22,30 14,22Z" fill="#000000"/>'
-    case 'baseball':
-      return '<circle cx="22" cy="22" r="8" fill="#FFFFFF" stroke="#8B0000" stroke-width="1"/><path d="M18,22 L22,18 M22,26 L26,22 M22,18 L26,22 M18,22 L22,26" stroke="#8B0000" stroke-width="1" fill="none"/>'
-    case 'hockey':
-      return '<polygon points="14,18 16,14 28,14 30,18 28,26 16,26" fill="#D3D3D3" stroke="#696969" stroke-width="1"/>'
-    default:
-      return '<circle cx="22" cy="22" r="8" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>'
+  // Dynamic sport shape generation based on sport type
+  const shapes: Record<string, string> = {
+    'basketball': '<circle cx="22" cy="22" r="8" fill="#FF6347" stroke="#8B0000" stroke-width="1"/>',
+    'football': '<ellipse cx="22" cy="22" rx="10" ry="6" fill="#8B4513" stroke="#654321" stroke-width="1"/>',
+    'soccer': '<circle cx="22" cy="22" r="8" fill="#FFFFFF" stroke="#000000" stroke-width="1"/><path d="M14,22 Q22,14 30,22 Q22,30 14,22Z" fill="#000000"/>',
+    'baseball': '<circle cx="22" cy="22" r="8" fill="#FFFFFF" stroke="#8B0000" stroke-width="1"/><path d="M18,22 L22,18 M22,26 L26,22 M22,18 L26,22 M18,22 L22,26" stroke="#8B0000" stroke-width="1" fill="none"/>',
+    'hockey': '<polygon points="14,18 16,14 28,14 30,18 28,26 16,26" fill="#D3D3D3" stroke="#696969" stroke-width="1"/>',
+    'circle': '<circle cx="22" cy="22" r="8" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>',
+    'square': '<rect x="14" y="14" width="16" height="16" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>',
+    'triangle': '<polygon points="22,14 14,26 30,26" fill="#FFD700" stroke="#FFA500" stroke-width="1"/>'
   }
+  
+  return shapes[sportShape] || shapes['circle']
 }
 
-function generatePlayerSVG(league: string, playerId: string | number): string {
+async function generatePlayerSVG(league: string, playerId: string | number): Promise<string> {
+  // Initialize sport styles if not already loaded
+  if (Object.keys(SPORT_STYLES).length === 0) {
+    await initializeSportStyles()
+  }
+  
   const style = SPORT_STYLES[league] || SPORT_STYLES.default
   const initials = getPlayerInitials(playerId)
   const uniqueColor = getPlayerColor(playerId)
@@ -141,7 +164,7 @@ export async function GET(
     // Try to parse as number first, fallback to string
     const parsedPlayerId = isNaN(Number(decodedPlayerId)) ? decodedPlayerId : Number(decodedPlayerId)
 
-    const svgContent = generatePlayerSVG(decodedLeague, parsedPlayerId)
+    const svgContent = await generatePlayerSVG(decodedLeague, parsedPlayerId)
 
     return new NextResponse(svgContent, {
       headers: {

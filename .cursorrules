@@ -12,6 +12,9 @@
 - ALWAYS use real data from APIs or database
 - ALWAYS validate data before using it
 - If no real data available, return empty array/object, not mock data
+- NEVER use hardcoded team names, player names, or league names
+- NEVER use hardcoded team mappings or color schemes
+- ALWAYS fetch team/player data dynamically from database or APIs
 
 ## API Usage Rules
 - ALWAYS respect rate limits from environment configuration
@@ -37,15 +40,42 @@
 - ALWAYS prefer editing existing files over creating new ones
 - ALWAYS use proper file naming conventions
 - NEVER create placeholder files
+- ALWAYS review existing codebase before creating new files
+- ALWAYS check for existing similar functionality before implementing
 
 ## Database Rules
+- ALWAYS use Supabase MCP tools for database operations
+- NEVER use direct Supabase client calls - use MCP integration
 - ALWAYS use proper SQL validation
 - ALWAYS handle database errors
 - ALWAYS use transactions for multi-step operations
 - NEVER use raw SQL without validation
+- ALWAYS use MCP tools for: list_tables, execute_sql, apply_migration, etc.
 
 ## Testing Rules
 - ALWAYS test with real data
 - NEVER use mock data in tests
 - ALWAYS validate test results
 - ALWAYS clean up test data
+
+## CRITICAL: NO HARDCODED SPORT-SPECIFIC LOGIC
+- NEVER hardcode sport names like 'basketball', 'football', 'soccer', etc.
+- NEVER add sport-specific conditions or logic
+- ALWAYS use the sport parameter passed to functions
+- ALWAYS make code generic and sport-agnostic
+- If you need sport-specific behavior, use the sport parameter to determine it
+- NEVER assume a specific sport in any service or utility function
+- NEVER hardcode team names, player names, or league names
+- NEVER hardcode sport-specific configurations in static objects
+- ALWAYS load sport configurations dynamically from database or environment
+- NEVER use hardcoded mappings for team names, colors, or IDs
+- ALWAYS make all services, utilities, and components sport-agnostic
+
+## Supabase MCP Integration Rules
+- ALWAYS use Supabase MCP tools instead of direct client calls
+- ALWAYS use mcp_supabase_list_projects to discover project ID
+- ALWAYS use mcp_supabase_execute_sql for database queries
+- ALWAYS use mcp_supabase_apply_migration for schema changes
+- ALWAYS use mcp_supabase_list_tables to understand database structure
+- ALWAYS use mcp_supabase_get_logs for debugging
+- NEVER bypass MCP tools for Supabase operations

@@ -194,59 +194,25 @@ class ApexDataManager {
   getAvailableSports() {
     const sports = {};
     
-    // Basketball - BallDontLie (primary), SportsDB (fallback)
-    if (this.apis.ballDontLie.enabled || this.apis.sportsDB.enabled) {
-      sports.basketball = { 
-        leagues: ['NBA'], 
-        updateFreq: 15,
-        historicalDays: 365, // 1 year of historical data
-        apis: this.apis.ballDontLie.enabled ? ['ballDontLie', 'sportsDB'] : ['sportsDB'],
-        seasons: this.getAvailableSeasons('basketball')
-      };
-    }
+    // Load sports configuration dynamically from environment
+    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || [];
     
-    // Football - RapidAPI (primary), SportsDB (fallback)
-    if (this.apis.rapidAPI.enabled || this.apis.sportsDB.enabled) {
-      sports.football = { 
-        leagues: ['NFL'], 
-        updateFreq: 30,
-        historicalDays: 180, // 6 months of historical data
-        apis: this.apis.rapidAPI.enabled ? ['rapidAPI', 'sportsDB'] : ['sportsDB'],
-        seasons: this.getAvailableSeasons('football')
-      };
-    }
-    
-    // Baseball - RapidAPI (primary), SportsDB (fallback)
-    if (this.apis.rapidAPI.enabled || this.apis.sportsDB.enabled) {
-      sports.baseball = { 
-        leagues: ['MLB'], 
-        updateFreq: 60,
-        historicalDays: 180, // 6 months of historical data
-        apis: this.apis.rapidAPI.enabled ? ['rapidAPI', 'sportsDB'] : ['sportsDB'],
-        seasons: this.getAvailableSeasons('baseball')
-      };
-    }
-    
-    // Hockey - RapidAPI (primary), SportsDB (fallback)
-    if (this.apis.rapidAPI.enabled || this.apis.sportsDB.enabled) {
-      sports.hockey = { 
-        leagues: ['NHL'], 
-        updateFreq: 30,
-        historicalDays: 180, // 6 months of historical data
-        apis: this.apis.rapidAPI.enabled ? ['rapidAPI', 'sportsDB'] : ['sportsDB'],
-        seasons: this.getAvailableSeasons('hockey')
-      };
-    }
-    
-    // Soccer - RapidAPI (primary), SportsDB (fallback)
-    if (this.apis.rapidAPI.enabled || this.apis.sportsDB.enabled) {
-      sports.soccer = { 
-        leagues: ['Premier League', 'La Liga', 'Bundesliga', 'Serie A'], 
-        updateFreq: 60,
-        historicalDays: 90, // 3 months of historical data
-        apis: this.apis.rapidAPI.enabled ? ['rapidAPI', 'sportsDB'] : ['sportsDB'],
-        seasons: this.getAvailableSeasons('soccer')
-      };
+    for (const sport of supportedSports) {
+      const sportUpper = sport.toUpperCase();
+      const leagues = process.env[`${sportUpper}_LEAGUES`]?.split(',') || [];
+      const updateFreq = parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '30');
+      const historicalDays = parseInt(process.env[`${sportUpper}_HISTORICAL_DAYS`] || '180');
+      const dataSource = process.env[`${sportUpper}_DATA_SOURCE`] || 'sportsdb';
+      
+      if (this.apis[dataSource]?.enabled || this.apis.sportsDB.enabled) {
+        sports[sport] = { 
+          leagues: leagues, 
+          updateFreq: updateFreq,
+          historicalDays: historicalDays,
+          apis: this.apis[dataSource]?.enabled ? [dataSource, 'sportsDB'] : ['sportsDB'],
+          seasons: this.getAvailableSeasons(sport)
+        };
+      }
     }
     
     return sports;
@@ -256,37 +222,28 @@ class ApexDataManager {
     const currentYear = new Date().getFullYear();
     const seasons = [];
     
-    switch (sport) {
-      case 'basketball':
-        // NBA seasons run from October to June
-        for (let year = currentYear - 2; year <= currentYear; year++) {
+    // Load season format from environment or use default
+    const seasonFormat = process.env[`${sport.toUpperCase()}_SEASON_FORMAT`] || 'calendar';
+    const yearsBack = parseInt(process.env[`${sport.toUpperCase()}_HISTORICAL_YEARS`] || '2');
+    
+    switch (seasonFormat) {
+      case 'academic':
+        // Academic years (e.g., 2023-24)
+        for (let year = currentYear - yearsBack; year <= currentYear; year++) {
           seasons.push(`${year}-${(year + 1).toString().slice(-2)}`);
         }
         break;
-      case 'football':
-        // NFL seasons run from September to February
-        for (let year = currentYear - 2; year <= currentYear; year++) {
-          seasons.push(`${year}-${(year + 1).toString().slice(-2)}`);
-        }
-        break;
-      case 'baseball':
-        // MLB seasons run from March to October
-        for (let year = currentYear - 2; year <= currentYear; year++) {
+      case 'calendar':
+        // Calendar years (e.g., 2023)
+        for (let year = currentYear - yearsBack; year <= currentYear; year++) {
           seasons.push(`${year}`);
         }
         break;
-      case 'hockey':
-        // NHL seasons run from October to June
-        for (let year = currentYear - 2; year <= currentYear; year++) {
-          seasons.push(`${year}-${(year + 1).toString().slice(-2)}`);
+      default:
+        // Default to calendar year
+        for (let year = currentYear - yearsBack; year <= currentYear; year++) {
+          seasons.push(`${year}`);
         }
-        break;
-      case 'soccer':
-        // European seasons run from August to May
-        for (let year = currentYear - 2; year <= currentYear; year++) {
-          seasons.push(`${year}-${(year + 1).toString().slice(-2)}`);
-        }
-        break;
     }
     
     return seasons;
@@ -862,7 +819,7 @@ class ApexDataManager {
       abbreviation: team.team.code,
       logo_url: team.team.logo,
       sport: sport,
-      league: this.getLeagueName(sport),
+      league: await this.getLeagueName(sport),
       conference: null, // RapidAPI doesn't provide conference info
       division: null, // RapidAPI doesn't provide division info
       stadium_name: team.venue?.name || null,
@@ -871,14 +828,21 @@ class ApexDataManager {
     }));
   }
 
-  getLeagueName(sport) {
-    const leagueNames = {
-      'football': 'NFL',
-      'baseball': 'MLB',
-      'hockey': 'NHL',
-      'soccer': 'Premier League'
-    };
-    return leagueNames[sport] || 'Unknown';
+  async getLeagueName(sport) {
+    try {
+      // Try to get league name from environment variables first
+      const sportUpper = sport.toUpperCase();
+      const envLeague = process.env[`${sportUpper}_DEFAULT_LEAGUE`];
+      if (envLeague) {
+        return envLeague;
+      }
+      
+      // Fallback to a generic league name
+      return sport.charAt(0).toUpperCase() + sport.slice(1) + ' League';
+    } catch (error) {
+      console.error('Error getting league name for sport:', sport, error);
+      return 'Unknown League';
+    }
   }
 
   async fetchTeamsFromSportsDB(sport, api) {
@@ -1102,7 +1066,7 @@ class ApexDataManager {
       venue: fixture.fixture.venue?.name || null,
       status: fixture.fixture.status.short,
       sport: sport,
-      league: this.getLeagueName(sport),
+      league: await this.getLeagueName(sport),
       season: new Date().getFullYear(),
       game_type: 'Regular Season',
       game_date: fixture.fixture.date ? new Date(fixture.fixture.date) : null,
@@ -1624,26 +1588,50 @@ class ApexDataManager {
     return null;
   }
 
-  getSportFromCode(sportCode) {
-    const mapping = {
-      'basketball_nba': 'basketball',
-      'americanfootball_nfl': 'football',
-      'baseball_mlb': 'baseball',
-      'icehockey_nhl': 'hockey',
-      'soccer_epl': 'soccer'
-    };
-    return mapping[sportCode] || 'unknown';
+  async getSportFromCode(sportCode) {
+    try {
+      // Load sport mappings from database
+      const { data, error } = await this.supabase
+        .from('sport_code_mappings')
+        .select('sport')
+        .eq('code', sportCode)
+        .single();
+      
+      if (error || !data) {
+        // Fallback to environment-based mapping
+        const sportMappings = process.env.SPORT_CODE_MAPPINGS ? 
+          JSON.parse(process.env.SPORT_CODE_MAPPINGS) : {};
+        return sportMappings[sportCode] || 'unknown';
+      }
+      
+      return data.sport;
+    } catch (error) {
+      console.warn(`Error loading sport mapping for ${sportCode}:`, error);
+      return 'unknown';
+    }
   }
 
-  getLeagueFromCode(sportCode) {
-    const mapping = {
-      'basketball_nba': 'NBA',
-      'americanfootball_nfl': 'NFL',
-      'baseball_mlb': 'MLB',
-      'icehockey_nhl': 'NHL',
-      'soccer_epl': 'Premier League'
-    };
-    return mapping[sportCode] || 'Unknown';
+  async getLeagueFromCode(sportCode) {
+    try {
+      // Load league mappings from database
+      const { data, error } = await this.supabase
+        .from('sport_code_mappings')
+        .select('league')
+        .eq('code', sportCode)
+        .single();
+      
+      if (error || !data) {
+        // Fallback to environment-based mapping
+        const leagueMappings = process.env.LEAGUE_CODE_MAPPINGS ? 
+          JSON.parse(process.env.LEAGUE_CODE_MAPPINGS) : {};
+        return leagueMappings[sportCode] || 'Unknown';
+      }
+      
+      return data.league;
+    } catch (error) {
+      console.warn(`Error loading league mapping for ${sportCode}:`, error);
+      return 'Unknown';
+    }
   }
 
   async getGameIdMappings() {

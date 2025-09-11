@@ -4,7 +4,7 @@
  */
 
 import { sportsDBClient } from '../../sports-apis'
-import { cacheService } from '../../services/cache-service'
+import { cacheManager } from '@/lib/cache'
 import { rateLimiter } from '../../services/rate-limiter'
 import { errorHandlingService } from '../../services/error-handling-service'
 
@@ -84,7 +84,8 @@ export class SoccerService {
     const cacheKey = `soccer:games:${JSON.stringify(params)}`
     const ttl = params.status === 'live' ? this.LIVE_TTL : this.CACHE_TTL
 
-    return cacheService.get(cacheKey) || await this.fetchGames(params, cacheKey, ttl)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchGames(params, cacheKey, ttl)
   }
 
   private async fetchGames(params: any, cacheKey: string, ttl: number): Promise<SoccerGame[]> {
@@ -104,7 +105,7 @@ export class SoccerService {
       }
 
       // If no real data available, return empty array instead of mock data
-      cacheService.set(cacheKey, games, ttl)
+      cacheManager.set(cacheKey, games, ttl)
       return games
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Soccer games fetch' })
@@ -118,7 +119,8 @@ export class SoccerService {
   } = {}): Promise<SoccerTeam[]> {
     const cacheKey = `soccer:teams:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchTeams(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchTeams(params, cacheKey)
   }
 
   private async fetchTeams(params: any, cacheKey: string): Promise<SoccerTeam[]> {
@@ -145,7 +147,7 @@ export class SoccerService {
         )
       }
 
-      cacheService.set(cacheKey, filteredTeams, 30 * 60 * 1000) // 30 minutes
+      cacheManager.set(cacheKey, filteredTeams, 30 * 60 * 1000) // 30 minutes
       return filteredTeams
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Soccer teams fetch' })
@@ -159,14 +161,15 @@ export class SoccerService {
   } = {}): Promise<SoccerPlayer[]> {
     const cacheKey = `soccer:players:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchPlayers(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchPlayers(params, cacheKey)
   }
 
   private async fetchPlayers(params: any, cacheKey: string): Promise<SoccerPlayer[]> {
     try {
       // For now, return empty array - would integrate with soccer API
       const players: SoccerPlayer[] = []
-      cacheService.set(cacheKey, players, 30 * 60 * 1000)
+      cacheManager.set(cacheKey, players, 30 * 60 * 1000)
       return players
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Soccer players fetch' })
@@ -181,14 +184,15 @@ export class SoccerService {
   async getStandings(league: string = 'Premier League'): Promise<any[]> {
     const cacheKey = `soccer:standings:${league}`
     
-    return cacheService.get(cacheKey) || await this.fetchStandings(league, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchStandings(league, cacheKey)
   }
 
   private async fetchStandings(league: string, cacheKey: string): Promise<any[]> {
     try {
       // For now, return empty array - would integrate with appropriate API
       const standings: any[] = []
-      cacheService.set(cacheKey, standings, 60 * 60 * 1000) // 1 hour
+      cacheManager.set(cacheKey, standings, 60 * 60 * 1000) // 1 hour
       return standings
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Soccer standings fetch' })
@@ -199,14 +203,15 @@ export class SoccerService {
   async getOdds(params: any = {}): Promise<any[]> {
     const cacheKey = `soccer:odds:${JSON.stringify(params)}`
     
-    return cacheService.get(cacheKey) || await this.fetchOdds(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchOdds(params, cacheKey)
   }
 
   private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []
-      cacheService.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
+      cacheManager.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
       return odds
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Soccer odds fetch' })

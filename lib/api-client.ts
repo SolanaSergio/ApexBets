@@ -94,6 +94,50 @@ export interface Odds {
   timestamp: string
 }
 
+export interface Player {
+  id: string;
+  sport: string;
+  name: string;
+  position?: string;
+  teamId?: string;
+  teamName?: string;
+  height?: string;
+  weight?: number;
+  age?: number;
+  experienceYears?: number;
+  college?: string;
+  country?: string;
+  jerseyNumber?: number;
+  isActive?: boolean;
+  headshotUrl?: string;
+  lastUpdated: string;
+}
+
+export interface PlayerStats {
+  games_played: number;
+  player_id: number;
+  season: number;
+  min: string;
+  fgm: number;
+  fga: number;
+  fg_pct: number;
+  fg3m: number;
+  fg3a: number;
+  fg3_pct: number;
+  ftm: number;
+  fta: number;
+  ft_pct: number;
+  oreb: number;
+  dreb: number;
+  reb: number;
+  ast: number;
+  turnover: number;
+  stl: number;
+  blk: number;
+  pf: number;
+  pts: number;
+}
+
 export interface AnalyticsStats {
   total_games: number
   total_predictions: number
@@ -190,6 +234,42 @@ class ApiClient {
 
   async getGame(gameId: string): Promise<Game> {
     return this.request<Game>(`/games/${gameId}`)
+  }
+
+  // Players
+  async getPlayers(params?: {
+    sport?: string;
+    team_id?: string;
+    limit?: number;
+    search?: string;
+  }): Promise<Player[]> {
+    const searchParams = new URLSearchParams();
+    if (params?.sport) searchParams.set("sport", params.sport);
+    if (params?.team_id) searchParams.set("team_id", params.team_id);
+    if (params?.limit) searchParams.set("limit", params.limit.toString());
+    if (params?.search) searchParams.set("search", params.search);
+
+    const query = searchParams.toString();
+    const response = await this.request<{ data: Player[] } | Player[]>(
+      `/players${query ? `?${query}` : ""}`
+    );
+
+    return Array.isArray(response) ? response : response.data || [];
+  }
+
+  async getPlayerStats(params: {
+    sport: string;
+    player_id: string;
+    season?: number;
+  }): Promise<PlayerStats[]> {
+    const searchParams = new URLSearchParams();
+    searchParams.set("sport", params.sport);
+    searchParams.set("playerId", params.player_id);
+    if (params.season) {
+      searchParams.set("season", params.season.toString());
+    }
+    const query = searchParams.toString();
+    return this.request<PlayerStats[]>(`/players/stats?${query}`);
   }
 
   // Predictions

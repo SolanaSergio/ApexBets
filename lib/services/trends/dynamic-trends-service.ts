@@ -156,8 +156,8 @@ export class DynamicTrendsService {
   /**
    * Get all supported sports for trends
    */
-  getSupportedSports(): SupportedSport[] {
-    return serviceFactory.getSupportedSports()
+  async getSupportedSports(): Promise<SupportedSport[]> {
+    return await serviceFactory.getSupportedSports()
   }
 
   // Helper methods for generating realistic data

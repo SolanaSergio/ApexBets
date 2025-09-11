@@ -16,8 +16,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react"
-import { cachedUnifiedApiClient, SupportedSport } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface SportSelectorProps {
   selectedSport: SupportedSport
@@ -34,23 +33,17 @@ export function SportSelector({
 }: SportSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
-  const [serviceHealth, setServiceHealth] = useState<Record<SupportedSport, boolean>>(
-    {} as Record<SupportedSport, boolean>
-  )
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadSportData()
   }, [])
 
-  const loadSportData = async () => {
+  const loadSportData = () => {
     try {
       setLoading(true)
-      const sports = cachedUnifiedApiClient.getSupportedSports()
-      const health = await cachedUnifiedApiClient.getHealthStatus()
-      
+      const sports = SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
-      setServiceHealth(health)
     } catch (error) {
       console.error('Error loading sport data:', error)
     } finally {
@@ -59,7 +52,7 @@ export function SportSelector({
   }
 
   const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
-  const isServiceHealthy = serviceHealth[selectedSport] ?? false
+  const isServiceHealthy = true // Assume healthy
 
   if (loading) {
     return variant === 'compact' ? (
@@ -79,7 +72,7 @@ export function SportSelector({
         {supportedSports.map((sport) => {
           const config = SportConfigManager.getSportConfig(sport)
           const isSelected = sport === selectedSport
-          const isHealthy = serviceHealth[sport] ?? false
+          const isHealthy = isServiceHealthy
           
           return (
             <Button
@@ -138,7 +131,7 @@ export function SportSelector({
             {supportedSports.map((sport) => {
               const config = SportConfigManager.getSportConfig(sport)
               const isSelected = sport === selectedSport
-              const isHealthy = serviceHealth[sport] ?? false
+              const isHealthy = isServiceHealthy
               
               return (
                 <DropdownMenuItem

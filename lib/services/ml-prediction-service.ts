@@ -52,6 +52,49 @@ export class MLPredictionService {
   }
 
   /**
+   * Calculate moneyline probability
+   */
+  private calculateMoneylineProbability(game: any, side: string, historicalData: any): number {
+    // Simple implementation - in production, this would use actual ML models
+    const homeTeamWins = historicalData.homeTeamWins || 0
+    const totalGames = historicalData.totalGames || 1
+    const baseProbability = homeTeamWins / totalGames
+    
+    // Adjust based on side
+    return side === 'home' ? baseProbability : 1 - baseProbability
+  }
+
+  /**
+   * Calculate spread probability
+   */
+  private calculateSpreadProbability(game: any, side: string, historicalData: any): number {
+    // Simple implementation - in production, this would use actual ML models
+    const homeTeamAvgMargin = historicalData.homeTeamAvgMargin || 0
+    const spread = game.spread || 0
+    
+    // Calculate probability based on historical margin vs spread
+    const adjustedMargin = homeTeamAvgMargin - spread
+    const probability = 1 / (1 + Math.exp(-adjustedMargin * 0.1))
+    
+    return side === 'home' ? probability : 1 - probability
+  }
+
+  /**
+   * Calculate total (over/under) probability
+   */
+  private calculateTotalProbability(game: any, side: string, historicalData: any): number {
+    // Simple implementation - in production, this would use actual ML models
+    const avgTotal = historicalData.avgTotal || 0
+    const gameTotal = game.total || 0
+    
+    // Calculate probability based on historical average vs game total
+    const difference = avgTotal - gameTotal
+    const probability = 1 / (1 + Math.exp(-difference * 0.1))
+    
+    return side === 'over' ? probability : 1 - probability
+  }
+
+  /**
    * Generate predictions for a game
    */
   async generatePredictions(game: any, sport: string): Promise<PredictionResult[]> {
@@ -107,7 +150,7 @@ export class MLPredictionService {
   private async getHistoricalData(game: any): Promise<any> {
     try {
       // Get sport-specific service
-      const sportService = serviceFactory.getService(game.sport || 'basketball', game.league || 'NBA')
+      const sportService = await serviceFactory.getService(game.sport || 'basketball', game.league || 'NBA')
       
       // Get recent games for both teams
       const [homeTeamGames, awayTeamGames] = await Promise.all([
@@ -155,24 +198,6 @@ export class MLPredictionService {
     }
   }
 
-  private async calculateMoneylineProbability(game: any, side: string, historicalData: any): Promise<number> {
-    const { homeTeam, awayTeam } = historicalData
-    
-    // Base probability calculation
-    let homeProb = 0.5
-    
-    // Adjust for team strength
-    if (homeTeam.winRate > awayTeam.winRate) {
-      homeProb += (homeTeam.winRate - awayTeam.winRate) * 0.3
-    } else {
-      homeProb -= (awayTeam.winRate - homeTeam.winRate) * 0.3
-    }
-    
-    // Apply home advantage
-    homeProb = homeProb * homeTeam.homeAdvantage + (1 - homeTeam.homeAdvantage) * 0.5
-    
-    return side.includes(game.homeTeam) ? homeProb : 1 - homeProb
-  }
 
   private async calculateSpreadValue(game: any, historicalData: any): Promise<number> {
     const { homeTeam, awayTeam } = historicalData

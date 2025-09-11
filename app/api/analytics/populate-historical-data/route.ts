@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
     try {
       // 1. Populate teams
       console.log(`Populating teams for ${sport}${league ? ` (${league})` : ''}...`)
-      const sportService = serviceFactory.getService(sport as SupportedSport, league || undefined)
+      const sportService = await serviceFactory.getService(sport as SupportedSport, league || undefined)
       const teams = await sportService.getTeams({ league })
       
       for (const team of teams) {
@@ -274,7 +274,7 @@ function getCurrentSeason(sport: string): string {
 async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
   // Get real player stats from external APIs
   try {
-    const sportService = serviceFactory.getService(sport as SupportedSport)
+    const sportService = await serviceFactory.getService(sport as SupportedSport)
     return await sportService.getPlayers({ gameId })
   } catch (error) {
     console.error(`Error fetching player stats for game ${gameId}:`, error)

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getOdds(sport, { league, limit })
+        data = await unifiedApiClient.getOdds(sport, { league })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getPredictions(sport, { league, limit })
+        data = await unifiedApiClient.getPredictions(sport, { league })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getTeamPerformance(sport, { league })
+        data = await unifiedApiClient.getTeamPerformance(sport)
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -235,8 +235,8 @@ export async function POST(request: NextRequest) {
             unifiedApiClient.getGames(sport, { limit: 5 }),
             unifiedApiClient.getTeams(sport, { limit: 5 }),
             unifiedApiClient.getPlayers(sport, { limit: 5 }),
-            unifiedApiClient.getOdds(sport, { limit: 5 }),
-            unifiedApiClient.getPredictions(sport, { limit: 5 })
+            unifiedApiClient.getOdds(sport),
+            unifiedApiClient.getPredictions(sport)
           ])
           
           result = {
@@ -251,7 +251,7 @@ export async function POST(request: NextRequest) {
           // Refresh all sports
           const supportedSports = unifiedApiClient.getSupportedSports()
           const refreshResults = await Promise.all(
-            supportedSports.map(async (sport) => {
+            (await supportedSports).map(async (sport) => {
               const [games, teams, players] = await Promise.all([
                 unifiedApiClient.getGames(sport, { limit: 5 }),
                 unifiedApiClient.getTeams(sport, { limit: 5 }),

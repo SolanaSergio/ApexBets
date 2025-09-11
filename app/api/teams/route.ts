@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         name: teamData.name,
         city: teamData.city || teamData.homeTeam || '',
-        league: teamData.league || 'NBA',
+        league: teamData.league || 'Unknown',
         sport: teamData.sport,
         abbreviation: teamData.abbreviation || teamData.abbr || '',
         logo_url: teamData.logo_url || null

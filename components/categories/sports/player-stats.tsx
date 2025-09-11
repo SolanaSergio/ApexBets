@@ -19,18 +19,69 @@ import {
   Trophy,
   Zap
 } from "lucide-react"
-import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieStats } from "@/lib/sports-apis"
-import { cachedUnifiedApiClient, SupportedSport, UnifiedPlayerData } from "@/lib/services/api/cached-unified-api-client"
+import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
+import { apiClient, type Player, type PlayerStats as ApiPlayerStats } from "@/lib/api-client";
+import { SupportedSport } from "@/lib/services/core/sport-config";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
+import { BallDontLiePlayer } from "@/lib/sports-apis";
+import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
+
+type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
+
+// Helper functions to safely access properties across different player types
+function getPlayerName(player: PlayerUnion | null): string {
+  if (!player) return 'Unknown Player';
+  if ('name' in player) {
+    return player.name;
+  }
+  if ('first_name' in player && 'last_name' in player) {
+    return `${player.first_name} ${player.last_name}`;
+  }
+  return 'Unknown Player';
+}
+
+function getPlayerTeamName(player: PlayerUnion | null): string | undefined {
+  if (!player) return undefined;
+  if ('teamName' in player) {
+    return player.teamName;
+  }
+  if ('team' in player && typeof player.team === 'object' && player.team !== null) {
+    return (player.team as any).name || (player.team as any).full_name;
+  }
+  return undefined;
+}
+
+function getPlayerId(player: PlayerUnion | null): string {
+  if (!player) return '';
+  if ('id' in player) {
+    return String(player.id);
+  }
+  return '';
+}
+
+function getPlayerHeight(player: PlayerUnion | null): string | undefined {
+  if (!player) return undefined;
+  if ('height' in player) {
+    return player.height;
+  }
+  if ('height_feet' in player && 'height_inches' in player) {
+    const feet = player.height_feet;
+    const inches = player.height_inches;
+    if (feet !== null && inches !== null) {
+      return `${feet}'${inches}"`;
+    }
+  }
+  return undefined;
+}
 
 interface PlayerStatsProps {
-  selectedPlayer?: BallDontLiePlayer | UnifiedPlayerData | null
-  sport?: SupportedSport
+  selectedPlayer?: PlayerUnion | null;
+  sport?: SupportedSport;
 }
 
 export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps) {
-  const [stats, setStats] = useState<BallDontLieStats[]>([])
+  const [stats, setStats] = useState<ApiPlayerStats[]>([]);
   const [seasonAverages, setSeasonAverages] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [selectedSeason, setSelectedSeason] = useState<number>(2024)
@@ -44,52 +95,22 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
   }, [selectedPlayer, selectedSeason, selectedPeriod])
 
   const fetchPlayerStats = async () => {
-    if (!selectedPlayer) return
+    if (!selectedPlayer || !sport) return;
 
-    setLoading(true)
+    setLoading(true);
     try {
-      // For basketball, use BallDontLie API
-      if (sport === "basketball" && 'first_name' in selectedPlayer) {
-        const endDate = new Date().toISOString().split('T')[0]
-        let startDate: string
-
-        switch (selectedPeriod) {
-          case "last5":
-            startDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            break
-          case "last10":
-            startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            break
-          case "last20":
-            startDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-            break
-          case "season":
-            startDate = `${selectedSeason}-10-01`
-            break
-          default:
-            startDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-        }
-
-        const response = await ballDontLieClient.getStats({
-          player_ids: [selectedPlayer.id],
-          start_date: startDate,
-          end_date: endDate,
-          seasons: [selectedSeason],
-          per_page: 50
-        })
-
-        setStats(response.data)
-      } else {
-        // For other sports, use unified API client
-        const playerStats = await cachedUnifiedApiClient.getPlayerStats(sport, selectedPlayer.id)
-        setStats(playerStats || [])
-      }
+      const playerStats = await apiClient.getPlayerStats({
+        sport,
+        player_id: getPlayerId(selectedPlayer),
+        season: selectedSeason,
+      });
+      setStats(playerStats || []);
     } catch (error) {
-      console.error("Error fetching player stats:", error)
+      console.error("Error fetching player stats:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const fetchSeasonAverages = async () => {
     if (!selectedPlayer) return
@@ -145,21 +166,10 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
     }
   }
 
-  const getPlayerInitials = (player: BallDontLiePlayer | UnifiedPlayerData) => {
-    if ('first_name' in player) {
-      return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
-    } else {
-      return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-    }
-  }
+  const getPlayerInitials = (player: Player) => {
+    return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
+  };
 
-  const getPlayerName = (player: BallDontLiePlayer | UnifiedPlayerData) => {
-    if ('first_name' in player) {
-      return `${player.first_name} ${player.last_name}`
-    } else {
-      return player.name
-    }
-  }
 
 
   const prepareChartData = () => {
@@ -197,7 +207,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <PlayerPhoto 
-                playerId={selectedPlayer.id}
+                playerId={getPlayerId(selectedPlayer)}
                 alt={getPlayerName(selectedPlayer)}
                 width={64}
                 height={64}
@@ -208,23 +218,23 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
                   {getPlayerName(selectedPlayer)}
                 </h2>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  {'position' in selectedPlayer && selectedPlayer.position && (
+                  {selectedPlayer.position && (
                     <Badge variant="secondary">{selectedPlayer.position}</Badge>
                   )}
-                  {'team' in selectedPlayer && selectedPlayer.team && (
+                  {getPlayerTeamName(selectedPlayer) && (
                     <span className="flex items-center gap-1">
                       <TeamLogo 
-                        teamName={selectedPlayer.team.name} 
-                        alt={selectedPlayer.team.name}
+                        teamName={getPlayerTeamName(selectedPlayer)!} 
+                        alt={getPlayerTeamName(selectedPlayer)!}
                         width={16}
                         height={16}
                         className="h-4 w-4"
                       />
-                      {selectedPlayer.team.name}
+                      {getPlayerTeamName(selectedPlayer)}
                     </span>
                   )}
-                  {'height_feet' in selectedPlayer && selectedPlayer.height_feet && selectedPlayer.height_inches && (
-                    <span>{selectedPlayer.height_feet}'{selectedPlayer.height_inches}"</span>
+                  {getPlayerHeight(selectedPlayer) && (
+                    <span>{getPlayerHeight(selectedPlayer)}</span>
                   )}
                 </div>
               </div>

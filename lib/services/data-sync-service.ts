@@ -100,7 +100,7 @@ export class DataSyncService {
 
     try {
       // Sync all supported sports
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         try {

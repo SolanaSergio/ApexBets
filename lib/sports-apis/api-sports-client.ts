@@ -3,7 +3,7 @@
  * Fast real-time sports data with 15-second updates
  */
 
-interface ApiSportsFixture {
+export interface ApiSportsFixture {
   fixture: {
     id: number
     referee: string
@@ -72,7 +72,7 @@ interface ApiSportsFixture {
   }
 }
 
-interface ApiSportsTeam {
+export interface ApiSportsTeam {
   team: {
     id: number
     name: string
@@ -93,7 +93,7 @@ interface ApiSportsTeam {
   }
 }
 
-interface ApiSportsStanding {
+export interface ApiSportsStanding {
   rank: number
   team: {
     id: number
@@ -171,7 +171,7 @@ export class ApiSportsClient {
     await this.rateLimit()
     
     // Check if API key is available
-    if (!this.apiKey || this.apiKey === 'your_rapidapi_key' || this.apiKey === '') {
+    if (!this.apiKey || this.apiKey === '') {
       console.warn('API-SPORTS API key not configured, returning empty data')
       return { response: [] } as T
     }
@@ -320,7 +320,7 @@ export class ApiSportsClient {
 // Create instance with API key from environment
 const getApiSportsKey = (): string => {
   const apiKey = process.env.NEXT_PUBLIC_RAPIDAPI_KEY
-  if (!apiKey || apiKey === 'your_rapidapi_key' || apiKey === '') {
+  if (!apiKey || apiKey === '') {
     return '' // Return empty string instead of throwing error
   }
   return apiKey
@@ -361,12 +361,20 @@ export const apiSportsClient = {
     return getClient().getTeams(leagueId, season)
   },
 
-  async getFixtures(leagueId: number, season: number, date?: string): Promise<any> {
+  async getFixtures(params: {
+    league?: number
+    season?: number
+    team?: number
+    date?: string
+    next?: number
+    last?: number
+    live?: string
+  } = {}): Promise<any> {
     if (!this.isConfigured) {
       console.warn('API-SPORTS API key not configured, returning empty data')
       return []
     }
-    return getClient().getFixtures(leagueId, season, date)
+    return getClient().getFixtures(params)
   },
 
   async getTeamStatistics(teamId: number, leagueId: number, season: number): Promise<any> {

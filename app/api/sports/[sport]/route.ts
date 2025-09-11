@@ -30,12 +30,12 @@ export async function GET(
       )
     }
 
-    const service = serviceFactory.getService(sport, league)
+    const service = await serviceFactory.getService(sport, league)
     let data: any = null
     let meta: any = {
       timestamp: new Date().toISOString(),
       sport,
-      league: league || serviceFactory.getDefaultLeague(sport),
+      league: league || await serviceFactory.getDefaultLeague(sport),
       action
     }
 
@@ -131,9 +131,9 @@ export async function POST(
       case 'refresh':
         // Refresh sport data
         const [games, teams, players] = await Promise.all([
-          service.getGames({ limit: 10 }),
-          service.getTeams({ limit: 10 }),
-          service.getPlayers({ limit: 10 })
+          (await service).getGames({ limit: 10 }),
+          (await service).getTeams({ limit: 10 }),
+          (await service).getPlayers({ limit: 10 })
         ])
         
         result = {
@@ -145,7 +145,7 @@ export async function POST(
         break
 
       case 'health-check':
-        result = await service.healthCheck()
+        result = await (await service).healthCheck()
         break
 
       default:

@@ -10,10 +10,7 @@ import path from 'path';
 // TYPES AND INTERFACES
 // ============================================================================
 
-export type SportsLeague =
-  | 'NBA' | 'NFL' | 'MLB' | 'NHL'
-  | 'Premier League' | 'La Liga' | 'Serie A' | 'Bundesliga' | 'Ligue 1'
-  | 'Champions League' | 'Europa League' | 'MLS';
+export type SportsLeague = string; // Dynamic league support
 
 export interface LogoInfo {
   url: string;
@@ -40,58 +37,73 @@ export interface PlayerPhotoConfig {
 // IMAGE SOURCES AND MAPPINGS
 // ============================================================================
 
-// Enhanced team logo sources with multiple fallbacks
-const TEAM_LOGOS = {
-  NBA: {
-    logos: 'https://cdn.nba.com/logos/nba/',
-    headshots: 'https://cdn.nba.com/headshots/nba/latest/',
-    // Multiple image sources for better coverage
-    sources: [
-      'https://cdn.nba.com/logos/nba/',
-      'https://a.espncdn.com/i/teamlogos/nba/500/',
-      'https://logos-world.net/wp-content/uploads/2020/06/',
-      'https://cdn.freebiesupply.com/logos/large/2x/'
-    ],
-    teams: {} // Will be populated dynamically from database
-  },
-  NFL: {
-    logos: 'https://a.espncdn.com/i/teamlogos/nfl/500/',
-    headshots: 'https://a.espncdn.com/i/headshots/nfl/players/full/',
-    sources: [
-      'https://a.espncdn.com/i/teamlogos/nfl/500/',
-      'https://static.www.nfl.com/image/private/t_headshot_desktop/league/',
-      'https://logos-world.net/wp-content/uploads/2020/06/',
-      'https://cdn.freebiesupply.com/logos/large/2x/'
-    ],
-    teams: {} // Will be populated dynamically from database
-  },
-  SOCCER: {
-    logos: 'https://media.api-sports.io/football/teams/',
-    headshots: 'https://media.api-sports.io/football/players/',
-    sources: [
-      'https://media.api-sports.io/football/teams/',
-      'https://logos-world.net/wp-content/uploads/2020/06/',
-      'https://cdn.freebiesupply.com/logos/large/2x/',
-      'https://upload.wikimedia.org/wikipedia/en/'
-    ],
-    teams: {} // Will be populated dynamically from database
-  }
-} as const;
+// Dynamic team logo sources - loaded from database
+let TEAM_LOGOS: Record<string, any> = {}
 
-const SPORTS_IMAGES = {
-  BASKETBALL: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=400&h=250&auto=format&fit=crop',
-  FOOTBALL: 'https://images.unsplash.com/photo-1560279964-5e28c3c1c53c?q=80&w=400&h=250&auto=format&fit=crop',
-  BASEBALL: 'https://images.unsplash.com/photo-1589958802941-26b22d2a4479?q=80&w=400&h=250&auto=format&fit=crop',
-  HOCKEY: 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=400&h=250&auto=format&fit=crop',
-  SOCCER: 'https://images.unsplash.com/photo-1574623452334-1e0ac2b3ccb4?q=80&w=400&h=250&auto=format&fit=crop',
-  TENNIS: 'https://images.unsplash.com/photo-1554068865-24cecd4e34b8?q=80&w=400&h=250&auto=format&fit=crop',
-  GOLF: 'https://images.unsplash.com/photo-1587174486073-ae58eb6c85dc?q=80&w=400&h=250&auto=format&fit=crop',
-  STADIUM: 'https://images.unsplash.com/photo-1574622810360-1a29dbb43bdf?q=80&w=400&h=250&auto=format&fit=crop',
-  TROPHY: 'https://images.unsplash.com/photo-1567427018141-0584cfcbf1b8?q=80&w=400&h=250&auto=format&fit=crop',
-  ANALYTICS: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=400&h=250&auto=format&fit=crop',
-  PREDICTION: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=400&h=250&auto=format&fit=crop',
-  SPORTS_GENERIC: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=400&h=250&auto=format&fit=crop'
-} as const;
+// Initialize team logos from database
+async function initializeTeamLogos() {
+  try {
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('sports')
+      .select('name, logo_base_url, headshot_base_url, image_sources')
+      .eq('is_active', true)
+    
+    if (response && !response.error && response.data) {
+      TEAM_LOGOS = response.data.reduce((acc, sport) => {
+        acc[sport.name] = {
+          logos: sport.logo_base_url || '',
+          headshots: sport.headshot_base_url || '',
+          sources: sport.image_sources || [],
+          teams: {} // Will be populated dynamically from database
+        }
+        return acc
+      }, {} as Record<string, any>)
+    }
+  } catch (error) {
+    console.warn('Failed to load team logos from database, using defaults:', error)
+    // Fallback to minimal default
+    TEAM_LOGOS = {
+      default: {
+        logos: '',
+        headshots: '',
+        sources: [],
+        teams: {}
+      }
+    }
+  }
+}
+
+// Dynamic sports images - loaded from database
+let SPORTS_IMAGES: Record<string, string> = {}
+
+// Initialize sports images from database
+async function initializeSportsImages() {
+  try {
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('sports')
+      .select('name, image_url')
+      .eq('is_active', true)
+    
+    if (response && !response.error && response.data) {
+      SPORTS_IMAGES = response.data.reduce((acc, sport) => {
+        acc[sport.name.toUpperCase()] = sport.image_url || ''
+        return acc
+      }, {} as Record<string, string>)
+    }
+  } catch (error) {
+    console.warn('Failed to load sports images from database, using defaults:', error)
+    // Fallback to minimal default
+    SPORTS_IMAGES = {
+      DEFAULT: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=400&h=250&auto=format&fit=crop'
+    }
+  }
+}
 
 // ============================================================================
 // MAIN SERVICE FUNCTIONS
@@ -215,7 +227,7 @@ export function getPotentialLogoUrls(
           urls.push(`https://a.espncdn.com/i/teamlogos/nba/500/${normalizedTeam}.png`);
         }
         // Try all sources even without team ID
-        TEAM_LOGOS.NBA.sources.forEach(source => {
+        TEAM_LOGOS.NBA.sources.forEach((source: string) => {
           urls.push(`${source}${normalizedTeam}.png`);
           urls.push(`${source}${normalizedTeam}.svg`);
         });
@@ -228,7 +240,7 @@ export function getPotentialLogoUrls(
           urls.push(`${TEAM_LOGOS.NFL.logos}${nflTeamCode}.png`);
         }
         // Try all sources
-        TEAM_LOGOS.NFL.sources.forEach(source => {
+        TEAM_LOGOS.NFL.sources.forEach((source: string) => {
           urls.push(`${source}${normalizedTeam}.png`);
           urls.push(`${source}${normalizedTeam}.svg`);
         });
@@ -245,7 +257,7 @@ export function getPotentialLogoUrls(
           urls.push(`${TEAM_LOGOS.SOCCER.logos}${soccerTeamId}.png`);
         }
         // Try all sources
-        TEAM_LOGOS.SOCCER.sources.forEach(source => {
+        TEAM_LOGOS.SOCCER.sources.forEach((source: string) => {
           urls.push(`${source}${normalizedTeam}.png`);
           urls.push(`${source}${normalizedTeam}.svg`);
         });

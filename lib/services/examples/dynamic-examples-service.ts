@@ -6,6 +6,7 @@
 
 import { serviceFactory, SupportedSport } from '../core/service-factory'
 import { CachedUnifiedApiClient } from '../api/cached-unified-api-client'
+import { SportConfigManager } from '../core/sport-config'
 
 export interface ExampleTeam {
   id: string
@@ -49,12 +50,13 @@ export class DynamicExamplesService {
   async getExampleTeams(sport: SupportedSport, limit: number = 6): Promise<ExampleTeam[]> {
     try {
       const teams = await this.cachedUnifiedApiClient.getTeams(sport, { limit })
+      const defaultLeague = await serviceFactory.getDefaultLeague(sport)
       
       return teams.map(team => ({
         id: team.id,
         name: team.name,
         abbreviation: team.abbreviation || team.name.substring(0, 3).toUpperCase(),
-        league: team.league || serviceFactory.getDefaultLeague(sport),
+        league: team.league || defaultLeague,
         sport: sport,
         logoUrl: team.logoUrl
       }))
@@ -70,13 +72,14 @@ export class DynamicExamplesService {
   async getExamplePlayers(sport: SupportedSport, limit: number = 4): Promise<ExamplePlayer[]> {
     try {
       const players = await this.cachedUnifiedApiClient.getPlayers(sport, { limit })
+      const defaultLeague = await serviceFactory.getDefaultLeague(sport)
       
       return players.map(player => ({
         id: player.id,
         name: player.name,
         position: player.position,
         team: player.teamName,
-        league: serviceFactory.getDefaultLeague(sport),
+        league: defaultLeague,
         sport: sport,
         photoUrl: player.headshotUrl
       }))
@@ -92,6 +95,7 @@ export class DynamicExamplesService {
   async getExampleGames(sport: SupportedSport, limit: number = 6): Promise<ExampleGame[]> {
     try {
       const games = await this.cachedUnifiedApiClient.getGames(sport, { limit })
+      const defaultLeague = await serviceFactory.getDefaultLeague(sport)
       
       return games.map(game => ({
         id: game.id,
@@ -99,7 +103,7 @@ export class DynamicExamplesService {
         awayTeam: game.awayTeam,
         date: game.date,
         status: game.status,
-        league: game.league || serviceFactory.getDefaultLeague(sport),
+        league: game.league || defaultLeague,
         sport: sport
       }))
     } catch (error) {
@@ -111,38 +115,31 @@ export class DynamicExamplesService {
   /**
    * Get all supported sports for examples
    */
-  getSupportedSports(): SupportedSport[] {
-    return serviceFactory.getSupportedSports()
+  async getSupportedSports(): Promise<SupportedSport[]> {
+    return await serviceFactory.getSupportedSports()
   }
 
   /**
    * Get sport configuration for examples
    */
-  getSportConfig(sport: SupportedSport) {
+  async getSportConfig(sport: SupportedSport) {
     return {
       name: sport.charAt(0).toUpperCase() + sport.slice(1),
       league: serviceFactory.getDefaultLeague(sport),
-      positions: this.getPositionsForSport(sport)
+      positions: await this.getPositionsForSport(sport)
     }
   }
 
   /**
-   * Get positions for a specific sport
+   * Get positions for a specific sport from database configuration
    */
-  private getPositionsForSport(sport: SupportedSport): string[] {
-    switch (sport) {
-      case 'basketball':
-        return ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F']
-      case 'football':
-        return ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'CB', 'S', 'K', 'P']
-      case 'baseball':
-        return ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH']
-      case 'hockey':
-        return ['C', 'LW', 'RW', 'D', 'G']
-      case 'soccer':
-        return ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST']
-      default:
-        return []
+  private async getPositionsForSport(sport: SupportedSport): Promise<string[]> {
+    try {
+      const config = await SportConfigManager.getSportConfigAsync(sport)
+      return config?.positions || []
+    } catch (error) {
+      console.error('Error getting positions for sport:', sport, error)
+      return []
     }
   }
 

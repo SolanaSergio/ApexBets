@@ -26,6 +26,9 @@ interface SportsImageProps {
   onError?: () => void
   priority?: boolean
   quality?: number
+  type?: 'team' | 'player' | 'sports'
+  league?: string
+  teamName?: string
 }
 
 interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {

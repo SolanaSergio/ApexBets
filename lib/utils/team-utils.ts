@@ -6,17 +6,64 @@
 import { getTeamLogoUrl as getTeamLogoFromService, getPlayerPhotoUrl as getPlayerPhotoFromService } from '@/lib/services/image-service'
 
 // Re-export the enhanced functions from image service
-export const getTeamLogoUrl = (teamName: string): string => {
-  return getTeamLogoFromService(teamName, 'NBA')
-}
-
-export const getPlayerPhotoUrl = (playerId: number): string => {
-  return getPlayerPhotoFromService(playerId, 'NBA')
-}
-
-export const getTeamColors = async (teamName: string, sport: string = 'basketball'): Promise<{ primary: string; secondary: string }> => {
+export const getTeamLogoUrl = async (teamName: string, sport: string): Promise<string> => {
   try {
-    // Try to get team colors from database first
+    // Get league information from database
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('sports')
+      .select('name, leagues')
+      .eq('name', sport)
+      .eq('is_active', true)
+      .single()
+    
+    if (response && !response.error && response.data?.leagues) {
+      const leagues = response.data.leagues
+      const primaryLeague = Array.isArray(leagues) ? leagues[0] : leagues
+      return getTeamLogoFromService(teamName, primaryLeague)
+    }
+    
+    // Fallback to sport name if no league found
+    return getTeamLogoFromService(teamName, sport)
+  } catch (error) {
+    console.warn(`Error getting team logo for ${teamName} in ${sport}:`, error)
+    return getTeamLogoFromService(teamName, sport)
+  }
+}
+
+export const getPlayerPhotoUrl = async (playerId: number, sport: string): Promise<string> => {
+  try {
+    // Get league information from database
+    const { createClient } = await import('@/lib/supabase/client')
+    const supabase = createClient()
+    
+    const response = await supabase
+      ?.from('sports')
+      .select('name, leagues')
+      .eq('name', sport)
+      .eq('is_active', true)
+      .single()
+    
+    if (response && !response.error && response.data?.leagues) {
+      const leagues = response.data.leagues
+      const primaryLeague = Array.isArray(leagues) ? leagues[0] : leagues
+      return getPlayerPhotoFromService(playerId, primaryLeague)
+    }
+    
+    // Fallback to sport name if no league found
+    return getPlayerPhotoFromService(playerId, sport)
+  } catch (error) {
+    console.warn(`Error getting player photo for ${playerId} in ${sport}:`, error)
+    return getPlayerPhotoFromService(playerId, sport)
+  }
+}
+
+export const getTeamColors = async (teamName: string, sport: string): Promise<{ primary: string; secondary: string }> => {
+  try {
+    // Try to get team colors from database first using Supabase MCP
+    // This will be replaced with MCP integration
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     

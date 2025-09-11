@@ -3,7 +3,7 @@
  * Free multi-sport API with generous rate limits
  */
 
-interface SportsDBEvent {
+export interface SportsDBEvent {
   idEvent: string
   strEvent: string
   strHomeTeam: string
@@ -18,7 +18,7 @@ interface SportsDBEvent {
   strVenue?: string
 }
 
-interface SportsDBTeam {
+export interface SportsDBTeam {
   idTeam: string
   strTeam: string
   strTeamShort: string
@@ -28,7 +28,7 @@ interface SportsDBTeam {
   strTeamBadge?: string
 }
 
-interface SportsDBPlayer {
+export interface SportsDBPlayer {
   idPlayer: string
   strPlayer: string
   strTeam: string

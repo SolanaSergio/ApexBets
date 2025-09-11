@@ -161,21 +161,22 @@ export default function GamesList({ sport, className = "" }: GamesListProps) {
                           <SportsImage
                             type="team"
                             league={game.league}
-                            teamName={game.homeTeam}
+                            teamName={game.home_team?.name || 'Home Team'}
                             className="h-10 w-10"
+                            alt={`${game.home_team?.name || 'Home Team'} logo`}
                           />
                           <div>
                             <div className="font-bold text-lg">
-                              {game.homeTeam} vs {game.awayTeam}
+                              {game.home_team?.name || 'Home Team'} vs {game.away_team?.name || 'Away Team'}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {game.venue} • {game.time}
+                              {game.venue} • {game.game_time || 'TBD'}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-green-600">
-                            {game.homeScore} - {game.awayScore}
+                            {game.home_score || '-'} - {game.away_score || '-'}
                           </div>
                           <Badge className="bg-green-500">
                             LIVE
@@ -215,15 +216,16 @@ export default function GamesList({ sport, className = "" }: GamesListProps) {
                         <SportsImage
                           type="team"
                           league={game.league}
-                          teamName={game.homeTeam}
+                          teamName={game.home_team?.name || 'Home Team'}
                           className="h-8 w-8"
+                          alt={`${game.home_team?.name || 'Home Team'} logo`}
                         />
                         <div>
                           <div className="font-medium text-sm">
-                            {game.homeTeam} vs {game.awayTeam}
+                            {game.home_team?.name || 'Home Team'} vs {game.away_team?.name || 'Away Team'}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {game.time} • {game.venue}
+                            {game.game_time || 'TBD'} • {game.venue}
                           </div>
                         </div>
                       </div>
@@ -262,21 +264,22 @@ export default function GamesList({ sport, className = "" }: GamesListProps) {
                         <SportsImage
                           type="team"
                           league={game.league}
-                          teamName={game.homeTeam}
+                          teamName={game.home_team?.name || 'Home Team'}
                           className="h-8 w-8"
+                          alt={`${game.home_team?.name || 'Home Team'} logo`}
                         />
                         <div>
                           <div className="font-medium text-sm">
-                            {game.homeTeam} vs {game.awayTeam}
+                            {game.home_team?.name || 'Home Team'} vs {game.away_team?.name || 'Away Team'}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {game.date} • {game.venue}
+                            {game.game_date} • {game.venue}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <div className="font-bold">
-                          {game.homeScore} - {game.awayScore}
+                          {game.home_score || '-'} - {game.away_score || '-'}
                         </div>
                         <Badge variant="secondary">
                           Final

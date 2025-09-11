@@ -4,7 +4,7 @@
  */
 
 import { sportsDBClient } from '../../sports-apis'
-import { cacheService } from '../../services/cache-service'
+import { cacheManager } from '@/lib/cache'
 import { rateLimiter } from '../../services/rate-limiter'
 import { errorHandlingService } from '../../services/error-handling-service'
 
@@ -74,7 +74,8 @@ export class TennisService {
     const cacheKey = `tennis:matches:${JSON.stringify(params)}`
     const ttl = params.status === 'live' ? this.LIVE_TTL : this.CACHE_TTL
 
-    return cacheService.get(cacheKey) || await this.fetchMatches(params, cacheKey, ttl)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchMatches(params, cacheKey, ttl)
   }
 
   private async fetchMatches(params: any, cacheKey: string, ttl: number): Promise<TennisMatch[]> {
@@ -94,7 +95,7 @@ export class TennisService {
       }
 
       // If no real data available, return empty array instead of mock data
-      cacheService.set(cacheKey, matches, ttl)
+      cacheManager.set(cacheKey, matches, ttl)
       return matches
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Tennis matches fetch' })
@@ -108,14 +109,15 @@ export class TennisService {
   } = {}): Promise<TennisPlayer[]> {
     const cacheKey = `tennis:players:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchPlayers(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchPlayers(params, cacheKey)
   }
 
   private async fetchPlayers(params: any, cacheKey: string): Promise<TennisPlayer[]> {
     try {
       // For now, return empty array - would integrate with tennis API
       const players: TennisPlayer[] = []
-      cacheService.set(cacheKey, players, 30 * 60 * 1000)
+      cacheManager.set(cacheKey, players, 30 * 60 * 1000)
       return players
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Tennis players fetch' })
@@ -129,14 +131,15 @@ export class TennisService {
   } = {}): Promise<TennisTournament[]> {
     const cacheKey = `tennis:tournaments:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchTournaments(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchTournaments(params, cacheKey)
   }
 
   private async fetchTournaments(params: any, cacheKey: string): Promise<TennisTournament[]> {
     try {
       // For now, return empty array - would integrate with tennis API
       const tournaments: TennisTournament[] = []
-      cacheService.set(cacheKey, tournaments, 60 * 60 * 1000)
+      cacheManager.set(cacheKey, tournaments, 60 * 60 * 1000)
       return tournaments
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Tennis tournaments fetch' })
@@ -151,14 +154,15 @@ export class TennisService {
   async getRankings(limit: number = 100): Promise<TennisPlayer[]> {
     const cacheKey = `tennis:rankings:${limit}`
     
-    return cacheService.get(cacheKey) || await this.fetchRankings(limit, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchRankings(limit, cacheKey)
   }
 
   private async fetchRankings(limit: number, cacheKey: string): Promise<TennisPlayer[]> {
     try {
       // For now, return empty array - would integrate with tennis API
       const rankings: TennisPlayer[] = []
-      cacheService.set(cacheKey, rankings, 60 * 60 * 1000) // 1 hour
+      cacheManager.set(cacheKey, rankings, 60 * 60 * 1000) // 1 hour
       return rankings
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Tennis rankings fetch' })
@@ -169,14 +173,15 @@ export class TennisService {
   async getOdds(params: any = {}): Promise<any[]> {
     const cacheKey = `tennis:odds:${JSON.stringify(params)}`
     
-    return cacheService.get(cacheKey) || await this.fetchOdds(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchOdds(params, cacheKey)
   }
 
   private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []
-      cacheService.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
+      cacheManager.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
       return odds
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Tennis odds fetch' })

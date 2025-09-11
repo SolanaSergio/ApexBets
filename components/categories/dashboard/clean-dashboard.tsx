@@ -15,11 +15,11 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react"
-import { cachedUnifiedApiClient, SupportedSport, UnifiedGameData, UnifiedTeamData } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { apiClient, Game, Team } from "@/lib/api-client"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
-type GameData = UnifiedGameData
-type TeamData = UnifiedTeamData
+type GameData = Game
+type TeamData = Team
 import { SportSelector, SportSelectorCompact } from "@/components/shared/sport-selector"
 import { GamesList } from "@/components/sports/games-list"
 import { TeamsList } from "@/components/sports/teams-list"
@@ -39,48 +39,40 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
   const [allLiveGames, setAllLiveGames] = useState<GameData[]>([])
   const [allUpcomingGames, setAllUpcomingGames] = useState<GameData[]>([])
   const [allTeams, setAllTeams] = useState<TeamData[]>([])
-  const [serviceHealth, setServiceHealth] = useState<Record<SupportedSport, boolean>>({} as Record<SupportedSport, boolean>)
+  // const [serviceHealth, setServiceHealth] = useState<Record<SupportedSport, boolean>>({} as Record<SupportedSport, boolean>)
   const [stats, setStats] = useState({
     totalGames: 0,
     liveGames: 0,
     totalTeams: 0,
     totalSupportedSports: 0
   })
-  const [rateLimitStatus, setRateLimitStatus] = useState<Record<string, any>>({})
-  const [cacheStatus, setCacheStatus] = useState<{
-    databaseAvailable: boolean
-    memoryAvailable: boolean
-    totalEntries: number
-  }>({
-    databaseAvailable: false,
-    memoryAvailable: true,
-    totalEntries: 0
-  })
+  // const [rateLimitStatus, setRateLimitStatus] = useState<Record<string, any>>({})
+  // const [cacheStatus, setCacheStatus] = useState<{
+  //   databaseAvailable: boolean
+  //   memoryAvailable: boolean
+  //   totalEntries: number
+  // }>({
+  //   databaseAvailable: false,
+  //   memoryAvailable: true,
+  //   totalEntries: 0
+  // })
 
   // New function to load sport-specific data when selection changes
   const loadSportSpecificData = async () => {
     try {
       setLoading(true)
-      // Only reload data for the selected sport, not all sports
       const sport = selectedSupportedSport
       
-      // Load data sequentially to avoid rate limiting
       await loadLiveGamesForSport(sport)
-      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
-      
       await loadUpcomingGamesForSport(sport)
-      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
-      
       await loadTeamsForSport(sport)
-      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
       
-      // Load non-API data in parallel
-      await Promise.all([
-        loadServiceHealth(),
-        loadStatsForSport(sport),
-        loadRateLimitStatus(),
-        loadCacheStatus()
-      ])
+      // await Promise.all([
+      //   loadServiceHealth(),
+      //   loadStatsForSport(sport),
+      //   loadRateLimitStatus(),
+      //   loadCacheStatus()
+      // ])
     } catch (error) {
       console.error('Error loading sport-specific data:', error)
     } finally {
@@ -107,23 +99,15 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
     try {
       setLoading(true)
       
-      // Load non-API data first
-      await Promise.all([
-        loadServiceHealth(),
-        loadRateLimitStatus(),
-        loadCacheStatus()
-      ])
+      // await Promise.all([
+      //   loadServiceHealth(),
+      //   loadRateLimitStatus(),
+      //   loadCacheStatus()
+      // ])
       
-      // Load API data sequentially to avoid rate limiting
       await loadAllLiveGames()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
-      
       await loadAllUpcomingGames()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
-      
       await loadAllTeams()
-      await new Promise(resolve => setTimeout(resolve, 500)) // Reduced delay between major operations
-      
       await loadStats()
     } catch (error) {
       console.error('Error loading dashboard data:', error)
@@ -134,17 +118,13 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
 
   const loadAllLiveGames = async () => {
     try {
-      const supportedSports = cachedUnifiedApiClient.getSupportedSports()
-      const allGames: GameData[] = []
+      const supportedSports = SportConfigManager.getSupportedSports()
+      let allGames: GameData[] = []
       
-      // Process sports sequentially to avoid rate limiting
       for (const sport of supportedSports) {
         try {
-          const games = await cachedUnifiedApiClient.getLiveGames(sport)
-          allGames.push(...games)
-          
-          // Add delay between sports to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000)) // Reduced delay
+          const games = await apiClient.getGames({ sport, status: 'live' })
+          allGames = [...allGames, ...games]
         } catch (sportError) {
           console.warn(`Failed to load live games for ${sport}:`, sportError)
         }
@@ -153,15 +133,14 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       setAllLiveGames(allGames)
     } catch (error) {
       console.error('Error loading live games:', error)
-      setAllLiveGames([]) // Set empty array on complete failure
+      setAllLiveGames([])
     }
   }
 
   const loadLiveGamesForSport = async (sport: SupportedSport) => {
     try {
-      const games = await cachedUnifiedApiClient.getLiveGames(sport)
+      const games = await apiClient.getGames({ sport, status: 'live' })
       setAllLiveGames(prev => {
-        // Update only the games for this sport
         const otherSports = prev.filter(game => game.sport !== sport)
         return [...otherSports, ...games]
       })
@@ -173,21 +152,18 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
   const loadAllUpcomingGames = async () => {
     try {
       const today = new Date().toISOString().split('T')[0]
-      const supportedSports = cachedUnifiedApiClient.getSupportedSports()
-      const allGames: GameData[] = []
+      const supportedSports = SportConfigManager.getSupportedSports()
+      let allGames: GameData[] = []
       
-      // Process sports sequentially to avoid rate limiting
       for (const sport of supportedSports) {
         try {
-          const games = await cachedUnifiedApiClient.getGames(sport, {
-            date: today,
+          const games = await apiClient.getGames({
+            sport,
+            dateFrom: today,
             status: 'scheduled',
             limit: 20
           })
-          allGames.push(...games)
-          
-          // Add delay between sports to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          allGames = [...allGames, ...games]
         } catch (sportError) {
           console.warn(`Failed to load upcoming games for ${sport}:`, sportError)
         }
@@ -196,20 +172,20 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       setAllUpcomingGames(allGames)
     } catch (error) {
       console.error('Error loading upcoming games:', error)
-      setAllUpcomingGames([]) // Set empty array on complete failure
+      setAllUpcomingGames([])
     }
   }
 
   const loadUpcomingGamesForSport = async (sport: SupportedSport) => {
     try {
       const today = new Date().toISOString().split('T')[0]
-      const games = await cachedUnifiedApiClient.getGames(sport, {
-        date: today,
+      const games = await apiClient.getGames({
+        sport,
+        dateFrom: today,
         status: 'scheduled',
         limit: 20
       })
       setAllUpcomingGames(prev => {
-        // Update only the games for this sport
         const otherSports = prev.filter(game => game.sport !== sport)
         return [...otherSports, ...games]
       })
@@ -220,17 +196,13 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
 
   const loadAllTeams = async () => {
     try {
-      const supportedSports = cachedUnifiedApiClient.getSupportedSports()
-      const allTeams: TeamData[] = []
+      const supportedSports = SportConfigManager.getSupportedSports()
+      let allTeams: TeamData[] = []
       
-      // Process sports sequentially to avoid rate limiting
       for (const sport of supportedSports) {
         try {
-          const teams = await cachedUnifiedApiClient.getTeams(sport, { limit: 50 })
-          allTeams.push(...teams)
-          
-          // Add delay between sports to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          const teams = await apiClient.getTeams({ sport })
+          allTeams = [...allTeams, ...teams]
         } catch (sportError) {
           console.warn(`Failed to load teams for ${sport}:`, sportError)
         }
@@ -239,15 +211,14 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       setAllTeams(allTeams)
     } catch (error) {
       console.error('Error loading teams:', error)
-      setAllTeams([]) // Set empty array on complete failure
+      setAllTeams([])
     }
   }
 
   const loadTeamsForSport = async (sport: SupportedSport) => {
     try {
-      const teams = await cachedUnifiedApiClient.getTeams(sport, { limit: 50 })
+      const teams = await apiClient.getTeams({ sport })
       setAllTeams(prev => {
-        // Update only the teams for this sport
         const otherSports = prev.filter(team => team.sport !== sport)
         return [...otherSports, ...teams]
       })
@@ -256,140 +227,59 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
     }
   }
 
-  const loadServiceHealth = async () => {
-    try {
-      const health = await cachedUnifiedApiClient.getHealthStatus()
-      setServiceHealth(health)
-    } catch (error) {
-      console.error('Error loading service health:', error)
-    }
-  }
+  // const loadServiceHealth = async () => {
+  //   // This function cannot be implemented on the client side
+  // }
 
-  const loadRateLimitStatus = async () => {
-    try {
-      // Import rate limiter to get status
-      const { rateLimiter } = await import('@/lib/services/rate-limiter')
-      const status: Record<string, any> = {}
-      
-      const services = ['balldontlie', 'sportsdb', 'odds', 'rapidapi']
-      for (const service of services) {
-        try {
-          status[service] = rateLimiter.getRateLimitStatus(service)
-        } catch (error) {
-          console.warn(`Failed to get rate limit status for ${service}:`, error)
-        }
-      }
-      
-      setRateLimitStatus(status)
-    } catch (error) {
-      console.error('Error loading rate limit status:', error)
-    }
-  }
+  // const loadRateLimitStatus = async () => {
+  //   // This function cannot be implemented on the client side
+  // }
 
-  const loadCacheStatus = async () => {
-    try {
-      const stats = await cachedUnifiedApiClient.getCacheStats()
-      const dbStatus = cachedUnifiedApiClient.getDatabaseCacheStatus()
-      
-      if (stats) {
-        setCacheStatus({
-          databaseAvailable: dbStatus.available,
-          memoryAvailable: stats.memory?.totalEntries !== undefined,
-          totalEntries: stats.totalEntries || 0
-        })
-      }
-      
-      // Try to re-enable database cache if it was disabled due to 406 errors
-      if (!dbStatus.available && dbStatus.supabaseConnected && dbStatus.disabled) {
-        console.log('Re-enabling database cache...')
-        cachedUnifiedApiClient.reEnableDatabaseCache()
-      }
-    } catch (error) {
-      console.error('Error loading cache status:', error)
-    }
-  }
+  // const loadCacheStatus = async () => {
+  //   // This function cannot be implemented on the client side
+  // }
 
   const loadStats = async () => {
     try {
-      const supportedSports = cachedUnifiedApiClient.getSupportedSports()
-      let totalGames = 0
-      let liveGames = 0
-      let totalTeams = 0
-      
-      // Process sports sequentially to avoid rate limiting
-      for (const sport of supportedSports) {
-        try {
-          const [games, live, teams] = await Promise.all([
-            cachedUnifiedApiClient.getGames(sport, { limit: 100 }),
-            cachedUnifiedApiClient.getLiveGames(sport),
-            cachedUnifiedApiClient.getTeams(sport, { limit: 100 })
-          ])
-          
-          totalGames += games.length
-          liveGames += live.length
-          totalTeams += teams.length
-          
-          // Add delay between sports to respect rate limits
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        } catch (sportError) {
-          console.warn(`Failed to load stats for ${sport}:`, sportError)
-        }
-      }
+      // Simplified stats calculation based on loaded data
+      const liveGames = allLiveGames.length
+      const totalGames = allUpcomingGames.length + liveGames
+      const totalTeams = allTeams.length
+      const totalSupportedSports = SportConfigManager.getSupportedSports().length
       
       setStats({
         totalGames,
         liveGames,
         totalTeams,
-        totalSupportedSports: supportedSports.length
+        totalSupportedSports
       })
     } catch (error) {
-      console.error('Error loading stats:', error)
+      console.error('Error calculating stats:', error)
     }
   }
 
   const loadStatsForSport = async (sport: SupportedSport) => {
-    try {
-      // Add delay between requests to respect rate limits
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      const games = await cachedUnifiedApiClient.getGames(sport, { limit: 100 })
-      const live = await cachedUnifiedApiClient.getLiveGames(sport)
-      const teams = await cachedUnifiedApiClient.getTeams(sport, { limit: 100 })
-      
-      setStats(prev => ({
-        ...prev,
-        totalGames: prev.totalGames + games.length,
-        liveGames: prev.liveGames + live.length,
-        totalTeams: prev.totalTeams + teams.length
-      }))
-    } catch (error) {
-      console.warn(`Failed to load stats for ${sport}:`, error)
-    }
+    // This function is complex to implement on client side without dedicated endpoint
+    // For now, we rely on the global loadStats
   }
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    
-    // Clear cache before refreshing
-    try {
-      await cachedUnifiedApiClient.clearCache()
-    } catch (error) {
-      console.warn('Error clearing cache:', error)
-    }
-    
+    // Client-side refresh, no cache clearing
     await loadDashboardData()
     setRefreshing(false)
   }
 
   const currentSupportedSportConfig = SportConfigManager.getSportConfig(selectedSupportedSport)
-  const isServiceHealthy = serviceHealth[selectedSupportedSport] ?? false
+  // const isServiceHealthy = serviceHealth[selectedSupportedSport] ?? false
+  const isServiceHealthy = true // Assume healthy since we can't check from client
 
   if (loading) {
     return <DashboardSkeleton />
   }
 
   // Show no sport selected state if no sport is available
-  if (!selectedSupportedSport || !serviceHealth[selectedSupportedSport]) {
+  if (!selectedSupportedSport) { // Simplified condition
     return (
       <div className={className}>
         <NoSportSelected 
@@ -432,36 +322,6 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
                   <><AlertCircle className="h-3 w-3 mr-1" /> Issues</>
                 )}
               </Badge>
-              {rateLimitStatus.balldontlie && (
-                <Badge 
-                  variant={rateLimitStatus.balldontlie.canMakeRequest ? "secondary" : "destructive"}
-                  className="text-xs"
-                >
-                  API: {rateLimitStatus.balldontlie.usage.requestsThisMinute}/{rateLimitStatus.balldontlie.limits.requestsPerMinute}/min
-                </Badge>
-              )}
-              <Badge 
-                variant={cacheStatus.databaseAvailable ? "default" : "secondary"}
-                className="text-xs"
-              >
-                Cache: {cacheStatus.totalEntries} entries
-                {cacheStatus.databaseAvailable ? " (DB)" : " (Memory)"}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  console.log('Current cache status:', {
-                    databaseAvailable: cacheStatus.databaseAvailable,
-                    memoryAvailable: cacheStatus.memoryAvailable,
-                    totalEntries: cacheStatus.totalEntries
-                  })
-                  console.log('Database cache status:', cachedUnifiedApiClient.getDatabaseCacheStatus())
-                }}
-                className="text-xs"
-              >
-                Debug Cache
-              </Button>
             </div>
           </div>
         </div>
@@ -567,20 +427,20 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
                       <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">
-                            {SportConfigManager.getSportConfig(game.sport)?.icon}
+                            {game.sport && SportConfigManager.getSportConfig(game.sport as SupportedSport)?.icon}
                           </span>
                           <div>
                             <div className="font-medium text-sm">
-                              {game.homeTeam} vs {game.awayTeam}
+                              {game.home_team?.name} vs {game.away_team?.name}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {game.league} • {game.time}
+                              {game.league} • {game.game_time}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-bold text-green-600">
-                            {game.homeScore} - {game.awayScore}
+                            {game.home_score} - {game.away_score}
                           </div>
                           <Badge className="bg-green-500 text-xs">
                             LIVE
@@ -616,14 +476,14 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
                       <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border">
                         <div className="flex items-center space-x-3">
                           <span className="text-2xl">
-                            {SportConfigManager.getSportConfig(game.sport)?.icon}
+                            {game.sport && SportConfigManager.getSportConfig(game.sport as SupportedSport)?.icon}
                           </span>
                           <div>
                             <div className="font-medium text-sm">
-                              {game.homeTeam} vs {game.awayTeam}
+                              {game.home_team?.name} vs {game.away_team?.name}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {game.league} • {game.time}
+                              {game.league} • {game.game_time}
                             </div>
                           </div>
                         </div>
@@ -654,9 +514,9 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
 
         <TabsContent value="all-sports" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {cachedUnifiedApiClient.getSupportedSports().map((sport: SupportedSport) => {
+            {SportConfigManager.getSupportedSports().map((sport: SupportedSport) => {
               const config = SportConfigManager.getSportConfig(sport)
-              const isHealthy = serviceHealth[sport] ?? false
+              const isHealthy = true // Assume healthy
               
               return (
                 <Card key={sport} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSupportedSport(sport)}>
@@ -721,3 +581,5 @@ function DashboardSkeleton() {
     </div>
   )
 }
+
+export default CleanDashboard

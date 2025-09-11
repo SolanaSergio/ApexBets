@@ -46,7 +46,7 @@ describe('Live Scores API Integration Tests', () => {
       })
 
       // All games should be basketball
-      data.data.forEach((game) => {
+      data.data.forEach((game: any) => {
         expect(game.sport).toBe('basketball')
       })
     })
@@ -82,7 +82,7 @@ describe('Live Scores API Integration Tests', () => {
         const today = new Date().toISOString().split('T')[0]
         
         // Live games should be from today
-        data.data.forEach((game) => {
+        data.data.forEach((game: any) => {
           expect(game.date).toBe(today)
         })
       }
@@ -149,7 +149,7 @@ describe('Live Scores API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       
-      data.data.forEach((game) => {
+      data.data.forEach((game: any) => {
         // Required fields
         expect(game.id).toBeDefined()
         expect(game.homeTeam).toBeDefined()

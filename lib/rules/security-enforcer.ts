@@ -126,7 +126,7 @@ export class SecurityEnforcer {
     }
 
     if (typeof input === 'object') {
-      const sanitized = {}
+      const sanitized: Record<string, any> = {}
       for (const [key, value] of Object.entries(input)) {
         sanitized[key] = this.validateUserInput(value, `${fieldName}.${key}`)
       }
@@ -168,7 +168,7 @@ export class SecurityEnforcer {
 
       return url
     } catch (error) {
-      throw new Error(`Invalid ${fieldName}: ${error.message}`)
+      throw new Error(`Invalid ${fieldName}: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 

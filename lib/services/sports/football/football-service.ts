@@ -167,7 +167,7 @@ export class FootballService extends SportSpecificService {
   protected mapGameData(rawData: any): GameData {
     return {
       id: rawData.idEvent,
-      sport: 'football',
+      sport: this.sport,
       league: rawData.strLeague,
       homeTeam: rawData.strHomeTeam,
       awayTeam: rawData.strAwayTeam,
@@ -185,7 +185,7 @@ export class FootballService extends SportSpecificService {
   protected mapTeamData(rawData: any): TeamData {
     return {
       id: rawData.idTeam,
-      sport: 'football',
+      sport: this.sport,
       league: rawData.strLeague,
       name: rawData.strTeam,
       abbreviation: rawData.strTeamShort,
@@ -198,8 +198,8 @@ export class FootballService extends SportSpecificService {
   protected mapPlayerData(rawData: any): PlayerData {
     return {
       id: rawData.idPlayer || rawData.id,
-      sport: 'football',
-      league: rawData.strLeague || 'NFL',
+      sport: this.sport,
+      league: rawData.strLeague || this.league,
       name: rawData.strPlayer || rawData.name,
       team: rawData.strTeam || rawData.team,
       position: rawData.strPosition || rawData.position,

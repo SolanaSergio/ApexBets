@@ -193,7 +193,7 @@ export function UserAlerts() {
             </div>
           </div>
 
-          {newAlert.type === "odds_change" && (
+          {newAlert.type === "game_start" && (
             <div>
               <Label htmlFor="threshold">Threshold (%)</Label>
               <Input

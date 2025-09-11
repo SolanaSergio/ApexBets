@@ -318,8 +318,8 @@ export class BasketballService extends SportSpecificService {
     if (rawData.home_team) {
       return {
         id: rawData.id.toString(),
-        sport: 'basketball',
-        league: 'NBA',
+        sport: this.sport,
+        league: this.league,
         homeTeam: rawData.home_team.full_name,
         awayTeam: rawData.visitor_team.full_name,
         date: rawData.date,
@@ -336,7 +336,7 @@ export class BasketballService extends SportSpecificService {
     // SportsDB format
     return {
       id: rawData.idEvent,
-      sport: 'basketball',
+      sport: this.sport,
       league: rawData.strLeague,
       homeTeam: rawData.strHomeTeam,
       awayTeam: rawData.strAwayTeam,
@@ -356,8 +356,8 @@ export class BasketballService extends SportSpecificService {
     if (rawData.full_name) {
       return {
         id: rawData.id.toString(),
-        sport: 'basketball',
-        league: 'NBA',
+        sport: this.sport,
+        league: this.league,
         name: rawData.full_name,
         abbreviation: rawData.abbreviation,
         city: rawData.city,
@@ -368,7 +368,7 @@ export class BasketballService extends SportSpecificService {
     // SportsDB format
     return {
       id: rawData.idTeam,
-      sport: 'basketball',
+      sport: this.sport,
       league: rawData.strLeague,
       name: rawData.strTeam,
       abbreviation: rawData.strTeamShort,
@@ -381,8 +381,8 @@ export class BasketballService extends SportSpecificService {
   protected mapPlayerData(rawData: any): PlayerData {
     return {
       id: rawData.id.toString(),
-      sport: 'basketball',
-      league: 'NBA',
+      sport: this.sport,
+      league: this.league,
       name: `${rawData.first_name} ${rawData.last_name}`,
       team: rawData.team?.full_name || 'Unknown',
       position: rawData.position,
@@ -399,7 +399,6 @@ export class BasketballService extends SportSpecificService {
   private hasBallDontLieKey(): boolean {
     const apiKey = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY
     return !!(apiKey && 
-              apiKey !== 'your_balldontlie_api_key' && 
               apiKey !== '' && 
               apiKey.length > 10)
   }

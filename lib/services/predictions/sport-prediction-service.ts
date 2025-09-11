@@ -57,7 +57,16 @@ export class SportPredictionService extends BaseService {
     }
     super(config)
     this.sport = sport
-    this.league = league || serviceFactory.getDefaultLeague(sport)
+    this.league = league || ''
+  }
+
+  /**
+   * Initialize the service with the default league
+   */
+  async initialize(): Promise<void> {
+    if (!this.league) {
+      this.league = await serviceFactory.getDefaultLeague(this.sport)
+    }
   }
 
   /**
@@ -71,7 +80,7 @@ export class SportPredictionService extends BaseService {
     const key = this.getCacheKey('predictions', this.sport, this.league, JSON.stringify(params))
     
     return this.getCachedOrFetch(key, async () => {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       
       let games: GameData[]
       if (params.gameId) {
@@ -229,7 +238,7 @@ export class SportPredictionService extends BaseService {
     try {
       // Get historical data from the sport service
       const serviceFactory = (await import('../core/service-factory')).serviceFactory
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       
       // Get recent games for both teams
       const homeTeamGames = await service.getGames({ 

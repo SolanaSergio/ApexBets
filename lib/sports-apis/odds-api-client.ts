@@ -3,7 +3,7 @@
  * Betting odds and live sports data
  */
 
-interface OddsApiEvent {
+export interface OddsApiEvent {
   id: string
   sport_key: string
   sport_title: string
@@ -25,7 +25,7 @@ interface OddsApiEvent {
   }[]
 }
 
-interface OddsApiSports {
+export interface OddsApiSports {
   key: string
   group: string
   title: string
@@ -34,7 +34,7 @@ interface OddsApiSports {
   has_outrights: boolean
 }
 
-interface OddsApiScores {
+export interface OddsApiScores {
   id: string
   sport_key: string
   sport_title: string

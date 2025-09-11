@@ -233,7 +233,7 @@ describe('Value Bets API Integration Tests', () => {
         // Common bet types
         const commonTypes = ['spread', 'total', 'moneyline', 'over_under']
         const hasCommonType = commonTypes.some(type => 
-          betTypes.some(bType => bType.toLowerCase().includes(type))
+          (betTypes as string[]).some((bType: string) => bType.toLowerCase().includes(type))
         )
         
         // At least one common bet type should be present

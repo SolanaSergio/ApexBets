@@ -7,8 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
-import { cachedUnifiedApiClient, SupportedSport } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { apiClient, type Team } from "@/lib/api-client"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import TeamPerformanceChart from "./team-performance-chart"
 import PredictionAccuracyChart from "./prediction-accuracy-chart"
 import OddsAnalysisChart from "./odds-analysis-chart"
@@ -61,9 +61,9 @@ export default function AnalyticsDashboard({
     }
   }, [timeRange, selectedSport, selectedLeague])
 
-  const loadSupportedSports = async () => {
+  const loadSupportedSports = () => {
     try {
-      const sports = cachedUnifiedApiClient.getSupportedSports()
+      const sports = SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
       // Set default sport if none selected
       if (!selectedSport && sports.length > 0) {
@@ -75,21 +75,10 @@ export default function AnalyticsDashboard({
   }
 
   const loadAvailableTeams = async () => {
+    if (!selectedSport) return
     try {
-      const params = new URLSearchParams({
-        sport: selectedSport,
-        external: 'true'
-      })
-      if (selectedLeague) params.set('league', selectedLeague)
-      
-      const response = await fetch(`/api/teams?${params}`)
-      const data = await response.json()
-      
-      if (data.success && data.data) {
-        setAvailableTeams(data.data)
-      } else {
-        setAvailableTeams([])
-      }
+      const teams = await apiClient.getTeams({ sport: selectedSport, league: selectedLeague })
+      setAvailableTeams(teams)
     } catch (error) {
       console.error('Error loading available teams:', error)
       setAvailableTeams([])
@@ -99,61 +88,18 @@ export default function AnalyticsDashboard({
   const fetchAnalyticsOverview = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams({
-        sport: selectedSport,
-        external: 'true' // Use external APIs for better data
-      })
-      if (selectedLeague) params.set('league', selectedLeague)
-      
-      const response = await fetch(`/api/analytics/stats?${params}`)
-      const data = await response.json()
-      
-      if (data.error) {
-        console.error('Analytics API error:', data.error)
-        // Try to get basic stats from external APIs as fallback
-        try {
-          const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-          const [teams, games] = await Promise.all([
-            cachedUnifiedApiClient.getTeams(selectedSport as any, { limit: 100 }),
-            cachedUnifiedApiClient.getGames(selectedSport as any, { limit: 50 })
-          ])
-          
-          setOverview({
-            totalGames: games.length,
-            totalPredictions: 0,
-            accuracyRate: 0,
-            totalValueBets: 0,
-            averageValue: 0,
-            profitLoss: 0,
-            winRate: 0,
-            roi: 0
-          })
-        } catch (fallbackError) {
-          console.error('Fallback API error:', fallbackError)
-          setOverview({
-            totalGames: 0,
-            totalPredictions: 0,
-            accuracyRate: 0,
-            totalValueBets: 0,
-            averageValue: 0,
-            profitLoss: 0,
-            winRate: 0,
-            roi: 0
-          })
-        }
-        return
-      }
+      const data = await apiClient.getAnalyticsStats()
       
       // Transform the API response to match our interface
       setOverview({
-        totalGames: data.data?.total_games || 0,
-        totalPredictions: data.data?.total_predictions || 0,
-        accuracyRate: data.data?.accuracy_rate || 0,
-        totalValueBets: data.data?.total_value_bets || 0,
-        averageValue: data.data?.average_value || 0,
-        profitLoss: data.data?.profit_loss || 0,
-        winRate: data.data?.accuracy_rate || 0,
-        roi: data.data?.roi || 0
+        totalGames: data.total_games || 0,
+        totalPredictions: data.total_predictions || 0,
+        accuracyRate: data.accuracy_rate || 0,
+        totalValueBets: 0, // Not in AnalyticsStats
+        averageValue: 0, // Not in AnalyticsStats
+        profitLoss: 0, // Not in AnalyticsStats
+        winRate: data.accuracy_rate || 0,
+        roi: 0 // Not in AnalyticsStats
       })
       setLastUpdated(new Date())
     } catch (error) {

@@ -3,12 +3,12 @@
  * Tests actual cache functionality with real data
  */
 
-import { cacheService } from '@/lib/services/cache-service'
+import { cacheManager } from '@/lib/cache'
 
 describe('Cache Service Integration Tests', () => {
   beforeEach(() => {
     // Clear cache before each test
-    cacheService.clear()
+    cacheManager.clear()
   })
 
   describe('basic cache operations', () => {
@@ -17,14 +17,14 @@ describe('Cache Service Integration Tests', () => {
       const value = { message: 'Hello World', number: 42 }
       const ttl = 60000 // 1 minute
 
-      cacheService.set(key, value, ttl)
-      const retrieved = cacheService.get(key)
+      cacheManager.set(key, value, ttl)
+      const retrieved = cacheManager.get(key)
 
       expect(retrieved).toEqual(value)
     })
 
     it('should return undefined for non-existent key', () => {
-      const retrieved = cacheService.get('non-existent-key')
+      const retrieved = cacheManager.get('non-existent-key')
       expect(retrieved).toBeUndefined()
     })
 
@@ -35,17 +35,17 @@ describe('Cache Service Integration Tests', () => {
       const arrayValue = [1, 2, 3]
       const objectValue = { key: 'value' }
 
-      cacheService.set('string', stringValue, 60000)
-      cacheService.set('number', numberValue, 60000)
-      cacheService.set('boolean', booleanValue, 60000)
-      cacheService.set('array', arrayValue, 60000)
-      cacheService.set('object', objectValue, 60000)
+      cacheManager.set('string', stringValue, 60000)
+      cacheManager.set('number', numberValue, 60000)
+      cacheManager.set('boolean', booleanValue, 60000)
+      cacheManager.set('array', arrayValue, 60000)
+      cacheManager.set('object', objectValue, 60000)
 
-      expect(cacheService.get('string')).toBe(stringValue)
-      expect(cacheService.get('number')).toBe(numberValue)
-      expect(cacheService.get('boolean')).toBe(booleanValue)
-      expect(cacheService.get('array')).toEqual(arrayValue)
-      expect(cacheService.get('object')).toEqual(objectValue)
+      expect(cacheManager.get('string')).toBe(stringValue)
+      expect(cacheManager.get('number')).toBe(numberValue)
+      expect(cacheManager.get('boolean')).toBe(booleanValue)
+      expect(cacheManager.get('array')).toEqual(arrayValue)
+      expect(cacheManager.get('object')).toEqual(objectValue)
     })
 
     it('should handle large objects', () => {
@@ -57,11 +57,11 @@ describe('Cache Service Integration Tests', () => {
         }))
       }
 
-      cacheService.set('large-object', largeObject, 60000)
-      const retrieved = cacheService.get('large-object')
+      cacheManager.set('large-object', largeObject, 60000)
+      const retrieved = cacheManager.get('large-object')
 
       expect(retrieved).toEqual(largeObject)
-      expect(retrieved.data).toHaveLength(1000)
+      expect((retrieved as any).data).toHaveLength(1000)
     })
   })
 
@@ -71,16 +71,16 @@ describe('Cache Service Integration Tests', () => {
       const value = 'test value'
       const ttl = 100 // 100ms
 
-      cacheService.set(key, value, ttl)
+      cacheManager.set(key, value, ttl)
       
       // Should be available immediately
-      expect(cacheService.get(key)).toBe(value)
+      expect(cacheManager.get(key)).toBe(value)
       
       // Wait for expiry
       await new Promise(resolve => setTimeout(resolve, 150))
       
       // Should be expired
-      expect(cacheService.get(key)).toBeUndefined()
+      expect(cacheManager.get(key)).toBeUndefined()
     })
 
     it('should not expire data before TTL', async () => {
@@ -88,13 +88,13 @@ describe('Cache Service Integration Tests', () => {
       const value = 'test value'
       const ttl = 1000 // 1 second
 
-      cacheService.set(key, value, ttl)
+      cacheManager.set(key, value, ttl)
       
       // Wait a short time
       await new Promise(resolve => setTimeout(resolve, 100))
       
       // Should still be available
-      expect(cacheService.get(key)).toBe(value)
+      expect(cacheManager.get(key)).toBe(value)
     })
 
     it('should handle zero TTL (no expiry)', () => {
@@ -102,16 +102,16 @@ describe('Cache Service Integration Tests', () => {
       const value = 'test value'
       const ttl = 0 // No expiry
 
-      cacheService.set(key, value, ttl)
+      cacheManager.set(key, value, ttl)
       
       // Should be available
-      expect(cacheService.get(key)).toBe(value)
+      expect(cacheManager.get(key)).toBe(value)
     })
   })
 
   describe('cache statistics', () => {
     it('should track cache hits and misses', () => {
-      const stats = cacheService.getStats()
+      const stats = cacheManager.getStats()
       
       expect(stats).toMatchObject({
         hits: expect.any(Number),
@@ -119,8 +119,8 @@ describe('Cache Service Integration Tests', () => {
         totalEntries: expect.any(Number)
       })
 
-      expect(stats.hits).toBeGreaterThanOrEqual(0)
-      expect(stats.misses).toBeGreaterThanOrEqual(0)
+      expect(stats.memory.hits).toBeGreaterThanOrEqual(0)
+      expect(stats.memory.misses).toBeGreaterThanOrEqual(0)
       expect(stats.totalEntries).toBeGreaterThanOrEqual(0)
     })
 
@@ -128,31 +128,31 @@ describe('Cache Service Integration Tests', () => {
       const key = 'hit-test'
       const value = 'test value'
 
-      cacheService.set(key, value, 60000)
+      cacheManager.set(key, value, 60000)
       
-      const statsBefore = cacheService.getStats()
-      cacheService.get(key)
-      const statsAfter = cacheService.getStats()
+      const statsBefore = cacheManager.getStats()
+      cacheManager.get(key)
+      const statsAfter = cacheManager.getStats()
 
-      expect(statsAfter.hits).toBeGreaterThan(statsBefore.hits)
+      expect(statsAfter.memory.hits).toBeGreaterThan(statsBefore.memory.hits)
     })
 
     it('should increment misses on failed retrieval', () => {
-      const statsBefore = cacheService.getStats()
-      cacheService.get('non-existent-key')
-      const statsAfter = cacheService.getStats()
+      const statsBefore = cacheManager.getStats()
+      cacheManager.get('non-existent-key')
+      const statsAfter = cacheManager.getStats()
 
-      expect(statsAfter.misses).toBeGreaterThan(statsBefore.misses)
+      expect(statsAfter.memory.misses).toBeGreaterThan(statsBefore.memory.misses)
     })
 
     it('should track total entries', () => {
-      const statsBefore = cacheService.getStats()
+      const statsBefore = cacheManager.getStats()
       
-      cacheService.set('key1', 'value1', 60000)
-      cacheService.set('key2', 'value2', 60000)
-      cacheService.set('key3', 'value3', 60000)
+      cacheManager.set('key1', 'value1', 60000)
+      cacheManager.set('key2', 'value2', 60000)
+      cacheManager.set('key3', 'value3', 60000)
       
-      const statsAfter = cacheService.getStats()
+      const statsAfter = cacheManager.getStats()
 
       expect(statsAfter.totalEntries).toBe(statsBefore.totalEntries + 3)
     })
@@ -160,27 +160,27 @@ describe('Cache Service Integration Tests', () => {
 
   describe('cache management', () => {
     it('should clear all cache entries', () => {
-      cacheService.set('key1', 'value1', 60000)
-      cacheService.set('key2', 'value2', 60000)
-      cacheService.set('key3', 'value3', 60000)
+      cacheManager.set('key1', 'value1', 60000)
+      cacheManager.set('key2', 'value2', 60000)
+      cacheManager.set('key3', 'value3', 60000)
 
-      expect(cacheService.get('key1')).toBe('value1')
-      expect(cacheService.get('key2')).toBe('value2')
-      expect(cacheService.get('key3')).toBe('value3')
+      expect(cacheManager.get('key1')).toBe('value1')
+      expect(cacheManager.get('key2')).toBe('value2')
+      expect(cacheManager.get('key3')).toBe('value3')
 
-      cacheService.clear()
+      cacheManager.clear()
 
-      expect(cacheService.get('key1')).toBeUndefined()
-      expect(cacheService.get('key2')).toBeUndefined()
-      expect(cacheService.get('key3')).toBeUndefined()
+      expect(cacheManager.get('key1')).toBeUndefined()
+      expect(cacheManager.get('key2')).toBeUndefined()
+      expect(cacheManager.get('key3')).toBeUndefined()
     })
 
     it('should return all cache keys', () => {
-      cacheService.set('key1', 'value1', 60000)
-      cacheService.set('key2', 'value2', 60000)
-      cacheService.set('key3', 'value3', 60000)
+      cacheManager.set('key1', 'value1', 60000)
+      cacheManager.set('key2', 'value2', 60000)
+      cacheManager.set('key3', 'value3', 60000)
 
-      const keys = cacheService.keys()
+      const keys = cacheManager.keys()
 
       expect(keys).toContain('key1')
       expect(keys).toContain('key2')
@@ -189,7 +189,7 @@ describe('Cache Service Integration Tests', () => {
     })
 
     it('should provide size information', () => {
-      const sizeInfo = cacheService.getSizeInfo()
+      const sizeInfo = cacheManager.getStats()
 
       expect(sizeInfo).toMatchObject({
         totalEntries: expect.any(Number),
@@ -198,8 +198,8 @@ describe('Cache Service Integration Tests', () => {
       })
 
       expect(sizeInfo.totalEntries).toBeGreaterThanOrEqual(0)
-      expect(sizeInfo.memoryUsage).toBeGreaterThanOrEqual(0)
-      expect(sizeInfo.averageEntrySize).toBeGreaterThanOrEqual(0)
+      expect(sizeInfo.memory.totalSize).toBeGreaterThanOrEqual(0)
+      expect(sizeInfo.totalSize).toBeGreaterThanOrEqual(0)
     })
   })
 
@@ -207,32 +207,32 @@ describe('Cache Service Integration Tests', () => {
     it('should handle empty string keys', () => {
       const value = 'test value'
       
-      cacheService.set('', value, 60000)
-      expect(cacheService.get('')).toBe(value)
+      cacheManager.set('', value, 60000)
+      expect(cacheManager.get('')).toBe(value)
     })
 
     it('should handle special characters in keys', () => {
       const key = 'key-with-special-chars!@#$%^&*()'
       const value = 'test value'
       
-      cacheService.set(key, value, 60000)
-      expect(cacheService.get(key)).toBe(value)
+      cacheManager.set(key, value, 60000)
+      expect(cacheManager.get(key)).toBe(value)
     })
 
     it('should handle null and undefined values', () => {
-      cacheService.set('null-value', null, 60000)
-      cacheService.set('undefined-value', undefined, 60000)
+      cacheManager.set('null-value', null, 60000)
+      cacheManager.set('undefined-value', undefined, 60000)
 
-      expect(cacheService.get('null-value')).toBeNull()
-      expect(cacheService.get('undefined-value')).toBeUndefined()
+      expect(cacheManager.get('null-value')).toBeNull()
+      expect(cacheManager.get('undefined-value')).toBeUndefined()
     })
 
     it('should handle very long keys', () => {
       const longKey = 'a'.repeat(1000)
       const value = 'test value'
       
-      cacheService.set(longKey, value, 60000)
-      expect(cacheService.get(longKey)).toBe(value)
+      cacheManager.set(longKey, value, 60000)
+      expect(cacheManager.get(longKey)).toBe(value)
     })
 
     it('should handle concurrent access', async () => {
@@ -242,7 +242,7 @@ describe('Cache Service Integration Tests', () => {
       for (let i = 0; i < 100; i++) {
         promises.push(
           new Promise(resolve => {
-            cacheService.set(`concurrent-${i}`, `value-${i}`, 60000)
+            cacheManager.set(`concurrent-${i}`, `value-${i}`, 60000)
             resolve(undefined)
           })
         )
@@ -252,7 +252,7 @@ describe('Cache Service Integration Tests', () => {
       
       // Verify all values were set
       for (let i = 0; i < 100; i++) {
-        expect(cacheService.get(`concurrent-${i}`)).toBe(`value-${i}`)
+        expect(cacheManager.get(`concurrent-${i}`)).toBe(`value-${i}`)
       }
     })
   })
@@ -263,12 +263,12 @@ describe('Cache Service Integration Tests', () => {
       
       // Set many values
       for (let i = 0; i < 1000; i++) {
-        cacheService.set(`perf-${i}`, `value-${i}`, 60000)
+        cacheManager.set(`perf-${i}`, `value-${i}`, 60000)
       }
       
       // Retrieve many values
       for (let i = 0; i < 1000; i++) {
-        cacheService.get(`perf-${i}`)
+        cacheManager.get(`perf-${i}`)
       }
       
       const endTime = Date.now()
@@ -281,15 +281,15 @@ describe('Cache Service Integration Tests', () => {
     it('should handle cache with many entries', () => {
       // Set many entries
       for (let i = 0; i < 10000; i++) {
-        cacheService.set(`many-${i}`, `value-${i}`, 60000)
+        cacheManager.set(`many-${i}`, `value-${i}`, 60000)
       }
       
-      const stats = cacheService.getStats()
+      const stats = cacheManager.getStats()
       expect(stats.totalEntries).toBe(10000)
       
       // Should still be able to retrieve values
-      expect(cacheService.get('many-0')).toBe('value-0')
-      expect(cacheService.get('many-9999')).toBe('value-9999')
+      expect(cacheManager.get('many-0')).toBe('value-0')
+      expect(cacheManager.get('many-9999')).toBe('value-9999')
     })
   })
 })

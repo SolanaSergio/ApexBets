@@ -4,7 +4,7 @@
  */
 
 import { ballDontLieClient, sportsDBClient } from '../../sports-apis'
-import { cacheService } from '../../services/cache-service'
+import { cacheManager } from '@/lib/cache'
 import { rateLimiter } from '../../services/rate-limiter'
 import { errorHandlingService } from '../../services/error-handling-service'
 
@@ -86,7 +86,8 @@ export class BasketballService {
     const cacheKey = `basketball:games:${JSON.stringify(params)}`
     const ttl = params.status === 'live' ? this.LIVE_TTL : this.CACHE_TTL
 
-    return cacheService.get(cacheKey) || await this.fetchGames(params, cacheKey, ttl)
+    const cached = cacheManager.get<BasketballGame[]>(cacheKey)
+    return cached || await this.fetchGames(params, cacheKey, ttl)
   }
 
   private async fetchGames(params: any, cacheKey: string, ttl: number): Promise<BasketballGame[]> {
@@ -95,7 +96,7 @@ export class BasketballService {
     try {
       // Try BallDontLie first (NBA-specific, high quality)
       if (process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY && 
-          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== 'your_balldontlie_api_key') {
+          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== '') {
         try {
           await rateLimiter.waitForRateLimit('balldontlie')
           const nbaGames = await ballDontLieClient.getGames({
@@ -120,7 +121,7 @@ export class BasketballService {
         errorHandlingService.logError(error as any, { context: 'SportsDB API' })
       }
 
-      cacheService.set(cacheKey, games, ttl)
+      cacheManager.set(cacheKey, games, ttl)
       return games
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Basketball games fetch' })
@@ -134,7 +135,8 @@ export class BasketballService {
   } = {}): Promise<BasketballTeam[]> {
     const cacheKey = `basketball:teams:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchTeams(params, cacheKey)
+    const cached = cacheManager.get<BasketballTeam[]>(cacheKey)
+    return cached || await this.fetchTeams(params, cacheKey)
   }
 
   private async fetchTeams(params: any, cacheKey: string): Promise<BasketballTeam[]> {
@@ -143,7 +145,7 @@ export class BasketballService {
     try {
       // Try BallDontLie for NBA teams
       if (process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY && 
-          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== 'your_balldontlie_api_key') {
+          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== '') {
         try {
           await rateLimiter.waitForRateLimit('balldontlie')
           const nbaTeams = await ballDontLieClient.getTeams()
@@ -162,7 +164,7 @@ export class BasketballService {
         errorHandlingService.logError(error as any, { context: 'SportsDB teams' })
       }
 
-      cacheService.set(cacheKey, teams, 30 * 60 * 1000) // 30 minutes
+      cacheManager.set(cacheKey, teams, 30 * 60 * 1000) // 30 minutes
       return teams
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Basketball teams fetch' })
@@ -176,20 +178,21 @@ export class BasketballService {
   } = {}): Promise<BasketballPlayer[]> {
     const cacheKey = `basketball:players:${JSON.stringify(params)}`
 
-    return cacheService.get(cacheKey) || await this.fetchPlayers(params, cacheKey)
+    const cached = cacheManager.get<BasketballPlayer[]>(cacheKey)
+    return cached || await this.fetchPlayers(params, cacheKey)
   }
 
   private async fetchPlayers(params: any, cacheKey: string): Promise<BasketballPlayer[]> {
     try {
       if (process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY && 
-          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== 'your_balldontlie_api_key') {
+          process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY !== '') {
         await rateLimiter.waitForRateLimit('balldontlie')
         const players = await ballDontLieClient.getPlayers({
           search: params.search
         })
         
         const mappedPlayers = players.data.map(this.mapBallDontLiePlayer)
-        cacheService.set(cacheKey, mappedPlayers, 30 * 60 * 1000)
+        cacheManager.set(cacheKey, mappedPlayers, 30 * 60 * 1000)
         return mappedPlayers
       }
       
@@ -207,14 +210,15 @@ export class BasketballService {
   async getStandings(league: string = 'NBA'): Promise<any[]> {
     const cacheKey = `basketball:standings:${league}`
     
-    return cacheService.get(cacheKey) || await this.fetchStandings(league, cacheKey)
+    const cached = cacheManager.get<any[]>(cacheKey)
+    return cached || await this.fetchStandings(league, cacheKey)
   }
 
   private async fetchStandings(league: string, cacheKey: string): Promise<any[]> {
     try {
       // For now, return empty array - would integrate with appropriate API
       const standings: any[] = []
-      cacheService.set(cacheKey, standings, 60 * 60 * 1000) // 1 hour
+      cacheManager.set(cacheKey, standings, 60 * 60 * 1000) // 1 hour
       return standings
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Basketball standings fetch' })
@@ -225,14 +229,15 @@ export class BasketballService {
   async getOdds(params: any = {}): Promise<any[]> {
     const cacheKey = `basketball:odds:${JSON.stringify(params)}`
     
-    return cacheService.get(cacheKey) || await this.fetchOdds(params, cacheKey)
+    const cached = cacheManager.get<any[]>(cacheKey)
+    return cached || await this.fetchOdds(params, cacheKey)
   }
 
   private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []
-      cacheService.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
+      cacheManager.set(cacheKey, odds, 2 * 60 * 1000) // 2 minutes
       return odds
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Basketball odds fetch' })

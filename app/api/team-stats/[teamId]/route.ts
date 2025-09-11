@@ -9,7 +9,7 @@ import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stat
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { teamId: string } }
+  { params }: { params: Promise<{ teamId: string }> }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -28,21 +28,22 @@ export async function GET(
 
     if (!serviceFactory.isSportSupported(sport)) {
       return NextResponse.json(
-        { error: `Unsupported sport: ${sport}. Supported sports: ${serviceFactory.getSupportedSports().join(', ')}` },
+        { error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}` },
         { status: 400 }
       )
     }
 
     const teamStatsService = new SportTeamStatsService(sport, league)
+    const { teamId } = await params
     
     let data: any = null
 
     switch (type) {
       case 'stats':
-        data = await teamStatsService.getTeamStats(params.teamId, season)
+        data = await teamStatsService.getTeamStats(teamId, season)
         break
       case 'performance':
-        data = await teamStatsService.getTeamPerformance(params.teamId, season)
+        data = await teamStatsService.getTeamPerformance(teamId, season)
         break
       default:
         return NextResponse.json(
@@ -69,7 +70,7 @@ export async function GET(
         sport,
         league: league || serviceFactory.getDefaultLeague(sport),
         season: season || 'current',
-        teamId: params.teamId,
+        teamId: teamId,
         type,
         timestamp: new Date().toISOString()
       }

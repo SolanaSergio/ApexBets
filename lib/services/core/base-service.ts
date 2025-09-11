@@ -3,7 +3,7 @@
  * Core functionality shared across all services
  */
 
-import { cacheService } from '../cache-service'
+import { cacheManager } from '@/lib/cache'
 import { rateLimiter } from '../rate-limiter'
 import { errorHandlingService } from '../error-handling-service'
 import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
@@ -29,7 +29,7 @@ export abstract class BaseService {
     ttl?: number
   ): Promise<T> {
     // Check cache first
-    const cached = cacheService.get<T>(key)
+    const cached = await cacheManager.get<T>(key)
     if (cached) {
       return cached
     }
@@ -61,7 +61,7 @@ export abstract class BaseService {
       apiRateLimiter.recordRequest(this.config.rateLimitService as any)
 
       // Cache the result
-      cacheService.set(key, data, ttl || this.config.cacheTTL)
+      cacheManager.set(key, data, ttl || this.config.cacheTTL)
       return data
     } catch (error) {
       const responseTime = Date.now() - startTime
@@ -87,10 +87,10 @@ export abstract class BaseService {
   }
 
   clearCache(): void {
-    cacheService.clear()
+    cacheManager.clear()
   }
 
   getCacheStats() {
-    return cacheService.getStats()
+    return cacheManager.getStats()
   }
 }

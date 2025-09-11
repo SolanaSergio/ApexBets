@@ -55,8 +55,8 @@ export default function TeamsList({ sport, className = "" }: TeamsListProps) {
 
     const filtered = teams.filter(team =>
       team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      team.abbreviation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      team.city.toLowerCase().includes(searchTerm.toLowerCase())
+      (team.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (team.city || '').toLowerCase().includes(searchTerm.toLowerCase())
     )
     setFilteredTeams(filtered)
   }
@@ -103,6 +103,7 @@ export default function TeamsList({ sport, className = "" }: TeamsListProps) {
                   type="team"
                   league={team.league}
                   teamName={team.name}
+                  alt={`${team.name} logo`}
                   className="h-12 w-12"
                 />
                 <div className="flex-1 min-w-0">

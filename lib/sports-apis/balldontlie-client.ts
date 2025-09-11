@@ -3,7 +3,7 @@
  * Free NBA-focused API with comprehensive historical data
  */
 
-interface BallDontLiePlayer {
+export interface BallDontLiePlayer {
   id: number
   first_name: string
   last_name: string
@@ -22,7 +22,7 @@ interface BallDontLiePlayer {
   }
 }
 
-interface BallDontLieTeam {
+export interface BallDontLieTeam {
   id: number
   abbreviation: string
   city: string
@@ -32,7 +32,7 @@ interface BallDontLieTeam {
   name: string
 }
 
-interface BallDontLieGame {
+export interface BallDontLieGame {
   id: number
   date: string
   home_team: BallDontLieTeam
@@ -46,7 +46,7 @@ interface BallDontLieGame {
   visitor_team_score: number | null
 }
 
-interface BallDontLieStats {
+export interface BallDontLieStats {
   id: number
   ast: number
   blk: number
@@ -116,7 +116,7 @@ export class BallDontLieClient {
     await this.rateLimit()
     
     // Check if API key is available
-    if (!this.apiKey || this.apiKey === 'your_balldontlie_api_key' || this.apiKey === '') {
+    if (!this.apiKey || this.apiKey === '') {
       console.warn('BALLDONTLIE API key not configured, returning empty data')
       // Return empty data instead of throwing error for graceful degradation
       return {
@@ -406,7 +406,7 @@ export class BallDontLieClient {
 // Create instance with API key from environment
 const getBallDontLieApiKey = (): string => {
   const apiKey = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY
-  if (!apiKey || apiKey === 'your_balldontlie_api_key' || apiKey === '') {
+  if (!apiKey || apiKey === '') {
     return '' // Return empty string instead of throwing error
   }
   return apiKey

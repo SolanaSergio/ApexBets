@@ -18,10 +18,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Get detailed information with error handling
-    let environmentStatus = { isConfigured: true, missingKeys: [], invalidKeys: [], recommendations: [] }
-    let rateLimitStats = {}
-    let cacheStats = { hits: 0, misses: 0, size: 0 }
-    let apiTests = {}
+    let environmentStatus: {
+      isConfigured: boolean
+      missingKeys: string[]
+      invalidKeys: string[]
+      apiStatuses: Record<string, any>
+      recommendations: string[]
+    } = { isConfigured: true, missingKeys: [], invalidKeys: [], apiStatuses: {}, recommendations: [] }
+    let rateLimitStats: any = {}
+    let cacheStats: {
+      memory: { hitRate: number; hits: number; misses: number; sets: number; deletes: number; totalEntries: number; totalSize: number }
+      database: { available: boolean; disabled: boolean; supabaseConnected: boolean }
+      totalEntries: number
+      totalSize: number
+    } = {
+      memory: { hitRate: 0, hits: 0, misses: 0, sets: 0, deletes: 0, totalEntries: 0, totalSize: 0 },
+      database: { available: false, disabled: false, supabaseConnected: false },
+      totalEntries: 0,
+      totalSize: 0
+    }
+    let apiTests: any = {}
 
     try {
       const { envValidator } = await import("@/lib/config/env-validator")
@@ -38,8 +54,8 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const { cacheService } = await import("@/lib/services/cache-service")
-      cacheStats = cacheService.getStats()
+      const { cacheManager } = await import("@/lib/cache")
+      cacheStats = cacheManager.getStats()
     } catch (error) {
       console.warn("Cache service not available:", error)
     }

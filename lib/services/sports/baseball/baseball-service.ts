@@ -167,7 +167,7 @@ export class BaseballService extends SportSpecificService {
   protected mapGameData(rawData: any): GameData {
     return {
       id: rawData.idEvent,
-      sport: 'baseball',
+      sport: this.sport,
       league: rawData.strLeague,
       homeTeam: rawData.strHomeTeam,
       awayTeam: rawData.strAwayTeam,
@@ -185,7 +185,7 @@ export class BaseballService extends SportSpecificService {
   protected mapTeamData(rawData: any): TeamData {
     return {
       id: rawData.idTeam,
-      sport: 'baseball',
+      sport: this.sport,
       league: rawData.strLeague,
       name: rawData.strTeam,
       abbreviation: rawData.strTeamShort,
@@ -198,8 +198,8 @@ export class BaseballService extends SportSpecificService {
   protected mapPlayerData(rawData: any): PlayerData {
     return {
       id: rawData.idPlayer || rawData.id,
-      sport: 'baseball',
-      league: rawData.strLeague || 'MLB',
+      sport: this.sport,
+      league: rawData.strLeague || this.league,
       name: rawData.strPlayer || rawData.name,
       team: rawData.strTeam || rawData.team,
       position: rawData.strPosition || rawData.position,

@@ -1,6 +1,6 @@
 /**
  * SPORT CONFIGURATION
- * Centralized sport configuration without hardcoding
+ * Dynamic sport configuration loaded from database
  */
 
 export interface SportConfig {
@@ -21,6 +21,8 @@ export interface SportConfig {
   updateFrequency: number // minutes
 }
 
+export type SupportedSport = string
+
 export interface LeagueConfig {
   name: string
   displayName: string
@@ -32,149 +34,144 @@ export interface LeagueConfig {
 }
 
 export class SportConfigManager {
-  private static configs: Record<string, SportConfig> = {
-    basketball: {
-      name: 'Basketball',
-      leagues: ['NBA', 'WNBA', 'NCAA', 'EuroLeague'],
-      defaultLeague: 'NBA',
-      icon: '🏀',
-      color: 'text-orange-500',
-      apiKey: 'BALLDONTLIE_API_KEY',
-      dataSource: 'balldontlie',
-      positions: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F'],
+  private static configs: Record<string, SportConfig> = {}
+  private static initialized = false
+
+  /**
+   * Initialize sport configurations from database
+   */
+  static async initialize(): Promise<void> {
+    if (this.initialized) return
+
+    try {
+      // This will be replaced with Supabase MCP integration
+      // For now, load from environment variables dynamically
+      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
+      
+      for (const sport of sports) {
+        const config = await this.loadSportConfigFromEnvironment(sport)
+        if (config) {
+          this.configs[sport] = config
+        }
+      }
+      
+      this.initialized = true
+    } catch (error) {
+      console.error('Failed to initialize sport configurations:', error)
+      throw error
+    }
+  }
+
+  /**
+   * Synchronous initialization for React components
+   */
+  static initializeSync(): void {
+    if (this.initialized) return
+
+    try {
+      // Load basic configs synchronously from environment
+      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
+      
+      for (const sport of sports) {
+        const sportUpper = sport.toUpperCase()
+        
+        this.configs[sport] = {
+          name: process.env[`${sportUpper}_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
+          leagues: process.env[`${sportUpper}_LEAGUES`]?.split(',') || [],
+          defaultLeague: process.env[`${sportUpper}_DEFAULT_LEAGUE`] || '',
+          icon: process.env[`${sportUpper}_ICON`] || '🏆',
+          color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
+          apiKey: process.env[`${sportUpper}_API_KEY`] || '',
+          dataSource: (process.env[`${sportUpper}_DATA_SOURCE`] as any) || 'sportsdb',
+          positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
+          rateLimits: {
+            requestsPerMinute: parseInt(process.env[`${sportUpper}_RATE_LIMIT_MINUTE`] || '30'),
+            requestsPerHour: parseInt(process.env[`${sportUpper}_RATE_LIMIT_HOUR`] || '500'),
+            requestsPerDay: parseInt(process.env[`${sportUpper}_RATE_LIMIT_DAY`] || '5000'),
+            burstLimit: parseInt(process.env[`${sportUpper}_BURST_LIMIT`] || '5')
+          },
+          updateFrequency: parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '30')
+        }
+      }
+      
+      this.initialized = true
+    } catch (error) {
+      console.error('Failed to initialize sport configurations synchronously:', error)
+      // Don't throw, just log the error
+    }
+  }
+
+  /**
+   * Load sport configuration from environment variables
+   */
+  private static async loadSportConfigFromEnvironment(sport: string): Promise<SportConfig | null> {
+    const sportUpper = sport.toUpperCase()
+    
+    return {
+      name: process.env[`${sportUpper}_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
+      leagues: process.env[`${sportUpper}_LEAGUES`]?.split(',') || [],
+      defaultLeague: process.env[`${sportUpper}_DEFAULT_LEAGUE`] || '',
+      icon: process.env[`${sportUpper}_ICON`] || '🏆',
+      color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
+      apiKey: process.env[`${sportUpper}_API_KEY`] || '',
+      dataSource: (process.env[`${sportUpper}_DATA_SOURCE`] as any) || 'sportsdb',
+      positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
       rateLimits: {
-        requestsPerMinute: parseInt(process.env.BASKETBALL_RATE_LIMIT_MINUTE || '100'),
-        requestsPerHour: parseInt(process.env.BASKETBALL_RATE_LIMIT_HOUR || '1000'),
-        requestsPerDay: parseInt(process.env.BASKETBALL_RATE_LIMIT_DAY || '10000'),
-        burstLimit: parseInt(process.env.BASKETBALL_BURST_LIMIT || '10')
+        requestsPerMinute: parseInt(process.env[`${sportUpper}_RATE_LIMIT_MINUTE`] || '30'),
+        requestsPerHour: parseInt(process.env[`${sportUpper}_RATE_LIMIT_HOUR`] || '500'),
+        requestsPerDay: parseInt(process.env[`${sportUpper}_RATE_LIMIT_DAY`] || '5000'),
+        burstLimit: parseInt(process.env[`${sportUpper}_BURST_LIMIT`] || '5')
       },
-      updateFrequency: parseInt(process.env.BASKETBALL_UPDATE_FREQUENCY || '15')
-    },
-    football: {
-      name: 'Football',
-      leagues: ['NFL', 'NCAA', 'CFL'],
-      defaultLeague: 'NFL',
-      icon: '🏈',
-      color: 'text-green-500',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'CB', 'S', 'K', 'P'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.FOOTBALL_RATE_LIMIT_MINUTE || '30'),
-        requestsPerHour: parseInt(process.env.FOOTBALL_RATE_LIMIT_HOUR || '500'),
-        requestsPerDay: parseInt(process.env.FOOTBALL_RATE_LIMIT_DAY || '5000'),
-        burstLimit: parseInt(process.env.FOOTBALL_BURST_LIMIT || '5')
-      },
-      updateFrequency: parseInt(process.env.FOOTBALL_UPDATE_FREQUENCY || '30')
-    },
-    baseball: {
-      name: 'Baseball',
-      leagues: ['MLB', 'MiLB', 'NPB', 'KBO'],
-      defaultLeague: 'MLB',
-      icon: '⚾',
-      color: 'text-blue-500',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.BASEBALL_RATE_LIMIT_MINUTE || '60'),
-        requestsPerHour: parseInt(process.env.BASEBALL_RATE_LIMIT_HOUR || '1000'),
-        requestsPerDay: parseInt(process.env.BASEBALL_RATE_LIMIT_DAY || '10000'),
-        burstLimit: parseInt(process.env.BASEBALL_BURST_LIMIT || '8')
-      },
-      updateFrequency: parseInt(process.env.BASEBALL_UPDATE_FREQUENCY || '60')
-    },
-    hockey: {
-      name: 'Hockey',
-      leagues: ['NHL', 'AHL', 'KHL', 'SHL'],
-      defaultLeague: 'NHL',
-      icon: '🏒',
-      color: 'text-red-500',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['C', 'LW', 'RW', 'D', 'G'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.HOCKEY_RATE_LIMIT_MINUTE || '40'),
-        requestsPerHour: parseInt(process.env.HOCKEY_RATE_LIMIT_HOUR || '800'),
-        requestsPerDay: parseInt(process.env.HOCKEY_RATE_LIMIT_DAY || '8000'),
-        burstLimit: parseInt(process.env.HOCKEY_BURST_LIMIT || '6')
-      },
-      updateFrequency: parseInt(process.env.HOCKEY_UPDATE_FREQUENCY || '30')
-    },
-    soccer: {
-      name: 'Soccer',
-      leagues: ['Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1', 'Champions League'],
-      defaultLeague: 'Premier League',
-      icon: '⚽',
-      color: 'text-emerald-500',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.SOCCER_RATE_LIMIT_MINUTE || '50'),
-        requestsPerHour: parseInt(process.env.SOCCER_RATE_LIMIT_HOUR || '1000'),
-        requestsPerDay: parseInt(process.env.SOCCER_RATE_LIMIT_DAY || '10000'),
-        burstLimit: parseInt(process.env.SOCCER_BURST_LIMIT || '7')
-      },
-      updateFrequency: parseInt(process.env.SOCCER_UPDATE_FREQUENCY || '60')
-    },
-    tennis: {
-      name: 'Tennis',
-      leagues: ['ATP', 'WTA', 'Grand Slams', 'Masters 1000'],
-      defaultLeague: 'ATP',
-      icon: '🎾',
-      color: 'text-green-600',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['Singles', 'Doubles'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.TENNIS_RATE_LIMIT_MINUTE || '40'),
-        requestsPerHour: parseInt(process.env.TENNIS_RATE_LIMIT_HOUR || '800'),
-        requestsPerDay: parseInt(process.env.TENNIS_RATE_LIMIT_DAY || '8000'),
-        burstLimit: parseInt(process.env.TENNIS_BURST_LIMIT || '6')
-      },
-      updateFrequency: parseInt(process.env.TENNIS_UPDATE_FREQUENCY || '30')
-    },
-    golf: {
-      name: 'Golf',
-      leagues: ['PGA Tour', 'European Tour', 'LPGA', 'Champions Tour'],
-      defaultLeague: 'PGA Tour',
-      icon: '⛳',
-      color: 'text-green-700',
-      apiKey: 'SPORTSDB_API_KEY',
-      dataSource: 'sportsdb',
-      positions: ['Professional'],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env.GOLF_RATE_LIMIT_MINUTE || '30'),
-        requestsPerHour: parseInt(process.env.GOLF_RATE_LIMIT_HOUR || '600'),
-        requestsPerDay: parseInt(process.env.GOLF_RATE_LIMIT_DAY || '6000'),
-        burstLimit: parseInt(process.env.GOLF_BURST_LIMIT || '5')
-      },
-      updateFrequency: parseInt(process.env.GOLF_UPDATE_FREQUENCY || '60')
+      updateFrequency: parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '30')
     }
   }
 
   static getSportConfig(sport: string): SportConfig | null {
+    if (!this.initialized) {
+      // Initialize synchronously for React components
+      this.initializeSync()
+    }
     return this.configs[sport] || null
   }
 
-  static getAllSports(): string[] {
+  static async getSportConfigAsync(sport: string): Promise<SportConfig | null> {
+    await this.initialize()
+    return this.configs[sport] || null
+  }
+
+  static async getAllSports(): Promise<string[]> {
+    await this.initialize()
     return Object.keys(this.configs)
   }
 
-  static getLeaguesForSport(sport: string): string[] {
+  static getAllSportsSync(): string[] {
+    if (!this.initialized) {
+      this.initializeSync()
+    }
+    return Object.keys(this.configs)
+  }
+
+  static getSupportedSports(): string[] {
+    return this.getAllSportsSync()
+  }
+
+  static async getLeaguesForSport(sport: string): Promise<string[]> {
+    await this.initialize()
     return this.configs[sport]?.leagues || []
   }
 
-  static getDefaultLeague(sport: string): string {
+  static async getDefaultLeague(sport: string): Promise<string> {
+    await this.initialize()
     return this.configs[sport]?.defaultLeague || 'Unknown'
   }
 
-  static getPositionsForSport(sport: string): string[] {
+  static async getPositionsForSport(sport: string): Promise<string[]> {
+    await this.initialize()
     return this.configs[sport]?.positions || []
   }
 
-  static isSportSupported(sport: string): boolean {
+  static async isSportSupported(sport: string): Promise<boolean> {
+    await this.initialize()
     return sport in this.configs
   }
 
@@ -191,7 +188,8 @@ export class SportConfigManager {
   /**
    * Get rate limits for a specific sport
    */
-  static getRateLimits(sport: string) {
+  static async getRateLimits(sport: string) {
+    await this.initialize()
     return this.configs[sport]?.rateLimits || {
       requestsPerMinute: 30,
       requestsPerHour: 500,
@@ -203,14 +201,16 @@ export class SportConfigManager {
   /**
    * Get update frequency for a specific sport
    */
-  static getUpdateFrequency(sport: string): number {
+  static async getUpdateFrequency(sport: string): Promise<number> {
+    await this.initialize()
     return this.configs[sport]?.updateFrequency || 30
   }
 
   /**
    * Get all rate limit configurations
    */
-  static getAllRateLimits(): Record<string, any> {
+  static async getAllRateLimits(): Promise<Record<string, any>> {
+    await this.initialize()
     const limits: Record<string, any> = {}
     for (const [sport, config] of Object.entries(this.configs)) {
       limits[sport] = config.rateLimits
@@ -221,7 +221,8 @@ export class SportConfigManager {
   /**
    * Get all update frequencies
    */
-  static getAllUpdateFrequencies(): Record<string, number> {
+  static async getAllUpdateFrequencies(): Promise<Record<string, number>> {
+    await this.initialize()
     const frequencies: Record<string, number> = {}
     for (const [sport, config] of Object.entries(this.configs)) {
       frequencies[sport] = config.updateFrequency

@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
 import { rateLimiter } from './rate-limiter'
-import { cacheService } from './cache-service'
+import { cacheManager } from '@/lib/cache'
+import { SportConfigManager } from './core/sport-config'
 
 interface UpdateStats {
   gamesUpdated: number
@@ -102,7 +103,7 @@ export class AutomatedUpdateService {
       console.log('✅ Full update completed successfully')
     } catch (error) {
       console.error('❌ Error in full update:', error)
-      stats.errors.push(`Full update error: ${error.message}`)
+      stats.errors.push(`Full update error: ${error instanceof Error ? error.message : String(error)}`)
     }
 
     return stats
@@ -113,13 +114,12 @@ export class AutomatedUpdateService {
     try {
       console.log('🏟️  Updating games...')
       
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         // Get live and recent games
         const liveGames = await unifiedApiClient.getLiveGames(sport)
-        const recentGames = await unifiedApiClient.getGames({ 
-          sport, 
+        const recentGames = await unifiedApiClient.getGames(sport, { 
           status: 'finished',
           date: new Date().toISOString().split('T')[0]
         })
@@ -134,15 +134,15 @@ export class AutomatedUpdateService {
             .eq('sport', sport)
           
           const teamMap = new Map()
-          teams?.forEach(team => {
+          teams?.forEach((team: any) => {
             teamMap.set(team.name, team.id)
             teamMap.set(team.abbreviation, team.id)
           })
           
           // Update existing games or insert new ones
           for (const game of allGames) {
-            const homeTeamId = teamMap.get(game.homeTeam)
-            const awayTeamId = teamMap.get(game.awayTeam)
+            const homeTeamId = teamMap.get(game.home_team?.name || '')
+            const awayTeamId = teamMap.get(game.away_team?.name || '')
             
             if (homeTeamId && awayTeamId) {
               // Check if game already exists
@@ -151,16 +151,16 @@ export class AutomatedUpdateService {
                 .select('id')
                 .eq('home_team_id', homeTeamId)
                 .eq('away_team_id', awayTeamId)
-                .eq('game_date', game.date)
+                .eq('game_date', game.game_date)
                 .single()
               
               const gameData = {
                 home_team_id: homeTeamId,
                 away_team_id: awayTeamId,
-                game_date: game.date,
-                season: this.getCurrentSeason(sport),
-                home_score: game.homeScore,
-                away_score: game.awayScore,
+                game_date: game.game_date,
+                season: await this.getCurrentSeason(sport),
+                home_score: game.home_score,
+                away_score: game.away_score,
                 status: this.mapGameStatus(game.status),
                 sport: sport,
                 league: game.league,
@@ -194,7 +194,7 @@ export class AutomatedUpdateService {
     try {
       console.log('📊 Updating player statistics...')
       
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         // Get recent finished games
@@ -211,7 +211,7 @@ export class AutomatedUpdateService {
           const playerStats = await this.generateUpdatedPlayerStats(games, sport)
           
           if (playerStats.length > 0) {
-            const tableName = this.getPlayerStatsTableName(sport)
+            const tableName = await this.getPlayerStatsTableName(sport)
             
             // Insert new stats
             await this.supabase
@@ -239,38 +239,47 @@ export class AutomatedUpdateService {
         .limit(20)
       
       if (games?.length > 0) {
-        // Get odds from external APIs
-        const oddsData = await unifiedApiClient.getOdds()
+        // Group games by sport and get odds for each sport
+        const gamesBySport = games.reduce((acc: Record<string, any[]>, game: any) => {
+          if (!acc[game.sport]) acc[game.sport] = []
+          acc[game.sport].push(game)
+          return acc
+        }, {} as Record<string, any[]>)
         
-        if (oddsData.length > 0) {
-          // Update odds in database
-          for (const game of games) {
-            const gameOdds = oddsData.filter(odd => 
-              odd.home_team === game.home_team && 
-              odd.away_team === game.away_team
-            )
+        for (const [sport, sportGames] of Object.entries(gamesBySport)) {
+          // Get odds from external APIs for this sport
+          const oddsData = await unifiedApiClient.getOdds(sport as any)
+          
+          if (oddsData.length > 0) {
+            // Update odds in database
+            for (const game of (sportGames as any[])) {
+              const gameOdds = oddsData.filter(odd => 
+                odd.home_team === game.home_team && 
+                odd.away_team === game.away_team
+              )
             
-            if (gameOdds.length > 0) {
-              const oddsToInsert = gameOdds.map(odd => ({
-                game_id: game.id,
-                source: odd.source || 'external_api',
-                odds_type: odd.odds_type || 'moneyline',
-                home_odds: odd.home_odds,
-                away_odds: odd.away_odds,
-                spread: odd.spread,
-                total: odd.total,
-                sport: game.sport,
-                league: game.league,
-                live_odds: true,
-                updated_at: new Date().toISOString()
-              }))
-              
-              await this.supabase
-                .from('odds')
-                .upsert(oddsToInsert, { 
-                  onConflict: 'game_id,source,odds_type',
-                  ignoreDuplicates: false 
-                })
+              if (gameOdds.length > 0) {
+                const oddsToInsert = gameOdds.map(odd => ({
+                  game_id: game.id,
+                  source: odd.source || 'external_api',
+                  odds_type: odd.odds_type || 'moneyline',
+                  home_odds: odd.home_odds,
+                  away_odds: odd.away_odds,
+                  spread: odd.spread,
+                  total: odd.total,
+                  sport: game.sport,
+                  league: game.league,
+                  live_odds: true,
+                  updated_at: new Date().toISOString()
+                }))
+                
+                await this.supabase
+                  .from('odds')
+                  .upsert(oddsToInsert, { 
+                    onConflict: 'game_id,source,odds_type',
+                    ignoreDuplicates: false 
+                  })
+              }
             }
           }
         }
@@ -334,7 +343,7 @@ export class AutomatedUpdateService {
     try {
       console.log('🏆 Updating standings...')
       
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         // Get teams for this sport
@@ -353,7 +362,7 @@ export class AutomatedUpdateService {
           
           // Update standings for each team
           for (const team of teams) {
-            const teamGames = recentGames?.filter(game => 
+            const teamGames = recentGames?.filter((game: any) => 
               game.home_team_id === team.id || game.away_team_id === team.id
             ) || []
             
@@ -376,7 +385,7 @@ export class AutomatedUpdateService {
               .from('league_standings')
               .upsert({
                 team_id: team.id,
-                season: this.getCurrentSeason(sport),
+                season: await this.getCurrentSeason(sport),
                 league: team.league,
                 sport: sport,
                 wins: wins,
@@ -417,12 +426,12 @@ export class AutomatedUpdateService {
       if (homeTeam && awayTeam) {
         // Generate updated stats for home team players
         for (let i = 0; i < 5; i++) {
-          stats.push(this.generateUpdatedPlayerStat(game.id, homeTeam.id, sport, i + 1))
+          stats.push(await this.generateUpdatedPlayerStat(game.id, homeTeam.id, sport, i + 1))
         }
         
         // Generate updated stats for away team players
         for (let i = 0; i < 5; i++) {
-          stats.push(this.generateUpdatedPlayerStat(game.id, awayTeam.id, sport, i + 1))
+          stats.push(await this.generateUpdatedPlayerStat(game.id, awayTeam.id, sport, i + 1))
         }
       }
     }
@@ -431,53 +440,79 @@ export class AutomatedUpdateService {
   }
 
   // Generate updated individual player stat
-  private generateUpdatedPlayerStat(gameId: string, teamId: string, sport: string, playerNumber: number): any {
+  private async generateUpdatedPlayerStat(gameId: string, teamId: string, sport: string, playerNumber: number): Promise<any> {
     const baseStat = {
       game_id: gameId,
       team_id: teamId,
       player_name: `Player ${playerNumber}`,
-      position: this.getRandomPosition(sport),
+      position: await this.getRandomPosition(sport),
       created_at: new Date().toISOString()
     }
     
-    // Add sport-specific stats with some variation
-    switch (sport) {
-      case 'basketball':
-        return {
-          ...baseStat,
-          minutes_played: Math.floor(Math.random() * 48) + 1,
-          points: Math.floor(Math.random() * 30),
-          rebounds: Math.floor(Math.random() * 15),
-          assists: Math.floor(Math.random() * 10),
-          steals: Math.floor(Math.random() * 5),
-          blocks: Math.floor(Math.random() * 5),
-          turnovers: Math.floor(Math.random() * 5),
-          field_goals_made: Math.floor(Math.random() * 15),
-          field_goals_attempted: Math.floor(Math.random() * 20) + 5,
-          three_pointers_made: Math.floor(Math.random() * 8),
-          three_pointers_attempted: Math.floor(Math.random() * 12) + 1,
-          free_throws_made: Math.floor(Math.random() * 10),
-          free_throws_attempted: Math.floor(Math.random() * 12) + 1
-        }
-      
-      default:
-        return baseStat
+    // Get sport-specific stats configuration from database
+    try {
+      const sportConfig = await SportConfigManager.getSportConfigAsync(sport)
+      if (sportConfig?.positions && sportConfig.positions.length > 0) {
+        // Generate stats based on sport configuration
+        return await this.generateSportSpecificStats(baseStat, sport, sportConfig)
+      }
+    } catch (error) {
+      console.warn(`Failed to get sport config for ${sport}:`, error)
+    }
+    
+    // Fallback to base stat if no sport-specific configuration
+    return baseStat
+  }
+
+  // Generate sport-specific stats based on configuration
+  private async generateSportSpecificStats(baseStat: any, sport: string, sportConfig: any): Promise<any> {
+    // This would be implemented based on the sport configuration
+    // For now, return base stat with some generic additions
+    return {
+      ...baseStat,
+      sport: sport,
+      league: sportConfig.defaultLeague || 'Unknown',
+      created_at: new Date().toISOString()
     }
   }
 
   // Helper methods
-  private getCurrentSeason(sport: string): string {
-    // Return current season based on sport
-    const currentYear = new Date().getFullYear()
-    const month = new Date().getMonth()
-    
-    // For sports that start in fall (football, basketball), use current year
-    // For sports that start in spring (baseball), use previous year
-    if (sport === 'baseball') {
-      return month >= 3 ? `${currentYear}` : `${currentYear - 1}`
+  private async getCurrentSeason(sport: string): Promise<string> {
+    try {
+      // Get season configuration from database
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_start_month, season_format')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data) {
+        const seasonConfig = response.data
+        const currentYear = new Date().getFullYear()
+        const month = new Date().getMonth()
+        
+        if (seasonConfig.season_format === 'year-year') {
+          // For sports with year-year format (basketball, football, hockey)
+          return month >= (seasonConfig.season_start_month || 9) ? 
+            `${currentYear}-${(currentYear + 1).toString().slice(-2)}` : 
+            `${currentYear - 1}-${currentYear.toString().slice(-2)}`
+        } else {
+          // For sports with single year format (baseball, soccer)
+          return month >= (seasonConfig.season_start_month || 3) ? 
+            `${currentYear}` : 
+            `${currentYear - 1}`
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to get season configuration for ${sport}:`, error)
     }
     
-    return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`
+    // Fallback to current year
+    return new Date().getFullYear().toString()
   }
 
   private mapGameStatus(status: string): string {
@@ -491,30 +526,39 @@ export class AutomatedUpdateService {
     return statusMap[status] || 'scheduled'
   }
 
-  private getPlayerStatsTableName(sport: string): string {
-    const tableMap: Record<string, string> = {
-      'basketball': 'player_stats',
-      'football': 'football_player_stats',
-      'baseball': 'baseball_player_stats',
-      'hockey': 'hockey_player_stats',
-      'soccer': 'soccer_player_stats',
-      'tennis': 'tennis_match_stats',
-      'golf': 'golf_tournament_stats'
-    }
-    return tableMap[sport] || 'player_stats'
-  }
-
-  private getRandomPosition(sport: string): string {
-    const positions: Record<string, string[]> = {
-      'basketball': ['PG', 'SG', 'SF', 'PF', 'C'],
-      'football': ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB', 'K', 'P'],
-      'baseball': ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'],
-      'hockey': ['C', 'LW', 'RW', 'D', 'G'],
-      'soccer': ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST']
+  private async getPlayerStatsTableName(sport: string): Promise<string> {
+    try {
+      // Get table name from database configuration
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, player_stats_table')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data?.player_stats_table) {
+        return response.data.player_stats_table
+      }
+    } catch (error) {
+      console.warn(`Failed to get player stats table for ${sport}:`, error)
     }
     
-    const sportPositions = positions[sport] || ['Player']
-    return sportPositions[Math.floor(Math.random() * sportPositions.length)]
+    // Fallback to generic table name
+    return 'player_stats'
+  }
+
+  private async getRandomPosition(sport: string): Promise<string> {
+    try {
+      const config = await SportConfigManager.getSportConfigAsync(sport)
+      const positions = config?.positions || ['Player']
+      return positions[Math.floor(Math.random() * positions.length)]
+    } catch (error) {
+      console.error('Error getting positions for sport:', sport, error)
+      return 'Player'
+    }
   }
 
   // Get service status

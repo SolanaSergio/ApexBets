@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
 import { rateLimiter } from './rate-limiter'
-import { cacheService } from './cache-service'
+import { cacheManager } from '@/lib/cache'
 import { errorHandlingService } from './error-handling-service'
 import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
 
@@ -97,7 +97,7 @@ export class ComprehensiveDataPopulationService {
     console.log('👥 Populating teams and logos...')
     
     try {
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         console.log(`   Processing ${sport} teams...`)
@@ -127,7 +127,7 @@ export class ComprehensiveDataPopulationService {
                 league: team.league,
                 sport: team.sport,
                 abbreviation: team.abbreviation,
-                logo_url: team.logo || null,
+                logo_url: team.logo_url || null,
                 conference: this.getConference(team.name, team.league),
                 division: this.getDivision(team.name, team.league),
                 is_active: true
@@ -219,7 +219,7 @@ export class ComprehensiveDataPopulationService {
     console.log('🏟️  Populating games...')
     
     try {
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         console.log(`   Processing ${sport} games...`)
@@ -244,17 +244,17 @@ export class ComprehensiveDataPopulationService {
           const gamesToInsert = []
           
           for (const game of externalGames) {
-            const homeTeamId = teamMap.get(game.homeTeam)
-            const awayTeamId = teamMap.get(game.awayTeam)
+            const homeTeamId = teamMap.get(game.home_team?.name || '')
+            const awayTeamId = teamMap.get(game.away_team?.name || '')
             
             if (homeTeamId && awayTeamId) {
               gamesToInsert.push({
                 home_team_id: homeTeamId,
                 away_team_id: awayTeamId,
-                game_date: game.date,
-                season: this.getCurrentSeason(sport),
-                home_score: game.homeScore,
-                away_score: game.awayScore,
+                game_date: game.game_date,
+                season: await this.getCurrentSeason(sport),
+                home_score: game.home_score,
+                away_score: game.away_score,
                 status: this.mapGameStatus(game.status),
                 sport: sport,
                 league: game.league,
@@ -290,7 +290,7 @@ export class ComprehensiveDataPopulationService {
     console.log('📊 Populating player statistics...')
     
     try {
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         console.log(`   Processing ${sport} player stats...`)
@@ -340,7 +340,7 @@ export class ComprehensiveDataPopulationService {
       
       for (const game of games) {
         // Get real player stats for this game
-        const players = await service.getPlayers({ limit: 20 })
+        const players = await (await service).getPlayers({ limit: 20 })
         
         for (const player of players) {
           if (player.stats) {
@@ -375,7 +375,7 @@ export class ComprehensiveDataPopulationService {
       const service = serviceFactory.getService(sport as any)
       
       for (const game of games) {
-        const gameOdds = await service.getOdds({ gameId: game.id })
+        const gameOdds = await (await service).getOdds({ gameId: game.id })
         
         for (const odd of gameOdds) {
           odds.push({
@@ -418,7 +418,7 @@ export class ComprehensiveDataPopulationService {
         const oddsToInsert = []
         
         // Get real odds from APIs
-        const realOdds = await this.getRealOdds(games, games[0]?.sport || 'basketball')
+        const realOdds = await this.getRealOdds(games, games[0]?.sport || '')
         oddsToInsert.push(...realOdds)
         
         if (oddsToInsert.length > 0) {
@@ -494,7 +494,7 @@ export class ComprehensiveDataPopulationService {
         const predictionsToInsert = []
         
         // Get real predictions from prediction service
-        const realPredictions = await this.getRealPredictions(games, games[0]?.sport || 'basketball')
+        const realPredictions = await this.getRealPredictions(games, games[0]?.sport || '')
         predictionsToInsert.push(...realPredictions)
         
         if (predictionsToInsert.length > 0) {
@@ -521,7 +521,7 @@ export class ComprehensiveDataPopulationService {
     console.log('🏆 Populating standings...')
     
     try {
-      const sports = serviceFactory.getSupportedSports()
+      const sports = await serviceFactory.getSupportedSports()
       
       for (const sport of sports) {
         console.log(`   Processing ${sport} standings...`)
@@ -542,7 +542,7 @@ export class ComprehensiveDataPopulationService {
             
             standingsToInsert.push({
               team_id: team.id,
-              season: this.getCurrentSeason(sport),
+              season: await this.getCurrentSeason(sport),
               league: team.league,
               sport: sport,
               wins: wins,
@@ -663,17 +663,32 @@ export class ComprehensiveDataPopulationService {
     }
   }
 
-  private getCurrentSeason(sport: string): string {
+  private async getCurrentSeason(sport: string): Promise<string> {
     // Return current season based on sport
     const currentYear = new Date().getFullYear()
     const month = new Date().getMonth()
     
-    // For sports that start in fall (football, basketball), use current year
-    // For sports that start in spring (baseball), use previous year
-    if (sport === 'baseball') {
-      return month >= 3 ? `${currentYear}` : `${currentYear - 1}`
+    // Get sport configuration from database to determine season start
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_start_month')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data?.season_start_month) {
+        const seasonStartMonth = response.data.season_start_month
+        return month >= seasonStartMonth ? `${currentYear}` : `${currentYear - 1}`
+      }
+    } catch (error) {
+      console.warn(`Failed to get season configuration for ${sport}:`, error)
     }
     
+    // Fallback: use generic season logic
     return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`
   }
 
@@ -688,30 +703,53 @@ export class ComprehensiveDataPopulationService {
     return statusMap[status] || 'scheduled'
   }
 
-  private getPlayerStatsTableName(sport: string): string {
-    const tableMap: Record<string, string> = {
-      'basketball': 'player_stats',
-      'football': 'football_player_stats',
-      'baseball': 'baseball_player_stats',
-      'hockey': 'hockey_player_stats',
-      'soccer': 'soccer_player_stats',
-      'tennis': 'tennis_match_stats',
-      'golf': 'golf_tournament_stats'
-    }
-    return tableMap[sport] || 'player_stats'
-  }
-
-  private getRandomPosition(sport: string): string {
-    const positions: Record<string, string[]> = {
-      'basketball': ['PG', 'SG', 'SF', 'PF', 'C'],
-      'football': ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'DB', 'K', 'P'],
-      'baseball': ['P', 'C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'DH'],
-      'hockey': ['C', 'LW', 'RW', 'D', 'G'],
-      'soccer': ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST']
+  private async getPlayerStatsTableName(sport: string): Promise<string> {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, player_stats_table')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data?.player_stats_table) {
+        return response.data.player_stats_table
+      }
+    } catch (error) {
+      console.warn(`Failed to get player stats table for ${sport}:`, error)
     }
     
-    const sportPositions = positions[sport] || ['Player']
-    return sportPositions[Math.floor(Math.random() * sportPositions.length)]
+    // Fallback to generic table name
+    return 'player_stats'
+  }
+
+  private async getRandomPosition(sport: string): Promise<string> {
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, positions')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data?.positions) {
+        const positions = response.data.positions
+        if (Array.isArray(positions) && positions.length > 0) {
+          return positions[Math.floor(Math.random() * positions.length)]
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to get positions for ${sport}:`, error)
+    }
+    
+    // Fallback to generic position
+    return 'Player'
   }
 }
 

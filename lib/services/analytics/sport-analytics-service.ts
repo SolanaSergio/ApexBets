@@ -56,7 +56,16 @@ export class SportAnalyticsService extends BaseService {
     }
     super(config)
     this.sport = sport
-    this.league = league || serviceFactory.getDefaultLeague(sport)
+    this.league = league || ''
+  }
+
+  /**
+   * Initialize the service with the default league
+   */
+  async initialize(): Promise<void> {
+    if (!this.league) {
+      this.league = await serviceFactory.getDefaultLeague(this.sport)
+    }
   }
 
   /**
@@ -66,7 +75,7 @@ export class SportAnalyticsService extends BaseService {
     const key = this.getCacheKey('analytics', this.sport, this.league)
     
     return this.getCachedOrFetch(key, async () => {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       
       const [games, teams, players] = await Promise.all([
         service.getGames(),
@@ -110,7 +119,7 @@ export class SportAnalyticsService extends BaseService {
     const key = this.getCacheKey('team-performance', this.sport, this.league, teamId || 'all')
     
     return this.getCachedOrFetch(key, async () => {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       const teams = teamId ? [await service.getTeamById(teamId)].filter(Boolean) : await service.getTeams()
       const games = await service.getGames()
 
@@ -191,7 +200,7 @@ export class SportAnalyticsService extends BaseService {
     const key = this.getCacheKey('player-performance', this.sport, this.league, playerId || 'all')
     
     return this.getCachedOrFetch(key, async () => {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       const players = playerId ? [await service.getPlayerById(playerId)].filter(Boolean) : await service.getPlayers()
 
       const performances: PlayerPerformance[] = []

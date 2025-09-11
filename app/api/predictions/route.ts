@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
       return NextResponse.json({
         success: false,
-        error: `Unsupported sport: ${sport}. Supported sports: ${serviceFactory.getSupportedSports().join(', ')}`,
+        error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}`,
         timestamp: new Date().toISOString()
       }, { status: 400 });
     }

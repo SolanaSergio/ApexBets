@@ -12,19 +12,18 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import {
-  RefreshCw,
-  Search,
-  Trophy,
-  Users,
-  Calendar,
-  MapPin,
-  Star
+import { 
+  RefreshCw, 
+  Search, 
+  Star, 
+  Users, 
+  Trophy, 
+  MapPin 
 } from "lucide-react"
-import { cachedUnifiedApiClient, SupportedSport, UnifiedTeamData } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { apiClient, type Team } from "@/lib/api-client"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
-type TeamData = UnifiedTeamData
+type TeamData = Team
 
 interface TeamsListProps {
   sport: SupportedSport
@@ -51,7 +50,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
   const loadTeams = async () => {
     try {
       setLoading(true)
-      const sportTeams = await cachedUnifiedApiClient.getTeams(sport, { limit: 100 })
+      const sportTeams = await apiClient.getTeams({ sport })
       setTeams(sportTeams)
     } catch (error) {
       console.error('Error loading teams:', error)
@@ -75,6 +74,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
       filtered = filtered.filter(team =>
         team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (team.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (team.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         team.league.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
@@ -246,7 +246,7 @@ function TeamCard({ team, sport }: TeamCardProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-sm truncate">{team.name}</h3>
-                <p className="text-xs text-muted-foreground">#{team.abbreviation}</p>
+                <p className="text-xs text-muted-foreground">#{team.abbreviation || 'N/A'}</p>
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ function TeamCard({ team, sport }: TeamCardProps) {
           <div className="space-y-2 text-xs">
             <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3 text-muted-foreground" />
-              <span>{team.city}</span>
+              <span>{team.city || 'Unknown'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Trophy className="h-3 w-3 text-muted-foreground" />
@@ -271,7 +271,7 @@ function TeamCard({ team, sport }: TeamCardProps) {
                 <span className="text-muted-foreground">Active Roster</span>
               </div>
                <Badge variant="secondary" className="text-xs">
-                {team.abbreviation}
+                {team.abbreviation || 'N/A'}
               </Badge>
             </div>
           </div>

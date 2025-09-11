@@ -92,8 +92,9 @@ export async function GET(request: NextRequest) {
       };
     }
     
-    // Get data from BallDontLie (basketball only)
-    if (sport === 'basketball') {
+    // Get data from BallDontLie (if configured for this sport)
+    const ballDontLieSports = process.env.BALLDONTLIE_SPORTS?.split(',') || [];
+    if (ballDontLieSports.includes(sport)) {
       try {
         // Check if BallDontLie API is configured
         if (!ballDontLieClient.isConfigured) {
@@ -137,8 +138,9 @@ export async function GET(request: NextRequest) {
       }
     }
     
-    // Get data from API-SPORTS (soccer only)
-    if (sport === 'soccer') {
+    // Get data from API-SPORTS (if configured for this sport)
+    const apiSportsSports = process.env.APISPORTS_SPORTS?.split(',') || [];
+    if (apiSportsSports.includes(sport)) {
       try {
         const leagues = await apiSportsClient.getLeagues();
         const fixtures = await apiSportsClient.getFixtures({ next: 10 });

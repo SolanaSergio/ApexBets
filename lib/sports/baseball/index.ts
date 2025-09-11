@@ -4,7 +4,7 @@
  */
 
 import { sportsDBClient } from '../../sports-apis'
-import { cacheService } from '../../services/cache-service'
+import { cacheManager } from '@/lib/cache'
 import { rateLimiter } from '../../services/rate-limiter'
 import { errorHandlingService } from '../../services/error-handling-service'
 
@@ -67,9 +67,10 @@ export class BaseballService {
 
   constructor() {}
 
-  async getGames(params: any = {}): Promise<BaseballGame[]> {
+  async getGames(params: any = {}): Promise<any[]> {
     const cacheKey = `baseball:games:${JSON.stringify(params)}`
-    return cacheService.get(cacheKey) || await this.fetchGames(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchGames(params, cacheKey)
   }
 
   private async fetchGames(params: any, cacheKey: string): Promise<BaseballGame[]> {
@@ -80,7 +81,7 @@ export class BaseballService {
         'baseball'
       )
       const games = events.map(this.mapSportsDBEvent)
-      cacheService.set(cacheKey, games, this.CACHE_TTL)
+      cacheManager.set(cacheKey, games, this.CACHE_TTL)
       return games
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Baseball games fetch' })
@@ -88,9 +89,10 @@ export class BaseballService {
     }
   }
 
-  async getTeams(params: any = {}): Promise<BaseballTeam[]> {
+  async getTeams(params: any = {}): Promise<any[]> {
     const cacheKey = `baseball:teams:${JSON.stringify(params)}`
-    return cacheService.get(cacheKey) || await this.fetchTeams(params, cacheKey)
+    const cached = await cacheManager.getAsync<any[]>(cacheKey)
+    return cached || await this.fetchTeams(params, cacheKey)
   }
 
   private async fetchTeams(params: any, cacheKey: string): Promise<BaseballTeam[]> {
@@ -98,7 +100,7 @@ export class BaseballService {
       await rateLimiter.waitForRateLimit('sportsdb')
       const teams = await sportsDBClient.searchTeams('baseball')
       const mappedTeams = teams.map(this.mapSportsDBTeam)
-      cacheService.set(cacheKey, mappedTeams, 30 * 60 * 1000)
+      cacheManager.set(cacheKey, mappedTeams, 30 * 60 * 1000)
       return mappedTeams
     } catch (error) {
       errorHandlingService.logError(error as any, { context: 'Baseball teams fetch' })

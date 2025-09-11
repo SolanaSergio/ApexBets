@@ -176,12 +176,13 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                           <SportsImage
                             type="team"
                             league={game.league}
-                            teamName={game.homeTeam}
+                            teamName={game.home_team?.name || 'Home Team'}
+                            alt={`${game.home_team?.name || 'Home Team'} logo`}
                             className="h-10 w-10"
                           />
                           <div>
                             <div className="font-bold text-lg">
-                              {game.homeTeam} vs {game.awayTeam}
+                              {game.home_team?.name || 'Home Team'} vs {game.away_team?.name || 'Away Team'}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {game.venue} • {game.time}
@@ -297,12 +298,13 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                         <SportsImage
                           type="team"
                           league={odds.league}
-                          teamName={odds.homeTeam}
+                          teamName={odds.home_team?.name || 'Home Team'}
+                          alt={`${odds.home_team?.name || 'Home Team'} logo`}
                           className="h-8 w-8"
                         />
                         <div>
                           <div className="font-medium text-sm">
-                            {odds.homeTeam} vs {odds.awayTeam}
+                            {odds.home_team?.name || 'Home Team'} vs {odds.away_team?.name || 'Away Team'}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {odds.betType} • {odds.side}

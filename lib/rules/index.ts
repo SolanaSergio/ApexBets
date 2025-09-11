@@ -3,6 +3,11 @@
  * Use these rules throughout the application
  */
 
+import { environmentRules } from './environment-rules'
+import { apiRateLimiter } from './api-rate-limiter'
+import { dataValidator } from './data-validator'
+import { securityEnforcer } from './security-enforcer'
+
 export { environmentRules, EnvironmentRules } from './environment-rules'
 export { apiRateLimiter, ApiRateLimiter } from './api-rate-limiter'
 export { dataValidator, DataValidator } from './data-validator'
@@ -19,7 +24,7 @@ export function initializeRules(): void {
     
     console.log('✅ All rules initialized successfully')
   } catch (error) {
-    console.error('❌ Rules initialization failed:', error.message)
+    console.error('❌ Rules initialization failed:', error instanceof Error ? error.message : String(error))
     process.exit(1)
   }
 }

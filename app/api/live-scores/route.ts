@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { cacheService } from "@/lib/services/cache-service"
+import { cacheManager } from "@/lib/cache"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
+
+async function getDefaultLeagueFromDatabase(sport: string): Promise<string> {
+  try {
+    const config = await SportConfigManager.getSportConfigAsync(sport)
+    return config?.defaultLeague || 'Unknown League'
+  } catch (error) {
+    console.error('Error getting default league for sport:', sport, error)
+    return 'Unknown League'
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,31 +21,20 @@ export async function GET(request: NextRequest) {
     if (!sport) {
       return NextResponse.json({
         success: false,
-        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer"
+        error: "Sport parameter is required"
       }, { status: 400 })
     }
     const finalSport = sport
     const status = searchParams.get("status") || "live"
     
-    // Set default league based on sport
-    const getDefaultLeague = (sport: string) => {
-      const leagueMap: Record<string, string> = {
-        'basketball': 'NBA',
-        'football': 'NFL',
-        'baseball': 'MLB',
-        'hockey': 'NHL',
-        'soccer': 'Premier League'
-      }
-      return leagueMap[sport] || sport.charAt(0).toUpperCase() + sport.slice(1) + ' League'
-    }
-    
-    const league = searchParams.get("league") || getDefaultLeague(finalSport)
+    // Get league from database or use provided league
+    const league = searchParams.get("league") || await getDefaultLeagueFromDatabase(finalSport)
 
     // Generate cache key
     const cacheKey = `live_scores:${finalSport}:${league}:${status}`
     
     // Check cache first
-    const cached = cacheService.get(cacheKey)
+    const cached = cacheManager.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -192,7 +192,7 @@ export async function GET(request: NextRequest) {
 
     // Cache the response for 2 minutes (live data changes frequently)
     const cacheTtl = status === 'live' ? 120000 : 300000 // 2 min for live, 5 min for others
-    cacheService.set(cacheKey, response, cacheTtl)
+    cacheManager.set(cacheKey, response, cacheTtl)
 
     return NextResponse.json(response)
 

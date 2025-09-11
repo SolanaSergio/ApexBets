@@ -152,6 +152,7 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
                             type="team"
                             league={sportConfig?.leagues[0] || sport}
                             teamName={team.team}
+                            alt={`${team.team} logo`}
                             className="h-8 w-8 rounded-full"
                           />
                           <span className="font-medium">{team.team}</span>

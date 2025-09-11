@@ -33,12 +33,12 @@ export async function GET(request: NextRequest) {
     if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
       return NextResponse.json({
         success: false,
-        error: `Unsupported sport: ${sport}. Supported sports: ${serviceFactory.getSupportedSports().join(', ')}`
+        error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}`
       }, { status: 400 })
     }
 
     // Get sport-specific service
-    const sportService = serviceFactory.getService(sport as SupportedSport, league)
+    const sportService = await serviceFactory.getService(sport as SupportedSport, league)
     
     // Get real team data and stats
     const [team, games, players] = await Promise.all([

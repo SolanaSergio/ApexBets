@@ -1,10 +1,12 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Settings, RefreshCw } from "lucide-react"
 import { SupportedSport } from "@/lib/services/core/service-factory"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
+
 
 interface NoSportSelectedProps {
   onSportSelect?: (sport: SupportedSport) => void
@@ -21,7 +23,12 @@ export function NoSportSelected({
   description = "Please select a sport to view data",
   showSportSelector = true
 }: NoSportSelectedProps) {
-  const supportedSports = cachedUnifiedApiClient.getSupportedSports()
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
+
+  useEffect(() => {
+    const sports = SportConfigManager.getSupportedSports()
+    setSupportedSports(sports)
+  }, [])
 
   const handleSportSelect = (sport: SupportedSport) => {
     if (onSportSelect) {
@@ -100,5 +107,4 @@ export function NoSportSelected({
   )
 }
 
-// Import the cached client
-import { cachedUnifiedApiClient } from "@/lib/services/api/cached-unified-api-client"
+

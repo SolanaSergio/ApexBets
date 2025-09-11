@@ -13,23 +13,19 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import {
-  RefreshCw,
-  Clock,
-  Calendar,
-  Filter,
-  Search,
-  Zap,
-  CheckCircle,
-  AlertCircle
+import { 
+  RefreshCw, 
+  Search, 
+  Filter, 
+  Calendar, 
+  Zap, 
+  Clock, 
+  CheckCircle 
 } from "lucide-react"
-import { cachedUnifiedApiClient, SupportedSport } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { apiClient, type Game } from "@/lib/api-client"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
-// Use UnifiedGameData from the API client
-import type { UnifiedGameData } from "@/lib/services/api/unified-api-client"
-
-type GameData = UnifiedGameData
+type GameData = Game
 
 interface GamesListProps {
   sport: SupportedSport
@@ -57,23 +53,13 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
   const loadGames = async () => {
     try {
       setLoading(true)
-      const params: any = {}
+      const today = new Date().toISOString().split('T')[0]
+      const params: any = { sport, date: dateFilter || today }
 
-      if (dateFilter) {
-        params.date = dateFilter
-      } else {
-        params.date = new Date().toISOString().split('T')[0] // Today's date
-      }
-
-      // Load different types of games
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        cachedUnifiedApiClient.getLiveGames(sport),
-        cachedUnifiedApiClient.getGames(sport, { ...params, limit: 20 }),
-        cachedUnifiedApiClient.getGames(sport, {
-          date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          status: 'finished',
-          limit: 10
-        })
+        apiClient.getGames({ sport, status: 'live' }),
+        apiClient.getGames({ sport, status: 'scheduled', dateFrom: params.date, limit: 20 }),
+        apiClient.getGames({ sport, status: 'finished', dateTo: params.date, limit: 10 })
       ])
 
       const allGames = [...liveGames, ...scheduledGames, ...finishedGames]
@@ -97,9 +83,9 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     // Search filter
     if (searchTerm) {
       filtered = filtered.filter(game =>
-        game.homeTeam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        game.awayTeam.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        game.league.toLowerCase().includes(searchTerm.toLowerCase())
+        game.home_team?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        game.away_team?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        game.league?.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
@@ -304,7 +290,7 @@ function GameCard({ game, sport }: GameCardProps) {
     return (
       <Badge variant="outline">
         <Clock className="h-3 w-3 mr-1" />
-        {game.time ? game.time : 'TBD'}
+        {game.game_time ? game.game_time : 'TBD'}
       </Badge>
     )
   }
@@ -325,18 +311,18 @@ function GameCard({ game, sport }: GameCardProps) {
           {/* Teams and Score */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">{game.homeTeam}</span>
-              <span className="font-bold">{game.homeScore ?? '-'}</span>
+              <span className="font-medium text-sm">{game.home_team?.name}</span>
+              <span className="font-bold">{game.home_score ?? '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">{game.awayTeam}</span>
-              <span className="font-bold">{game.awayScore ?? '-'}</span>
+              <span className="font-medium text-sm">{game.away_team?.name}</span>
+              <span className="font-bold">{game.away_score ?? '-'}</span>
             </div>
           </div>
 
           {/* Date and Venue */}
           <div className="text-xs text-muted-foreground space-y-1">
-            <div>{new Date(game.date).toLocaleDateString()}</div>
+            <div>{new Date(game.game_date).toLocaleDateString()}</div>
             {game.venue && <div>{game.venue}</div>}
           </div>
         </div>

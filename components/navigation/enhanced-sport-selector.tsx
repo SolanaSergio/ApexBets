@@ -42,7 +42,7 @@ export function EnhancedSportSelector({ selectedSport, onSportChange, className 
   const loadSportData = async () => {
     try {
       setLoading(true)
-      const sports = unifiedApiClient.getSupportedSports()
+      const sports = await unifiedApiClient.getSupportedSports()
       const health = await unifiedApiClient.getHealthStatus()
       
       setSupportedSports(sports)
@@ -167,7 +167,7 @@ export function EnhancedSportSelectorCompact({ selectedSport, onSportChange, cla
   const loadSportData = async () => {
     try {
       setLoading(true)
-      const sports = unifiedApiClient.getSupportedSports()
+      const sports = await unifiedApiClient.getSupportedSports()
       const health = await unifiedApiClient.getHealthStatus()
       
       setSupportedSports(sports)
@@ -234,7 +234,7 @@ export function EnhancedLeagueSelector({ sport, selectedLeague, onLeagueChange, 
   const loadLeagues = async () => {
     try {
       setLoading(true)
-      const sportLeagues = SportConfigManager.getLeaguesForSport(sport)
+      const sportLeagues = await SportConfigManager.getLeaguesForSport(sport)
       setLeagues(sportLeagues)
     } catch (error) {
       console.error('Error loading leagues:', error)

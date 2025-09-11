@@ -11,8 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { TrendingUp, TrendingDown, BarChart3, Target, Calendar, DollarSign, Activity, ArrowUp, ArrowDown, RefreshCw } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { format } from "date-fns"
-import { dynamicTrendsService, type TrendData, type MarketMovement, type SharpAction } from "@/lib/services/trends/dynamic-trends-service"
-import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface MarketMetrics {
   totalVolume: number
@@ -26,11 +25,38 @@ interface MarketMetrics {
   loading: boolean
 }
 
+interface TrendData {
+  trend: string
+  category: string
+  confidence: number
+  impact: string
+  timeframe: string
+}
+
+interface SharpAction {
+  game: string
+  betType: string
+  bet?: string
+  movement: string
+  edge?: string
+  confidence: number
+  timeframe: string
+}
+
+interface MarketMovement {
+  game: string
+  market: string
+  movement: string
+  reason?: string
+  percentage: number
+  timeframe: string
+}
+
 export default function TrendsPage() {
   const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
-  const [trends, setTrends] = useState<TrendData[]>([])
-  const [marketMovements, setMarketMovements] = useState<MarketMovement[]>([])
-  const [sharpActions, setSharpActions] = useState<SharpAction[]>([])
+  const [trends, setTrends] = useState<any[]>([])
+  const [marketMovements, setMarketMovements] = useState<any[]>([])
+  const [sharpActions, setSharpActions] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [metrics, setMetrics] = useState<MarketMetrics>({
     totalVolume: 0,
@@ -61,12 +87,16 @@ export default function TrendsPage() {
     
     try {
       setLoading(true)
-      const [trendsData, movementsData, sharpData] = await Promise.all([
-        dynamicTrendsService.getTrends(selectedSport, 10),
-        dynamicTrendsService.getMarketMovements(selectedSport, 10),
-        dynamicTrendsService.getSharpAction(selectedSport, 10)
+      const [trendsRes, movementsRes, sharpActionsRes] = await Promise.all([
+        fetch(`/api/trends?sport=${selectedSport}`),
+        fetch(`/api/trends/movements?sport=${selectedSport}`),
+        fetch(`/api/trends/sharp-action?sport=${selectedSport}`),
       ])
-      
+
+      const trendsData = await trendsRes.json()
+      const movementsData = await movementsRes.json()
+      const sharpData = await sharpActionsRes.json()
+
       setTrends(trendsData)
       setMarketMovements(movementsData)
       setSharpActions(sharpData)
@@ -163,11 +193,14 @@ export default function TrendsPage() {
                 className="px-4 py-2 border rounded-lg bg-background"
               >
                 <option value="">Select a Sport</option>
-                {serviceFactory.getSupportedSports().map(sport => (
-                  <option key={sport} value={sport}>
-                    {sport.charAt(0).toUpperCase() + sport.slice(1)}
-                  </option>
-                ))}
+                {SportConfigManager.getSupportedSports().map(sport => {
+                  const config = SportConfigManager.getSportConfig(sport)
+                  return (
+                    <option key={sport} value={sport}>
+                      {config?.name || sport}
+                    </option>
+                  )
+                })}
               </select>
             </div>
           </div>
@@ -208,11 +241,14 @@ export default function TrendsPage() {
               onChange={(e) => setSelectedSport(e.target.value as SupportedSport)}
               className="px-4 py-2 border rounded-lg bg-background"
             >
-              {serviceFactory.getSupportedSports().map(sport => (
-                <option key={sport} value={sport}>
-                  {sport.charAt(0).toUpperCase() + sport.slice(1)}
-                </option>
-              ))}
+              {SportConfigManager.getSupportedSports().map(sport => {
+                  const config = SportConfigManager.getSportConfig(sport)
+                  return (
+                    <option key={sport} value={sport}>
+                      {config?.name || sport}
+                    </option>
+                  )
+              })}
             </select>
           </div>
         </div>
@@ -341,7 +377,7 @@ function OverviewSection() {
       setLoading(true)
       // Fetch real analytics trend data for each sport
       // Get supported sports dynamically
-      const supportedSports = serviceFactory.getSupportedSports()
+      const supportedSports = SportConfigManager.getSupportedSports()
       const sports = supportedSports.slice(0, 4) // Limit to first 4 sports
       const sportData = await Promise.all(
         sports.map(async (sport) => {
@@ -524,11 +560,11 @@ function BettingTrendsSection({ trends }: { trends: TrendData[] }) {
 function ValueBetsSection({ sharpActions }: { sharpActions: SharpAction[] }) {
   const valueBets = sharpActions.slice(0, 3).map(action => ({
     game: action.game,
-    bet: action.bet,
+    bet: action.betType || action.bet,
     odds: `+${120}`, // Real odds data
     value: Math.round(action.confidence * 10) / 10, // Use confidence as value
     confidence: action.confidence,
-    edge: action.edge
+    edge: action.movement || action.edge
   }))
 
   return (
@@ -591,8 +627,8 @@ function MovementsSection({ marketMovements }: { marketMovements: MarketMovement
     game: movement.game,
     movement: movement.movement,
     time: "Recently",
-    reason: movement.reason,
-    impact: movement.reason.includes('Sharp') ? "high" : movement.reason.includes('Weather') ? "medium" : "high"
+    reason: movement.reason || movement.movement,
+    impact: (movement.reason || movement.movement).includes('Sharp') ? "high" : (movement.reason || movement.movement).includes('Weather') ? "medium" : "high"
   }))
 
   return (

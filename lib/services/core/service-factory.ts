@@ -1,19 +1,12 @@
 /**
  * SERVICE FACTORY
- * Manages service instantiation and provides a unified interface
+ * Dynamic service instantiation and unified interface
  */
 
-import { BasketballService } from '../sports/basketball/basketball-service'
-import { FootballService } from '../sports/football/football-service'
-import { BaseballService } from '../sports/baseball/baseball-service'
-import { HockeyService } from '../sports/hockey/hockey-service'
-import { SoccerService } from '../sports/soccer/soccer-service'
-import { TennisService } from '../tennis/tennis-service'
-import { GolfService } from '../golf/golf-service'
 import { SportSpecificService } from './sport-specific-service'
 import { SportConfigManager } from './sport-config'
 
-export type SupportedSport = 'basketball' | 'football' | 'baseball' | 'hockey' | 'soccer' | 'tennis' | 'golf'
+export type SupportedSport = string
 
 export interface ServiceFactoryConfig {
   defaultLeague?: string
@@ -24,10 +17,10 @@ export interface ServiceFactoryConfig {
 export class ServiceFactory {
   private services: Map<string, SportSpecificService> = new Map()
   private config: ServiceFactoryConfig
+  private serviceRegistry: Map<string, new (league: string) => SportSpecificService> = new Map()
 
   constructor(config: ServiceFactoryConfig = {}) {
     this.config = {
-      defaultLeague: 'NBA',
       enableCaching: true,
       enableRateLimiting: true,
       ...config
@@ -35,13 +28,21 @@ export class ServiceFactory {
   }
 
   /**
+   * Register a service class for a sport
+   */
+  registerService(sport: string, serviceClass: new (league: string) => SportSpecificService): void {
+    this.serviceRegistry.set(sport, serviceClass)
+  }
+
+  /**
    * Get a sport-specific service
    */
-  getService(sport: SupportedSport, league?: string): SportSpecificService {
-    const key = `${sport}:${league || this.getDefaultLeague(sport)}`
+  async getService(sport: SupportedSport, league?: string): Promise<SportSpecificService> {
+    const actualLeague = league || await this.getDefaultLeague(sport)
+    const key = `${sport}:${actualLeague}`
     
     if (!this.services.has(key)) {
-      const service = this.createService(sport, league)
+      const service = await this.createService(sport, actualLeague)
       this.services.set(key, service)
     }
 
@@ -51,29 +52,36 @@ export class ServiceFactory {
   /**
    * Get all supported sports
    */
-  getSupportedSports(): SupportedSport[] {
-    return SportConfigManager.getAllSports() as SupportedSport[]
+  async getSupportedSports(): Promise<SupportedSport[]> {
+    return await SportConfigManager.getAllSports()
+  }
+
+  /**
+   * Get all supported sports synchronously (for React components)
+   */
+  getSupportedSportsSync(): SupportedSport[] {
+    return SportConfigManager.getAllSportsSync()
   }
 
   /**
    * Get leagues for a specific sport
    */
-  getLeaguesForSport(sport: SupportedSport): string[] {
-    return SportConfigManager.getLeaguesForSport(sport)
+  async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
+    return await SportConfigManager.getLeaguesForSport(sport)
   }
 
   /**
    * Get default league for a sport
    */
-  getDefaultLeague(sport: SupportedSport): string {
-    return SportConfigManager.getDefaultLeague(sport)
+  async getDefaultLeague(sport: SupportedSport): Promise<string> {
+    return await SportConfigManager.getDefaultLeague(sport)
   }
 
   /**
    * Check if a sport is supported
    */
-  isSportSupported(sport: string): sport is SupportedSport {
-    return SportConfigManager.isSportSupported(sport)
+  async isSportSupported(sport: string): Promise<boolean> {
+    return await SportConfigManager.isSportSupported(sport)
   }
 
   /**
@@ -135,36 +143,23 @@ export class ServiceFactory {
   /**
    * Create a new service instance
    */
-  private createService(sport: SupportedSport, league?: string): SportSpecificService {
-    const actualLeague = league || this.getDefaultLeague(sport)
-
-    switch (sport) {
-      case 'basketball':
-        return new BasketballService(actualLeague)
-      case 'football':
-        return new FootballService(actualLeague)
-      case 'baseball':
-        return new BaseballService(actualLeague)
-      case 'hockey':
-        return new HockeyService(actualLeague)
-      case 'soccer':
-        return new SoccerService(actualLeague)
-      case 'tennis':
-        return new TennisService(actualLeague)
-      case 'golf':
-        return new GolfService(actualLeague)
-      default:
-        throw new Error(`Unsupported sport: ${sport}`)
+  private async createService(sport: SupportedSport, league: string): Promise<SportSpecificService> {
+    const ServiceClass = this.serviceRegistry.get(sport)
+    
+    if (!ServiceClass) {
+      throw new Error(`No service registered for sport: ${sport}`)
     }
+
+    return new ServiceClass(league)
   }
 
   /**
    * Warm up services by pre-loading common data
    */
-  async warmupServices(sports: SupportedSport[] = ['basketball', 'football']): Promise<void> {
+  async warmupServices(sports: SupportedSport[] = []): Promise<void> {
     const warmupPromises = sports.map(async (sport) => {
       try {
-        const service = this.getService(sport)
+        const service = await this.getService(sport)
         await service.getTeams({ limit: 5 })
         await service.getGames({ limit: 5 })
       } catch (error) {

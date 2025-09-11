@@ -78,7 +78,16 @@ export class SportTeamStatsService extends BaseService {
     }
     super(config)
     this.sport = sport
-    this.league = league || serviceFactory.getDefaultLeague(sport)
+    this.league = league || ''
+  }
+
+  /**
+   * Initialize the service with the default league
+   */
+  async initialize(): Promise<void> {
+    if (!this.league) {
+      this.league = await serviceFactory.getDefaultLeague(this.sport)
+    }
   }
 
   /**
@@ -135,7 +144,7 @@ export class SportTeamStatsService extends BaseService {
     
     return this.getCachedOrFetch(key, async () => {
       try {
-        const service = serviceFactory.getService(this.sport, this.league)
+        const service = await serviceFactory.getService(this.sport, this.league)
         const team = await service.getTeamById(teamId)
         
         if (!team) {
@@ -163,7 +172,7 @@ export class SportTeamStatsService extends BaseService {
           homeRecord,
           awayRecord,
           streak,
-          last10Games: recentGames.slice(0, 10).map(game => this.mapGameToTeamStats(game, teamId)),
+          last10Games: recentGames.slice(0, 10).map((game: any) => this.mapGameToTeamStats(game, teamId)),
           seasonHighlights
         }
       } catch (error) {
@@ -307,7 +316,7 @@ export class SportTeamStatsService extends BaseService {
    */
   private async fetchTeamStats(teamId: string, season?: string): Promise<TeamStats | null> {
     try {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       const team = await service.getTeamById(teamId)
       
       if (!team) {
@@ -372,7 +381,7 @@ export class SportTeamStatsService extends BaseService {
       }
 
       // Add sport-specific statistics from real game data
-      this.addSportSpecificStats(rawStats, game, teamId, isHomeTeam)
+      await this.addSportSpecificStats(rawStats, game, teamId, isHomeTeam)
     })
 
     return {
@@ -387,34 +396,32 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Add sport-specific statistics from real game data
    */
-  private addSportSpecificStats(rawStats: Record<string, number>, game: any, teamId: string, isHomeTeam: boolean): void {
-    switch (this.sport) {
-      case 'basketball':
-        const points = isHomeTeam ? game.homeScore : game.awayScore
-        rawStats.pointsFor = (rawStats.pointsFor || 0) + points
-        rawStats.pointsAgainst = (rawStats.pointsAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
-        break
-      case 'football':
-        // Only add real data if available in game object
-        if (game.touchdowns !== undefined) {
-          rawStats.touchdowns = (rawStats.touchdowns || 0) + game.touchdowns
-        }
-        break
-      case 'baseball':
-        const runs = isHomeTeam ? game.homeScore : game.awayScore
-        rawStats.runsFor = (rawStats.runsFor || 0) + runs
-        rawStats.runsAgainst = (rawStats.runsAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
-        break
-      case 'hockey':
-        const goals = isHomeTeam ? game.homeScore : game.awayScore
-        rawStats.goalsFor = (rawStats.goalsFor || 0) + goals
-        rawStats.goalsAgainst = (rawStats.goalsAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
-        break
-      case 'soccer':
-        const goalsScored = isHomeTeam ? game.homeScore : game.awayScore
-        rawStats.goalsFor = (rawStats.goalsFor || 0) + goalsScored
-        rawStats.goalsAgainst = (rawStats.goalsAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
-        break
+  private async addSportSpecificStats(rawStats: Record<string, number>, game: any, teamId: string, isHomeTeam: boolean): Promise<void> {
+    try {
+      // Get sport configuration to determine scoring field names
+      const sportConfig = await SportConfigManager.getSportConfig(this.sport)
+      
+      if (sportConfig?.scoringFields) {
+        // Use configured scoring fields
+        const scoreField = sportConfig.scoringFields.primary || 'score'
+        const scoreForField = sportConfig.scoringFields.for || `${scoreField}For`
+        const scoreAgainstField = sportConfig.scoringFields.against || `${scoreField}Against`
+        
+        const score = isHomeTeam ? game.homeScore : game.awayScore
+        rawStats[scoreForField] = (rawStats[scoreForField] || 0) + score
+        rawStats[scoreAgainstField] = (rawStats[scoreAgainstField] || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
+      } else {
+        // Fallback to generic scoring
+        const score = isHomeTeam ? game.homeScore : game.awayScore
+        rawStats.scoreFor = (rawStats.scoreFor || 0) + score
+        rawStats.scoreAgainst = (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
+      }
+    } catch (error) {
+      console.warn(`Failed to get sport config for ${this.sport}:`, error)
+      // Fallback to generic scoring
+      const score = isHomeTeam ? game.homeScore : game.awayScore
+      rawStats.scoreFor = (rawStats.scoreFor || 0) + score
+      rawStats.scoreAgainst = (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
     }
   }
 

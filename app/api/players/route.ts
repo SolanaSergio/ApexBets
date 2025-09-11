@@ -1,60 +1,25 @@
-import { NextRequest, NextResponse } from "next/server"
-import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { NextResponse } from 'next/server'
+import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
+import { SupportedSport } from '@/lib/services/core/service-factory'
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const sport = searchParams.get('sport') as SupportedSport
+  const teamId = searchParams.get('teamId')
+  const limit = searchParams.get('limit')
+
+  if (!sport) {
+    return NextResponse.json({ error: 'Sport is required' }, { status: 400 })
+  }
+
   try {
-    const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
-    
-    if (!sport) {
-      return NextResponse.json({
-        success: false,
-        error: "Sport parameter is required"
-      }, { status: 400 })
-    }
-    const league = searchParams.get("league") || "NBA"
-    const team = searchParams.get("team") || ""
-    const search = searchParams.get("search") || ""
-    const limit = parseInt(searchParams.get("limit") || "50")
-
-    // Validate sport
-    if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
-      return NextResponse.json(
-        { error: `Unsupported sport: ${sport}` },
-        { status: 400 }
-      )
-    }
-
-    // Get the appropriate service for the sport
-    const service = serviceFactory.getService(sport as SupportedSport, league)
-    
-    // Get players using the service
-    const players = await service.getPlayers({
-      teamId: team || undefined,
-      search: search || undefined
+    const players = await cachedUnifiedApiClient.getPlayers(sport, {
+      teamId: teamId || undefined,
+      limit: limit ? parseInt(limit) : 100,
     })
-
-    // Apply limit
-    const limitedPlayers = players.slice(0, limit)
-
-    // Return the players data from the service
-    return NextResponse.json({
-      success: true,
-      data: limitedPlayers,
-      meta: {
-        total: players.length,
-        returned: limitedPlayers.length,
-        limit,
-        sport,
-        league,
-        team: team || null,
-        search: search || null
-      },
-      timestamp: new Date().toISOString()
-    })
-
+    return NextResponse.json(players)
   } catch (error) {
-    console.error("Players API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error(`Error fetching players for ${sport}:`, error)
+    return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
   }
 }

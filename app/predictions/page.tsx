@@ -686,7 +686,7 @@ function QuickStatsSection() {
       // Fetch analytics data for all sports
       const supportedSports = serviceFactory.getSupportedSports()
       const allStats = await Promise.all(
-        supportedSports.map(async (sport) => {
+        (await supportedSports).map(async (sport) => {
           try {
             const response = await fetch(`/api/analytics/stats?sport=${sport}`)
             const data = await response.json()
@@ -699,8 +699,8 @@ function QuickStatsSection() {
       )
       
       // Aggregate stats across all sports
-      const totalPredictions = allStats.reduce((sum, stats) => sum + (stats.total_predictions || 0), 0)
-      const totalAccuracy = allStats.reduce((sum, stats) => sum + (stats.accuracy_rate || 0), 0)
+      const totalPredictions = allStats.reduce((sum: number, stats: any) => sum + (stats.total_predictions || 0), 0)
+      const totalAccuracy = allStats.reduce((sum: number, stats: any) => sum + (stats.accuracy_rate || 0), 0)
       const avgAccuracy = allStats.length > 0 ? totalAccuracy / allStats.length : 0
       
       setStats({

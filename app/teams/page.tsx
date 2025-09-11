@@ -14,8 +14,7 @@ import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Team } from "@/lib/api-client"
 import TeamsList from "@/components/categories/sports/teams-list"
 import StandingsTable from "@/components/categories/sports/standings-table"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 export default function TeamsPage() {
   const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
@@ -26,7 +25,7 @@ export default function TeamsPage() {
   }, [])
 
   const loadSupportedSports = () => {
-    const sports = serviceFactory.getSupportedSports()
+    const sports = SportConfigManager.getSupportedSports()
     setSupportedSports(sports)
     // Don't set default sport - let user choose
   }
@@ -211,36 +210,13 @@ function TeamsOverviewSection({ selectedSport }: { selectedSport: SupportedSport
     
     try {
       setLoading(true)
-      // Use external APIs for better team data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const teamsData = await cachedUnifiedApiClient.getTeams(selectedSport as any, { limit: 100 })
-      
-      // Transform to match expected format
-      const transformedTeams = teamsData.map(team => ({
-        id: team.id,
-        name: team.name,
-        city: team.city || 'Unknown',
-        league: team.league || 'Unknown',
-        sport: selectedSport,
-        abbreviation: team.abbreviation || team.name?.split(' ').pop() || 'T',
-        logo_url: team.logoUrl || undefined,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
-      
-      setTeams(transformedTeams)
+      const teamsData = await apiClient.getTeams({
+        sport: selectedSport
+      })
+      setTeams(teamsData)
     } catch (error) {
       console.error("Error fetching teams:", error)
-      // Fallback to API client
-      try {
-        const teamsData = await apiClient.getTeams({
-          sport: selectedSport
-        })
-        setTeams(teamsData)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setTeams([])
-      }
+      setTeams([])
     } finally {
       setLoading(false)
     }
@@ -334,24 +310,16 @@ function StandingsSection({ selectedSport }: { selectedSport: SupportedSport }) 
   }, [selectedSport])
 
   async function fetchStandings() {
+    if (!selectedSport) return
     try {
       setLoading(true)
-      // Use external APIs for better standings data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const standingsData = await cachedUnifiedApiClient.getStandings(selectedSport as any)
+      const standingsData = await apiClient.getStandings({
+        sport: selectedSport
+      })
       setStandings(standingsData)
     } catch (error) {
       console.error("Error fetching standings:", error)
-      // Fallback to API client
-      try {
-        const standingsData = await apiClient.getStandings({
-          sport: selectedSport
-        })
-        setStandings(standingsData)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setStandings([])
-      }
+      setStandings([])
     } finally {
       setLoading(false)
     }
@@ -448,55 +416,16 @@ function StatsSection({ selectedSport }: { selectedSport: SupportedSport }) {
   }, [selectedSport])
 
   async function fetchTeamStats() {
+    if (!selectedSport) return
     try {
       setLoading(true)
-      // Use external APIs for better team stats data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const teams = await cachedUnifiedApiClient.getTeams(selectedSport as any, { limit: 20 })
-      
-      // Transform teams data into stats format using real data
-      const statsData = teams.map((team, index) => ({
-        teamId: team.id,
-        teamName: team.name,
-        teamAbbreviation: team.abbreviation || team.name?.split(' ').pop() || 'T',
-        sport: selectedSport,
-        league: team.league || 'Unknown',
-        gamesPlayed: (team as any).games_played || 0,
-        stats: [
-          {
-            category: 'Wins',
-            value: (team as any).wins || 0,
-            rank: (team as any).wins_rank || 0,
-            trend: (team as any).wins_trend || 'stable'
-          },
-          {
-            category: 'Losses',
-            value: (team as any).losses || 0,
-            rank: (team as any).losses_rank || 0,
-            trend: (team as any).losses_trend || 'stable'
-          },
-          {
-            category: 'Win Rate',
-            value: (team as any).win_rate || '0.000',
-            rank: (team as any).win_rate_rank || 0,
-            trend: (team as any).win_rate_trend || 'stable'
-          }
-        ]
-      }))
-      
+      const statsData = await apiClient.getTeamStats({
+        sport: selectedSport
+      })
       setTeamStats(statsData)
     } catch (error) {
       console.error("Error fetching team stats:", error)
-      // Fallback to API client
-      try {
-        const statsData = await apiClient.getTeamStats({
-          sport: selectedSport
-        })
-        setTeamStats(statsData)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setTeamStats([])
-      }
+      setTeamStats([])
     } finally {
       setLoading(false)
     }

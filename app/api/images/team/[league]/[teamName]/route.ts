@@ -11,32 +11,43 @@ interface LeagueStyles {
   pattern: 'solid' | 'striped' | '_gradient' | 'stars'
 }
 
-const LEAGUE_STYLES: Record<string, LeagueStyles> = {
-  // Basketball
-  NBA: { primaryColor: '#DC143C', secondaryColor: '#1E3A8A', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' },
-  WNBA: { primaryColor: '#C8102E', secondaryColor: '#FFB612', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' },
-  NBL: { primaryColor: '#E03A3E', secondaryColor: '#1F2937', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' },
-
-  // Football/American
-  NFL: { primaryColor: '#013369', secondaryColor: '#D50A0A', backgroundColor: '#FFFFFF', shape: 'shield', pattern: 'striped' },
-  CFL: { primaryColor: '#CFC493', secondaryColor: '#0066CC', backgroundColor: '#000000', shape: 'shield', pattern: 'striped' },
-
-  // Baseball
-  MLB: { primaryColor: '#041E42', secondaryColor: '#DC143C', backgroundColor: '#FFFFFF', shape: 'hexagon', pattern: 'solid' },
-
-  // Hockey
-  NHL: { primaryColor: '#FC5C21', secondaryColor: '#1E3A8A', backgroundColor: '#FFFFFF', shape: 'hexagon', pattern: 'solid' },
-
-  // Soccer
-  'Premier League': { primaryColor: '#DA2248', secondaryColor: '#1E3A8A', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' },
-  'La Liga': { primaryColor: '#FFBF00', secondaryColor: '#DC143C', backgroundColor: '#FFFFFF', shape: 'shield', pattern: 'solid' },
-  'Serie A': { primaryColor: '#008C45', secondaryColor: '#FFFFFF', backgroundColor: '#008C45', shape: 'circle', pattern: 'solid' },
-  Bundesliga: { primaryColor: '#1E3A8A', secondaryColor: '#FFFFFF', backgroundColor: '#1E3A8A', shape: 'circle', pattern: 'solid' },
-  'Ligue 1': { primaryColor: '#013220', secondaryColor: '#00AEEF', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' },
-  MLS: { primaryColor: '#0057A0', secondaryColor: '#FFFFFF', backgroundColor: '#0057A0', shape: 'circle', pattern: 'solid' },
-
-  // Default fallback
-  default: { primaryColor: '#1E3A8A', secondaryColor: '#DC143C', backgroundColor: '#FFFFFF', shape: 'circle', pattern: 'solid' }
+// Dynamic league styles loaded from database
+async function getLeagueStyles(league: string): Promise<LeagueStyles> {
+  try {
+    // Try to get league styles from database first
+    const { createClient } = await import('@/lib/supabase/server')
+    const supabase = await createClient()
+    
+    if (supabase) {
+      const { data } = await supabase
+        .from('teams')
+        .select('primary_color, secondary_color, sport')
+        .eq('league', league)
+        .limit(1)
+        .single()
+      
+      if (data?.primary_color && data?.secondary_color) {
+        return {
+          primaryColor: data.primary_color,
+          secondaryColor: data.secondary_color,
+          backgroundColor: '#FFFFFF',
+          shape: data.sport === 'football' ? 'shield' : 'circle',
+          pattern: 'solid'
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('Error fetching league styles from database:', error)
+  }
+  
+  // Fallback to default styles
+  return {
+    primaryColor: '#1E3A8A',
+    secondaryColor: '#DC143C',
+    backgroundColor: '#FFFFFF',
+    shape: 'circle',
+    pattern: 'solid'
+  }
 }
 
 function getTeamInitials(teamName: string): string {
@@ -58,8 +69,8 @@ function getTeamColor(teamName: string): string {
   return `hsl(${hue}, 70%, 45%)`
 }
 
-function generateSVG(league: string, teamName: string): string {
-  const style = LEAGUE_STYLES[league] || LEAGUE_STYLES.default
+async function generateSVG(league: string, teamName: string): Promise<string> {
+  const style = await getLeagueStyles(league)
   const initials = getTeamInitials(teamName)
   const uniqueColor = getTeamColor(teamName)
 
@@ -191,7 +202,7 @@ export async function GET(
     const decodedTeamName = decodeURIComponent(teamName).replace('.png', '')
     const decodedLeague = decodeURIComponent(league)
 
-    const svgContent = generateSVG(decodedLeague, decodedTeamName)
+    const svgContent = await generateSVG(decodedLeague, decodedTeamName)
 
     // Return as PNG-compatible SVG response
     return new NextResponse(svgContent, {

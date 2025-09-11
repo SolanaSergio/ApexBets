@@ -29,7 +29,7 @@ interface SportSelectorProps {
 
 export function SportSelector({ selectedSport, onSportChange, className = "" }: SportSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const supportedSports = unifiedApiClient.getSupportedSports()
+  const supportedSports = unifiedApiClient.getSupportedSportsSync()
   
   const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
 
@@ -115,7 +115,7 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
 
 // Compact version for mobile
 export function SportSelectorCompact({ selectedSport, onSportChange, className = "" }: SportSelectorProps) {
-  const supportedSports = unifiedApiClient.getSupportedSports()
+  const supportedSports = unifiedApiClient.getSupportedSportsSync()
   const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
 
   return (

@@ -57,7 +57,16 @@ export class SportPlayerStatsService extends BaseService {
     }
     super(config)
     this.sport = sport
-    this.league = league || serviceFactory.getDefaultLeague(sport)
+    this.league = league || ''
+  }
+
+  /**
+   * Initialize the service with the default league
+   */
+  async initialize(): Promise<void> {
+    if (!this.league) {
+      this.league = await serviceFactory.getDefaultLeague(this.sport)
+    }
   }
 
   /**
@@ -209,7 +218,7 @@ export class SportPlayerStatsService extends BaseService {
       }
 
       // Get the appropriate table based on sport
-      const tableName = this.getStatsTableName()
+      const tableName = await this.getStatsTableName()
       
       let query = supabase
         .from(tableName)
@@ -292,25 +301,28 @@ export class SportPlayerStatsService extends BaseService {
   /**
    * Get the appropriate stats table name for the sport
    */
-  private getStatsTableName(): string {
-    switch (this.sport) {
-      case 'basketball':
-        return 'player_stats'
-      case 'football':
-        return 'football_player_stats'
-      case 'baseball':
-        return 'baseball_player_stats'
-      case 'hockey':
-        return 'hockey_player_stats'
-      case 'soccer':
-        return 'soccer_player_stats'
-      case 'tennis':
-        return 'tennis_match_stats'
-      case 'golf':
-        return 'golf_tournament_stats'
-      default:
-        return 'player_stats'
+  private async getStatsTableName(): Promise<string> {
+    try {
+      // Get table name from database configuration
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, player_stats_table')
+        .eq('name', this.sport)
+        .eq('is_active', true)
+        .single()
+      
+      if (response && !response.error && response.data?.player_stats_table) {
+        return response.data.player_stats_table
+      }
+    } catch (error) {
+      console.warn(`Failed to get player stats table for ${this.sport}:`, error)
     }
+    
+    // Fallback to generic table name
+    return 'player_stats'
   }
 
   /**
@@ -318,7 +330,7 @@ export class SportPlayerStatsService extends BaseService {
    */
   private async fetchPlayerStats(playerId: string, season?: string): Promise<PlayerStats | null> {
     try {
-      const service = serviceFactory.getService(this.sport, this.league)
+      const service = await serviceFactory.getService(this.sport, this.league)
       const player = await service.getPlayerById(playerId)
       
       if (!player) {
@@ -355,11 +367,11 @@ export class SportPlayerStatsService extends BaseService {
    * Get sport-specific statistics
    */
   private async getSportSpecificStats(playerId: string, season?: string): Promise<any> {
-    const sportConfig = SportConfigManager.getSportConfig(this.sport)
+    const sportConfig = await SportConfigManager.getSportConfig(this.sport)
     
     switch (sportConfig?.dataSource) {
       case 'balldontlie':
-        return await this.getBasketballStats(playerId, season)
+        return await this.getBalldontlieStats(playerId, season)
       case 'sportsdb':
         return await this.getSportsDBStats(playerId, season)
       default:
@@ -368,9 +380,9 @@ export class SportPlayerStatsService extends BaseService {
   }
 
   /**
-   * Get basketball statistics from BallDontLie
+   * Get statistics from BallDontLie API
    */
-  private async getBasketballStats(playerId: string, season?: string): Promise<any> {
+  private async getBalldontlieStats(playerId: string, season?: string): Promise<any> {
     try {
       const { ballDontLieClient } = await import('../../sports-apis')
       

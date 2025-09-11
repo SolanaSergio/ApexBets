@@ -13,16 +13,20 @@ import { Badge } from "@/components/ui/badge"
 import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client"
 
 export default function PlayersPage() {
-  const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | null>(null)
+  const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | UnifiedPlayerData | null>(null)
   const [selectedSport, setSelectedSport] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<string[]>([])
 
   useEffect(() => {
     // Load supported sports dynamically from service factory
-    const sports = serviceFactory.getSupportedSports()
-    setSupportedSports(sports)
+    const loadSports = async () => {
+      const sports = await serviceFactory.getSupportedSports()
+      setSupportedSports(sports)
+    }
+    loadSports()
     // Don't set default sport - let user choose
   }, [])
 
@@ -102,7 +106,7 @@ export default function PlayersPage() {
 
             <TabsContent value="trends" className="space-y-6">
               <PlayerTrends 
-                playerName={selectedPlayer?.first_name + ' ' + selectedPlayer?.last_name || ''}
+                playerName={selectedPlayer ? ('first_name' in selectedPlayer ? `${selectedPlayer.first_name} ${selectedPlayer.last_name}` : selectedPlayer.name) : ''}
                 timeRange="30d"
                 sport={selectedSport}
                 league=""
@@ -110,7 +114,7 @@ export default function PlayersPage() {
             </TabsContent>
 
             <TabsContent value="comparison" className="space-y-6">
-              <PlayerComparison selectedPlayer={selectedPlayer} />
+              <PlayerComparison selectedPlayer={selectedPlayer as BallDontLiePlayer | null} />
             </TabsContent>
 
             <TabsContent value="predictions" className="space-y-6">

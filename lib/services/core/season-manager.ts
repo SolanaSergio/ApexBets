@@ -15,50 +15,78 @@ export class SeasonManager {
   /**
    * Get current season for a specific sport
    */
-  static getCurrentSeason(sport: string): string {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
-    
-    // Sport-specific season logic
-    switch (sport.toLowerCase()) {
-      case 'basketball':
-      case 'football':
-      case 'hockey':
-        // These sports typically start in fall (August/September)
-        return month >= 8 ? `${year}-${(year + 1).toString().slice(-2)}` : `${year - 1}-${year.toString().slice(-2)}`
+  static async getCurrentSeason(sport: string): Promise<string> {
+    try {
+      // Get season configuration from database
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
       
-      case 'baseball':
-      case 'soccer':
-        // These sports typically follow calendar year
-        return year.toString()
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_start_month, season_format')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
       
-      case 'tennis':
-      case 'golf':
-        // These sports follow calendar year
-        return year.toString()
-      
-      default:
-        return year.toString()
+      if (response && !response.error && response.data) {
+        const seasonConfig = response.data
+        const now = new Date()
+        const year = now.getFullYear()
+        const month = now.getMonth() + 1
+        
+        if (seasonConfig.season_format === 'year-year') {
+          // For sports with year-year format (basketball, football, hockey)
+          return month >= (seasonConfig.season_start_month || 8) ? 
+            `${year}-${(year + 1).toString().slice(-2)}` : 
+            `${year - 1}-${year.toString().slice(-2)}`
+        } else {
+          // For sports with single year format (baseball, soccer)
+          return year.toString()
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to get season configuration for ${sport}:`, error)
     }
+    
+    // Fallback to current year
+    return new Date().getFullYear().toString()
   }
   
   /**
    * Get available seasons for a specific sport
    */
-  static getAvailableSeasons(sport: string, yearsBack: number = 3): string[] {
-    const current = this.getCurrentSeason(sport)
+  static async getAvailableSeasons(sport: string, yearsBack: number = 3): Promise<string[]> {
+    const current = await this.getCurrentSeason(sport)
     const seasons = [current]
     
     const currentYear = new Date().getFullYear()
     
-    for (let i = 1; i <= yearsBack; i++) {
-      if (sport.toLowerCase() === 'basketball' || 
-          sport.toLowerCase() === 'football' || 
-          sport.toLowerCase() === 'hockey') {
+    try {
+      // Get season format from database
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      const response = await supabase
+        ?.from('sports')
+        .select('name, season_format')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .single()
+      
+      const seasonFormat = response?.data?.season_format || 'year'
+      
+      for (let i = 1; i <= yearsBack; i++) {
+        if (seasonFormat === 'year-year') {
+          seasons.push(`${currentYear - i}-${(currentYear - i + 1).toString().slice(-2)}`)
+        } else {
+          seasons.push((currentYear - i).toString())
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to get season format for ${sport}:`, error)
+      // Fallback to year-year format
+      for (let i = 1; i <= yearsBack; i++) {
         seasons.push(`${currentYear - i}-${(currentYear - i + 1).toString().slice(-2)}`)
-      } else {
-        seasons.push((currentYear - i).toString())
       }
     }
     

@@ -1,28 +1,26 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getDataValidationService } from "@/lib/services/data-validation-service"
+import { dataValidationService } from "@/lib/services/data-validation-service";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const component = searchParams.get("component")
-    const detailed = searchParams.get("detailed") === "true"
+    const { searchParams } = new URL(request.url);
+    const component = searchParams.get("component");
+    const detailed = searchParams.get("detailed") === "true";
 
     if (component) {
       // Validate specific component
-      const service = getDataValidationService()
-      const result = await service.validateComponentDataAccess(component)
+      const result = await dataValidationService.validateComponentDataAccess(component);
       return NextResponse.json({
         component,
         validation: result,
-        timestamp: new Date().toISOString()
-      })
+        timestamp: new Date().toISOString(),
+      });
     } else {
       // Validate all components
-      const service = getDataValidationService()
       const [componentResults, recommendations] = await Promise.all([
-        service.validateAllComponents(),
-        service.getDataPopulationRecommendations()
-      ])
+        dataValidationService.validateAllComponents(),
+        dataValidationService.getDataPopulationRecommendations(),
+      ]);
 
       const summary = {
         totalComponents: componentResults.length,

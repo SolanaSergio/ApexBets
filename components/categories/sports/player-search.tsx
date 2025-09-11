@@ -1,169 +1,184 @@
-"use client"
+import { useState, useEffect, useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react";
+import { apiClient, type Player, type Team } from "@/lib/api-client";
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
+import { cn } from "@/lib/utils";
+import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
+import { BallDontLiePlayer } from "@/lib/sports-apis";
+import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
 
-import { useState, useEffect, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react"
-import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieTeam } from "@/lib/sports-apis"
-import { cachedUnifiedApiClient, SupportedSport, UnifiedPlayerData, UnifiedTeamData } from "@/lib/services/api/cached-unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { cn } from "@/lib/utils"
-import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
+type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
+
+// Helper functions to safely access properties across different player types
+function getPlayerName(player: PlayerUnion | null): string {
+  if (!player) return 'Unknown Player';
+  if ('name' in player) {
+    return player.name;
+  }
+  if ('first_name' in player && 'last_name' in player) {
+    return `${player.first_name} ${player.last_name}`;
+  }
+  return 'Unknown Player';
+}
+
+function getPlayerTeamName(player: PlayerUnion | null): string | undefined {
+  if (!player) return undefined;
+  if ('teamName' in player) {
+    return player.teamName;
+  }
+  if ('team' in player && typeof player.team === 'object' && player.team !== null) {
+    return (player.team as any).name || (player.team as any).full_name;
+  }
+  return undefined;
+}
+
+function getPlayerId(player: PlayerUnion | null): string {
+  if (!player) return '';
+  if ('id' in player) {
+    return String(player.id);
+  }
+  return '';
+}
 
 interface PlayerSearchProps {
-  onPlayerSelect?: (player: BallDontLiePlayer | UnifiedPlayerData) => void
-  selectedPlayer?: BallDontLiePlayer | UnifiedPlayerData | null
-  sport?: string
-  league?: string
+  onPlayerSelect?: (player: PlayerUnion | null) => void;
+  selectedPlayer?: PlayerUnion | null;
+  sport?: string;
+  league?: string;
 }
 
 export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, league }: PlayerSearchProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [players, setPlayers] = useState<(BallDontLiePlayer | UnifiedPlayerData)[]>([])
-  const [teams, setTeams] = useState<(BallDontLieTeam | UnifiedTeamData)[]>([])
-  const [loading, setLoading] = useState(false)
-  const [selectedTeam, setSelectedTeam] = useState<string>("all")
-  const [selectedPosition, setSelectedPosition] = useState<string>("all")
-  const [isOpen, setIsOpen] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedTeam, setSelectedTeam] = useState<string>("all");
+  const [selectedPosition, setSelectedPosition] = useState<string>("all");
+  const [isOpen, setIsOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Dynamic positions based on sport
-  const getPositionsForSport = (sport: string) => {
-    return SportConfigManager.getPositionsForSport(sport)
-  }
+  const [positions, setPositions] = useState<string[]>([]);
 
-  const positions = sport ? getPositionsForSport(sport) : []
+  useEffect(() => {
+    const loadPositions = async () => {
+      if (sport) {
+        const sportPositions = await SportConfigManager.getPositionsForSport(sport);
+        setPositions(sportPositions);
+      } else {
+        setPositions([]);
+      }
+    };
+    loadPositions();
+  }, [sport]);
 
   // Fetch teams on component mount and when sport changes
   useEffect(() => {
     if (sport) {
-      fetchTeams()
+      fetchTeams();
     }
-  }, [sport])
+  }, [sport]);
 
   // Search players when query changes
   useEffect(() => {
     if (searchQuery.length >= 2) {
       const timeoutId = setTimeout(() => {
-        searchPlayers()
-      }, 300)
-      return () => clearTimeout(timeoutId)
+        searchPlayers();
+      }, 300);
+      return () => clearTimeout(timeoutId);
     } else {
-      setPlayers([])
+      setPlayers([]);
     }
-  }, [searchQuery, selectedTeam, selectedPosition])
+  }, [searchQuery, selectedTeam, selectedPosition]);
 
   const fetchTeams = async () => {
-    if (!sport) return
-    
+    if (!sport) return;
+
     try {
-      let response
-      if (sport === "basketball") {
-        response = await ballDontLieClient.getTeams({ per_page: 30 })
-      } else {
-        // For other sports, use the unified API client
-        const teams = await cachedUnifiedApiClient.getTeams(sport as SupportedSport, { limit: 30 })
-        response = { data: teams }
-      }
-      setTeams(response.data)
+      const teamsData = await apiClient.getTeams({ sport: sport as SupportedSport });
+      setTeams(teamsData);
     } catch (error) {
-      console.error("Error fetching teams:", error)
-      setError("Failed to load teams")
+      console.error("Error fetching teams:", error);
+      setError("Failed to load teams");
     }
-  }
+  };
 
   const searchPlayers = async () => {
     if (!searchQuery.trim() || !sport) {
-      setPlayers([])
-      return
+      setPlayers([]);
+      return;
     }
 
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
 
     try {
-      let filteredPlayers: (BallDontLiePlayer | UnifiedPlayerData)[]
+      const playersData = await apiClient.getPlayers({
+        sport: sport as SupportedSport,
+        search: searchQuery,
+        limit: 20,
+      });
 
-      if (sport === "basketball") {
-        const response = await ballDontLieClient.getPlayers({
-          search: searchQuery,
-          per_page: 20
-        })
-        filteredPlayers = response.data
-      } else {
-        // For other sports, use the unified API client
-        const players = await cachedUnifiedApiClient.getPlayers(sport as SupportedSport, {
-          limit: 20
-        })
-        // Filter by search query on the client side for non-basketball sports
-        filteredPlayers = players.filter(player => 
-          player.name.toLowerCase().includes(searchQuery.toLowerCase())
-        )
-      }
+      let filteredPlayers = playersData;
 
       // Filter by team
       if (selectedTeam !== "all") {
-        filteredPlayers = filteredPlayers.filter(player => {
-          if ('team' in player && player.team) {
-            return player.team.abbreviation === selectedTeam || player.team.name === selectedTeam
-          }
-          return false
-        })
+        filteredPlayers = filteredPlayers.filter(player => player.teamId === selectedTeam);
       }
 
       // Filter by position
       if (selectedPosition !== "all") {
-        filteredPlayers = filteredPlayers.filter(player => 
-          'position' in player && player.position === selectedPosition
-        )
+        filteredPlayers = filteredPlayers.filter(player => player.position === selectedPosition);
       }
 
-      setPlayers(filteredPlayers)
+      setPlayers(filteredPlayers);
     } catch (error) {
-      console.error("Error searching players:", error)
-      setError("Failed to search players")
+      console.error("Error searching players:", error);
+      setError("Failed to search players");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const handlePlayerSelect = (player: BallDontLiePlayer | UnifiedPlayerData) => {
-    onPlayerSelect?.(player)
-    setIsOpen(false)
-    if ('first_name' in player) {
-      setSearchQuery(`${player.first_name} ${player.last_name}`)
-    } else {
-      setSearchQuery(player.name)
-    }
-  }
+  const handlePlayerSelect = (player: Player) => {
+    onPlayerSelect?.(player);
+    setIsOpen(false);
+    setSearchQuery(player.name);
+  };
 
   const clearSelection = () => {
-    setSearchQuery("")
-    setPlayers([])
-    onPlayerSelect?.(null)
-  }
+    setSearchQuery("");
+    setPlayers([]);
+    onPlayerSelect?.(null);
+  };
 
-  const getPlayerInitials = (player: BallDontLiePlayer | UnifiedPlayerData) => {
-    if ('first_name' in player) {
-      return `${player.first_name[0]}${player.last_name[0]}`.toUpperCase()
-    } else {
-      return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase()
-    }
-  }
+  const getPlayerInitials = (player: PlayerUnion | null) => {
+    if (!player) return '??';
+    const name = getPlayerName(player);
+    return name ? name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '??';
+  };
 
-  const getPlayerName = (player: BallDontLiePlayer | UnifiedPlayerData) => {
-    if ('first_name' in player) {
-      return `${player.first_name} ${player.last_name}`
-    } else {
-      return player.name
+  const getPlayerPosition = (player: PlayerUnion | null) => {
+    if (!player) return 'Unknown';
+    if ('position' in player) {
+      return player.position || 'Unknown';
     }
-  }
+    return 'Unknown';
+  };
+
+  const getPlayerTeam = (player: PlayerUnion | null) => {
+    if (!player) return 'Unknown Team';
+    const teamName = getPlayerTeamName(player);
+    return teamName || 'Unknown Team';
+  };
 
 
   // Show no sport selected state
@@ -225,7 +240,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
               {teams.map((team) => (
-                <SelectItem key={team.id} value={team.abbreviation}>
+                <SelectItem key={team.id} value={team.abbreviation || team.id}>
                   {team.abbreviation}
                 </SelectItem>
               ))}
@@ -280,32 +295,32 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
                           {getPlayerName(player)}
                         </div>
                         <div className="text-sm text-muted-foreground flex items-center gap-2">
-                          {'position' in player && player.position && (
+                          {player.position && (
                             <Badge variant="outline" className="text-xs">
                               {player.position}
                             </Badge>
                           )}
-                            {'team' in player && player.team && (
+                          {player.teamName && (
                               <span className="flex items-center gap-1">
                                 <TeamLogo 
-                                  teamName={player.team.name} 
-                                  alt={player.team.name}
+                                  teamName={player.teamName} 
+                                  alt={player.teamName}
                                   width={16}
                                   height={16}
                                   className="h-4 w-4"
                                 />
-                                {player.team.name}
+                                {player.teamName}
                               </span>
                             )}
                         </div>
                       </div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {'height_feet' in player && player.height_feet && player.height_inches && (
-                        <div>{player.height_feet}'{player.height_inches}"</div>
+                      {player.height && (
+                        <div>{player.height}</div>
                       )}
-                      {'weight_pounds' in player && player.weight_pounds && (
-                        <div>{player.weight_pounds} lbs</div>
+                      {player.weight && (
+                        <div>{player.weight} lbs</div>
                       )}
                     </div>
                   </div>
@@ -326,30 +341,32 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
                 <PlayerPhoto 
-                  playerId={selectedPlayer.id}
-                  alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                  playerId={getPlayerId(selectedPlayer)}
+                  alt={getPlayerName(selectedPlayer)}
                   width={48}
                   height={48}
                   className="h-12 w-12 rounded-full"
                 />
                 <div>
                   <div className="font-semibold text-lg">
-                    {selectedPlayer.first_name} {selectedPlayer.last_name}
+                    {getPlayerName(selectedPlayer)}
                   </div>
                   <div className="text-sm text-muted-foreground flex items-center gap-2">
                     <Badge variant="secondary">
                       {selectedPlayer.position}
                     </Badge>
+                    {getPlayerTeamName(selectedPlayer) && (
                     <span className="flex items-center gap-1">
                       <TeamLogo 
-                        teamName={selectedPlayer.team.name} 
-                        alt={selectedPlayer.team.name}
+                        teamName={getPlayerTeamName(selectedPlayer)!} 
+                        alt={getPlayerTeamName(selectedPlayer)!}
                         width={16}
                         height={16}
                         className="h-4 w-4"
                       />
-                      {selectedPlayer.team.name}
+                      {getPlayerTeamName(selectedPlayer)}
                     </span>
+                    )}
                   </div>
                 </div>
               </div>
