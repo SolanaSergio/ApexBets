@@ -159,18 +159,24 @@ class ApiClient {
   async getGames(params?: {
     date_from?: string
     date_to?: string
+    dateFrom?: string
+    dateTo?: string
     status?: string
     team_id?: string
     limit?: number
     sport?: string
+    search?: string
   }): Promise<Game[]> {
     const searchParams = new URLSearchParams()
     if (params?.date_from) searchParams.set("date_from", params.date_from)
     if (params?.date_to) searchParams.set("date_to", params.date_to)
+    if (params?.dateFrom) searchParams.set("date_from", params.dateFrom)
+    if (params?.dateTo) searchParams.set("date_to", params.dateTo)
     if (params?.status) searchParams.set("status", params.status)
     if (params?.team_id) searchParams.set("team_id", params.team_id)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
     if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.search) searchParams.set("search", params.search)
     
     // Always use external API for real-time data
     searchParams.set("external", "true")

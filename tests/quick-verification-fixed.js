@@ -287,9 +287,9 @@ async function testDatabaseUpdates() {
   
   // Test live data updates
   const liveResult = await testApiEndpointWithValidation(
-    '/api/live-scores',
+    '/api/live-scores?sport=basketball',
     'Live Scores Update',
-    { allowEmpty: false, requiredProps: ['gameId', 'score'] }
+    { allowEmpty: false, requiredProps: ['games'] }
   );
 
   if (liveResult.success) {
@@ -339,26 +339,27 @@ async function runComprehensiveVerification() {
     requiredProps: ['id', 'name'],
     checkSportsDiversity: true
   }));
-  results.push(await testApiEndpointWithValidation('/api/live-scores', 'Live Scores', {
+  results.push(await testApiEndpointWithValidation('/api/live-scores?sport=basketball', 'Live Scores', {
     allowEmpty: false,
-    requiredProps: ['gameId', 'score']
+    requiredProps: ['games']
   }));
-  results.push(await testApiEndpointWithValidation('/api/odds', 'Odds', {
+  results.push(await testApiEndpointWithValidation('/api/odds/basketball', 'Odds', {
     allowEmpty: false,
-    requiredProps: ['gameId', 'homeOdds', 'awayOdds']
+    requiredProps: ['data']
   }));
-  results.push(await testApiEndpointWithValidation('/api/predictions', 'Predictions', {
+  results.push(await testApiEndpointWithValidation('/api/predictions/upcoming?sport=basketball', 'Predictions', {
     allowEmpty: false,
-    requiredProps: ['gameId', 'prediction']
+    requiredProps: ['game_id', 'prediction']
   }));
-  results.push(await testApiEndpointWithValidation('/api/analytics/stats', 'Analytics', {
-    allowEmpty: false
+  results.push(await testApiEndpointWithValidation('/api/analytics/team-performance?sport=basketball', 'Analytics', {
+    allowEmpty: false,
+    requiredProps: ['team', 'stats']
   }));
   results.push(await testApiEndpointWithValidation('/api/standings', 'Standings', {
     allowEmpty: false,
     minCount: 1
   }));
-  results.push(await testApiEndpointWithValidation('/api/value-bets', 'Value Bets', {
+  results.push(await testApiEndpointWithValidation('/api/value-bets?sport=basketball', 'Value Bets', {
     allowEmpty: true // May be empty if no value bets found
   }));
   
@@ -405,12 +406,12 @@ async function runComprehensiveVerification() {
     { name: 'health', endpoint: '/api/health' },
     { name: 'games', endpoint: '/api/games' },
     { name: 'teams', endpoint: '/api/teams' },
-    { name: 'liveScores', endpoint: '/api/live-scores' },
-    { name: 'odds', endpoint: '/api/odds' },
-    { name: 'predictions', endpoint: '/api/predictions' },
-    { name: 'analytics', endpoint: '/api/analytics/stats' },
+    { name: 'liveScores', endpoint: '/api/live-scores?sport=basketball' },
+    { name: 'odds', endpoint: '/api/odds/basketball' },
+    { name: 'predictions', endpoint: '/api/predictions/upcoming?sport=basketball' },
+    { name: 'analytics', endpoint: '/api/analytics/team-performance?sport=basketball' },
     { name: 'standings', endpoint: '/api/standings' },
-    { name: 'valueBets', endpoint: '/api/value-bets' }
+    { name: 'valueBets', endpoint: '/api/value-bets?sport=basketball' }
   ];
   
   apiTests.forEach((test, index) => {

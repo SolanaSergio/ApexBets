@@ -11,7 +11,19 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     
     if (!supabase) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+      return NextResponse.json({ 
+        success: false,
+        error: "Database connection failed",
+        live: [],
+        recent: [],
+        upcoming: [],
+        summary: {
+          totalLive: 0,
+          totalRecent: 0,
+          totalUpcoming: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      }, { status: 500 })
     }
     
     // Get live games from database
@@ -24,10 +36,24 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sport', sport)
       .eq('status', 'live')
-      .order('date', { ascending: true })
+      .order('game_date', { ascending: true })
 
     if (liveGamesError) {
-      return NextResponse.json({ error: "Failed to fetch live games" }, { status: 500 })
+      console.error('Live games error:', liveGamesError)
+      return NextResponse.json({ 
+        success: false,
+        error: "Failed to fetch live games",
+        details: liveGamesError.message,
+        live: [],
+        recent: [],
+        upcoming: [],
+        summary: {
+          totalLive: 0,
+          totalRecent: 0,
+          totalUpcoming: 0,
+          lastUpdated: new Date().toISOString()
+        }
+      }, { status: 500 })
     }
 
     // Get recent finished games for context
@@ -40,11 +66,12 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sport', sport)
       .eq('status', 'finished')
-      .order('date', { ascending: false })
+      .order('game_date', { ascending: false })
       .limit(10)
 
     if (recentGamesError) {
-      return NextResponse.json({ error: "Failed to fetch recent games" }, { status: 500 })
+      console.error('Recent games error:', recentGamesError)
+      // Continue with empty recent games rather than failing completely
     }
 
     // Get upcoming games
@@ -57,24 +84,25 @@ export async function GET(request: NextRequest) {
       `)
       .eq('sport', sport)
       .eq('status', 'scheduled')
-      .order('date', { ascending: true })
+      .order('game_date', { ascending: true })
       .limit(10)
 
     if (upcomingGamesError) {
-      return NextResponse.json({ error: "Failed to fetch upcoming games" }, { status: 500 })
+      console.error('Upcoming games error:', upcomingGamesError)
+      // Continue with empty upcoming games rather than failing completely
     }
 
     // Format live games with additional data
     const formattedLiveGames = (liveGames || []).map(game => ({
       id: game.id,
-      homeTeam: game.home_team_data?.name || game.home_team,
-      awayTeam: game.away_team_data?.name || game.away_team,
+      homeTeam: game.home_team_data?.name || 'Unknown',
+      awayTeam: game.away_team_data?.name || 'Unknown',
       homeScore: game.home_score,
       awayScore: game.away_score,
       status: game.status,
       period: game.period || "1st",
       timeRemaining: game.time_remaining || "12:00",
-      date: game.date,
+      date: game.game_date,
       homeTeamLogo: game.home_team_data?.logo_url,
       awayTeamLogo: game.away_team_data?.logo_url,
       league: game.league,
@@ -84,12 +112,12 @@ export async function GET(request: NextRequest) {
     // Format recent games
     const formattedRecentGames = (recentGames || []).map(game => ({
       id: game.id,
-      homeTeam: game.home_team_data?.name || game.home_team,
-      awayTeam: game.away_team_data?.name || game.away_team,
+      homeTeam: game.home_team_data?.name || 'Unknown',
+      awayTeam: game.away_team_data?.name || 'Unknown',
       homeScore: game.home_score,
       awayScore: game.away_score,
       status: game.status,
-      date: game.date,
+      date: game.game_date,
       homeTeamLogo: game.home_team_data?.logo_url,
       awayTeamLogo: game.away_team_data?.logo_url,
       league: game.league,
@@ -99,10 +127,10 @@ export async function GET(request: NextRequest) {
     // Format upcoming games
     const formattedUpcomingGames = (upcomingGames || []).map(game => ({
       id: game.id,
-      homeTeam: game.home_team_data?.name || game.home_team,
-      awayTeam: game.away_team_data?.name || game.away_team,
+      homeTeam: game.home_team_data?.name || 'Unknown',
+      awayTeam: game.away_team_data?.name || 'Unknown',
       status: game.status,
-      date: game.date,
+      date: game.game_date,
       homeTeamLogo: game.home_team_data?.logo_url,
       awayTeamLogo: game.away_team_data?.logo_url,
       league: game.league,

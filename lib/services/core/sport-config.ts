@@ -117,6 +117,40 @@ export class SportConfigManager {
         burstLimit: parseInt(process.env.SOCCER_BURST_LIMIT || '7')
       },
       updateFrequency: parseInt(process.env.SOCCER_UPDATE_FREQUENCY || '60')
+    },
+    tennis: {
+      name: 'Tennis',
+      leagues: ['ATP', 'WTA', 'Grand Slams', 'Masters 1000'],
+      defaultLeague: 'ATP',
+      icon: '🎾',
+      color: 'text-green-600',
+      apiKey: 'SPORTSDB_API_KEY',
+      dataSource: 'sportsdb',
+      positions: ['Singles', 'Doubles'],
+      rateLimits: {
+        requestsPerMinute: parseInt(process.env.TENNIS_RATE_LIMIT_MINUTE || '40'),
+        requestsPerHour: parseInt(process.env.TENNIS_RATE_LIMIT_HOUR || '800'),
+        requestsPerDay: parseInt(process.env.TENNIS_RATE_LIMIT_DAY || '8000'),
+        burstLimit: parseInt(process.env.TENNIS_BURST_LIMIT || '6')
+      },
+      updateFrequency: parseInt(process.env.TENNIS_UPDATE_FREQUENCY || '30')
+    },
+    golf: {
+      name: 'Golf',
+      leagues: ['PGA Tour', 'European Tour', 'LPGA', 'Champions Tour'],
+      defaultLeague: 'PGA Tour',
+      icon: '⛳',
+      color: 'text-green-700',
+      apiKey: 'SPORTSDB_API_KEY',
+      dataSource: 'sportsdb',
+      positions: ['Professional'],
+      rateLimits: {
+        requestsPerMinute: parseInt(process.env.GOLF_RATE_LIMIT_MINUTE || '30'),
+        requestsPerHour: parseInt(process.env.GOLF_RATE_LIMIT_HOUR || '600'),
+        requestsPerDay: parseInt(process.env.GOLF_RATE_LIMIT_DAY || '6000'),
+        burstLimit: parseInt(process.env.GOLF_BURST_LIMIT || '5')
+      },
+      updateFrequency: parseInt(process.env.GOLF_UPDATE_FREQUENCY || '60')
     }
   }
 

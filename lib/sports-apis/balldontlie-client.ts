@@ -107,23 +107,36 @@ export class BallDontLieClient {
     
     // Check if API key is available
     if (!this.apiKey || this.apiKey === 'your_balldontlie_api_key' || this.apiKey === '') {
-      throw new Error('BALLDONTLIE API Error: API key not configured. Please set NEXT_PUBLIC_BALLDONTLIE_API_KEY in your environment variables.')
+      // Return empty data instead of throwing error for graceful degradation
+      return {
+        data: [],
+        meta: {
+          current_page: 1,
+          next_page: null,
+          per_page: 25,
+          total_count: 0,
+          total_pages: 0
+        }
+      } as T
     }
     
     try {
       const headers: HeadersInit = {
-        'Authorization': this.apiKey,
         'Accept': 'application/json',
         'User-Agent': 'ApexBets/1.0.0'
       }
       
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      // Add API key as query parameter instead of Authorization header
+      const separator = endpoint.includes('?') ? '&' : '?'
+      const url = `${this.baseUrl}${endpoint}${separator}api_key=${this.apiKey}`
+      
+      const response = await fetch(url, {
         headers
       })
       
       if (!response.ok) {
         if (response.status === 401) {
-          throw new Error('BALLDONTLIE API Error: 401 Unauthorized - Invalid API key')
+          throw new Error('BALLDONTLIE API Error: 401 Unauthorized - Invalid API key. Please check your NEXT_PUBLIC_BALLDONTLIE_API_KEY environment variable.')
         } else if (response.status === 400) {
           throw new Error('BALLDONTLIE API Error: 400 Bad Request - Invalid request parameters')
         } else if (response.status === 404) {

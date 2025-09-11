@@ -10,14 +10,28 @@ export async function GET(request: NextRequest) {
     if (!sport) {
       return NextResponse.json({
         success: false,
-        error: "Sport parameter is required"
+        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer"
       }, { status: 400 })
     }
-    const league = searchParams.get("league") || "NBA"
+    const finalSport = sport
     const status = searchParams.get("status") || "live"
+    
+    // Set default league based on sport
+    const getDefaultLeague = (sport: string) => {
+      const leagueMap: Record<string, string> = {
+        'basketball': 'NBA',
+        'football': 'NFL',
+        'baseball': 'MLB',
+        'hockey': 'NHL',
+        'soccer': 'Premier League'
+      }
+      return leagueMap[sport] || sport.charAt(0).toUpperCase() + sport.slice(1) + ' League'
+    }
+    
+    const league = searchParams.get("league") || getDefaultLeague(finalSport)
 
     // Generate cache key
-    const cacheKey = `live_scores:${sport}:${league}:${status}`
+    const cacheKey = `live_scores:${finalSport}:${league}:${status}`
     
     // Check cache first
     const cached = cacheService.get(cacheKey)
@@ -38,7 +52,7 @@ export async function GET(request: NextRequest) {
         home_team_data:teams!games_home_team_id_fkey(name, logo_url, city),
         away_team_data:teams!games_away_team_id_fkey(name, logo_url, city)
       `)
-      .eq('sport', sport)
+      .eq('sport', finalSport)
 
     // Apply status filter
     if (status === 'live') {
@@ -54,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: games, error: gamesError } = await query
-      .order('date', { ascending: status === 'scheduled' })
+      .order('game_date', { ascending: status === 'scheduled' })
 
     if (gamesError) {
       return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
@@ -82,9 +96,19 @@ export async function GET(request: NextRequest) {
           id: game.away_team_id
         },
         status: game.status,
-        period: game.period || (game.status === 'live' ? '1st' : null),
-        timeRemaining: game.time_remaining || (game.status === 'live' ? '12:00' : null),
-        date: game.date,
+        period: game.period || (game.status === 'live' ? 
+          (finalSport === 'basketball' ? '1st Quarter' : 
+           finalSport === 'football' ? '1st Quarter' : 
+           finalSport === 'baseball' ? '1st Inning' : 
+           finalSport === 'hockey' ? '1st Period' : 
+           finalSport === 'soccer' ? '1st Half' : '1st Period') : null),
+        timeRemaining: game.time_remaining || (game.status === 'live' ? 
+          (finalSport === 'basketball' ? '12:00' : 
+           finalSport === 'football' ? '15:00' : 
+           finalSport === 'baseball' ? '∞' : 
+           finalSport === 'hockey' ? '20:00' : 
+           finalSport === 'soccer' ? '45:00' : '12:00') : null),
+        date: game.game_date,
         league: game.league,
         venue: game.venue,
         attendance: game.attendance,
@@ -103,7 +127,7 @@ export async function GET(request: NextRequest) {
         .from('odds')
         .select('*')
         .in('game_id', liveGameIds)
-        .eq('sport', sport)
+        .eq('sport', finalSport)
 
       if (!oddsError) {
         liveOdds = odds || []
@@ -160,7 +184,7 @@ export async function GET(request: NextRequest) {
       },
       topPerformers,
       filters: {
-        sport,
+        sport: finalSport,
         league,
         status
       }

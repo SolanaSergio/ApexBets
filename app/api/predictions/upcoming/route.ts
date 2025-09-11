@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
+import { SupportedSport } from "@/lib/services/core/service-factory"
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,6 +10,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
     }
     const { searchParams } = new URL(request.url)
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({ 
+        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer" 
+      }, { status: 400 })
+    }
+
+    // Validate sport parameter
+    const supportedSports: SupportedSport[] = ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+    if (!supportedSports.includes(sport as SupportedSport)) {
+      return NextResponse.json({ 
+        error: `Unsupported sport: ${sport}. Supported sports: ${supportedSports.join(', ')}` 
+      }, { status: 400 })
+    }
     const limit = Number.parseInt(searchParams.get("limit") || "10")
     const days = Number.parseInt(searchParams.get("days") || "7")
 
@@ -25,6 +41,7 @@ export async function GET(request: NextRequest) {
         away_team:teams!games_away_team_id_fkey(id, name, abbreviation)
       `)
       .eq("status", "scheduled")
+      .eq("sport", sport)
       .gte("game_date", startDate.toISOString())
       .lte("game_date", endDate.toISOString())
       .order("game_date", { ascending: true })
@@ -41,7 +58,20 @@ export async function GET(request: NextRequest) {
 
     // Generate predictions for each upcoming game
     const predictions = []
-    const predictionService = new SportPredictionService('basketball', 'NBA')
+    
+    // Set default league based on sport
+    const getDefaultLeague = (sport: string) => {
+      const leagueMap: Record<string, string> = {
+        'basketball': 'NBA',
+        'football': 'NFL',
+        'baseball': 'MLB',
+        'hockey': 'NHL',
+        'soccer': 'Premier League'
+      }
+      return leagueMap[sport] || sport.charAt(0).toUpperCase() + sport.slice(1) + ' League'
+    }
+    
+    const predictionService = new SportPredictionService(sport as SupportedSport, getDefaultLeague(sport))
     
     for (const game of upcomingGames) {
       try {

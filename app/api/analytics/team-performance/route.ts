@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { sportsAPI } from "@/lib/api/sports-api"
+import { SupportedSport } from "@/lib/services/core/service-factory"
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,8 +11,19 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league")
     
     if (!sport) {
-      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+      return NextResponse.json({ 
+        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer" 
+      }, { status: 400 })
     }
+
+    // Validate sport parameter
+    const supportedSports: SupportedSport[] = ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+    if (!supportedSports.includes(sport as SupportedSport)) {
+      return NextResponse.json({ 
+        error: `Unsupported sport: ${sport}. Supported sports: ${supportedSports.join(', ')}` 
+      }, { status: 400 })
+    }
+    const finalSport = sport as SupportedSport
     const timeRange = searchParams.get("timeRange") || "30"
 
     const supabase = await createClient()
@@ -26,7 +38,7 @@ export async function GET(request: NextRequest) {
     try {
       // Try to get team data from external APIs first
       const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const teams = await cachedUnifiedApiClient.getTeams(sport as any, { limit: 100 })
+      const teams = await cachedUnifiedApiClient.getTeams(finalSport, { limit: 100 })
       
       if (team && team !== 'all') {
         teamData = teams.find(t => t.name === team || t.id === team)
@@ -40,7 +52,7 @@ export async function GET(request: NextRequest) {
       let teamQuery = supabase
         .from('teams')
         .select('*')
-        .eq('sport', sport)
+        .eq('sport', finalSport)
       
       if (team && team !== 'all') {
         teamQuery = teamQuery.eq('name', team)
@@ -69,7 +81,7 @@ export async function GET(request: NextRequest) {
     try {
       // Try to get games from external APIs first
       const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const allGames = await cachedUnifiedApiClient.getGames(sport as any, { 
+      const allGames = await cachedUnifiedApiClient.getGames(finalSport, { 
         limit: parseInt(timeRange),
         date: new Date().toISOString().split('T')[0]
       })
@@ -87,7 +99,7 @@ export async function GET(request: NextRequest) {
         .from('games')
         .select('*')
         .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
-        .eq('sport', sport)
+        .eq('sport', finalSport)
         .order('game_date', { ascending: false })
         .limit(parseInt(timeRange))
       

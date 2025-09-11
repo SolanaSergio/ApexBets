@@ -8,11 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, RefreshCw } from "lucide-react"
+import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, RefreshCw, Zap, CheckCircle } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Game } from "@/lib/api-client"
-import { format } from "date-fns"
-import GamesList from "@/components/categories/sports/games-list"
+import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
@@ -21,6 +20,11 @@ export default function GamesPage() {
   const [selectedLeague, setSelectedLeague] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [availableLeagues, setAvailableLeagues] = useState<string[]>([])
+  const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
+    from: subDays(new Date(), 1),
+    to: addDays(new Date(), 7)
+  })
+  const [searchTerm, setSearchTerm] = useState("")
 
   useEffect(() => {
     loadSupportedSports()
@@ -35,7 +39,8 @@ export default function GamesPage() {
   const loadSupportedSports = () => {
     const sports = serviceFactory.getSupportedSports()
     setSupportedSports(sports)
-    // Don't set default sport - let user choose
+    // Set basketball as default
+    setSelectedSport('basketball')
   }
 
   const loadLeaguesForSport = (sport: SupportedSport) => {
@@ -46,36 +51,38 @@ export default function GamesPage() {
     }
   }
 
-  // Show no sport selected state
+  const handleDateChange = (type: 'from' | 'to', value: string) => {
+    const date = new Date(value)
+    setDateRange(prev => ({
+      ...prev,
+      [type]: date
+    }))
+  }
+
+  const getQuickDateRange = (range: string) => {
+    const today = new Date()
+    switch (range) {
+      case 'today':
+        return { from: today, to: today }
+      case 'tomorrow':
+        return { from: addDays(today, 1), to: addDays(today, 1) }
+      case 'week':
+        return { from: subDays(today, 1), to: addDays(today, 7) }
+      case 'month':
+        return { from: subDays(today, 7), to: addDays(today, 30) }
+      default:
+        return dateRange
+    }
+  }
+
+  // Show loading state if no sport selected
   if (!selectedSport) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="container mx-auto px-4 py-8 space-y-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Games & Matches
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Select a sport to view live games, upcoming matches, and historical results
-            </p>
-            <div className="mt-8">
-              <select 
-                value={selectedSport || ""} 
-                onChange={(e) => setSelectedSport(e.target.value as SupportedSport || null)}
-                className="px-4 py-2 border rounded-lg bg-background"
-              >
-                <option value="">Select a Sport</option>
-                {supportedSports.map((sport) => {
-                  const config = SportConfigManager.getSportConfig(sport)
-                  return (
-                    <option key={sport} value={sport}>
-                      {config?.name || sport}
-                    </option>
-                  )
-                })}
-              </select>
-            </div>
+        <main className="container mx-auto px-4 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         </main>
       </div>
@@ -98,7 +105,7 @@ export default function GamesPage() {
         </div>
 
         {/* Filters */}
-        <Card>
+        <Card className="border-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Filter className="h-5 w-5" />
@@ -106,14 +113,19 @@ export default function GamesPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
                   placeholder="Search teams or games..." 
                   className="pl-10"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
+
+              {/* Sport Selection */}
               <Select value={selectedSport} onValueChange={(value) => setSelectedSport(value as SupportedSport)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Sport" />
@@ -132,6 +144,8 @@ export default function GamesPage() {
                   })}
                 </SelectContent>
               </Select>
+
+              {/* League Selection */}
               <Select value={selectedLeague} onValueChange={setSelectedLeague}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select League" />
@@ -144,20 +158,35 @@ export default function GamesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select>
+
+              {/* Quick Date Range */}
+              <Select onValueChange={(value) => setDateRange(getQuickDateRange(value))}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select Status" />
+                  <SelectValue placeholder="Quick Range" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="live">Live</SelectItem>
-                  <SelectItem value="upcoming">Upcoming</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="tomorrow">Tomorrow</SelectItem>
+                  <SelectItem value="week">Next 7 Days</SelectItem>
+                  <SelectItem value="month">Next 30 Days</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant="outline" className="gap-2">
-                <Calendar className="h-4 w-4" />
-                Date Range
-              </Button>
+
+              {/* Custom Date Range */}
+              <div className="flex gap-2">
+                <Input
+                  type="date"
+                  value={format(dateRange.from, 'yyyy-MM-dd')}
+                  onChange={(e) => handleDateChange('from', e.target.value)}
+                  className="flex-1"
+                />
+                <Input
+                  type="date"
+                  value={format(dateRange.to, 'yyyy-MM-dd')}
+                  onChange={(e) => handleDateChange('to', e.target.value)}
+                  className="flex-1"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -181,19 +210,34 @@ export default function GamesPage() {
 
           <TabsContent value="live" className="space-y-6">
             <Suspense fallback={<LiveGamesSkeleton />}>
-              <LiveGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
+              <LiveGamesSection 
+                selectedSport={selectedSport} 
+                selectedLeague={selectedLeague}
+                dateRange={dateRange}
+                searchTerm={searchTerm}
+              />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="upcoming" className="space-y-6">
             <Suspense fallback={<UpcomingGamesSkeleton />}>
-              <UpcomingGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
+              <UpcomingGamesSection 
+                selectedSport={selectedSport} 
+                selectedLeague={selectedLeague}
+                dateRange={dateRange}
+                searchTerm={searchTerm}
+              />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="completed" className="space-y-6">
             <Suspense fallback={<CompletedGamesSkeleton />}>
-              <CompletedGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
+              <CompletedGamesSection 
+                selectedSport={selectedSport} 
+                selectedLeague={selectedLeague}
+                dateRange={dateRange}
+                searchTerm={searchTerm}
+              />
             </Suspense>
           </TabsContent>
         </Tabs>
@@ -203,7 +247,17 @@ export default function GamesPage() {
 }
 
 // Live Games Section
-function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
+function LiveGamesSection({ 
+  selectedSport, 
+  selectedLeague, 
+  dateRange, 
+  searchTerm 
+}: { 
+  selectedSport: SupportedSport | null
+  selectedLeague: string
+  dateRange: { from: Date; to: Date }
+  searchTerm: string
+}) {
   const [liveGames, setLiveGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -211,47 +265,28 @@ function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: Su
     if (selectedSport) {
       fetchLiveGames()
     }
-  }, [selectedSport, selectedLeague])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm])
 
   async function fetchLiveGames() {
     if (!selectedSport) return
     
     try {
       setLoading(true)
-      // Use external APIs for better live data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const liveGames = await cachedUnifiedApiClient.getLiveGames(selectedSport as any)
       
-      // Transform to match expected format
-      const transformedGames = liveGames.map(game => ({
-        id: game.id,
-        home_team_id: 'external_home',
-        away_team_id: 'external_away',
-        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
-        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
-        home_score: game.homeScore,
-        away_score: game.awayScore,
-        game_date: game.date,
-        season: '2024-25',
-        status: game.status,
-        venue: game.venue
-      })) as Game[]
+      // Fetch from database with date range and search
+      const games = await apiClient.getGames({
+        sport: selectedSport,
+        status: "in_progress",
+        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+        search: searchTerm,
+        limit: 50
+      })
       
-      setLiveGames(transformedGames)
+      setLiveGames(games)
     } catch (error) {
       console.error("Error fetching live games:", error)
-      // Fallback to API client
-      try {
-        const games = await apiClient.getGames({
-          sport: selectedSport,
-          status: "in_progress",
-          limit: 10
-        })
-        setLiveGames(games)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setLiveGames([])
-      }
+      setLiveGames([])
     } finally {
       setLoading(false)
     }
@@ -279,17 +314,19 @@ function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: Su
       </div>
 
       {liveGames.length === 0 ? (
-        <Card>
+        <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Live Games</h3>
-            <p className="text-muted-foreground">There are currently no games in progress</p>
+            <p className="text-muted-foreground">
+              {searchTerm ? `No live games found matching "${searchTerm}"` : "There are currently no games in progress"}
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
           {liveGames.map((game) => (
-            <Card key={game.id} className="card-hover-enhanced">
+            <Card key={game.id} className="border-2 border-red-200 bg-red-50 dark:bg-red-950/20 hover:shadow-lg transition-all duration-200">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-6">
@@ -301,7 +338,7 @@ function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: Su
 
                     <div className="text-center">
                       <div className="text-xs text-muted-foreground mb-1">VS</div>
-                      <div className="text-sm font-medium">Live</div>
+                      <div className="text-sm font-medium text-red-600">Live</div>
                       <div className="text-xs text-muted-foreground">In Progress</div>
                     </div>
 
@@ -330,7 +367,17 @@ function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: Su
 }
 
 // Upcoming Games Section
-function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
+function UpcomingGamesSection({ 
+  selectedSport, 
+  selectedLeague, 
+  dateRange, 
+  searchTerm 
+}: { 
+  selectedSport: SupportedSport | null
+  selectedLeague: string
+  dateRange: { from: Date; to: Date }
+  searchTerm: string
+}) {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -338,50 +385,27 @@ function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport
     if (selectedSport) {
       fetchUpcomingGames()
     }
-  }, [selectedSport, selectedLeague])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm])
 
   async function fetchUpcomingGames() {
     if (!selectedSport) return
     
     try {
       setLoading(true)
-      // Use external APIs for better upcoming data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const upcomingGames = await cachedUnifiedApiClient.getGames(selectedSport as any, { 
-        status: 'scheduled',
-        limit: 10 
+      
+      const games = await apiClient.getGames({
+        sport: selectedSport,
+        status: "scheduled",
+        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+        search: searchTerm,
+        limit: 50
       })
       
-      // Transform to match expected format
-      const transformedGames = upcomingGames.map(game => ({
-        id: game.id,
-        home_team_id: 'external_home',
-        away_team_id: 'external_away',
-        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
-        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
-        home_score: game.homeScore,
-        away_score: game.awayScore,
-        game_date: game.date,
-        season: '2024-25',
-        status: game.status,
-        venue: game.venue
-      })) as Game[]
-      
-      setUpcomingGames(transformedGames)
+      setUpcomingGames(games)
     } catch (error) {
       console.error("Error fetching upcoming games:", error)
-      // Fallback to API client
-      try {
-        const games = await apiClient.getGames({
-          sport: selectedSport,
-          status: "scheduled",
-          limit: 10
-        })
-        setUpcomingGames(games)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setUpcomingGames([])
-      }
+      setUpcomingGames([])
     } finally {
       setLoading(false)
     }
@@ -404,11 +428,13 @@ function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport
       </div>
 
       {upcomingGames.length === 0 ? (
-        <Card>
+        <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Upcoming Games</h3>
-            <p className="text-muted-foreground">Check back later for scheduled matches</p>
+            <p className="text-muted-foreground">
+              {searchTerm ? `No upcoming games found matching "${searchTerm}"` : "Check back later for scheduled matches"}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -416,7 +442,7 @@ function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport
           {upcomingGames.map((game) => {
             const gameDate = new Date(game.game_date)
             return (
-              <Card key={game.id} className="card-hover">
+              <Card key={game.id} className="hover:shadow-lg transition-all duration-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">
@@ -459,7 +485,17 @@ function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport
 }
 
 // Completed Games Section
-function CompletedGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
+function CompletedGamesSection({ 
+  selectedSport, 
+  selectedLeague, 
+  dateRange, 
+  searchTerm 
+}: { 
+  selectedSport: SupportedSport | null
+  selectedLeague: string
+  dateRange: { from: Date; to: Date }
+  searchTerm: string
+}) {
   const [completedGames, setCompletedGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -467,50 +503,27 @@ function CompletedGamesSection({ selectedSport, selectedLeague }: { selectedSpor
     if (selectedSport) {
       fetchCompletedGames()
     }
-  }, [selectedSport, selectedLeague])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm])
 
   async function fetchCompletedGames() {
     if (!selectedSport) return
     
     try {
       setLoading(true)
-      // Use external APIs for better completed data
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const completedGames = await cachedUnifiedApiClient.getGames(selectedSport as any, { 
-        status: 'finished',
-        limit: 10 
+      
+      const games = await apiClient.getGames({
+        sport: selectedSport,
+        status: "completed",
+        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+        search: searchTerm,
+        limit: 50
       })
       
-      // Transform to match expected format
-      const transformedGames = completedGames.map(game => ({
-        id: game.id,
-        home_team_id: 'external_home',
-        away_team_id: 'external_away',
-        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
-        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
-        home_score: game.homeScore,
-        away_score: game.awayScore,
-        game_date: game.date,
-        season: '2024-25',
-        status: game.status,
-        venue: game.venue
-      })) as Game[]
-      
-      setCompletedGames(transformedGames)
+      setCompletedGames(games)
     } catch (error) {
       console.error("Error fetching completed games:", error)
-      // Fallback to API client
-      try {
-        const games = await apiClient.getGames({
-          sport: selectedSport,
-          status: "completed",
-          limit: 10
-        })
-        setCompletedGames(games)
-      } catch (fallbackError) {
-        console.error("Fallback error:", fallbackError)
-        setCompletedGames([])
-      }
+      setCompletedGames([])
     } finally {
       setLoading(false)
     }
@@ -533,11 +546,13 @@ function CompletedGamesSection({ selectedSport, selectedLeague }: { selectedSpor
       </div>
 
       {completedGames.length === 0 ? (
-        <Card>
+        <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Recent Results</h3>
-            <p className="text-muted-foreground">No completed games found</p>
+            <p className="text-muted-foreground">
+              {searchTerm ? `No completed games found matching "${searchTerm}"` : "No completed games found"}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -546,7 +561,7 @@ function CompletedGamesSection({ selectedSport, selectedLeague }: { selectedSpor
             const gameDate = new Date(game.game_date)
             const homeWon = game.home_score && game.away_score && game.home_score > game.away_score
             return (
-              <Card key={game.id} className="card-hover">
+              <Card key={game.id} className="hover:shadow-lg transition-all duration-200">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-6">

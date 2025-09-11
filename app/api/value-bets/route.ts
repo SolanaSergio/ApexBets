@@ -32,6 +32,24 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Check if value betting is enabled
+    const enableValueBetting = process.env.NEXT_PUBLIC_ENABLE_VALUE_BETTING === 'true'
+    if (!enableValueBetting) {
+      return NextResponse.json({
+        success: true,
+        opportunities: [],
+        meta: {
+          sport,
+          league: league || serviceFactory.getDefaultLeague(sport),
+          timeRange,
+          minValue,
+          count: 0,
+          timestamp: new Date().toISOString(),
+          message: 'Value betting is disabled'
+        }
+      })
+    }
+
     const predictionService = new SportPredictionService(sport, league)
     
     // Get value betting opportunities using the sport-specific service
@@ -72,10 +90,15 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Value bets API error:', error)
+    
+    // Return more specific error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
     return NextResponse.json(
       { 
         success: false, 
         error: 'Failed to fetch value betting opportunities',
+        details: errorMessage,
         opportunities: []
       },
       { status: 500 }

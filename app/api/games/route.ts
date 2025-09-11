@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get("date_to")
     const status = searchParams.get("status")
     const teamId = searchParams.get("team_id")
+    const search = searchParams.get("search")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
 
     if (!supabase) {
@@ -98,13 +99,25 @@ export async function GET(request: NextRequest) {
 
     const { data: games, error } = await query.order("game_date", { ascending: false }).limit(limit)
 
+    // Filter by search term if provided
+    let filteredGames = games || []
+    if (search) {
+      const searchLower = search.toLowerCase()
+      filteredGames = filteredGames.filter(game => 
+        game.home_team?.name?.toLowerCase().includes(searchLower) ||
+        game.away_team?.name?.toLowerCase().includes(searchLower) ||
+        game.home_team?.abbreviation?.toLowerCase().includes(searchLower) ||
+        game.away_team?.abbreviation?.toLowerCase().includes(searchLower)
+      )
+    }
+
     if (error) {
       console.error("Error fetching games:", error)
       return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
     }
 
     return NextResponse.json({
-      data: games,
+      data: filteredGames,
       meta: {
         fromCache: false,
         responseTime: 0,

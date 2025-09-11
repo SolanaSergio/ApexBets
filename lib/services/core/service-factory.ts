@@ -11,7 +11,7 @@ import { SoccerService } from '../sports/soccer/soccer-service'
 import { SportSpecificService } from './sport-specific-service'
 import { SportConfigManager } from './sport-config'
 
-export type SupportedSport = 'basketball' | 'football' | 'baseball' | 'hockey' | 'soccer'
+export type SupportedSport = 'basketball' | 'football' | 'baseball' | 'hockey' | 'soccer' | 'tennis' | 'golf'
 
 export interface ServiceFactoryConfig {
   defaultLeague?: string

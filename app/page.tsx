@@ -3,11 +3,13 @@ import { CleanDashboard } from "@/components/categories/dashboard/clean-dashboar
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SyncInitializer } from "@/components/sync-initializer"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
+      <SyncInitializer />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
         <div className="text-center space-y-4">
