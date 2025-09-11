@@ -17,7 +17,7 @@ import { SportConfigManager } from "@/lib/services/core/sport-config"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
 export default function GamesPage() {
-  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [selectedLeague, setSelectedLeague] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [availableLeagues, setAvailableLeagues] = useState<string[]>([])
@@ -27,12 +27,18 @@ export default function GamesPage() {
   }, [])
 
   useEffect(() => {
-    loadLeaguesForSport(selectedSport)
+    if (selectedSport) {
+      loadLeaguesForSport(selectedSport)
+    }
   }, [selectedSport])
 
   const loadSupportedSports = () => {
     const sports = serviceFactory.getSupportedSports()
     setSupportedSports(sports)
+    // Set default sport if none selected
+    if (sports.length > 0 && !selectedSport) {
+      setSelectedSport(sports[0])
+    }
   }
 
   const loadLeaguesForSport = (sport: SupportedSport) => {
@@ -41,6 +47,42 @@ export default function GamesPage() {
     if (leagues.length > 0) {
       setSelectedLeague(leagues[0])
     }
+  }
+
+  // Show no sport selected state
+  if (!selectedSport) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Games & Matches
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Select a sport to view live games, upcoming matches, and historical results
+            </p>
+            <div className="mt-8">
+              <select 
+                value={selectedSport || ""} 
+                onChange={(e) => setSelectedSport(e.target.value as SupportedSport || null)}
+                className="px-4 py-2 border rounded-lg bg-background"
+              >
+                <option value="">Select a Sport</option>
+                {supportedSports.map((sport) => {
+                  const config = SportConfigManager.getSportConfig(sport)
+                  return (
+                    <option key={sport} value={sport}>
+                      {config?.name || sport}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (

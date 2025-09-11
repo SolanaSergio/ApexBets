@@ -27,7 +27,7 @@ interface MarketMetrics {
 }
 
 export default function TrendsPage() {
-  const [selectedSport, setSelectedSport] = useState<SupportedSport>('basketball')
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [trends, setTrends] = useState<TrendData[]>([])
   const [marketMovements, setMarketMovements] = useState<MarketMovement[]>([])
   const [sharpActions, setSharpActions] = useState<SharpAction[]>([])
@@ -45,14 +45,20 @@ export default function TrendsPage() {
   })
   useEffect(() => {
     fetchMarketData()
-    loadTrendsData()
+    if (selectedSport) {
+      loadTrendsData()
+    }
   }, [])
 
   useEffect(() => {
-    loadTrendsData()
+    if (selectedSport) {
+      loadTrendsData()
+    }
   }, [selectedSport])
 
   async function loadTrendsData() {
+    if (!selectedSport) return
+    
     try {
       setLoading(true)
       const [trendsData, movementsData, sharpData] = await Promise.all([
@@ -133,6 +139,39 @@ export default function TrendsPage() {
         <span className={`text-xs ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
           {change >= 0 ? '+' : ''}{change.toFixed(1)}%
         </span>
+      </div>
+    )
+  }
+
+  // Show no sport selected state
+  if (!selectedSport) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Market Trends
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Select a sport to analyze real-time betting trends, market movements, and value opportunities
+            </p>
+            <div className="mt-8">
+              <select 
+                value={selectedSport || ""} 
+                onChange={(e) => setSelectedSport(e.target.value as SupportedSport || null)}
+                className="px-4 py-2 border rounded-lg bg-background"
+              >
+                <option value="">Select a Sport</option>
+                {serviceFactory.getSupportedSports().map(sport => (
+                  <option key={sport} value={sport}>
+                    {sport.charAt(0).toUpperCase() + sport.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </main>
       </div>
     )
   }

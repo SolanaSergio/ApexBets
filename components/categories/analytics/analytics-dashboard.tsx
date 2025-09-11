@@ -42,9 +42,10 @@ export default function AnalyticsDashboard({
 }: AnalyticsDashboardProps = {}) {
   const [selectedTeam, setSelectedTeam] = useState<string>("all")
   const [timeRange, setTimeRange] = useState<string>("30d")
-  const [selectedSport, setSelectedSport] = useState<string>(propSelectedSport || "basketball")
+  const [selectedSport, setSelectedSport] = useState<string>(propSelectedSport || "")
   const [selectedLeague, setSelectedLeague] = useState<string>(propSelectedLeague || "")
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
+  const [availableTeams, setAvailableTeams] = useState<any[]>([])
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
@@ -54,15 +55,44 @@ export default function AnalyticsDashboard({
   }, [])
 
   useEffect(() => {
-    fetchAnalyticsOverview()
+    if (selectedSport) {
+      fetchAnalyticsOverview()
+      loadAvailableTeams()
+    }
   }, [timeRange, selectedSport, selectedLeague])
 
   const loadSupportedSports = async () => {
     try {
       const sports = cachedUnifiedApiClient.getSupportedSports()
       setSupportedSports(sports)
+      // Set default sport if none selected
+      if (!selectedSport && sports.length > 0) {
+        setSelectedSport(sports[0])
+      }
     } catch (error) {
       console.error('Error loading supported sports:', error)
+    }
+  }
+
+  const loadAvailableTeams = async () => {
+    try {
+      const params = new URLSearchParams({
+        sport: selectedSport,
+        external: 'true'
+      })
+      if (selectedLeague) params.set('league', selectedLeague)
+      
+      const response = await fetch(`/api/teams?${params}`)
+      const data = await response.json()
+      
+      if (data.success && data.data) {
+        setAvailableTeams(data.data)
+      } else {
+        setAvailableTeams([])
+      }
+    } catch (error) {
+      console.error('Error loading available teams:', error)
+      setAvailableTeams([])
     }
   }
 
@@ -79,14 +109,14 @@ export default function AnalyticsDashboard({
       
       // Transform the API response to match our interface
       setOverview({
-        totalGames: data.total_games || 0,
-        totalPredictions: data.total_predictions || 0,
-        accuracyRate: data.accuracy_rate || 0,
-        totalValueBets: data.total_value_bets || 0,
-        averageValue: data.average_value || 0,
-        profitLoss: data.profit_loss || 0,
-        winRate: data.accuracy_rate || 0,
-        roi: data.roi || 0
+        totalGames: data.data?.total_games || 0,
+        totalPredictions: data.data?.total_predictions || 0,
+        accuracyRate: data.data?.accuracy_rate || 0,
+        totalValueBets: data.data?.total_value_bets || 0,
+        averageValue: data.data?.average_value || 0,
+        profitLoss: data.data?.profit_loss || 0,
+        winRate: data.data?.accuracy_rate || 0,
+        roi: data.data?.roi || 0
       })
       setLastUpdated(new Date())
     } catch (error) {
@@ -98,6 +128,35 @@ export default function AnalyticsDashboard({
 
   const refreshData = () => {
     fetchAnalyticsOverview()
+  }
+
+  // Show loading state while sports are loading
+  if (supportedSports.length === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading sports data...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show no sport selected state
+  if (!selectedSport) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Select a Sport</h3>
+            <p className="text-muted-foreground">Choose a sport to view analytics</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -148,7 +207,7 @@ export default function AnalyticsDashboard({
               <SelectItem value="">All Leagues</SelectItem>
               {(() => {
                 const sportConfig = SportConfigManager.getSportConfig(selectedSport as SupportedSport)
-                return sportConfig?.leagues.map((league) => (
+                return sportConfig?.leagues.map((league: any) => (
                   <SelectItem key={league.id} value={league.id}>
                     {league.name}
                   </SelectItem>
@@ -251,9 +310,11 @@ export default function AnalyticsDashboard({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Teams</SelectItem>
-                  <SelectItem value="lakers">Los Angeles Lakers</SelectItem>
-                  <SelectItem value="warriors">Golden State Warriors</SelectItem>
-                  <SelectItem value="celtics">Boston Celtics</SelectItem>
+                  {availableTeams.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -298,6 +359,7 @@ export default function AnalyticsDashboard({
 
         <TabsContent value="predictions" className="space-y-6">
           <PredictionAccuracyChart 
+            team={selectedTeam}
             timeRange={timeRange} 
             sport={selectedSport}
             league={selectedLeague}

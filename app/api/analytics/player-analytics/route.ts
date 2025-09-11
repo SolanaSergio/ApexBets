@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get('league') || undefined
     const team = searchParams.get('team') || undefined
     const timeRange = searchParams.get('timeRange') || '7d'
-    const limit = parseInt(searchParams.get('limit') || '30')
+    const limit = parseInt(searchParams.get('limit') || '20')
 
     // Validate sport parameter
     if (!sport) {
@@ -33,41 +33,36 @@ export async function GET(request: NextRequest) {
     }
 
     const analyticsService = new SportAnalyticsService(sport, league)
-    const dataService = serviceFactory.getService(sport, league)
     
-    // Get player performance data using analytics service
-    const playerPerformance = await analyticsService.getPlayerPerformance()
-    
-    // Get additional player data from data service
-    const players = await dataService.getPlayers({ 
-      team, 
-      limit 
-    })
+    // Get player performance data using the sport-specific service
+    const playerAnalytics = await analyticsService.getPlayerPerformance()
     
     // Transform data for chart display - sport-agnostic
-    const playerData = playerPerformance.slice(0, limit).map((performance, index) => {
-      const player = players.find(p => p.id === performance.playerId)
-      return {
-        name: performance.playerName,
-        points: performance.averageStats.points || 0,
-        rebounds: performance.averageStats.rebounds || 0,
-        assists: performance.averageStats.assists || 0,
-        team: performance.team,
-        position: performance.position,
-        gamesPlayed: performance.gamesPlayed,
-        seasonHighs: performance.seasonHighs
-      }
-    })
+    const players = playerAnalytics.map((player: any, index: number) => ({
+      id: player.playerId,
+      name: player.playerName,
+      team: player.team,
+      position: player.position,
+      points: player.averageStats?.points || 0,
+      rebounds: player.averageStats?.rebounds || 0,
+      assists: player.averageStats?.assists || 0,
+      steals: player.averageStats?.steals || 0,
+      blocks: player.averageStats?.blocks || 0,
+      gamesPlayed: player.gamesPlayed || 0,
+      minutesPerGame: player.averageStats?.minutes || 0,
+      efficiency: player.averageStats?.efficiency || 0,
+      rank: index + 1
+    }))
 
     return NextResponse.json({
       success: true,
-      players: playerData,
+      players,
       meta: {
         sport,
         league: league || serviceFactory.getDefaultLeague(sport),
         team,
         timeRange,
-        count: playerData.length,
+        count: players.length,
         timestamp: new Date().toISOString()
       }
     })

@@ -18,7 +18,7 @@ import { SportConfigManager } from "@/lib/services/core/sport-config"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
 export default function TeamsPage() {
-  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
 
   useEffect(() => {
@@ -28,6 +28,46 @@ export default function TeamsPage() {
   const loadSupportedSports = () => {
     const sports = serviceFactory.getSupportedSports()
     setSupportedSports(sports)
+    // Set default sport if none selected
+    if (sports.length > 0 && !selectedSport) {
+      setSelectedSport(sports[0])
+    }
+  }
+
+  // Show no sport selected state
+  if (!selectedSport) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <main className="container mx-auto px-4 py-8 space-y-8">
+          <div className="text-center space-y-4">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Teams & Rosters
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Select a sport to explore team statistics, player rosters, and performance analytics
+            </p>
+            <div className="mt-8">
+              <select 
+                value={selectedSport || ""} 
+                onChange={(e) => setSelectedSport(e.target.value as SupportedSport || null)}
+                className="px-4 py-2 border rounded-lg bg-background"
+              >
+                <option value="">Select a Sport</option>
+                {supportedSports.map((sport) => {
+                  const config = SportConfigManager.getSportConfig(sport)
+                  return (
+                    <option key={sport} value={sport}>
+                      {config?.name || sport}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          </div>
+        </main>
+      </div>
+    )
   }
 
   return (
@@ -89,10 +129,14 @@ export default function TeamsPage() {
                   <SelectValue placeholder="Select League" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nba">NBA</SelectItem>
-                  <SelectItem value="nfl">NFL</SelectItem>
-                  <SelectItem value="mlb">MLB</SelectItem>
-                  <SelectItem value="nhl">NHL</SelectItem>
+                  {(() => {
+                    const sportConfig = SportConfigManager.getSportConfig(selectedSport)
+                    return sportConfig?.leagues.map((league: any) => (
+                      <SelectItem key={league.id} value={league.id}>
+                        {league.name}
+                      </SelectItem>
+                    )) || []
+                  })()}
                 </SelectContent>
               </Select>
               <Select>

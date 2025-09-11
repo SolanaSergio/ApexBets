@@ -682,22 +682,34 @@ function QuickStatsSection() {
     try {
       setStats(prev => ({ ...prev, loading: true, error: null }))
       
-      // Fetch analytics data
-      const response = await fetch('/api/analytics/stats')
-      const data = await response.json()
-      
-      if (data.data) {
-        setStats({
-          overallAccuracy: data.data.accuracy_rate || 0,
-          predictionsToday: data.data.total_predictions || 0,
-          winStreak: 0, // This would need to be calculated
-          confidenceAvg: 0, // This would need to be calculated
-          loading: false,
-          error: null
+      // Fetch analytics data for all sports
+      const supportedSports = ['basketball', 'football', 'soccer', 'hockey', 'baseball', 'tennis', 'golf']
+      const allStats = await Promise.all(
+        supportedSports.map(async (sport) => {
+          try {
+            const response = await fetch(`/api/analytics/stats?sport=${sport}`)
+            const data = await response.json()
+            return data.data || {}
+          } catch (error) {
+            console.warn(`Failed to fetch stats for ${sport}:`, error)
+            return {}
+          }
         })
-      } else {
-        throw new Error('No data received')
-      }
+      )
+      
+      // Aggregate stats across all sports
+      const totalPredictions = allStats.reduce((sum, stats) => sum + (stats.total_predictions || 0), 0)
+      const totalAccuracy = allStats.reduce((sum, stats) => sum + (stats.accuracy_rate || 0), 0)
+      const avgAccuracy = allStats.length > 0 ? totalAccuracy / allStats.length : 0
+      
+      setStats({
+        overallAccuracy: avgAccuracy,
+        predictionsToday: totalPredictions,
+        winStreak: 0, // This would need to be calculated
+        confidenceAvg: 0, // This would need to be calculated
+        loading: false,
+        error: null
+      })
     } catch (error) {
       console.error('Error fetching quick stats:', error)
       setStats(prev => ({

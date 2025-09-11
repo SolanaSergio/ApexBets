@@ -15,6 +15,14 @@ import { type BallDontLiePlayer } from "@/lib/sports-apis"
 
 export default function PlayersPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | null>(null)
+  const [selectedSport, setSelectedSport] = useState<string>("basketball")
+  const [supportedSports, setSupportedSports] = useState<string[]>([])
+
+  useEffect(() => {
+    // Load supported sports dynamically
+    const sports = ['basketball', 'football', 'soccer', 'hockey', 'baseball', 'tennis', 'golf']
+    setSupportedSports(sports)
+  }, [])
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,8 +39,23 @@ export default function PlayersPage() {
           </p>
         </div>
 
+        {/* Sport Selector */}
+        <div className="flex justify-center mb-6">
+          <select 
+            value={selectedSport} 
+            onChange={(e) => setSelectedSport(e.target.value)}
+            className="px-4 py-2 border rounded-lg bg-background"
+          >
+            {supportedSports.map(sport => (
+              <option key={sport} value={sport}>
+                {sport.charAt(0).toUpperCase() + sport.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+
         {/* Search Section */}
-        <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} />
+        <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} sport={selectedSport} />
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="stats" className="space-y-6">
