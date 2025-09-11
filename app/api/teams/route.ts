@@ -19,37 +19,23 @@ export async function GET(request: NextRequest) {
       const teams: any[] = []
       
       try {
-        // Get NBA teams from BallDontLie
-        if (sport === 'basketball') {
-          const { ballDontLieClient } = await import("@/lib/sports-apis/balldontlie-client")
-          const nbaTeams = await ballDontLieClient.getTeams()
-          teams.push(...nbaTeams.data.map((team: any) => ({
-            id: team.id.toString(),
-            name: team.full_name,
-            city: team.city,
-            league: 'NBA',
-            sport: 'basketball',
-            abbreviation: team.abbreviation,
-            logo_url: null,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })))
-        }
+        // Use the unified API client for all sports
+        const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
         
-        // Add other sports teams as needed
-        // For now, return NBA teams for basketball
-        if (sport !== 'basketball') {
-          // Return empty array for other sports until we implement their APIs
-          return NextResponse.json({
-            data: [],
-            meta: {
-              fromCache: false,
-              responseTime: 0,
-              source: "external_apis",
-              note: `No external API implemented for ${sport} teams yet`
-            }
-          })
-        }
+        // Get teams for the specified sport
+        const sportTeams = await cachedUnifiedApiClient.getTeams(sport as any, { limit: 100 })
+        
+        teams.push(...sportTeams.map((team: any) => ({
+          id: team.id?.toString() || team.teamId?.toString() || Math.random().toString(),
+          name: team.name || team.full_name || team.teamName,
+          city: team.city || team.homeTeam || '',
+          league: team.league || 'Unknown',
+          sport: sport,
+          abbreviation: team.abbreviation || team.abbr || team.teamAbbreviation || '',
+          logo_url: team.logo_url || team.logoUrl || null,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })))
       } catch (error) {
         console.error('External API error:', error)
         // Fall through to database fallback
@@ -69,6 +55,10 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const league = searchParams.get("league")
     const sport = searchParams.get("sport")
+
+    if (!supabase) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
 
     let query = supabase.from("teams").select("*")
 
@@ -104,6 +94,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    
+    if (!supabase) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
+    
     const teamData = await request.json()
 
     // Validate required fields

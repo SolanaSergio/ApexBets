@@ -5,19 +5,27 @@ import { SportAnalyticsService } from "@/lib/services/analytics/sport-analytics-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const sport = searchParams.get("sport")
+    const league = searchParams.get("league")
     const useExternalApi = searchParams.get("external") === "true"
+    
+    if (!sport) {
+      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+    }
     
     // Use external analytics service if requested
     if (useExternalApi) {
       try {
-        const analyticsService = new SportAnalyticsService('basketball', 'NBA')
+        const analyticsService = new SportAnalyticsService(sport as any, league || undefined)
         const analyticsData = await analyticsService.getSportAnalytics()
         return NextResponse.json({
           data: analyticsData,
           meta: {
             fromCache: false,
             responseTime: 0,
-            source: "analytics_service"
+            source: "analytics_service",
+            sport,
+            league: league || "default"
           }
         })
       } catch (error) {
@@ -33,20 +41,48 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
     }
 
+    // Build sport-specific queries
+    let gamesQuery = supabase.from("games").select("*", { count: "exact", head: true })
+    let predictionsQuery = supabase.from("predictions").select("*", { count: "exact", head: true })
+    let teamsQuery = supabase.from("teams").select("*", { count: "exact", head: true })
+
+    // Filter by sport if provided
+    if (sport) {
+      gamesQuery = gamesQuery.eq("sport", sport)
+      predictionsQuery = predictionsQuery.eq("sport", sport)
+      teamsQuery = teamsQuery.eq("sport", sport)
+    }
+
+    // Filter by league if provided
+    if (league) {
+      gamesQuery = gamesQuery.eq("league", league)
+      predictionsQuery = predictionsQuery.eq("league", league)
+      teamsQuery = teamsQuery.eq("league", league)
+    }
+
     // Get total games
-    const { count: totalGames } = await supabase.from("games").select("*", { count: "exact", head: true })
+    const { count: totalGames } = await gamesQuery
 
     // Get total predictions
-    const { count: totalPredictions } = await supabase.from("predictions").select("*", { count: "exact", head: true })
+    const { count: totalPredictions } = await predictionsQuery
 
     // Get total teams
-    const { count: totalTeams } = await supabase.from("teams").select("*", { count: "exact", head: true })
+    const { count: totalTeams } = await teamsQuery
 
     // Get accuracy statistics
-    const { data: accuracyData } = await supabase
+    let accuracyQuery = supabase
       .from("predictions")
       .select("prediction_type, is_correct")
       .not("is_correct", "is", null)
+    
+    if (sport) {
+      accuracyQuery = accuracyQuery.eq("sport", sport)
+    }
+    if (league) {
+      accuracyQuery = accuracyQuery.eq("league", league)
+    }
+    
+    const { data: accuracyData } = await accuracyQuery
 
     // Calculate accuracy by type
     const accuracyByType: Record<string, number> = {}
@@ -80,11 +116,20 @@ export async function GET(request: NextRequest) {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const { data: recentPredictions } = await supabase
+    let recentPredictionsQuery = supabase
       .from("predictions")
       .select("created_at, is_correct")
       .gte("created_at", thirtyDaysAgo.toISOString())
       .not("is_correct", "is", null)
+    
+    if (sport) {
+      recentPredictionsQuery = recentPredictionsQuery.eq("sport", sport)
+    }
+    if (league) {
+      recentPredictionsQuery = recentPredictionsQuery.eq("league", league)
+    }
+    
+    const { data: recentPredictions } = await recentPredictionsQuery
 
     // Group by date
     const dailyStats: Record<string, { predictions_made: number; correct_predictions: number }> = {}
@@ -127,7 +172,9 @@ export async function GET(request: NextRequest) {
       meta: {
         fromCache: false,
         responseTime: 0,
-        source: "supabase"
+        source: "supabase",
+        sport: sport || "all",
+        league: league || "all"
       }
     })
   } catch (error) {

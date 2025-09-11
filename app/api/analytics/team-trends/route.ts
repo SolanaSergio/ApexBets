@@ -5,7 +5,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const team = searchParams.get("team") || "all"
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+    }
     const league = searchParams.get("league")
     const timeRange = searchParams.get("timeRange") || "30d"
     

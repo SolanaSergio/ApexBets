@@ -7,7 +7,11 @@ export async function GET(request: NextRequest) {
     const playerId = searchParams.get("playerId")
     const playerName = searchParams.get("playerName")
     const teamId = searchParams.get("teamId")
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+    }
     const timeRange = searchParams.get("timeRange") || "30d"
     
     if (!playerId && !playerName) {

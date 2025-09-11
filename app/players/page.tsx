@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import PlayerSearch from "@/components/categories/sports/player-search"
 import PlayerStats from "@/components/categories/sports/player-stats"
 import PlayerComparison from "@/components/categories/sports/player-comparison"
@@ -12,16 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
+import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
 export default function PlayersPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | null>(null)
-  const [selectedSport, setSelectedSport] = useState<string>("basketball")
+  const [selectedSport, setSelectedSport] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<string[]>([])
 
   useEffect(() => {
-    // Load supported sports dynamically
-    const sports = ['basketball', 'football', 'soccer', 'hockey', 'baseball', 'tennis', 'golf']
+    // Load supported sports dynamically from service factory
+    const sports = serviceFactory.getSupportedSports()
     setSupportedSports(sports)
+    // Don't set default sport - let user choose
   }, [])
 
   return (
@@ -46,68 +48,90 @@ export default function PlayersPage() {
             onChange={(e) => setSelectedSport(e.target.value)}
             className="px-4 py-2 border rounded-lg bg-background"
           >
-            {supportedSports.map(sport => (
-              <option key={sport} value={sport}>
-                {sport.charAt(0).toUpperCase() + sport.slice(1)}
-              </option>
-            ))}
+            {supportedSports.map(sport => {
+              const config = require("@/lib/services/core/sport-config").SportConfigManager.getSportConfig(sport as SupportedSport)
+              return (
+                <option key={sport} value={sport}>
+                  {config?.name || sport.charAt(0).toUpperCase() + sport.slice(1)}
+                </option>
+              )
+            })}
           </select>
         </div>
 
         {/* Search Section */}
-        <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} sport={selectedSport} />
+        {selectedSport ? (
+          <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} sport={selectedSport} />
+        ) : (
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-muted-foreground">
+                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-semibold mb-2">Select a Sport</h3>
+                <p className="text-sm">Choose a sport above to search for players</p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Main Content Tabs */}
-        <Tabs defaultValue="stats" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
-            <TabsTrigger value="stats" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Statistics</span>
-            </TabsTrigger>
-            <TabsTrigger value="trends" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              <span className="hidden sm:inline">Trends</span>
-            </TabsTrigger>
-            <TabsTrigger value="comparison" className="flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Compare</span>
-            </TabsTrigger>
-            <TabsTrigger value="predictions" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              <span className="hidden sm:inline">Predictions</span>
-            </TabsTrigger>
-          </TabsList>
+        {/* Main Content Tabs - Only show when sport is selected */}
+        {selectedSport && (
+          <Tabs defaultValue="stats" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4">
+              <TabsTrigger value="stats" className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Statistics</span>
+              </TabsTrigger>
+              <TabsTrigger value="trends" className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4" />
+                <span className="hidden sm:inline">Trends</span>
+              </TabsTrigger>
+              <TabsTrigger value="comparison" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Compare</span>
+              </TabsTrigger>
+              <TabsTrigger value="predictions" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                <span className="hidden sm:inline">Predictions</span>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="stats" className="space-y-6">
-            <PlayerStats selectedPlayer={selectedPlayer} />
-          </TabsContent>
+            <TabsContent value="stats" className="space-y-6">
+              <PlayerStats selectedPlayer={selectedPlayer} />
+            </TabsContent>
 
-          <TabsContent value="trends" className="space-y-6">
-            <PlayerTrends selectedPlayer={selectedPlayer} />
-          </TabsContent>
+            <TabsContent value="trends" className="space-y-6">
+              <PlayerTrends 
+                playerName={selectedPlayer?.first_name + ' ' + selectedPlayer?.last_name || ''}
+                timeRange="30d"
+                sport={selectedSport}
+                league=""
+              />
+            </TabsContent>
 
-          <TabsContent value="comparison" className="space-y-6">
-            <PlayerComparison selectedPlayer={selectedPlayer} />
-          </TabsContent>
+            <TabsContent value="comparison" className="space-y-6">
+              <PlayerComparison selectedPlayer={selectedPlayer} />
+            </TabsContent>
 
-          <TabsContent value="predictions" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5" />
-                  Player Performance Predictions
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
-                  <p className="text-sm">AI-powered player performance predictions will be available here</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="predictions" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Player Performance Predictions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-12 text-muted-foreground">
+                    <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
+                    <p className="text-sm">AI-powered player performance predictions will be available here</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        )}
       </main>
     </div>
   )

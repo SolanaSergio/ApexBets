@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     
     // Get live games based on status
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     let query = supabase
       .from('games')
       .select(`

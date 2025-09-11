@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         testResult = await databaseCacheService.get('test:cache')
       } catch (error) {
         console.error('Cache test failed:', error)
-        testResult = { error: error.message }
+        testResult = { error: error instanceof Error ? error.message : "Unknown error" }
       }
     }
     
@@ -27,10 +27,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error testing cache:', error)
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to test cache',
-        details: error.message 
+        details: error instanceof Error ? error.message : "Unknown error"
       },
       { status: 500 }
     )

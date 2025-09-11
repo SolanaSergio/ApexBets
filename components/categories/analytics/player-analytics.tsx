@@ -25,7 +25,14 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
       setLoading(true)
       
       // Fetch real player analytics data from API
-      const response = await fetch(`/api/analytics/player-analytics?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`)
+      const params = new URLSearchParams({
+        sport: sport,
+        timeRange: timeRange
+      })
+      if (league) params.set('league', league)
+      if (team && team !== 'all') params.set('team', team)
+      
+      const response = await fetch(`/api/analytics/player-analytics?${params}`)
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
@@ -34,7 +41,24 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
       const data = await response.json()
       
       if (data.success) {
-        setPlayerData(data.players || [])
+        // Transform the data for the chart
+        const chartData = data.players?.map((player: any) => ({
+          id: player.id,
+          name: player.name,
+          team: player.team,
+          position: player.position,
+          points: player.points || 0,
+          rebounds: player.rebounds || 0,
+          assists: player.assists || 0,
+          steals: player.steals || 0,
+          blocks: player.blocks || 0,
+          gamesPlayed: player.gamesPlayed || 0,
+          minutesPerGame: player.minutesPerGame || 0,
+          efficiency: player.efficiency || 0,
+          rank: player.rank || 0
+        })) || []
+        
+        setPlayerData(chartData)
       } else {
         console.error('API returned error:', data.error)
         setPlayerData([])

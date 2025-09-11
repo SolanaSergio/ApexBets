@@ -5,6 +5,9 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
     
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const { data: alerts, error } = await supabase
       .from("user_alerts")
       .select(`
@@ -28,8 +31,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const body = await request.json()
-    
+
     const { data: alert, error } = await supabase
       .from("user_alerts")
       .insert([{

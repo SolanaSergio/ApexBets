@@ -6,7 +6,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const team = searchParams.get("team") || "all"
     const timeRange = searchParams.get("timeRange") || "30d"
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+    }
     
     // Calculate date range
     const endDate = new Date()

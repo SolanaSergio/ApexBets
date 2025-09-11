@@ -10,6 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
 import { apiClient, type Prediction, type Game } from "@/lib/api-client"
+import { serviceFactory } from "@/lib/services/core/service-factory"
 import { format } from "date-fns"
 
 export default function PredictionsPage() {
@@ -683,7 +684,7 @@ function QuickStatsSection() {
       setStats(prev => ({ ...prev, loading: true, error: null }))
       
       // Fetch analytics data for all sports
-      const supportedSports = ['basketball', 'football', 'soccer', 'hockey', 'baseball', 'tennis', 'golf']
+      const supportedSports = serviceFactory.getSupportedSports()
       const allStats = await Promise.all(
         supportedSports.map(async (sport) => {
           try {

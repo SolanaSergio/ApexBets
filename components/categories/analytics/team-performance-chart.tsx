@@ -25,10 +25,31 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
       setLoading(true)
       
       // Fetch real performance data from API
-      const response = await fetch(`/api/analytics/team-performance?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`)
+      const params = new URLSearchParams({
+        sport: sport,
+        timeRange: timeRange
+      })
+      if (league) params.set('league', league)
+      if (team && team !== 'all') params.set('team', team)
+      
+      const response = await fetch(`/api/analytics/team-performance?${params}`)
       const data = await response.json()
       
-      setPerformanceData(data.performance || [])
+      if (data.error) {
+        console.error('Team performance API error:', data.error)
+        setPerformanceData([])
+        return
+      }
+      
+      // Transform the data for the chart
+      const chartData = data.performance?.map((game: any) => ({
+        date: game.date,
+        winRate: game.won ? 100 : 0,
+        points: game.points || 0,
+        accuracy: game.accuracy || 0
+      })) || []
+      
+      setPerformanceData(chartData)
     } catch (error) {
       console.error('Error fetching performance data:', error)
       setPerformanceData([])

@@ -7,7 +7,11 @@ import { SportPredictionService } from "@/lib/services/predictions/sport-predict
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+    }
     const league = searchParams.get("league")
     const days = parseInt(searchParams.get("days") || "30")
     

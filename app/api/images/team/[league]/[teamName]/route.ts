@@ -177,10 +177,12 @@ function generateSVG(league: string, teamName: string): string {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { league: string; teamName: string } }
+  context: { params: Promise<{ league: string; teamName: string }> }
 ) {
+  const { params } = context;
+  const resolvedParams = await params;
   try {
-    const { league, teamName } = params
+    const { league, teamName } = resolvedParams
 
     if (!league || !teamName) {
       return new NextResponse('Missing parameters', { status: 400 })

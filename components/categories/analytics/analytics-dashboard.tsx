@@ -100,12 +100,49 @@ export default function AnalyticsDashboard({
     try {
       setLoading(true)
       const params = new URLSearchParams({
-        sport: selectedSport
+        sport: selectedSport,
+        external: 'true' // Use external APIs for better data
       })
       if (selectedLeague) params.set('league', selectedLeague)
       
       const response = await fetch(`/api/analytics/stats?${params}`)
       const data = await response.json()
+      
+      if (data.error) {
+        console.error('Analytics API error:', data.error)
+        // Try to get basic stats from external APIs as fallback
+        try {
+          const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
+          const [teams, games] = await Promise.all([
+            cachedUnifiedApiClient.getTeams(selectedSport as any, { limit: 100 }),
+            cachedUnifiedApiClient.getGames(selectedSport as any, { limit: 50 })
+          ])
+          
+          setOverview({
+            totalGames: games.length,
+            totalPredictions: 0,
+            accuracyRate: 0,
+            totalValueBets: 0,
+            averageValue: 0,
+            profitLoss: 0,
+            winRate: 0,
+            roi: 0
+          })
+        } catch (fallbackError) {
+          console.error('Fallback API error:', fallbackError)
+          setOverview({
+            totalGames: 0,
+            totalPredictions: 0,
+            accuracyRate: 0,
+            totalValueBets: 0,
+            averageValue: 0,
+            profitLoss: 0,
+            winRate: 0,
+            roi: 0
+          })
+        }
+        return
+      }
       
       // Transform the API response to match our interface
       setOverview({
@@ -121,6 +158,17 @@ export default function AnalyticsDashboard({
       setLastUpdated(new Date())
     } catch (error) {
       console.error('Error fetching analytics overview:', error)
+      // Set empty overview on error
+      setOverview({
+        totalGames: 0,
+        totalPredictions: 0,
+        accuracyRate: 0,
+        totalValueBets: 0,
+        averageValue: 0,
+        profitLoss: 0,
+        winRate: 0,
+        roi: 0
+      })
     } finally {
       setLoading(false)
     }
@@ -153,6 +201,32 @@ export default function AnalyticsDashboard({
             <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">Select a Sport</h3>
             <p className="text-muted-foreground">Choose a sport to view analytics</p>
+            <div className="mt-4">
+              <Select 
+                value={selectedSport} 
+                onValueChange={(value) => {
+                  setSelectedSport(value)
+                  onSportChange?.(value)
+                }}
+              >
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Select a sport..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {supportedSports.map((sport) => {
+                    const config = SportConfigManager.getSportConfig(sport)
+                    return (
+                      <SelectItem key={sport} value={sport}>
+                        <div className="flex items-center gap-2">
+                          <span className={config?.color}>{config?.icon}</span>
+                          {config?.name}
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </div>

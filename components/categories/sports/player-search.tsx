@@ -79,7 +79,10 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
   }
 
   const searchPlayers = async () => {
-    if (!searchQuery.trim() || !sport) return
+    if (!searchQuery.trim() || !sport) {
+      setPlayers([])
+      return
+    }
 
     setLoading(true)
     setError(null)
@@ -162,6 +165,26 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     }
   }
 
+
+  // Show no sport selected state
+  if (!sport) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5" />
+            Player Search
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-center py-8 text-muted-foreground">
+            <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p className="text-sm">Please select a sport to search for players</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>

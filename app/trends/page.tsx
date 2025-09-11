@@ -341,7 +341,7 @@ function OverviewSection() {
       setLoading(true)
       // Fetch real analytics trend data for each sport
       // Get supported sports dynamically
-      const supportedSports = await serviceFactory.getSupportedSports()
+      const supportedSports = serviceFactory.getSupportedSports()
       const sports = supportedSports.slice(0, 4) // Limit to first 4 sports
       const sportData = await Promise.all(
         sports.map(async (sport) => {

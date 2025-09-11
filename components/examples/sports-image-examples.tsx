@@ -86,7 +86,7 @@ export function SportsImageExamples() {
             <h3 className="text-lg font-semibold mb-3">Real Team Logo Examples</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Team logos are loaded dynamically from real APIs. 
-              No hardcoded or mock data is used.
+              All data is fetched from external sports APIs - no mock data.
             </p>
             
             {loading ? (
@@ -140,7 +140,7 @@ export function SportsImageExamples() {
             <h3 className="text-lg font-semibold mb-3">Real Player Photo Examples</h3>
             <p className="text-sm text-muted-foreground mb-4">
               Player photos are loaded dynamically from real APIs. 
-              No hardcoded or mock data is used.
+              All data is fetched from external sports APIs - no mock data.
             </p>
             
             {loading ? (

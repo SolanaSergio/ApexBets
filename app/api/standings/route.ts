@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const { searchParams } = new URL(request.url)
 
     const sport = searchParams.get("sport")
@@ -50,13 +53,13 @@ export async function GET(request: NextRequest) {
     // Calculate standings for each team
     const standings = teams?.map(team => {
       const allGames = [
-        ...(team.home_games || []).map(game => ({
+        ...(team.home_games || []).map((game: any) => ({
           ...game,
           isHome: true,
           teamScore: game.home_score,
           opponentScore: game.away_score
         })),
-        ...(team.away_games || []).map(game => ({
+        ...(team.away_games || []).map((game: any) => ({
           ...game,
           isHome: false,
           teamScore: game.away_score,
@@ -120,7 +123,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Add rank to each team
-    standings.forEach((team, index) => {
+    standings.forEach((team: any, index) => {
       team.rank = index + 1
     })
 

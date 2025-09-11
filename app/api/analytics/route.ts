@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server';
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
+
     // Get analytics data from database
     const [
       gamesResult,
@@ -12,7 +15,7 @@ export async function GET(request: NextRequest) {
       predictionsResult,
       oddsResult
     ] = await Promise.allSettled([
-      supabase.from('games').select('id, sport, status').limit(1000),
+      supabase.from('games').select('id, sport, status, updated_at').limit(1000),
       supabase.from('teams').select('id, sport, is_active').limit(1000),
       supabase.from('predictions').select('id, sport, confidence').limit(1000),
       supabase.from('odds').select('id, sport, last_updated').limit(1000)

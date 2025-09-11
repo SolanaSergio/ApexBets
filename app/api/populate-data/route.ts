@@ -49,6 +49,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     
     // Get counts for each table
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const [teams, games, playerStats, odds, predictions, standings] = await Promise.all([
       supabase.from('teams').select('*', { count: 'exact', head: true }),
       supabase.from('games').select('*', { count: 'exact', head: true }),

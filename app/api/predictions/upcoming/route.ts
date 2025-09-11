@@ -5,6 +5,9 @@ import { SportPredictionService } from "@/lib/services/predictions/sport-predict
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const { searchParams } = new URL(request.url)
     const limit = Number.parseInt(searchParams.get("limit") || "10")
     const days = Number.parseInt(searchParams.get("days") || "7")

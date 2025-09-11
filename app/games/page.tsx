@@ -35,10 +35,7 @@ export default function GamesPage() {
   const loadSupportedSports = () => {
     const sports = serviceFactory.getSupportedSports()
     setSupportedSports(sports)
-    // Set default sport if none selected
-    if (sports.length > 0 && !selectedSport) {
-      setSelectedSport(sports[0])
-    }
+    // Don't set default sport - let user choose
   }
 
   const loadLeaguesForSport = (sport: SupportedSport) => {
@@ -184,19 +181,19 @@ export default function GamesPage() {
 
           <TabsContent value="live" className="space-y-6">
             <Suspense fallback={<LiveGamesSkeleton />}>
-              <LiveGamesSection />
+              <LiveGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="upcoming" className="space-y-6">
             <Suspense fallback={<UpcomingGamesSkeleton />}>
-              <UpcomingGamesSection />
+              <UpcomingGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="completed" className="space-y-6">
             <Suspense fallback={<CompletedGamesSkeleton />}>
-              <CompletedGamesSection />
+              <CompletedGamesSection selectedSport={selectedSport} selectedLeague={selectedLeague} />
             </Suspense>
           </TabsContent>
         </Tabs>
@@ -206,24 +203,55 @@ export default function GamesPage() {
 }
 
 // Live Games Section
-function LiveGamesSection() {
+function LiveGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
   const [liveGames, setLiveGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchLiveGames()
-  }, [])
+    if (selectedSport) {
+      fetchLiveGames()
+    }
+  }, [selectedSport, selectedLeague])
 
   async function fetchLiveGames() {
+    if (!selectedSport) return
+    
     try {
       setLoading(true)
-      const games = await apiClient.getGames({
-        status: "in_progress",
-        limit: 10
-      })
-      setLiveGames(games)
+      // Use external APIs for better live data
+      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
+      const liveGames = await cachedUnifiedApiClient.getLiveGames(selectedSport as any)
+      
+      // Transform to match expected format
+      const transformedGames = liveGames.map(game => ({
+        id: game.id,
+        home_team_id: 'external_home',
+        away_team_id: 'external_away',
+        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
+        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
+        home_score: game.homeScore,
+        away_score: game.awayScore,
+        game_date: game.date,
+        season: '2024-25',
+        status: game.status,
+        venue: game.venue
+      })) as Game[]
+      
+      setLiveGames(transformedGames)
     } catch (error) {
       console.error("Error fetching live games:", error)
+      // Fallback to API client
+      try {
+        const games = await apiClient.getGames({
+          sport: selectedSport,
+          status: "in_progress",
+          limit: 10
+        })
+        setLiveGames(games)
+      } catch (fallbackError) {
+        console.error("Fallback error:", fallbackError)
+        setLiveGames([])
+      }
     } finally {
       setLoading(false)
     }
@@ -302,24 +330,58 @@ function LiveGamesSection() {
 }
 
 // Upcoming Games Section
-function UpcomingGamesSection() {
+function UpcomingGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchUpcomingGames()
-  }, [])
+    if (selectedSport) {
+      fetchUpcomingGames()
+    }
+  }, [selectedSport, selectedLeague])
 
   async function fetchUpcomingGames() {
+    if (!selectedSport) return
+    
     try {
       setLoading(true)
-      const games = await apiClient.getGames({
-        status: "scheduled",
-        limit: 10
+      // Use external APIs for better upcoming data
+      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
+      const upcomingGames = await cachedUnifiedApiClient.getGames(selectedSport as any, { 
+        status: 'scheduled',
+        limit: 10 
       })
-      setUpcomingGames(games)
+      
+      // Transform to match expected format
+      const transformedGames = upcomingGames.map(game => ({
+        id: game.id,
+        home_team_id: 'external_home',
+        away_team_id: 'external_away',
+        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
+        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
+        home_score: game.homeScore,
+        away_score: game.awayScore,
+        game_date: game.date,
+        season: '2024-25',
+        status: game.status,
+        venue: game.venue
+      })) as Game[]
+      
+      setUpcomingGames(transformedGames)
     } catch (error) {
       console.error("Error fetching upcoming games:", error)
+      // Fallback to API client
+      try {
+        const games = await apiClient.getGames({
+          sport: selectedSport,
+          status: "scheduled",
+          limit: 10
+        })
+        setUpcomingGames(games)
+      } catch (fallbackError) {
+        console.error("Fallback error:", fallbackError)
+        setUpcomingGames([])
+      }
     } finally {
       setLoading(false)
     }
@@ -397,24 +459,58 @@ function UpcomingGamesSection() {
 }
 
 // Completed Games Section
-function CompletedGamesSection() {
+function CompletedGamesSection({ selectedSport, selectedLeague }: { selectedSport: SupportedSport | null, selectedLeague: string }) {
   const [completedGames, setCompletedGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchCompletedGames()
-  }, [])
+    if (selectedSport) {
+      fetchCompletedGames()
+    }
+  }, [selectedSport, selectedLeague])
 
   async function fetchCompletedGames() {
+    if (!selectedSport) return
+    
     try {
       setLoading(true)
-      const games = await apiClient.getGames({
-        status: "completed",
-        limit: 10
+      // Use external APIs for better completed data
+      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
+      const completedGames = await cachedUnifiedApiClient.getGames(selectedSport as any, { 
+        status: 'finished',
+        limit: 10 
       })
-      setCompletedGames(games)
+      
+      // Transform to match expected format
+      const transformedGames = completedGames.map(game => ({
+        id: game.id,
+        home_team_id: 'external_home',
+        away_team_id: 'external_away',
+        home_team: { name: game.homeTeam, abbreviation: game.homeTeam?.split(' ').pop() || 'HT' },
+        away_team: { name: game.awayTeam, abbreviation: game.awayTeam?.split(' ').pop() || 'AT' },
+        home_score: game.homeScore,
+        away_score: game.awayScore,
+        game_date: game.date,
+        season: '2024-25',
+        status: game.status,
+        venue: game.venue
+      })) as Game[]
+      
+      setCompletedGames(transformedGames)
     } catch (error) {
       console.error("Error fetching completed games:", error)
+      // Fallback to API client
+      try {
+        const games = await apiClient.getGames({
+          sport: selectedSport,
+          status: "completed",
+          limit: 10
+        })
+        setCompletedGames(games)
+      } catch (fallbackError) {
+        console.error("Fallback error:", fallbackError)
+        setCompletedGames([])
+      }
     } finally {
       setLoading(false)
     }

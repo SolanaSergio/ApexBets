@@ -3,19 +3,24 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { params } = context;
+  const resolvedParams = await params;
   try {
     const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
     const body = await request.json()
-    
+
     const { data: alert, error } = await supabase
       .from("user_alerts")
       .update({
         enabled: body.enabled,
         updated_at: new Date().toISOString()
       })
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
       .select(`
         *,
         team:teams(id, name, abbreviation)
@@ -36,15 +41,20 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { params } = context;
+  const resolvedParams = await params;
   try {
     const supabase = await createClient()
-    
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
+
     const { error } = await supabase
       .from("user_alerts")
       .delete()
-      .eq("id", params.id)
+      .eq("id", resolvedParams.id)
 
     if (error) {
       console.error("Error deleting alert:", error)
