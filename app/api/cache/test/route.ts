@@ -3,12 +3,12 @@ import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function GET(request: NextRequest) {
   try {
-    // Test if database cache is available
-    const isAvailable = databaseCacheService.isAvailable()
+    // Get detailed status
+    const status = databaseCacheService.getStatus()
     
     // Try to set a test cache entry
     let testResult = null
-    if (isAvailable) {
+    if (status.available) {
       try {
         await databaseCacheService.set('test:cache', { message: 'Hello from cache!', timestamp: new Date().toISOString() }, 60, 'test')
         testResult = await databaseCacheService.get('test:cache')
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     
     return NextResponse.json({
       success: true,
-      databaseCacheAvailable: isAvailable,
+      status,
       testResult,
       timestamp: new Date().toISOString()
     })
