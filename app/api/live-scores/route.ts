@@ -5,7 +5,14 @@ import { cacheService } from "@/lib/services/cache-service"
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({
+        success: false,
+        error: "Sport parameter is required"
+      }, { status: 400 })
+    }
     const league = searchParams.get("league") || "NBA"
     const status = searchParams.get("status") || "live"
 

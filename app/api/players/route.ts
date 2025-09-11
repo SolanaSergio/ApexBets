@@ -4,7 +4,14 @@ import { serviceFactory, SupportedSport } from "@/lib/services/core/service-fact
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({
+        success: false,
+        error: "Sport parameter is required"
+      }, { status: 400 })
+    }
     const league = searchParams.get("league") || "NBA"
     const team = searchParams.get("team") || ""
     const search = searchParams.get("search") || ""

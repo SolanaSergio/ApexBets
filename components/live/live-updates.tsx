@@ -68,7 +68,7 @@ interface LiveUpdatesProps {
   className?: string
 }
 
-export function LiveUpdates({ sport = "basketball", className = "" }: LiveUpdatesProps) {
+export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
   const [activeTab, setActiveTab] = useState("scores")
   const [isLive, setIsLive] = useState(false)
   const [liveGames, setLiveGames] = useState<LiveGame[]>([])

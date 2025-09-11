@@ -1,81 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SportPredictionService } from '@/lib/services/predictions/sport-prediction-service';
+import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const sport = searchParams.get('sport') || 'basketball';
-    const limit = parseInt(searchParams.get('limit') || '5'); // Reduced limit for faster response
+    const sport = searchParams.get('sport');
     
-    // Create a simple mock prediction service to avoid complex dependencies
-    const mockPredictions = [
-      {
-        gameId: '1',
-        homeTeam: 'Lakers',
-        awayTeam: 'Warriors',
-        homeWinProbability: 0.65,
-        awayWinProbability: 0.35,
-        predictedSpread: -3.5,
-        predictedTotal: 220.5,
-        confidence: 0.72,
-        model: `${sport}-model-v1`,
-        factors: ['team-form', 'head-to-head', 'home-advantage'],
-        lastUpdated: new Date().toISOString()
-      },
-      {
-        gameId: '2',
-        homeTeam: 'Celtics',
-        awayTeam: 'Heat',
-        homeWinProbability: 0.58,
-        awayWinProbability: 0.42,
-        predictedSpread: -2.0,
-        predictedTotal: 215.0,
-        confidence: 0.68,
-        model: `${sport}-model-v1`,
-        factors: ['team-form', 'head-to-head', 'home-advantage'],
-        lastUpdated: new Date().toISOString()
-      }
-    ];
+    if (!sport) {
+      return NextResponse.json({
+        success: false,
+        error: "Sport parameter is required"
+      }, { status: 400 });
+    }
+    const league = searchParams.get('league') || undefined;
+    const limit = parseInt(searchParams.get('limit') || '5');
+    const minValue = parseFloat(searchParams.get('minValue') || '0.1');
     
-    const mockValueBets = [
-      {
-        gameId: '1',
-        homeTeam: 'Lakers',
-        awayTeam: 'Warriors',
-        market: 'moneyline',
-        selection: 'home',
-        odds: 1.85,
-        predictedProbability: 0.65,
-        value: 0.20,
-        confidence: 0.72,
-        recommendation: 'strong',
-        lastUpdated: new Date().toISOString()
-      }
-    ];
+    // Validate sport
+    if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
+      return NextResponse.json({
+        success: false,
+        error: `Unsupported sport: ${sport}. Supported sports: ${serviceFactory.getSupportedSports().join(', ')}`,
+        timestamp: new Date().toISOString()
+      }, { status: 400 });
+    }
+
+    // Use real prediction service - NO MOCK DATA
+    const predictionService = new SportPredictionService(sport as SupportedSport, league);
     
-    const mockModelPerformance = [
-      {
-        modelName: `${sport}-model-v1`,
-        accuracy: 0.68,
-        totalPredictions: 150,
-        correctPredictions: 102,
-        lastUpdated: new Date().toISOString()
-      }
-    ];
+    // Get real predictions, value bets, and model performance
+    const [predictions, valueBets, modelPerformance] = await Promise.all([
+      predictionService.getPredictions({ limit }),
+      predictionService.getValueBettingOpportunities({ minValue, limit: 5 }),
+      predictionService.getModelPerformance()
+    ]);
     
     return NextResponse.json({
       success: true,
       sport,
+      league: league || serviceFactory.getDefaultLeague(sport as SupportedSport),
       predictions: {
-        count: mockPredictions.length,
-        data: mockPredictions.slice(0, limit)
+        count: predictions.length,
+        data: predictions
       },
       valueBets: {
-        count: mockValueBets.length,
-        data: mockValueBets
+        count: valueBets.length,
+        data: valueBets
       },
-      modelPerformance: mockModelPerformance,
-      timestamp: new Date().toISOString()
+      modelPerformance,
+      meta: {
+        timestamp: new Date().toISOString(),
+        dataSource: 'real_ml_models',
+        sportSupported: true,
+        leagueSupported: true
+      }
     });
     
   } catch (error) {

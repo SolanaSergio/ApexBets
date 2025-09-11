@@ -14,8 +14,22 @@ import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Team } from "@/lib/api-client"
 import TeamsList from "@/components/categories/sports/teams-list"
 import StandingsTable from "@/components/categories/sports/standings-table"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
 export default function TeamsPage() {
+  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
+
+  useEffect(() => {
+    loadSupportedSports()
+  }, [])
+
+  const loadSupportedSports = () => {
+    const sports = serviceFactory.getSupportedSports()
+    setSupportedSports(sports)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -29,6 +43,28 @@ export default function TeamsPage() {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Explore team statistics, player rosters, and performance analytics across all leagues
           </p>
+          
+          {/* Sport Selector */}
+          <div className="mt-4">
+            <Select value={selectedSport} onValueChange={(value) => setSelectedSport(value as SupportedSport)}>
+              <SelectTrigger className="w-48 mx-auto">
+                <SelectValue placeholder="Select Sport" />
+              </SelectTrigger>
+              <SelectContent>
+                {supportedSports.map((sport) => {
+                  const config = SportConfigManager.getSportConfig(sport)
+                  return (
+                    <SelectItem key={sport} value={sport}>
+                      <span className="flex items-center gap-2">
+                        <span>{config?.icon}</span>
+                        {config?.name}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Filters */}
@@ -97,19 +133,19 @@ export default function TeamsPage() {
 
           <TabsContent value="overview" className="space-y-6">
             <Suspense fallback={<TeamsOverviewSkeleton />}>
-              <TeamsList sport="basketball" />
+              <TeamsList sport={selectedSport} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="standings" className="space-y-6">
             <Suspense fallback={<StandingsSkeleton />}>
-              <StandingsTable sport="basketball" />
+              <StandingsSection selectedSport={selectedSport} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="stats" className="space-y-6">
             <Suspense fallback={<StatsSkeleton />}>
-              <StatsSection />
+              <StatsSection selectedSport={selectedSport} />
             </Suspense>
           </TabsContent>
         </Tabs>
@@ -218,19 +254,19 @@ function TeamsOverviewSection() {
 }
 
 // Standings Section
-function StandingsSection() {
+function StandingsSection({ selectedSport }: { selectedSport: SupportedSport }) {
   const [standings, setStandings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchStandings()
-  }, [])
+  }, [selectedSport])
 
   async function fetchStandings() {
     try {
       setLoading(true)
       const standingsData = await apiClient.getStandings({
-        sport: "basketball" // You can make this dynamic based on user selection
+        sport: selectedSport
       })
       setStandings(standingsData)
     } catch (error) {
@@ -322,19 +358,19 @@ function StandingsSection() {
 }
 
 // Stats Section
-function StatsSection() {
+function StatsSection({ selectedSport }: { selectedSport: SupportedSport }) {
   const [teamStats, setTeamStats] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchTeamStats()
-  }, [])
+  }, [selectedSport])
 
   async function fetchTeamStats() {
     try {
       setLoading(true)
       const statsData = await apiClient.getTeamStats({
-        sport: "basketball" // You can make this dynamic based on user selection
+        sport: selectedSport
       })
       setTeamStats(statsData)
     } catch (error) {

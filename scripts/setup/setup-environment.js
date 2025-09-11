@@ -22,7 +22,7 @@ SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 
 # Sports APIs
 NEXT_PUBLIC_RAPIDAPI_KEY=your_rapidapi_key
-NEXT_PUBLIC_ODDS_API_KEY=your_odds_api_key
+NEXT_PUBLIC_ODDS_API_KEY=your_odds_api_key_here
 
 # TheSportsDB (Free API - uses '123' as default key)
 # For free tier: leave as '123' (no registration needed)
@@ -142,7 +142,7 @@ SUPABASE_SERVICE_ROLE_KEY=${envVars.SUPABASE_SERVICE_ROLE_KEY}
 
 # Sports APIs
 NEXT_PUBLIC_RAPIDAPI_KEY=${envVars.NEXT_PUBLIC_RAPIDAPI_KEY || 'your_rapidapi_key'}
-NEXT_PUBLIC_ODDS_API_KEY=${envVars.NEXT_PUBLIC_ODDS_API_KEY || 'your_odds_api_key'}
+NEXT_PUBLIC_ODDS_API_KEY=${envVars.NEXT_PUBLIC_ODDS_API_KEY || 'your_odds_api_key_here'}
 
 # TheSportsDB (Free API - uses '123' as default key)
 NEXT_PUBLIC_SPORTSDB_API_KEY=123

@@ -12,9 +12,37 @@ import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, Re
 import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Game } from "@/lib/api-client"
 import { format } from "date-fns"
-import { GamesList } from "@/components/categories/sports/games-list"
+import GamesList from "@/components/categories/sports/games-list"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 
 export default function GamesPage() {
+  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [selectedLeague, setSelectedLeague] = useState<string>("")
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
+  const [availableLeagues, setAvailableLeagues] = useState<string[]>([])
+
+  useEffect(() => {
+    loadSupportedSports()
+  }, [])
+
+  useEffect(() => {
+    loadLeaguesForSport(selectedSport)
+  }, [selectedSport])
+
+  const loadSupportedSports = () => {
+    const sports = serviceFactory.getSupportedSports()
+    setSupportedSports(sports)
+  }
+
+  const loadLeaguesForSport = (sport: SupportedSport) => {
+    const leagues = SportConfigManager.getLeaguesForSport(sport)
+    setAvailableLeagues(leagues)
+    if (leagues.length > 0) {
+      setSelectedLeague(leagues[0])
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -47,15 +75,34 @@ export default function GamesPage() {
                   className="pl-10"
                 />
               </div>
-              <Select>
+              <Select value={selectedSport} onValueChange={(value) => setSelectedSport(value as SupportedSport)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Sport" />
+                </SelectTrigger>
+                <SelectContent>
+                  {supportedSports.map((sport) => {
+                    const config = SportConfigManager.getSportConfig(sport)
+                    return (
+                      <SelectItem key={sport} value={sport}>
+                        <span className="flex items-center gap-2">
+                          <span>{config?.icon}</span>
+                          {config?.name}
+                        </span>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
+              <Select value={selectedLeague} onValueChange={setSelectedLeague}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select League" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="nba">NBA</SelectItem>
-                  <SelectItem value="nfl">NFL</SelectItem>
-                  <SelectItem value="mlb">MLB</SelectItem>
-                  <SelectItem value="nhl">NHL</SelectItem>
+                  {availableLeagues.map((league) => (
+                    <SelectItem key={league} value={league}>
+                      {league}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select>

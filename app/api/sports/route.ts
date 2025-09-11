@@ -49,7 +49,11 @@ export async function GET(request: NextRequest) {
   
   const processRequest = async (): Promise<SportsResponse> => {
     const { searchParams } = new URL(request.url);
-    const sport = searchParams.get('sport') || 'basketball';
+    const sport = searchParams.get('sport');
+    
+    if (!sport) {
+      throw new Error("Sport parameter is required");
+    }
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0];
     
     const results: SportsResponse = {
@@ -103,8 +107,8 @@ export async function GET(request: NextRequest) {
         } else {
           // Add timeout for BallDontLie API calls
           const ballDontLiePromise = Promise.all([
-            ballDontLieClient.instance.getTeams({ per_page: 10 }),
-            ballDontLieClient.instance.getGames({ per_page: 10 })
+            ballDontLieClient.getTeams({ per_page: 10 }),
+            ballDontLieClient.getGames({ per_page: 10 })
           ]);
           
           const ballDontLieData = await Promise.race([

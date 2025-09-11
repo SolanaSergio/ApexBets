@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react"
 import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieTeam } from "@/lib/sports-apis"
 import { cachedUnifiedApiClient, SupportedSport, UnifiedPlayerData, UnifiedTeamData } from "@/lib/services/api/cached-unified-api-client"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
 import { cn } from "@/lib/utils"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 
@@ -22,7 +23,7 @@ interface PlayerSearchProps {
   league?: string
 }
 
-export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "basketball", league }: PlayerSearchProps) {
+export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, league }: PlayerSearchProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [players, setPlayers] = useState<(BallDontLiePlayer | UnifiedPlayerData)[]>([])
   const [teams, setTeams] = useState<(BallDontLieTeam | UnifiedTeamData)[]>([])
@@ -34,31 +35,16 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "
 
   // Dynamic positions based on sport
   const getPositionsForSport = (sport: string) => {
-    switch (sport) {
-      case "basketball":
-        return ["PG", "SG", "SF", "PF", "C", "G", "F"]
-      case "football":
-        return ["QB", "RB", "WR", "TE", "OL", "DL", "LB", "CB", "S", "K", "P"]
-      case "baseball":
-        return ["P", "C", "1B", "2B", "3B", "SS", "LF", "CF", "RF", "DH"]
-      case "hockey":
-        return ["C", "LW", "RW", "D", "G"]
-      case "soccer":
-        return ["GK", "CB", "LB", "RB", "CDM", "CM", "CAM", "LW", "RW", "ST"]
-      case "tennis":
-        return ["Singles", "Doubles"]
-      case "golf":
-        return ["Professional", "Amateur"]
-      default:
-        return []
-    }
+    return SportConfigManager.getPositionsForSport(sport)
   }
 
-  const positions = getPositionsForSport(sport)
+  const positions = sport ? getPositionsForSport(sport) : []
 
   // Fetch teams on component mount and when sport changes
   useEffect(() => {
-    fetchTeams()
+    if (sport) {
+      fetchTeams()
+    }
   }, [sport])
 
   // Search players when query changes
@@ -74,6 +60,8 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "
   }, [searchQuery, selectedTeam, selectedPosition])
 
   const fetchTeams = async () => {
+    if (!sport) return
+    
     try {
       let response
       if (sport === "basketball") {
@@ -91,7 +79,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "
   }
 
   const searchPlayers = async () => {
-    if (!searchQuery.trim()) return
+    if (!searchQuery.trim() || !sport) return
 
     setLoading(true)
     setError(null)
@@ -227,11 +215,11 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport = "
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Positions</SelectItem>
-              {positions.map((position) => (
-                <SelectItem key={position} value={position}>
-                  {position}
-                </SelectItem>
-              ))}
+                {positions.map((position: string) => (
+                  <SelectItem key={position} value={position}>
+                    {position}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>

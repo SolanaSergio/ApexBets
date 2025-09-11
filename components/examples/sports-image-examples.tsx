@@ -1,6 +1,6 @@
 "use client"
 
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { 
@@ -10,12 +10,48 @@ import {
   SportsImageSkeleton 
 } from '@/components/ui/sports-image'
 import { type SportsLeague } from '@/lib/services/image-service'
+import { dynamicExamplesService, type ExampleTeam, type ExamplePlayer } from '@/lib/services/examples/dynamic-examples-service'
+import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 
 /**
  * Comprehensive examples of how to use the new sports image system
  * This component demonstrates all the different ways to display sports images
+ * Uses real data from APIs - NO MOCK DATA
  */
 export function SportsImageExamples() {
+  const [selectedSport, setSelectedSport] = useState<SupportedSport>('basketball')
+  const [teams, setTeams] = useState<ExampleTeam[]>([])
+  const [players, setPlayers] = useState<ExamplePlayer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  // Load example data when sport changes
+  useEffect(() => {
+    loadExampleData()
+  }, [selectedSport])
+
+  const loadExampleData = async () => {
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const [teamsData, playersData] = await Promise.all([
+        dynamicExamplesService.getExampleTeams(selectedSport, 6),
+        dynamicExamplesService.getExamplePlayers(selectedSport, 4)
+      ])
+      
+      setTeams(teamsData)
+      setPlayers(playersData)
+    } catch (err) {
+      console.error('Error loading example data:', err)
+      setError('Failed to load example data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const supportedSports = dynamicExamplesService.getSupportedSports()
+
   return (
     <div className="space-y-8 p-6">
       <div className="text-center">
@@ -23,36 +59,73 @@ export function SportsImageExamples() {
         <p className="text-muted-foreground">
           Professional sports images and logos for all major leagues
         </p>
+        
+        {/* Sport Selector */}
+        <div className="mt-4">
+          <select 
+            value={selectedSport} 
+            onChange={(e) => setSelectedSport(e.target.value as SupportedSport)}
+            className="px-4 py-2 border rounded-lg bg-background"
+          >
+            {supportedSports.map(sport => (
+              <option key={sport} value={sport}>
+                {sport.charAt(0).toUpperCase() + sport.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {/* Team Logos Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Team Logos - All Major Sports</CardTitle>
+          <CardTitle>Team Logos - {selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Dynamic Team Examples - No Hardcoded Data */}
           <div>
-            <h3 className="text-lg font-semibold mb-3">Team Logo Examples</h3>
+            <h3 className="text-lg font-semibold mb-3">Real Team Logo Examples</h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Team logos are loaded dynamically based on the team name and league. 
-              No hardcoded team data is used in the actual application.
+              Team logos are loaded dynamically from real APIs. 
+              No hardcoded or mock data is used.
             </p>
-            <div className="grid grid-cols-6 gap-4">
-              {['Sample Team 1', 'Sample Team 2', 'Sample Team 3', 'Sample Team 4', 'Sample Team 5', 'Sample Team 6'].map(team => (
-                <div key={team} className="text-center">
-                  <TeamLogo 
-                    teamName={team}
-                    league="NBA"
-                    alt={`${team} logo`}
-                    width={80}
-                    height={80}
-                    className="mx-auto mb-2"
-                  />
-                  <p className="text-sm font-medium">{team}</p>
-                </div>
-              ))}
-            </div>
+            
+            {loading ? (
+              <div className="grid grid-cols-6 gap-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="text-center">
+                    <SportsImageSkeleton width={80} height={80} className="mx-auto mb-2" />
+                    <div className="h-4 bg-muted rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-destructive">Error loading teams: {error}</p>
+                <button 
+                  onClick={loadExampleData}
+                  className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-6 gap-4">
+                {teams.map(team => (
+                  <div key={team.id} className="text-center">
+                    <TeamLogo 
+                      teamName={team.name}
+                      league={team.league as SportsLeague}
+                      alt={`${team.name} logo`}
+                      width={80}
+                      height={80}
+                      className="mx-auto mb-2"
+                    />
+                    <p className="text-sm font-medium">{team.name}</p>
+                    <p className="text-xs text-muted-foreground">{team.abbreviation}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -60,70 +133,59 @@ export function SportsImageExamples() {
       {/* Player Photos Section */}
       <Card>
         <CardHeader>
-          <CardTitle>Player Photos - All Major Sports</CardTitle>
+          <CardTitle>Player Photos - {selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {/* Dynamic Player Examples - No Hardcoded Data */}
-            <div className="text-center">
-              <h4 className="font-semibold mb-3">Sample Players</h4>
-              <div className="space-y-3">
-                <PlayerPhoto 
-                  playerId={999999}
-                  league="NBA"
-                  alt="Sample Player"
-                  width={100}
-                  height={100}
-                  className="mx-auto rounded-full"
-                />
-                <p className="text-sm">Sample Player (ID: 999999)</p>
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Real Player Photo Examples</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Player photos are loaded dynamically from real APIs. 
+              No hardcoded or mock data is used.
+            </p>
+            
+            {loading ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="text-center">
+                    <SportsImageSkeleton width={100} height={100} className="mx-auto rounded-full mb-3" />
+                    <div className="h-4 bg-muted rounded animate-pulse mb-1"></div>
+                    <div className="h-3 bg-muted rounded animate-pulse w-2/3 mx-auto"></div>
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="text-center">
-              <h4 className="font-semibold mb-3">Sample Players</h4>
-              <div className="space-y-3">
-                <PlayerPhoto 
-                  playerId={999998}
-                  league="NFL"
-                  alt="Sample Player"
-                  width={100}
-                  height={100}
-                  className="mx-auto rounded-full"
-                />
-                <p className="text-sm">Sample Player (ID: 999998)</p>
+            ) : error ? (
+              <div className="text-center py-8">
+                <p className="text-destructive">Error loading players: {error}</p>
+                <button 
+                  onClick={loadExampleData}
+                  className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90"
+                >
+                  Retry
+                </button>
               </div>
-            </div>
-
-            <div className="text-center">
-              <h4 className="font-semibold mb-3">Sample Players</h4>
-              <div className="space-y-3">
-                <PlayerPhoto 
-                  playerId={999997}
-                  league="MLB"
-                  alt="Sample Player"
-                  width={100}
-                  height={100}
-                  className="mx-auto rounded-full"
-                />
-                <p className="text-sm">Sample Player (ID: 999997)</p>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {players.map(player => (
+                  <div key={player.id} className="text-center">
+                    <PlayerPhoto 
+                      playerId={player.id}
+                      league={player.league as SportsLeague}
+                      alt={player.name}
+                      width={100}
+                      height={100}
+                      className="mx-auto rounded-full"
+                    />
+                    <p className="text-sm font-medium mt-2">{player.name}</p>
+                    {player.position && (
+                      <p className="text-xs text-muted-foreground">{player.position}</p>
+                    )}
+                    {player.team && (
+                      <p className="text-xs text-muted-foreground">{player.team}</p>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
-
-            <div className="text-center">
-              <h4 className="font-semibold mb-3">Sample Players</h4>
-              <div className="space-y-3">
-                <PlayerPhoto 
-                  playerId={999996}
-                  league="NHL"
-                  alt="Sample Player"
-                  width={100}
-                  height={100}
-                  className="mx-auto rounded-full"
-                />
-                <p className="text-sm">Sample Player (ID: 999996)</p>
-              </div>
-            </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -190,7 +252,7 @@ export function SportsImageExamples() {
                   fallbackType="team"
                 />
                 <PlayerPhoto 
-                  playerId={999999}
+                  playerId="unknown"
                   alt="Unknown player"
                   width={80}
                   height={80}
@@ -220,9 +282,9 @@ export function SportsImageExamples() {
               <h4 className="font-semibold mb-2">Basic Team Logo</h4>
               <pre className="bg-muted p-3 rounded text-sm overflow-x-auto">
 {`<TeamLogo 
-  teamName="Lakers" 
+  teamName="Team Name" 
   league="NBA"
-  alt="Lakers logo"
+  alt="Team logo"
   width={100}
   height={100}
 />`}

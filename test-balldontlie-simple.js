@@ -14,14 +14,14 @@ try {
 console.log('\n2. Testing API key validation logic...');
 const testApiKeys = [
   '', // empty
-  'your_balldontlie_api_key', // placeholder
+  'placeholder_api_key', // placeholder
   'valid-api-key-123', // valid
   null, // null
   undefined // undefined
 ];
 
 testApiKeys.forEach((key, index) => {
-  const isValid = key && key !== 'your_balldontlie_api_key' && key !== '';
+  const isValid = key && key !== 'placeholder_api_key' && key !== '';
   console.log(`API key ${index + 1} (${key}): ${isValid ? 'Valid' : 'Invalid'}`);
 });
 

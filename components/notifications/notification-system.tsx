@@ -78,7 +78,7 @@ export function NotificationSystem() {
       addNotification({
         type: "info",
         title: "Game Starting Soon",
-        message: "Lakers vs Warriors starts in 15 minutes",
+        message: "Game starts in 15 minutes",
       })
     }, 3000)
 

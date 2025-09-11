@@ -29,7 +29,7 @@ interface PlayerStatsProps {
   sport?: SupportedSport
 }
 
-export default function PlayerStats({ selectedPlayer, sport = "basketball" }: PlayerStatsProps) {
+export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps) {
   const [stats, setStats] = useState<BallDontLieStats[]>([])
   const [seasonAverages, setSeasonAverages] = useState<any>(null)
   const [loading, setLoading] = useState(false)

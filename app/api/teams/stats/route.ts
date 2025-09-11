@@ -1,14 +1,20 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { SeasonManager } from '@/lib/services/core/season-manager'
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
+    
+    if (!supabase) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
+    
     const { searchParams } = new URL(request.url)
     const teamId = searchParams.get("team_id")
     const league = searchParams.get("league")
     const sport = searchParams.get("sport")
-    const season = searchParams.get("season") || "2024-25"
+    const season = searchParams.get("season") || (sport ? SeasonManager.getCurrentSeason(sport) : '2024-25')
 
     // Get games for the team or league
     let query = supabase
@@ -59,74 +65,97 @@ export async function GET(request: NextRequest) {
       teams = allTeams || []
     }
 
-    // Sport-specific stats configuration
-    const getSportStats = (sport: string, teamScore: number, gamesPlayed: number) => {
-      const baseStats = {
-        basketball: [
-          { category: "Points Per Game", value: (teamScore / gamesPlayed).toFixed(1), rank: 1, trend: "up" },
-          { category: "Rebounds Per Game", value: (Math.random() * 20 + 30).toFixed(1), rank: 1, trend: "up" },
-          { category: "Assists Per Game", value: (Math.random() * 15 + 20).toFixed(1), rank: 1, trend: "up" },
-          { category: "Field Goal %", value: `${(Math.random() * 10 + 40).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "3-Point %", value: `${(Math.random() * 15 + 30).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "Free Throw %", value: `${(Math.random() * 10 + 75).toFixed(1)}%`, rank: 1, trend: "up" }
-        ],
-        football: [
-          { category: "Points Per Game", value: (teamScore / gamesPlayed).toFixed(1), rank: 1, trend: "up" },
-          { category: "Yards Per Game", value: (Math.random() * 100 + 300).toFixed(0), rank: 1, trend: "up" },
-          { category: "Passing Yards", value: (Math.random() * 150 + 200).toFixed(0), rank: 1, trend: "up" },
-          { category: "Rushing Yards", value: (Math.random() * 80 + 100).toFixed(0), rank: 1, trend: "up" },
-          { category: "Turnovers", value: (Math.random() * 3 + 1).toFixed(0), rank: 1, trend: "down" },
-          { category: "Time of Possession", value: `${(Math.random() * 10 + 25).toFixed(1)} min`, rank: 1, trend: "up" }
-        ],
-        soccer: [
-          { category: "Goals Per Game", value: (teamScore / gamesPlayed).toFixed(1), rank: 1, trend: "up" },
-          { category: "Shots Per Game", value: (Math.random() * 5 + 10).toFixed(1), rank: 1, trend: "up" },
-          { category: "Possession %", value: `${(Math.random() * 20 + 40).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "Pass Accuracy %", value: `${(Math.random() * 15 + 80).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "Fouls Per Game", value: (Math.random() * 5 + 10).toFixed(1), rank: 1, trend: "down" },
-          { category: "Yellow Cards", value: (Math.random() * 3 + 1).toFixed(0), rank: 1, trend: "down" }
-        ],
-        hockey: [
-          { category: "Goals Per Game", value: (teamScore / gamesPlayed).toFixed(1), rank: 1, trend: "up" },
-          { category: "Shots Per Game", value: (Math.random() * 10 + 25).toFixed(1), rank: 1, trend: "up" },
-          { category: "Power Play %", value: `${(Math.random() * 20 + 15).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "Penalty Kill %", value: `${(Math.random() * 15 + 80).toFixed(1)}%`, rank: 1, trend: "up" },
-          { category: "Hits Per Game", value: (Math.random() * 10 + 15).toFixed(1), rank: 1, trend: "up" },
-          { category: "Faceoff %", value: `${(Math.random() * 20 + 40).toFixed(1)}%`, rank: 1, trend: "up" }
-        ],
-        baseball: [
-          { category: "Runs Per Game", value: (teamScore / gamesPlayed).toFixed(1), rank: 1, trend: "up" },
-          { category: "Batting Average", value: `.${(Math.random() * 100 + 200).toFixed(0)}`, rank: 1, trend: "up" },
-          { category: "Home Runs", value: (Math.random() * 2 + 1).toFixed(1), rank: 1, trend: "up" },
-          { category: "RBIs Per Game", value: (Math.random() * 3 + 2).toFixed(1), rank: 1, trend: "up" },
-          { category: "ERA", value: (Math.random() * 2 + 3).toFixed(2), rank: 1, trend: "down" },
-          { category: "Strikeouts", value: (Math.random() * 5 + 5).toFixed(1), rank: 1, trend: "up" }
+    // Dynamic stats calculation - works for any sport
+    const calculateTeamStats = (team: any, teamGames: any[], sport: string) => {
+      const completedGames = teamGames.filter(game => 
+        game.status === "completed" && game.home_score !== null && game.away_score !== null
+      )
+      
+      if (completedGames.length === 0) {
+        return [
+          { category: "Games Played", value: "0", rank: 1, trend: "up" },
+          { category: "Wins", value: "0", rank: 1, trend: "up" },
+          { category: "Losses", value: "0", rank: 1, trend: "down" },
+          { category: "Win %", value: "0.0%", rank: 1, trend: "up" },
+          { category: "Average Score", value: "0.0", rank: 1, trend: "up" }
         ]
       }
-      
-      return baseStats[sport as keyof typeof baseStats] || baseStats.basketball
+
+      // Calculate wins and losses
+      let wins = 0
+      let totalScore = 0
+      let totalOpponentScore = 0
+
+      completedGames.forEach(game => {
+        const isHomeTeam = game.home_team_id === team.id
+        const teamScore = isHomeTeam ? game.home_score : game.away_score
+        const opponentScore = isHomeTeam ? game.away_score : game.home_score
+        
+        totalScore += teamScore
+        totalOpponentScore += opponentScore
+        
+        if (teamScore > opponentScore) {
+          wins++
+        }
+      })
+
+      const losses = completedGames.length - wins
+      const winPercentage = (wins / completedGames.length) * 100
+      const averageScore = totalScore / completedGames.length
+      const averageOpponentScore = totalOpponentScore / completedGames.length
+      const scoreDifferential = averageScore - averageOpponentScore
+
+      // Dynamic stats based on actual data - no hardcoded sport logic
+      const stats = [
+        { category: "Games Played", value: completedGames.length.toString(), rank: 1, trend: "up" },
+        { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
+        { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },
+        { category: "Win %", value: `${winPercentage.toFixed(1)}%`, rank: 1, trend: "up" },
+        { category: "Average Score", value: averageScore.toFixed(1), rank: 1, trend: "up" },
+        { category: "Average Allowed", value: averageOpponentScore.toFixed(1), rank: 1, trend: "down" },
+        { category: "Score Differential", value: scoreDifferential.toFixed(1), rank: 1, trend: scoreDifferential > 0 ? "up" : "down" }
+      ]
+
+      // Add sport-specific stats only if we have additional data
+      if (teamGames.some(game => game.home_yards || game.away_yards)) {
+        const totalYards = completedGames.reduce((sum, game) => {
+          const isHomeTeam = game.home_team_id === team.id
+          return sum + (isHomeTeam ? (game.home_yards || 0) : (game.away_yards || 0))
+        }, 0)
+        stats.push({ category: "Yards Per Game", value: (totalYards / completedGames.length).toFixed(0), rank: 1, trend: "up" })
+      }
+
+      if (teamGames.some(game => game.home_possession || game.away_possession)) {
+        const totalPossession = completedGames.reduce((sum, game) => {
+          const isHomeTeam = game.home_team_id === team.id
+          return sum + (isHomeTeam ? (game.home_possession || 0) : (game.away_possession || 0))
+        }, 0)
+        stats.push({ category: "Possession %", value: `${(totalPossession / completedGames.length).toFixed(1)}%`, rank: 1, trend: "up" })
+      }
+
+      return stats
     }
 
-    // Calculate stats for each team
+    // Calculate stats for each team using dynamic calculation
     const teamStats = teams.map(team => {
       const teamGames = games.filter(game => 
         game.home_team_id === team.id || game.away_team_id === team.id
       )
 
-      let totalScore = 0
-      let gamesPlayed = 0
+      const teamSport = team.sport || sport || 'unknown'
+      const stats = calculateTeamStats(team, teamGames, teamSport)
 
-      teamGames.forEach(game => {
-        if (game.status === "completed" && game.home_score !== null && game.away_score !== null) {
-          gamesPlayed++
+      // Calculate total score for display
+      const completedGames = teamGames.filter(game => 
+        game.status === "completed" && game.home_score !== null && game.away_score !== null
+      )
+
+      let totalScore = 0
+      completedGames.forEach(game => {
           const isHomeTeam = game.home_team_id === team.id
           const teamScore = isHomeTeam ? game.home_score : game.away_score
           totalScore += teamScore
-        }
       })
-
-      const sport = team.sport || 'basketball'
-      const stats = getSportStats(sport, totalScore, gamesPlayed)
 
       return {
         teamId: team.id,
@@ -134,7 +163,7 @@ export async function GET(request: NextRequest) {
         teamAbbreviation: team.abbreviation,
         sport: team.sport,
         league: team.league,
-        gamesPlayed,
+        gamesPlayed: completedGames.length,
         totalScore,
         stats
       }

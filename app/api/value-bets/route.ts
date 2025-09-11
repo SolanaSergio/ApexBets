@@ -4,7 +4,14 @@ import { unifiedApiClient, SupportedSport } from "@/lib/services/api/unified-api
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "basketball"
+    const sport = searchParams.get("sport")
+    
+    if (!sport) {
+      return NextResponse.json({
+        success: false,
+        error: "Sport parameter is required"
+      }, { status: 400 })
+    }
     const minValue = parseFloat(searchParams.get("min_value") || "0.05")
     const recommendation = searchParams.get("recommendation") || "all"
 
