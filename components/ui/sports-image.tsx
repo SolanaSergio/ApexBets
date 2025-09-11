@@ -14,7 +14,7 @@ import {
   type TeamLogoConfig,
   type PlayerPhotoConfig
 } from '@/lib/services/image-service'
-import { getTeamLogoUrl, getTeamLogoData, type LogoResult } from '@/lib/services/dynamic-team-service'
+import { getTeamLogoUrl, getTeamLogoData, type LogoResult } from '@/lib/services/dynamic-team-service-client'
 
 interface SportsImageProps {
   src?: string
@@ -168,20 +168,24 @@ export function TeamLogo({
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
-      <Image
-        src={imgSrc}
-        alt={alt || `${teamName} logo`}
-        width={width}
-        height={height}
-        className={cn(
-          "object-contain transition-opacity duration-200",
-          hasError && "opacity-50"
-        )}
-        onError={handleError}
-        priority={priority}
-        quality={quality}
-        unoptimized={imgSrc.includes('cdn.nba.com') || imgSrc.includes('espncdn.com')}
-      />
+      {imgSrc ? (
+        <Image
+          src={imgSrc}
+          alt={alt || `${teamName} logo`}
+          width={width}
+          height={height}
+          className={cn(
+            "object-contain transition-opacity duration-200",
+            hasError && "opacity-50"
+          )}
+          onError={handleError}
+          priority={priority}
+          quality={quality}
+          unoptimized={imgSrc.includes('cdn.nba.com') || imgSrc.includes('espncdn.com')}
+        />
+      ) : (
+        <SportsImageSkeleton width={width} height={height} />
+      )}
     </div>
   )
 }

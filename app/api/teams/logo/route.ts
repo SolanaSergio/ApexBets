@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { dynamicTeamService } from '@/lib/services/dynamic-team-service'
+import { dynamicTeamServiceClient } from '@/lib/services/dynamic-team-service-client'
 
 /**
  * GET /api/teams/logo?teamName=...&league=...
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'teamName is required' }, { status: 400 })
     }
 
-    const result = await dynamicTeamService.getTeamLogo(teamName, league as any)
+    const result = await dynamicTeamServiceClient.getTeamLogo(teamName, league as any)
     
     return NextResponse.json({
       success: true,
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const success = await dynamicTeamService.updateTeamLogo(
+    const success = await dynamicTeamServiceClient.updateTeamLogo(
       teamName, 
       league, 
       logoUrl, 
@@ -78,10 +78,10 @@ export async function DELETE(request: NextRequest) {
 
     if (teamName && league) {
       // Clear specific team cache
-      dynamicTeamService.clearCache()
+      dynamicTeamServiceClient.clearCache()
     } else {
       // Clear all cache
-      dynamicTeamService.clearCache()
+      dynamicTeamServiceClient.clearCache()
     }
 
     return NextResponse.json({ 

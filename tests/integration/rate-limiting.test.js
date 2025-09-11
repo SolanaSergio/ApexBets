@@ -20,7 +20,7 @@ describe('Rate Limiting Integration Tests', () => {
       // Make multiple requests to test rate limiting
       for (let i = 0; i < 15; i++) {
         try {
-          const response = await fetch(`${BASE_URL}/odds?external=true&sport=basketball_nba`)
+          const response = await fetch(`${BASE_URL}/odds/basketball?external=true`)
           responses.push({
             status: response.status,
             headers: Object.fromEntries(response.headers.entries())
@@ -48,7 +48,7 @@ describe('Rate Limiting Integration Tests', () => {
     it('should return 429 when rate limit exceeded', async () => {
       // This test would require exhausting the rate limit
       // For now, we'll just test that the endpoint responds
-      const response = await fetch(`${BASE_URL}/odds?external=true&sport=basketball_nba`)
+      const response = await fetch(`${BASE_URL}/odds/basketball?external=true`)
       
       expect([200, 429, 500]).toContain(response.status)
       
@@ -60,7 +60,7 @@ describe('Rate Limiting Integration Tests', () => {
     })
 
     it('should include rate limit headers in responses', async () => {
-      const response = await fetch(`${BASE_URL}/odds?external=true&sport=basketball_nba`)
+      const response = await fetch(`${BASE_URL}/odds/basketball?external=true`)
       
       // Check for rate limit headers
       const rateLimitHeaders = [
@@ -107,7 +107,7 @@ describe('Rate Limiting Integration Tests', () => {
     })
 
     it('should provide meaningful error messages', async () => {
-      const response = await fetch(`${BASE_URL}/odds?external=true&sport=basketball_nba`)
+      const response = await fetch(`${BASE_URL}/odds/basketball?external=true`)
       
       if (response.status >= 400) {
         const data = await response.json()
@@ -120,7 +120,7 @@ describe('Rate Limiting Integration Tests', () => {
   describe('Performance', () => {
     it('should respond within reasonable time', async () => {
       const startTime = Date.now()
-      const response = await fetch(`${BASE_URL}/odds?external=true&sport=basketball_nba`)
+      const response = await fetch(`${BASE_URL}/odds/basketball?external=true`)
       const endTime = Date.now()
       
       const responseTime = endTime - startTime

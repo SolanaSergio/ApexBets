@@ -112,7 +112,9 @@ export class BallDontLieClient {
     
     try {
       const headers: HeadersInit = {
-        'Authorization': this.apiKey
+        'Authorization': `Bearer ${this.apiKey}`,
+        'Accept': 'application/json',
+        'User-Agent': 'ApexBets/1.0.0'
       }
       
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -274,4 +276,67 @@ export class BallDontLieClient {
   }
 }
 
-export const ballDontLieClient = new BallDontLieClient(process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || '')
+// Create instance with API key from environment
+const getBallDontLieApiKey = (): string => {
+  const apiKey = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY
+  if (!apiKey || apiKey === 'your_balldontlie_api_key' || apiKey === '') {
+    return '' // Return empty string instead of throwing error
+  }
+  return apiKey
+}
+
+// Create client lazily to avoid module load errors
+let _ballDontLieClient: BallDontLieClient | null = null
+
+const getClient = (): BallDontLieClient => {
+  if (!_ballDontLieClient) {
+    const apiKey = getBallDontLieApiKey()
+    _ballDontLieClient = new BallDontLieClient(apiKey)
+  }
+  return _ballDontLieClient
+}
+
+export const ballDontLieClient = {
+  // Check if API key is available
+  get isConfigured(): boolean {
+    const apiKey = getBallDontLieApiKey()
+    return apiKey !== ''
+  },
+
+  // Delegate all methods to the client instance
+  async getPlayers(params: any = {}) {
+    return getClient().getPlayers(params)
+  },
+
+  async getPlayerById(playerId: number) {
+    return getClient().getPlayerById(playerId)
+  },
+
+  async getTeams(params: any = {}) {
+    return getClient().getTeams(params)
+  },
+
+  async getTeamById(teamId: number) {
+    return getClient().getTeamById(teamId)
+  },
+
+  async getGames(params: any = {}) {
+    return getClient().getGames(params)
+  },
+
+  async getGameById(gameId: number) {
+    return getClient().getGameById(gameId)
+  },
+
+  async getStats(params: any = {}) {
+    return getClient().getStats(params)
+  },
+
+  async getSeasonAverages(params: any) {
+    return getClient().getSeasonAverages(params)
+  },
+
+  async getAllData<T>(endpoint: string, params: Record<string, any> = {}, maxPages: number = 10) {
+    return getClient().getAllData<T>(endpoint, params, maxPages)
+  }
+}

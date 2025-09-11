@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { dataValidationService } from "@/lib/services/data-validation-service"
+import { getDataValidationService } from "@/lib/services/data-validation-service"
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +9,8 @@ export async function GET(request: NextRequest) {
 
     if (component) {
       // Validate specific component
-      const result = await dataValidationService.validateComponentDataAccess(component)
+      const service = getDataValidationService()
+      const result = await service.validateComponentDataAccess(component)
       return NextResponse.json({
         component,
         validation: result,
@@ -17,9 +18,10 @@ export async function GET(request: NextRequest) {
       })
     } else {
       // Validate all components
+      const service = getDataValidationService()
       const [componentResults, recommendations] = await Promise.all([
-        dataValidationService.validateAllComponents(),
-        dataValidationService.getDataPopulationRecommendations()
+        service.validateAllComponents(),
+        service.getDataPopulationRecommendations()
       ])
 
       const summary = {

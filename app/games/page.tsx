@@ -12,6 +12,7 @@ import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, Re
 import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Game } from "@/lib/api-client"
 import { format } from "date-fns"
+import { GamesList } from "@/components/categories/sports/games-list"
 
 export default function GamesPage() {
   return (

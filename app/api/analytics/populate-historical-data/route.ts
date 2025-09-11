@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { sportsDataService } from "@/lib/services/sports-data-service"
+import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { SportOddsService } from "@/lib/services/odds/sport-odds-service"
+import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,13 +23,14 @@ export async function POST(request: NextRequest) {
       playerStats: 0,
       odds: 0,
       predictions: 0,
-      errors: []
+      errors: [] as string[]
     }
 
     try {
       // 1. Populate teams
       console.log(`Populating teams for ${sport}${league ? ` (${league})` : ''}...`)
-      const teams = await sportsDataService.getTeams({ sport, league })
+      const sportService = serviceFactory.getService(sport as SupportedSport, league || undefined)
+      const teams = await sportService.getTeams({ league })
       
       for (const team of teams) {
         const { error } = await supabase
@@ -38,7 +41,7 @@ export async function POST(request: NextRequest) {
             league: team.league,
             sport: team.sport,
             abbreviation: team.abbreviation,
-            logo_url: team.logo_url,
+            logo_url: (team as any).logo_url || (team as any).logo,
             is_active: true
           }, { onConflict: "name,league" })
         
@@ -55,11 +58,8 @@ export async function POST(request: NextRequest) {
       const startDate = new Date()
       startDate.setDate(endDate.getDate() - days)
 
-      const games = await sportsDataService.getGames({
-        sport,
-        league,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
+      const games = await sportService.getGames({
+        date: startDate.toISOString().split('T')[0]
       })
 
       for (const game of games) {
@@ -191,8 +191,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 5. Generate sample predictions
-      console.log("Generating sample predictions...")
+      // 5. Generate predictions using real ML models
+      console.log("Generating predictions using ML models...")
       const { data: gamesForPredictions } = await supabase
         .from("games")
         .select("id, home_team_id, away_team_id, home_score, away_score, game_date")
@@ -201,29 +201,35 @@ export async function POST(request: NextRequest) {
         .lte("game_date", endDate.toISOString())
 
       for (const game of gamesForPredictions || []) {
-        const predictions = generateSamplePredictions(game, sport)
-        
-        for (const prediction of predictions) {
-          const { error } = await supabase
-            .from("predictions")
-            .upsert({
-              game_id: game.id,
-              model_name: prediction.model_name,
-              prediction_type: prediction.prediction_type,
-              predicted_value: prediction.predicted_value,
-              confidence: prediction.confidence,
-              actual_value: prediction.actual_value,
-              is_correct: prediction.is_correct,
-              sport: sport,
-              league: league,
-              reasoning: prediction.reasoning
-            }, { onConflict: "game_id,model_name,prediction_type" })
+        try {
+          // Use real ML prediction service instead of sample data
+          const predictionService = new SportPredictionService(sport as SupportedSport)
+          const predictions = await predictionService.getPredictions({ gameId: game.id })
+          
+          for (const prediction of predictions) {
+            const { error } = await supabase
+              .from("predictions")
+              .upsert({
+                game_id: prediction.gameId,
+                model_name: prediction.model,
+                prediction_type: 'game_outcome',
+                predicted_value: prediction.homeWinProbability,
+                confidence: prediction.confidence,
+                actual_value: null, // Will be updated when game is finished
+                is_correct: null, // Will be updated when game is finished
+                sport: sport,
+                league: league,
+                reasoning: prediction.factors.join(', ')
+              }, { onConflict: "game_id,model_name,prediction_type" })
 
-          if (error) {
-            results.errors.push(`Prediction ${game.id}: ${error.message}`)
-          } else {
-            results.predictions++
+            if (error) {
+              results.errors.push(`Prediction ${game.id}: ${error.message}`)
+            } else {
+              results.predictions++
+            }
           }
+        } catch (predictionError) {
+          results.errors.push(`Prediction generation failed for game ${game.id}: ${predictionError}`)
         }
       }
 
@@ -262,85 +268,23 @@ function getCurrentSeason(sport: string): string {
 }
 
 async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
-  // This would integrate with external APIs to get real player stats
-  // For now, return sample data
-  return [
-    {
-      team_id: "sample-team-id",
-      player_name: "Sample Player",
-      position: "PG",
-      minutes_played: 32,
-      points: 18,
-      rebounds: 5,
-      assists: 8,
-      steals: 2,
-      blocks: 1,
-      turnovers: 3,
-      field_goals_made: 7,
-      field_goals_attempted: 15,
-      three_pointers_made: 2,
-      three_pointers_attempted: 6,
-      free_throws_made: 2,
-      free_throws_attempted: 3
-    }
-  ]
+  // Get real player stats from external APIs
+  try {
+    const sportService = serviceFactory.getService(sport as SupportedSport)
+    return await sportService.getPlayers({ gameId })
+  } catch (error) {
+    console.error(`Error fetching player stats for game ${gameId}:`, error)
+    return []
+  }
 }
 
 async function getOddsForGame(gameId: string, sport: string): Promise<any[]> {
-  // This would integrate with external APIs to get real odds
-  // For now, return sample data
-  return [
-    {
-      source: "draftkings",
-      odds_type: "moneyline",
-      home_odds: -110,
-      away_odds: -110,
-      spread: 2.5,
-      total: 220.5
-    }
-  ]
-}
-
-function generateSamplePredictions(game: any, sport: string): any[] {
-  const predictions = []
-  
-  // Moneyline prediction
-  const homeWinProb = Math.random() * 0.4 + 0.3 // 30-70% range
-  predictions.push({
-    model_name: "random_forest_v1",
-    prediction_type: "winner",
-    predicted_value: homeWinProb > 0.5 ? "home" : "away",
-    confidence: Math.abs(homeWinProb - 0.5) * 2,
-    actual_value: game.home_score > game.away_score ? "home" : "away",
-    is_correct: (homeWinProb > 0.5) === (game.home_score > game.away_score),
-    reasoning: "Based on historical performance and current form"
-  })
-  
-  // Spread prediction
-  const predictedSpread = (Math.random() - 0.5) * 10 // -5 to +5
-  const actualSpread = (game.home_score || 0) - (game.away_score || 0)
-  predictions.push({
-    model_name: "random_forest_v1",
-    prediction_type: "spread",
-    predicted_value: predictedSpread,
-    confidence: Math.random() * 0.3 + 0.6, // 60-90%
-    actual_value: actualSpread,
-    is_correct: Math.abs(predictedSpread - actualSpread) < 3,
-    reasoning: "Based on team strength and recent performance"
-  })
-  
-  // Total prediction
-  const predictedTotal = (game.home_score || 0) + (game.away_score || 0) + (Math.random() - 0.5) * 20
-  const actualTotal = (game.home_score || 0) + (game.away_score || 0)
-  predictions.push({
-    model_name: "random_forest_v1",
-    prediction_type: "total",
-    predicted_value: predictedTotal,
-    confidence: Math.random() * 0.3 + 0.6, // 60-90%
-    actual_value: actualTotal,
-    is_correct: Math.abs(predictedTotal - actualTotal) < 10,
-    reasoning: "Based on offensive and defensive trends"
-  })
-  
-  return predictions
+  // Get real odds from external APIs
+  try {
+    const oddsService = new SportOddsService(sport as SupportedSport)
+    return await oddsService.getOdds({ gameId })
+  } catch (error) {
+    console.error(`Error fetching odds for game ${gameId}:`, error)
+    return []
+  }
 }

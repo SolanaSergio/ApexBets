@@ -3,7 +3,10 @@
  * Tests actual service methods with real external API calls
  */
 
-import { sportsDataService } from '@/lib/services/sports-data-service'
+// DEPRECATED: This test file references the old unified sports-data-service
+// The new architecture uses split services via serviceFactory
+// TODO: Update tests to use new service architecture
+// import { serviceFactory } from '@/lib/services/core/service-factory'
 
 describe('Sports Data Service Integration Tests', () => {
   describe('getGames', () => {

@@ -1,68 +1,36 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { analyticsService } from "@/lib/services/analytics-service"
+import { SportAnalyticsService } from "@/lib/services/analytics/sport-analytics-service"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const useExternalApi = searchParams.get("external") === "true"
     
-    // For now, skip the complex analytics service to avoid hanging
-    // TODO: Implement proper analytics service with timeout handling
+    // Use external analytics service if requested
     if (useExternalApi) {
-      return NextResponse.json({
-        data: {
-          overview: {
-            totalGames: 0,
-            totalPredictions: 0,
-            accuracyRate: 0
-          },
-          performance: {
-            recentAccuracy: 0,
-            dailyStats: []
-          },
-          predictionAccuracy: {
-            moneyline: 0,
-            spread: 0,
-            total: 0
-          },
-          valueBettingStats: {
-            opportunitiesFound: 0,
-            averageValue: 0
+      try {
+        const analyticsService = new SportAnalyticsService('basketball', 'NBA')
+        const analyticsData = await analyticsService.getSportAnalytics()
+        return NextResponse.json({
+          data: analyticsData,
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "analytics_service"
           }
-        },
-        meta: {
-          fromCache: false,
-          responseTime: 0,
-          source: "analytics_service",
-          note: "Simplified response - full implementation pending"
-        }
-      })
+        })
+      } catch (error) {
+        console.error('Analytics service error:', error)
+        return NextResponse.json({ error: "Analytics service unavailable" }, { status: 503 })
+      }
     }
 
     // Fallback to Supabase for basic stats
     const supabase = await createClient()
 
     if (!supabase) {
-      return NextResponse.json({
-        data: {
-          total_games: 0,
-          total_predictions: 0,
-          total_teams: 0,
-          accuracy_rate: 0,
-          recent_predictions: 0,
-          recent_performance: {
-            accuracy_by_type: {},
-            daily_stats: [],
-          },
-        },
-        meta: {
-          fromCache: false,
-          responseTime: 0,
-          source: "supabase",
-          error: "Database connection failed"
-        }
-      })
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
     }
 
     // Get total games

@@ -36,7 +36,7 @@ describe('API Performance Tests', () => {
 
     it('should respond to odds endpoint within 3 seconds', async () => {
       const startTime = Date.now()
-      const response = await fetch(`${baseUrl}/odds`)
+      const response = await fetch(`${baseUrl}/odds/basketball`)
       const endTime = Date.now()
       
       expect(response.status).toBe(200)
@@ -224,7 +224,7 @@ describe('API Performance Tests', () => {
     })
 
     it('should return reasonable odds data sizes', async () => {
-      const response = await fetch(`${baseUrl}/odds`)
+      const response = await fetch(`${baseUrl}/odds/basketball`)
       const data = await response.json()
       
       // Odds data should not be excessively large

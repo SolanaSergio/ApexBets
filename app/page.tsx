@@ -1,8 +1,5 @@
 import { Suspense } from "react"
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
-import { RecentGames } from "@/components/dashboard/recent-games"
-import { PredictionsPanel } from "@/components/dashboard/predictions-panel"
-import { StatsCards } from "@/components/dashboard/stats-cards"
+import { CleanDashboard } from "@/components/categories/dashboard/clean-dashboard"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -22,31 +19,9 @@ export default function HomePage() {
           </p>
         </div>
 
-        {/* Stats Overview */}
-        <Suspense fallback={<StatsCardsSkeleton />}>
-          <StatsCards />
-        </Suspense>
-
-        {/* Main Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Dashboard Overview - Takes 2 columns on large screens */}
-          <div className="lg:col-span-2">
-            <Suspense fallback={<DashboardSkeleton />}>
-              <DashboardOverview />
-            </Suspense>
-          </div>
-
-          {/* Predictions Panel - Takes 1 column */}
-          <div className="space-y-6">
-            <Suspense fallback={<PredictionsSkeleton />}>
-              <PredictionsPanel />
-            </Suspense>
-          </div>
-        </div>
-
-        {/* Recent Games Section */}
-        <Suspense fallback={<RecentGamesSkeleton />}>
-          <RecentGames />
+        {/* Clean Dashboard */}
+        <Suspense fallback={<DashboardSkeleton />}>
+          <CleanDashboard />
         </Suspense>
       </main>
     </div>

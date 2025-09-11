@@ -257,4 +257,12 @@ export class ApiSportsClient {
 }
 
 // Create instance with API key from environment
-export const apiSportsClient = new ApiSportsClient(process.env.NEXT_PUBLIC_RAPIDAPI_KEY || '')
+const getApiSportsKey = (): string => {
+  const apiKey = process.env.NEXT_PUBLIC_RAPIDAPI_KEY
+  if (!apiKey || apiKey === 'your_rapidapi_key' || apiKey === '') {
+    throw new Error('NEXT_PUBLIC_RAPIDAPI_KEY is required but not configured')
+  }
+  return apiKey
+}
+
+export const apiSportsClient = new ApiSportsClient(getApiSportsKey())

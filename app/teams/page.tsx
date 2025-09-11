@@ -12,6 +12,8 @@ import { Progress } from "@/components/ui/progress"
 import { Users, Search, Filter, Trophy, TrendingUp, Target, Calendar, MapPin, RefreshCw } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Team } from "@/lib/api-client"
+import TeamsList from "@/components/categories/sports/teams-list"
+import StandingsTable from "@/components/categories/sports/standings-table"
 
 export default function TeamsPage() {
   return (
@@ -95,13 +97,13 @@ export default function TeamsPage() {
 
           <TabsContent value="overview" className="space-y-6">
             <Suspense fallback={<TeamsOverviewSkeleton />}>
-              <TeamsOverviewSection />
+              <TeamsList sport="basketball" />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="standings" className="space-y-6">
             <Suspense fallback={<StandingsSkeleton />}>
-              <StandingsSection />
+              <StandingsTable sport="basketball" />
             </Suspense>
           </TabsContent>
 

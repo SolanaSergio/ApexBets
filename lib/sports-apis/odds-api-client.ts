@@ -186,4 +186,26 @@ export class OddsApiClient {
 }
 
 // Create instance with API key from environment
-export const oddsApiClient = new OddsApiClient(process.env.ODDS_API_KEY || '')
+const getOddsApiKey = (): string | null => {
+  const apiKey = process.env.NEXT_PUBLIC_ODDS_API_KEY
+  if (!apiKey || apiKey === 'your_odds_api_key' || apiKey === '') {
+    return null
+  }
+  return apiKey
+}
+
+// Lazy initialization to avoid errors at module load time
+let _oddsApiClient: OddsApiClient | null = null
+
+export const getOddsApiClient = (): OddsApiClient | null => {
+  if (!_oddsApiClient) {
+    const apiKey = getOddsApiKey()
+    if (apiKey) {
+      _oddsApiClient = new OddsApiClient(apiKey)
+    }
+  }
+  return _oddsApiClient
+}
+
+// For backward compatibility - returns null if API key is not configured
+export const oddsApiClient = getOddsApiClient()

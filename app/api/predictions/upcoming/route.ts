@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { predictionService } from "@/lib/services/prediction-service"
+import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,20 +38,23 @@ export async function GET(request: NextRequest) {
 
     // Generate predictions for each upcoming game
     const predictions = []
+    const predictionService = new SportPredictionService('basketball', 'NBA')
+    
     for (const game of upcomingGames) {
       try {
-        const prediction = await predictionService.generatePredictions(game.id)
-        if (prediction) {
+        const gamePredictions = await predictionService.getPredictions({ gameId: game.id })
+        if (gamePredictions && gamePredictions.length > 0) {
+          const prediction = gamePredictions[0]
           predictions.push({
-            id: prediction.id || `pred-${game.id}`,
+            id: prediction.gameId || `pred-${game.id}`,
             game_id: game.id,
             game: `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}`,
-            type: prediction.prediction_type || "winner",
-            prediction: prediction.predicted_value || 0.5,
+            type: "winner",
+            prediction: prediction.homeWinProbability || 0.5,
             confidence: prediction.confidence || 0.75,
             gameDate: new Date(game.game_date).toLocaleDateString(),
             gameTime: new Date(game.game_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            model: prediction.model_name || "AI Model v1.0",
+            model: prediction.model || "AI Model v1.0",
             home_team: game.home_team,
             away_team: game.away_team,
             venue: game.venue

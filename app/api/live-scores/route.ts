@@ -1,46 +1,153 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { sportsDataService } from "@/lib/services/sports-data-service"
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport") || "basketball"
+    const league = searchParams.get("league") || "NBA"
+    const status = searchParams.get("status") || "live"
 
-    const liveGames: any[] = []
+    const supabase = await createClient()
     
-    try {
-      // Get live games from SportsDB
-      const { sportsDBClient } = await import("@/lib/sports-apis/sportsdb-client")
-      const liveEvents = await sportsDBClient.getLiveEvents(sport)
-      liveGames.push(...liveEvents.map((event: any) => ({
-        id: event.idEvent,
-        homeTeam: event.strHomeTeam,
-        awayTeam: event.strAwayTeam,
-        date: event.dateEvent,
-        time: event.strTime,
-        status: event.strStatus,
-        homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
-        awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
-        league: event.strLeague,
-        sport: event.strSport,
-        venue: event.strVenue
-      })))
-    } catch (error) {
-      console.error('SportsDB live scores error:', error)
+    // Get live games based on status
+    let query = supabase
+      .from('games')
+      .select(`
+        *,
+        home_team_data:teams!games_home_team_id_fkey(name, logo_url, city),
+        away_team_data:teams!games_away_team_id_fkey(name, logo_url, city)
+      `)
+      .eq('sport', sport)
+
+    // Apply status filter
+    if (status === 'live') {
+      query = query.eq('status', 'live')
+    } else if (status === 'finished') {
+      query = query.eq('status', 'finished')
+    } else if (status === 'scheduled') {
+      query = query.eq('status', 'scheduled')
+    } else if (status === 'all') {
+      // No status filter
+    } else {
+      query = query.in('status', ['live', 'finished', 'scheduled'])
     }
-    
-    return NextResponse.json({
-      data: liveGames,
-      meta: {
-        fromCache: false,
-        responseTime: 0,
-        source: "sportsdb",
-        total: liveGames.length,
-        lastUpdated: new Date().toISOString()
+
+    const { data: games, error: gamesError } = await query
+      .order('date', { ascending: status === 'scheduled' })
+
+    if (gamesError) {
+      return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
+    }
+
+    // Format games with additional data
+    const formattedGames = (games || []).map(game => {
+      const homeTeam = game.home_team_data || { name: game.home_team, logo_url: null, city: null }
+      const awayTeam = game.away_team_data || { name: game.away_team, logo_url: null, city: null }
+
+      return {
+        id: game.id,
+        homeTeam: {
+          name: homeTeam.name,
+          city: homeTeam.city,
+          logo: homeTeam.logo_url,
+          score: game.home_score,
+          id: game.home_team_id
+        },
+        awayTeam: {
+          name: awayTeam.name,
+          city: awayTeam.city,
+          logo: awayTeam.logo_url,
+          score: game.away_score,
+          id: game.away_team_id
+        },
+        status: game.status,
+        period: game.period || (game.status === 'live' ? '1st' : null),
+        timeRemaining: game.time_remaining || (game.status === 'live' ? '12:00' : null),
+        date: game.date,
+        league: game.league,
+        venue: game.venue,
+        attendance: game.attendance,
+        weather: game.weather
       }
     })
+
+    // Get live odds for live games
+    const liveGameIds = formattedGames
+      .filter(game => game.status === 'live')
+      .map(game => game.id)
+
+    let liveOdds = []
+    if (liveGameIds.length > 0) {
+      const { data: odds, error: oddsError } = await supabase
+        .from('odds')
+        .select('*')
+        .in('game_id', liveGameIds)
+        .eq('sport', sport)
+
+      if (!oddsError) {
+        liveOdds = odds || []
+      }
+    }
+
+    // Group odds by game
+    const oddsByGame = liveOdds.reduce((acc, odd) => {
+      if (!acc[odd.game_id]) {
+        acc[odd.game_id] = []
+      }
+      acc[odd.game_id].push({
+        betType: odd.bet_type,
+        side: odd.side,
+        odds: odd.odds,
+        bookmaker: odd.bookmaker || "Unknown",
+        updatedAt: odd.updated_at
+      })
+      return acc
+    }, {} as Record<string, any[]>)
+
+    // Add odds to live games
+    const gamesWithOdds = formattedGames.map(game => ({
+      ...game,
+      odds: oddsByGame[game.id] || []
+    }))
+
+    // Calculate summary statistics
+    const liveCount = gamesWithOdds.filter(g => g.status === 'live').length
+    const finishedCount = gamesWithOdds.filter(g => g.status === 'finished').length
+    const scheduledCount = gamesWithOdds.filter(g => g.status === 'scheduled').length
+
+    // Get top performers for finished games
+    const finishedGames = gamesWithOdds.filter(g => g.status === 'finished')
+    const topPerformers = finishedGames
+      .map(game => ({
+        game: `${game.awayTeam.name} @ ${game.homeTeam.name}`,
+        winner: game.homeTeam.score > game.awayTeam.score ? game.homeTeam.name : game.awayTeam.name,
+        score: `${game.awayTeam.score}-${game.homeTeam.score}`,
+        margin: Math.abs(game.homeTeam.score - game.awayTeam.score),
+        date: game.date
+      }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5)
+
+    return NextResponse.json({
+      games: gamesWithOdds,
+      summary: {
+        total: gamesWithOdds.length,
+        live: liveCount,
+        finished: finishedCount,
+        scheduled: scheduledCount,
+        lastUpdated: new Date().toISOString()
+      },
+      topPerformers,
+      filters: {
+        sport,
+        league,
+        status
+      }
+    })
+
   } catch (error) {
-    console.error("API Error:", error)
+    console.error("Live scores API error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

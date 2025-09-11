@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { comprehensiveDataPopulationService } from '@/lib/services/comprehensive-data-population-service'
+import { getComprehensiveDataPopulationService } from '@/lib/services/comprehensive-data-population-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,7 +20,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Start the comprehensive data population
-    const stats = await comprehensiveDataPopulationService.populateAllData()
+    const service = getComprehensiveDataPopulationService()
+    const stats = await service.populateAllData()
     
     return NextResponse.json({
       success: true,

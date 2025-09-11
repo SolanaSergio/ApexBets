@@ -41,7 +41,7 @@ describe('Analytics API Integration Tests', () => {
       })
 
       // Verify accuracy_by_type structure
-      Object.values(data.data.recent_performance.accuracy_by_type).forEach((accuracy: any) => {
+      Object.values(data.data.recent_performance.accuracy_by_type).forEach((accuracy) => {
         expect(typeof accuracy).toBe('number')
         expect(accuracy).toBeGreaterThanOrEqual(0)
         expect(accuracy).toBeLessThanOrEqual(1)

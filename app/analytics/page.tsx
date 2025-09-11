@@ -1,5 +1,5 @@
 import { Navigation } from "@/components/navigation/navigation"
-import { AnalyticsDashboard } from "@/components/analytics/analytics-dashboard"
+import AnalyticsDashboard from "@/components/categories/analytics/analytics-dashboard"
 
 export default function AnalyticsPage() {
   return (

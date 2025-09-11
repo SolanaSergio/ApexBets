@@ -16,40 +16,22 @@ import {
   Star,
   TrendingUp
 } from "lucide-react"
-import { sportConfigService } from "@/lib/services/sport-config-service"
+import { unifiedApiClient, SupportedSport } from "@/lib/services/api/unified-api-client"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
 
 interface SportSelectorProps {
-  selectedSport: string
-  onSportChange: (sport: string) => void
+  selectedSport: SupportedSport
+  onSportChange: (sport: SupportedSport) => void
   className?: string
 }
 
-const sportIcons = {
-  basketball: "🏀",
-  football: "🏈",
-  baseball: "⚾",
-  hockey: "🏒",
-  soccer: "⚽",
-  tennis: "🎾",
-  golf: "⛳"
-}
-
-const sportColors = {
-  basketball: "text-orange-500",
-  football: "text-green-500",
-  baseball: "text-blue-500",
-  hockey: "text-red-500",
-  soccer: "text-emerald-500",
-  tennis: "text-yellow-500",
-  golf: "text-teal-500"
-}
+// Remove hardcoded sport data - now using SportConfigManager
 
 export function SportSelector({ selectedSport, onSportChange, className = "" }: SportSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const supportedSports = sportConfigService.getSupportedSports()
+  const supportedSports = unifiedApiClient.getSupportedSports()
   
-  const currentSportConfig = sportConfigService.getSportConfig(selectedSport)
-  const currentIcon = sportIcons[selectedSport as keyof typeof sportIcons] || "🏀"
+  const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
 
   return (
     <div className={`relative ${className}`}>
@@ -61,9 +43,9 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
             aria-label="Select sport"
           >
             <div className="flex items-center space-x-3">
-              <span className={`text-2xl ${sportColors[selectedSport as keyof typeof sportColors]}`}>{currentIcon}</span>
+              <span className={`text-2xl ${currentSportConfig?.color}`}>{currentSportConfig?.icon}</span>
               <div className="text-left">
-                <div className="font-medium">{currentSportConfig?.displayName || "Select Sport"}</div>
+                <div className="font-medium">{currentSportConfig?.name || "Select Sport"}</div>
                 <div className="text-xs text-muted-foreground">
                   {currentSportConfig?.leagues.length || 0} leagues available
                 </div>
@@ -76,8 +58,7 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
         <DropdownMenuContent className="w-80 p-2" align="start">
           <div className="space-y-1">
             {supportedSports.map((sport) => {
-              const config = sportConfigService.getSportConfig(sport)
-              const icon = sportIcons[sport as keyof typeof sportIcons] || "🏀"
+              const config = SportConfigManager.getSportConfig(sport)
               const isSelected = sport === selectedSport
               
               return (
@@ -91,11 +72,11 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
                 >
                   <div className="flex items-center space-x-3 w-full">
                     <div className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}>
-                      <span className={`text-xl ${sportColors[sport as keyof typeof sportColors]}`}>{icon}</span>
+                      <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2">
-                        <span className="font-medium">{config?.displayName}</span>
+                        <span className="font-medium">{config?.name}</span>
                         {isSelected && (
                           <Badge variant="default" className="text-xs">
                             Active
@@ -134,15 +115,13 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
 
 // Compact version for mobile
 export function SportSelectorCompact({ selectedSport, onSportChange, className = "" }: SportSelectorProps) {
-  const supportedSports = sportConfigService.getSupportedSports()
-  const currentSportConfig = sportConfigService.getSportConfig(selectedSport)
-  const currentIcon = sportIcons[selectedSport as keyof typeof sportIcons] || "🏀"
+  const supportedSports = unifiedApiClient.getSupportedSports()
+  const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
 
   return (
     <div className={`flex space-x-2 overflow-x-auto pb-2 ${className}`}>
       {supportedSports.map((sport) => {
-        const config = sportConfigService.getSportConfig(sport)
-        const icon = sportIcons[sport as keyof typeof sportIcons] || "🏀"
+        const config = SportConfigManager.getSportConfig(sport)
         const isSelected = sport === selectedSport
         
         return (
@@ -153,8 +132,8 @@ export function SportSelectorCompact({ selectedSport, onSportChange, className =
             onClick={() => onSportChange(sport)}
             className={`flex-shrink-0 ${isSelected ? 'shadow-md' : ''}`}
           >
-            <span className={`text-lg mr-2 ${sportColors[sport as keyof typeof sportColors]}`}>{icon}</span>
-            {config?.displayName}
+            <span className={`text-lg mr-2 ${config?.color}`}>{config?.icon}</span>
+            {config?.name}
           </Button>
         )
       })}
@@ -171,7 +150,7 @@ interface LeagueSelectorProps {
 }
 
 export function LeagueSelector({ sport, selectedLeague, onLeagueChange, className = "" }: LeagueSelectorProps) {
-  const sportConfig = sportConfigService.getSportConfig(sport)
+  const sportConfig = SportConfigManager.getSportConfig(sport as any)
   const leagues = sportConfig?.leagues || []
 
   if (leagues.length <= 1) {
