@@ -88,6 +88,8 @@ export class BallDontLieClient {
   private apiKey: string
   private rateLimitDelay = 10000 // 10 seconds between requests (6 requests/minute = 10 seconds)
   private lastRequestTime = 0
+  private retryCount = 0
+  private maxRetries = 3
 
   constructor(apiKey: string = '') {
     this.apiKey = apiKey
@@ -102,11 +104,20 @@ export class BallDontLieClient {
     this.lastRequestTime = Date.now()
   }
 
-  private async request<T>(endpoint: string): Promise<T> {
+  private async exponentialBackoff(attempt: number): Promise<void> {
+    const baseDelay = 1000 // 1 second
+    const maxDelay = 60000 // 60 seconds
+    const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, maxDelay)
+    console.log(`BALLDONTLIE API: Retrying in ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`)
+    await new Promise(resolve => setTimeout(resolve, delay))
+  }
+
+  private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
     await this.rateLimit()
     
     // Check if API key is available
     if (!this.apiKey || this.apiKey === 'your_balldontlie_api_key' || this.apiKey === '') {
+      console.warn('BALLDONTLIE API key not configured, returning empty data')
       // Return empty data instead of throwing error for graceful degradation
       return {
         data: [],
@@ -123,37 +134,61 @@ export class BallDontLieClient {
     try {
       const headers: HeadersInit = {
         'Accept': 'application/json',
-        'User-Agent': 'ApexBets/1.0.0'
+        'User-Agent': 'ApexBets/1.0.0',
+        'Authorization': `Bearer ${this.apiKey}`
       }
       
-      // Add API key as query parameter instead of Authorization header
-      const separator = endpoint.includes('?') ? '&' : '?'
-      const url = `${this.baseUrl}${endpoint}${separator}api_key=${this.apiKey}`
+      const url = `${this.baseUrl}${endpoint}`
       
       const response = await fetch(url, {
         headers
       })
       
       if (!response.ok) {
+        const errorMessage = await response.text().catch(() => response.statusText)
+        
         if (response.status === 401) {
-          throw new Error('BALLDONTLIE API Error: 401 Unauthorized - Invalid API key. Please check your NEXT_PUBLIC_BALLDONTLIE_API_KEY environment variable.')
+          console.warn('BALLDONTLIE API: 401 Unauthorized - Invalid API key. Returning empty data.')
+          return {
+            data: [],
+            meta: {
+              current_page: 1,
+              next_page: null,
+              per_page: 25,
+              total_count: 0,
+              total_pages: 0
+            }
+          } as T
         } else if (response.status === 400) {
-          throw new Error('BALLDONTLIE API Error: 400 Bad Request - Invalid request parameters')
+          throw new Error(`BALLDONTLIE API Error: 400 Bad Request - ${errorMessage}`)
         } else if (response.status === 404) {
-          throw new Error('BALLDONTLIE API Error: 404 Not Found - Endpoint not found')
+          throw new Error(`BALLDONTLIE API Error: 404 Not Found - ${errorMessage}`)
         } else if (response.status === 406) {
-          throw new Error('BALLDONTLIE API Error: 406 Not Acceptable - Requested format not supported')
+          throw new Error(`BALLDONTLIE API Error: 406 Not Acceptable - ${errorMessage}`)
         } else if (response.status === 429) {
-          throw new Error('BALLDONTLIE API Error: 429 Too Many Requests - Rate limit exceeded')
-        } else if (response.status === 500) {
-          throw new Error('BALLDONTLIE API Error: 500 Internal Server Error - Server issue, try again later')
-        } else if (response.status === 503) {
-          throw new Error('BALLDONTLIE API Error: 503 Service Unavailable - Server temporarily offline')
+          if (retryAttempt < this.maxRetries) {
+            const retryAfter = response.headers.get('Retry-After')
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // Default 1 minute
+            console.warn(`BALLDONTLIE API: Rate limit exceeded. Waiting ${delay}ms before retry.`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return this.request<T>(endpoint, retryAttempt + 1)
+          } else {
+            throw new Error(`BALLDONTLIE API Error: 429 Too Many Requests - Max retries exceeded`)
+          }
+        } else if (response.status === 500 || response.status === 502 || response.status === 503) {
+          if (retryAttempt < this.maxRetries) {
+            await this.exponentialBackoff(retryAttempt)
+            return this.request<T>(endpoint, retryAttempt + 1)
+          } else {
+            throw new Error(`BALLDONTLIE API Error: ${response.status} ${errorMessage}`)
+          }
         } else {
-          throw new Error(`BALLDONTLIE API Error: ${response.status} ${response.statusText}`)
+          throw new Error(`BALLDONTLIE API Error: ${response.status} ${errorMessage}`)
         }
       }
 
+      // Reset retry count on successful request
+      this.retryCount = 0
       const data = await response.json()
       return data
     } catch (error) {
@@ -161,8 +196,13 @@ export class BallDontLieClient {
         console.error('BALLDONTLIE API Error: Invalid JSON response')
         throw new Error('BALLDONTLIE API Error: Invalid JSON response from server')
       } else if (error instanceof TypeError && error.message.includes('fetch')) {
-        console.error('BALLDONTLIE API Error: Network error')
-        throw new Error('BALLDONTLIE API Error: Network error - check your internet connection')
+        if (retryAttempt < this.maxRetries) {
+          await this.exponentialBackoff(retryAttempt)
+          return this.request<T>(endpoint, retryAttempt + 1)
+        } else {
+          console.error('BALLDONTLIE API Error: Network error')
+          throw new Error('BALLDONTLIE API Error: Network error - check your internet connection')
+        }
       } else {
         console.error('BALLDONTLIE API request failed:', error)
         throw error

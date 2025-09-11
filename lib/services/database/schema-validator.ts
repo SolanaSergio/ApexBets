@@ -35,14 +35,20 @@ export class DatabaseSchemaValidator {
   private supabase: any = null
 
   constructor() {
-    this.initializeSupabase()
+    // Don't initialize Supabase at construction time
   }
 
   private async initializeSupabase() {
+    if (this.supabase) {
+      return this.supabase
+    }
+    
     try {
       this.supabase = await createClient()
+      return this.supabase
     } catch (error) {
       console.error('Failed to initialize Supabase client:', error)
+      return null
     }
   }
 
@@ -58,7 +64,8 @@ export class DatabaseSchemaValidator {
       lastChecked: new Date().toISOString()
     }
 
-    if (!this.supabase) {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
       result.isValid = false
       result.errors.push('Database connection failed')
       return result
@@ -118,9 +125,15 @@ export class DatabaseSchemaValidator {
       warnings: []
     }
 
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      result.errors.push('Database connection failed')
+      return result
+    }
+
     try {
       // Check if table exists
-      const { data: tableData, error: tableError } = await this.supabase
+      const { data: tableData, error: tableError } = await supabase
         .from(tableConfig.name)
         .select('*')
         .limit(1)
@@ -203,8 +216,17 @@ export class DatabaseSchemaValidator {
    * Check for orphaned games (games without valid team references)
    */
   private async checkOrphanedGames(): Promise<DataIntegrityCheck> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        checkName: 'Orphaned Games Check',
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('games')
         .select(`
           id,
@@ -244,8 +266,17 @@ export class DatabaseSchemaValidator {
    * Check for orphaned players (players without valid team references)
    */
   private async checkOrphanedPlayers(): Promise<DataIntegrityCheck> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        checkName: 'Orphaned Players Check',
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('players')
         .select(`
           id,
@@ -282,8 +313,17 @@ export class DatabaseSchemaValidator {
    * Check for duplicate games
    */
   private async checkDuplicateGames(): Promise<DataIntegrityCheck> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        checkName: 'Duplicate Games Check',
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('games')
         .select('home_team, away_team, date, sport')
         .not('date', 'is', null)
@@ -298,7 +338,7 @@ export class DatabaseSchemaValidator {
 
       // Group by potential duplicate keys
       const gameGroups = new Map<string, any[]>()
-      data?.forEach(game => {
+      data?.forEach((game: any) => {
         const key = `${game.home_team}-${game.away_team}-${game.date}-${game.sport}`
         if (!gameGroups.has(key)) {
           gameGroups.set(key, [])
@@ -328,8 +368,17 @@ export class DatabaseSchemaValidator {
    * Check for invalid scores (negative scores, etc.)
    */
   private async checkInvalidScores(): Promise<DataIntegrityCheck> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        checkName: 'Invalid Scores Check',
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('games')
         .select('id, home_score, away_score')
         .or('home_score.lt.0,away_score.lt.0')
@@ -362,9 +411,18 @@ export class DatabaseSchemaValidator {
    * Check for invalid dates (future dates for finished games, etc.)
    */
   private async checkInvalidDates(): Promise<DataIntegrityCheck> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        checkName: 'Invalid Dates Check',
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
       const now = new Date().toISOString()
-      const { data, error } = await this.supabase
+      const { data, error } = await supabase
         .from('games')
         .select('id, date, status')
         .eq('status', 'finished')
@@ -398,11 +456,19 @@ export class DatabaseSchemaValidator {
    * Check table data integrity
    */
   private async checkTableDataIntegrity(tableConfig: TableConfig): Promise<{ passed: boolean; message: string }> {
+    const supabase = await this.initializeSupabase()
+    if (!supabase) {
+      return {
+        passed: false,
+        message: 'Database connection failed'
+      }
+    }
+
     try {
       // Check for null values in required fields
       for (const column of tableConfig.requiredColumns) {
         if (column.nullable === false) {
-          const { data, error } = await this.supabase
+          const { data, error } = await supabase
             .from(tableConfig.name)
             .select('id')
             .is(column.name, null)

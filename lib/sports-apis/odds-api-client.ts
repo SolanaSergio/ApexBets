@@ -85,6 +85,12 @@ export class OddsApiClient {
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('Rate limit exceeded. Please wait before making more requests.')
+        } else if (response.status === 404) {
+          // Return empty array for 404 (no data available)
+          console.warn('Odds API: No data available for the requested parameters')
+          return [] as T
+        } else if (response.status === 401) {
+          throw new Error('Odds API Error: 401 Unauthorized - Invalid API key. Please check your NEXT_PUBLIC_ODDS_API_KEY environment variable.')
         }
         throw new Error(`Odds API Error: ${response.status} ${response.statusText}`)
       }

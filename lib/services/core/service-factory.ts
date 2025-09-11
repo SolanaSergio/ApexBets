@@ -8,6 +8,8 @@ import { FootballService } from '../sports/football/football-service'
 import { BaseballService } from '../sports/baseball/baseball-service'
 import { HockeyService } from '../sports/hockey/hockey-service'
 import { SoccerService } from '../sports/soccer/soccer-service'
+import { TennisService } from '../tennis/tennis-service'
+import { GolfService } from '../golf/golf-service'
 import { SportSpecificService } from './sport-specific-service'
 import { SportConfigManager } from './sport-config'
 
@@ -147,6 +149,10 @@ export class ServiceFactory {
         return new HockeyService(actualLeague)
       case 'soccer':
         return new SoccerService(actualLeague)
+      case 'tennis':
+        return new TennisService(actualLeague)
+      case 'golf':
+        return new GolfService(actualLeague)
       default:
         throw new Error(`Unsupported sport: ${sport}`)
     }

@@ -15,6 +15,13 @@ interface ApiConfig {
   sportsdb: RateLimit
   balldontlie: RateLimit
   espn: RateLimit
+  // Service-specific rate limits
+  'player-stats': RateLimit
+  'team-stats': RateLimit
+  'predictions': RateLimit
+  'analytics': RateLimit
+  'tennis': RateLimit
+  'golf': RateLimit
 }
 
 export class ApiRateLimiter {
@@ -60,6 +67,42 @@ export class ApiRateLimiter {
         requestsPerMinute: 60,
         requestsPerDay: 10000,
         burstLimit: 10
+      },
+      'player-stats': {
+        // Player stats service: Conservative limits for database queries
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5
+      },
+      'team-stats': {
+        // Team stats service: Conservative limits for database queries
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5
+      },
+      'predictions': {
+        // Predictions service: Conservative limits for ML processing
+        requestsPerMinute: 20,
+        requestsPerDay: 500,
+        burstLimit: 3
+      },
+      'analytics': {
+        // Analytics service: Conservative limits for data processing
+        requestsPerMinute: 25,
+        requestsPerDay: 800,
+        burstLimit: 4
+      },
+      'tennis': {
+        // Tennis service: Conservative limits for individual sport
+        requestsPerMinute: 15,
+        requestsPerDay: 300,
+        burstLimit: 2
+      },
+      'golf': {
+        // Golf service: Conservative limits for individual sport
+        requestsPerMinute: 15,
+        requestsPerDay: 300,
+        burstLimit: 2
       }
     }
   }

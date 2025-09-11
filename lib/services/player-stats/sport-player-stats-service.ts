@@ -214,7 +214,9 @@ export class SportPlayerStatsService extends BaseService {
       let query = supabase
         .from(tableName)
         .select('*')
-        .eq('sport', this.sport)
+        
+      // Sport-specific tables don't have a sport column since they're already sport-specific
+      // The table name itself indicates the sport, so no need to filter by sport column
 
       if (params.teamId) {
         query = query.eq('team_id', params.teamId)

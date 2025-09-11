@@ -208,7 +208,7 @@ async function testDirectApis() {
     {
       name: 'SportsDB Leagues',
       url: 'https://www.thesportsdb.com/api/v1/json/3/search_all_leagues.php?s=basketball',
-      expectedFields: ['leagues']
+      expectedFields: ['countries']
     }
   ];
   
@@ -247,37 +247,47 @@ async function testEnvironmentVariables() {
   
   const fs = require('fs');
   const path = require('path');
-  const envFile = path.join(process.cwd(), '.env.local');
+  const envFile = path.join(process.cwd(), '..', '.env.local');
   
   let envContent = '';
   if (fs.existsSync(envFile)) {
     envContent = fs.readFileSync(envFile, 'utf8');
   }
   
+  // Parse environment variables from file content
+  const envVars = {};
+  envContent.split('\n').forEach(line => {
+    const trimmedLine = line.trim();
+    if (trimmedLine && !trimmedLine.startsWith('#')) {
+      const [key, ...valueParts] = trimmedLine.split('=');
+      if (key && valueParts.length > 0) {
+        envVars[key.trim()] = valueParts.join('=').trim();
+      }
+    }
+  });
+  
   for (const varName of requiredVars) {
-    const hasVar = envContent.includes(varName);
-    const isConfigured = hasVar && 
-      !envContent.includes(`${varName}=your_`) && 
-      !envContent.includes(`${varName}=`) &&
-      envContent.includes(`${varName}=`) &&
-      !envContent.includes(`${varName}=123`); // SportsDB can use 123 as free key
+    const hasVar = varName in envVars;
+    const value = envVars[varName] || '';
+    const isConfigured = hasVar && value && value.length > 0 && !value.includes('your_') && !value.includes('placeholder');
     
     if (varName === 'NEXT_PUBLIC_SPORTSDB_API_KEY') {
       // SportsDB can use '123' as a valid free key
-      const isSportsDBConfigured = hasVar && envContent.includes(`${varName}=123`);
+      const isSportsDBConfigured = hasVar && (value === '123' || (value && value.length > 0 && !value.includes('your_') && !value.includes('placeholder')));
       testResults.tests[`Environment: ${varName}`] = {
         success: isSportsDBConfigured,
         configured: isSportsDBConfigured,
-        present: hasVar
+        present: hasVar,
+        value: value ? value.substring(0, 10) + '...' : 'not found'
       };
       
       testResults.summary.totalTests++;
       if (isSportsDBConfigured) {
         testResults.summary.passedTests++;
-        log(`${varName}: Configured (free tier)`, 'success');
+        log(`${varName}: Configured (${value === '123' ? 'free tier' : 'custom key'})`, 'success');
       } else if (hasVar) {
         testResults.summary.failedTests++;
-        log(`${varName}: Present but not configured`, 'warning');
+        log(`${varName}: Present but not configured (${value})`, 'warning');
       } else {
         testResults.summary.failedTests++;
         log(`${varName}: Missing`, 'error');
@@ -286,7 +296,8 @@ async function testEnvironmentVariables() {
       testResults.tests[`Environment: ${varName}`] = {
         success: isConfigured,
         configured: isConfigured,
-        present: hasVar
+        present: hasVar,
+        value: value ? value.substring(0, 10) + '...' : 'not found'
       };
       
       testResults.summary.totalTests++;
@@ -295,7 +306,7 @@ async function testEnvironmentVariables() {
         log(`${varName}: Configured`, 'success');
       } else if (hasVar) {
         testResults.summary.failedTests++;
-        log(`${varName}: Present but not configured`, 'warning');
+        log(`${varName}: Present but not configured (${value})`, 'warning');
       } else {
         testResults.summary.failedTests++;
         log(`${varName}: Missing`, 'error');

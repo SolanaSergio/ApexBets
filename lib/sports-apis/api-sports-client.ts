@@ -143,6 +143,8 @@ export class ApiSportsClient {
   private apiKey: string
   private rateLimitDelay = 600 // 0.6 seconds between requests (100 requests/minute = 0.6 seconds)
   private lastRequestTime = 0
+  private retryCount = 0
+  private maxRetries = 3
 
   constructor(apiKey: string) {
     this.apiKey = apiKey
@@ -157,8 +159,22 @@ export class ApiSportsClient {
     this.lastRequestTime = Date.now()
   }
 
-  private async request<T>(endpoint: string): Promise<T> {
+  private async exponentialBackoff(attempt: number): Promise<void> {
+    const baseDelay = 1000 // 1 second
+    const maxDelay = 60000 // 60 seconds
+    const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, maxDelay)
+    console.log(`API-SPORTS: Retrying in ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`)
+    await new Promise(resolve => setTimeout(resolve, delay))
+  }
+
+  private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
     await this.rateLimit()
+    
+    // Check if API key is available
+    if (!this.apiKey || this.apiKey === 'your_rapidapi_key' || this.apiKey === '') {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return { response: [] } as T
+    }
     
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -169,17 +185,62 @@ export class ApiSportsClient {
       })
       
       if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('Rate limit exceeded. Please wait before making more requests.')
+        const errorMessage = await response.text().catch(() => response.statusText)
+        
+        if (response.status === 401) {
+          console.warn('API-SPORTS API: 401 Unauthorized - Invalid API key. Returning empty data.')
+          return { response: [] } as T
+        } else if (response.status === 403) {
+          if (retryAttempt < this.maxRetries) {
+            console.warn('API-SPORTS API: 403 Forbidden - Access denied. Retrying with exponential backoff.')
+            await this.exponentialBackoff(retryAttempt)
+            return this.request<T>(endpoint, retryAttempt + 1)
+          } else {
+            console.warn('API-SPORTS API: 403 Forbidden - Access denied. Max retries exceeded. Returning empty data.')
+            return { response: [] } as T
+          }
+        } else if (response.status === 429) {
+          if (retryAttempt < this.maxRetries) {
+            const retryAfter = response.headers.get('Retry-After')
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // Default 1 minute
+            console.warn(`API-SPORTS API: Rate limit exceeded. Waiting ${delay}ms before retry.`)
+            await new Promise(resolve => setTimeout(resolve, delay))
+            return this.request<T>(endpoint, retryAttempt + 1)
+          } else {
+            throw new Error(`API-SPORTS API Error: 429 Too Many Requests - Max retries exceeded`)
+          }
+        } else if (response.status === 500 || response.status === 502 || response.status === 503) {
+          if (retryAttempt < this.maxRetries) {
+            await this.exponentialBackoff(retryAttempt)
+            return this.request<T>(endpoint, retryAttempt + 1)
+          } else {
+            throw new Error(`API-SPORTS API Error: ${response.status} ${errorMessage}`)
+          }
+        } else {
+          throw new Error(`API-SPORTS API Error: ${response.status} ${errorMessage}`)
         }
-        throw new Error(`API-SPORTS Error: ${response.status} ${response.statusText}`)
       }
 
+      // Reset retry count on successful request
+      this.retryCount = 0
       const data = await response.json()
       return data
     } catch (error) {
-      console.error('API-SPORTS request failed:', error)
-      throw error
+      if (error instanceof SyntaxError) {
+        console.error('API-SPORTS API Error: Invalid JSON response')
+        throw new Error('API-SPORTS API Error: Invalid JSON response from server')
+      } else if (error instanceof TypeError && error.message.includes('fetch')) {
+        if (retryAttempt < this.maxRetries) {
+          await this.exponentialBackoff(retryAttempt)
+          return this.request<T>(endpoint, retryAttempt + 1)
+        } else {
+          console.error('API-SPORTS API Error: Network error')
+          throw new Error('API-SPORTS API Error: Network error - check your internet connection')
+        }
+      } else {
+        console.error('API-SPORTS request failed:', error)
+        throw error
+      }
     }
   }
 
@@ -260,9 +321,59 @@ export class ApiSportsClient {
 const getApiSportsKey = (): string => {
   const apiKey = process.env.NEXT_PUBLIC_RAPIDAPI_KEY
   if (!apiKey || apiKey === 'your_rapidapi_key' || apiKey === '') {
-    throw new Error('NEXT_PUBLIC_RAPIDAPI_KEY is required but not configured')
+    return '' // Return empty string instead of throwing error
   }
   return apiKey
 }
 
-export const apiSportsClient = new ApiSportsClient(getApiSportsKey())
+// Create client lazily to avoid module load errors
+let _apiSportsClient: ApiSportsClient | null = null
+
+const getClient = (): ApiSportsClient => {
+  if (!_apiSportsClient) {
+    const apiKey = getApiSportsKey()
+    _apiSportsClient = new ApiSportsClient(apiKey)
+  }
+  return _apiSportsClient
+}
+
+export const apiSportsClient = {
+  // Check if API key is available
+  get isConfigured(): boolean {
+    const apiKey = getApiSportsKey()
+    return apiKey !== ''
+  },
+
+  // Delegate all methods to the client instance
+  async getLeagues(): Promise<any> {
+    if (!this.isConfigured) {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return []
+    }
+    return getClient().getLeagues()
+  },
+
+  async getTeams(leagueId: number, season: number): Promise<any> {
+    if (!this.isConfigured) {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return []
+    }
+    return getClient().getTeams(leagueId, season)
+  },
+
+  async getFixtures(leagueId: number, season: number, date?: string): Promise<any> {
+    if (!this.isConfigured) {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return []
+    }
+    return getClient().getFixtures(leagueId, season, date)
+  },
+
+  async getTeamStatistics(teamId: number, leagueId: number, season: number): Promise<any> {
+    if (!this.isConfigured) {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return null
+    }
+    return getClient().getTeamStatistics(teamId, leagueId, season)
+  }
+}
