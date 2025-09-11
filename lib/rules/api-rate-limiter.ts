@@ -50,10 +50,10 @@ export class ApiRateLimiter {
         burstLimit: 5
       },
       balldontlie: {
-        // BALLDONTLIE: 1 request/minute, 10,000 requests/day (free tier) - very conservative
-        requestsPerMinute: 1,
+        // BALLDONTLIE: 10 requests/minute, 10,000 requests/day (free tier) - more reasonable
+        requestsPerMinute: 10,
         requestsPerDay: 10000,
-        burstLimit: 1
+        burstLimit: 2
       },
       espn: {
         // ESPN API: No official rate limits, but conservative approach

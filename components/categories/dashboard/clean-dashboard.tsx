@@ -63,10 +63,19 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       setLoading(true)
       // Only reload data for the selected sport, not all sports
       const sport = selectedSupportedSport
+      
+      // Load data sequentially to avoid rate limiting
+      await loadLiveGamesForSport(sport)
+      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
+      
+      await loadUpcomingGamesForSport(sport)
+      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
+      
+      await loadTeamsForSport(sport)
+      await new Promise(resolve => setTimeout(resolve, 200)) // Small delay
+      
+      // Load non-API data in parallel
       await Promise.all([
-        loadLiveGamesForSport(sport),
-        loadUpcomingGamesForSport(sport),
-        loadTeamsForSport(sport),
         loadServiceHealth(),
         loadStatsForSport(sport),
         loadRateLimitStatus(),
@@ -97,15 +106,25 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
+      
+      // Load non-API data first
       await Promise.all([
-        loadAllLiveGames(),
-        loadAllUpcomingGames(),
-        loadAllTeams(),
         loadServiceHealth(),
-        loadStats(),
         loadRateLimitStatus(),
         loadCacheStatus()
       ])
+      
+      // Load API data sequentially to avoid rate limiting
+      await loadAllLiveGames()
+      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      
+      await loadAllUpcomingGames()
+      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      
+      await loadAllTeams()
+      await new Promise(resolve => setTimeout(resolve, 500)) // Delay between major operations
+      
+      await loadStats()
     } catch (error) {
       console.error('Error loading dashboard data:', error)
     } finally {
@@ -118,27 +137,16 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       const supportedSports = cachedUnifiedApiClient.getSupportedSports()
       const allGames: GameData[] = []
       
-      // Process sports in parallel with controlled concurrency to avoid rate limiting
-      const concurrency = 2 // Process 2 sports at a time
-      for (let i = 0; i < supportedSports.length; i += concurrency) {
-        const batch = supportedSports.slice(i, i + concurrency)
-        
-        const batchPromises = batch.map(async (sport) => {
-          try {
-            const games = await cachedUnifiedApiClient.getLiveGames(sport)
-            return games
-          } catch (sportError) {
-            console.warn(`Failed to load live games for ${sport}:`, sportError)
-            return []
-          }
-        })
-        
-        const batchResults = await Promise.all(batchPromises)
-        allGames.push(...batchResults.flat())
-        
-        // Add delay between batches to respect rate limits
-        if (i + concurrency < supportedSports.length) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+      // Process sports sequentially to avoid rate limiting
+      for (const sport of supportedSports) {
+        try {
+          const games = await cachedUnifiedApiClient.getLiveGames(sport)
+          allGames.push(...games)
+          
+          // Add delay between sports to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (sportError) {
+          console.warn(`Failed to load live games for ${sport}:`, sportError)
         }
       }
       
@@ -168,31 +176,20 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       const supportedSports = cachedUnifiedApiClient.getSupportedSports()
       const allGames: GameData[] = []
       
-      // Process sports in parallel with controlled concurrency
-      const concurrency = 2 // Process 2 sports at a time
-      for (let i = 0; i < supportedSports.length; i += concurrency) {
-        const batch = supportedSports.slice(i, i + concurrency)
-        
-        const batchPromises = batch.map(async (sport) => {
-          try {
-            const games = await cachedUnifiedApiClient.getGames(sport, {
-              date: today,
-              status: 'scheduled',
-              limit: 20
-            })
-            return games
-          } catch (sportError) {
-            console.warn(`Failed to load upcoming games for ${sport}:`, sportError)
-            return []
-          }
-        })
-        
-        const batchResults = await Promise.all(batchPromises)
-        allGames.push(...batchResults.flat())
-        
-        // Add delay between batches to respect rate limits
-        if (i + concurrency < supportedSports.length) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+      // Process sports sequentially to avoid rate limiting
+      for (const sport of supportedSports) {
+        try {
+          const games = await cachedUnifiedApiClient.getGames(sport, {
+            date: today,
+            status: 'scheduled',
+            limit: 20
+          })
+          allGames.push(...games)
+          
+          // Add delay between sports to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (sportError) {
+          console.warn(`Failed to load upcoming games for ${sport}:`, sportError)
         }
       }
       
@@ -226,27 +223,16 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       const supportedSports = cachedUnifiedApiClient.getSupportedSports()
       const allTeams: TeamData[] = []
       
-      // Process sports in parallel with controlled concurrency
-      const concurrency = 2 // Process 2 sports at a time
-      for (let i = 0; i < supportedSports.length; i += concurrency) {
-        const batch = supportedSports.slice(i, i + concurrency)
-        
-        const batchPromises = batch.map(async (sport) => {
-          try {
-            const teams = await cachedUnifiedApiClient.getTeams(sport, { limit: 50 })
-            return teams
-          } catch (sportError) {
-            console.warn(`Failed to load teams for ${sport}:`, sportError)
-            return []
-          }
-        })
-        
-        const batchResults = await Promise.all(batchPromises)
-        allTeams.push(...batchResults.flat())
-        
-        // Add delay between batches to respect rate limits
-        if (i + concurrency < supportedSports.length) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+      // Process sports sequentially to avoid rate limiting
+      for (const sport of supportedSports) {
+        try {
+          const teams = await cachedUnifiedApiClient.getTeams(sport, { limit: 50 })
+          allTeams.push(...teams)
+          
+          // Add delay between sports to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (sportError) {
+          console.warn(`Failed to load teams for ${sport}:`, sportError)
         }
       }
       
@@ -322,42 +308,23 @@ export function CleanDashboard({ className = "" }: CleanDashboardProps) {
       let liveGames = 0
       let totalTeams = 0
       
-      // Process sports in parallel with controlled concurrency
-      const concurrency = 2 // Process 2 sports at a time
-      for (let i = 0; i < supportedSports.length; i += concurrency) {
-        const batch = supportedSports.slice(i, i + concurrency)
-        
-        const batchPromises = batch.map(async (sport) => {
-          try {
-            const [games, live, teams] = await Promise.all([
-              cachedUnifiedApiClient.getGames(sport, { limit: 100 }),
-              cachedUnifiedApiClient.getLiveGames(sport),
-              cachedUnifiedApiClient.getTeams(sport, { limit: 100 })
-            ])
-            
-            return {
-              games: games.length,
-              live: live.length,
-              teams: teams.length
-            }
-          } catch (sportError) {
-            console.warn(`Failed to load stats for ${sport}:`, sportError)
-            return { games: 0, live: 0, teams: 0 }
-          }
-        })
-        
-        const batchResults = await Promise.all(batchPromises)
-        
-        // Aggregate results
-        batchResults.forEach(result => {
-          totalGames += result.games
-          liveGames += result.live
-          totalTeams += result.teams
-        })
-        
-        // Add delay between batches to respect rate limits
-        if (i + concurrency < supportedSports.length) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+      // Process sports sequentially to avoid rate limiting
+      for (const sport of supportedSports) {
+        try {
+          const [games, live, teams] = await Promise.all([
+            cachedUnifiedApiClient.getGames(sport, { limit: 100 }),
+            cachedUnifiedApiClient.getLiveGames(sport),
+            cachedUnifiedApiClient.getTeams(sport, { limit: 100 })
+          ])
+          
+          totalGames += games.length
+          liveGames += live.length
+          totalTeams += teams.length
+          
+          // Add delay between sports to respect rate limits
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } catch (sportError) {
+          console.warn(`Failed to load stats for ${sport}:`, sportError)
         }
       }
       

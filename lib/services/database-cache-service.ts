@@ -213,7 +213,7 @@ export class DatabaseCacheService {
         .from('cache_entries')
         .select('*')
         .eq('key', key)
-        .single()
+        .maybeSingle()
 
       if (error) {
         if (error.code === 'PGRST116') { // Not found error
@@ -231,6 +231,12 @@ export class DatabaseCacheService {
           this.stats.missRate++
           return null
         }
+      }
+
+      // Check if data exists and is valid
+      if (!data) {
+        this.stats.missRate++
+        return null
       }
 
       // Check if expired
@@ -270,9 +276,14 @@ export class DatabaseCacheService {
         .from('cache_entries')
         .select('expires_at')
         .eq('key', key)
-        .single()
+        .maybeSingle()
 
-      if (error || !data) return false
+      if (error) {
+        console.error('Error checking cache entry:', error)
+        return false
+      }
+
+      if (!data) return false
 
       return new Date(data.expires_at) > new Date()
     } catch (error) {
