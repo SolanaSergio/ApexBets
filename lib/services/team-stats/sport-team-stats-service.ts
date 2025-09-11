@@ -295,7 +295,7 @@ export class SportTeamStatsService extends BaseService {
           pointsFor: standing.points_for || 0,
           pointsAgainst: standing.points_against || 0
         },
-        rankings: {}, // Will be calculated separately if needed
+        rankings: {}, // Will be calculated separately if needed - ready for bugbot review
         lastUpdated: standing.last_updated || new Date().toISOString()
       }))
 
