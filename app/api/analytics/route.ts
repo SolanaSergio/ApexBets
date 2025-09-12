@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { cachedSupabaseQuery } from '@/lib/utils/supabase-query-cache';
 
 export async function GET() {
   try {
@@ -8,24 +9,50 @@ export async function GET() {
       return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
     }
 
-    // Get analytics data from database
-    const [
-      gamesResult,
-      teamsResult,
-      predictionsResult,
-      oddsResult
-    ] = await Promise.allSettled([
-      supabase.from('games').select('id, sport, status, updated_at').limit(1000),
-      supabase.from('teams').select('id, sport, is_active').limit(1000),
-      supabase.from('predictions').select('id, sport, confidence').limit(1000),
-      supabase.from('odds').select('id, sport, last_updated').limit(1000)
-    ]);
-    
-    // Process results
-    const games = gamesResult.status === 'fulfilled' ? gamesResult.value.data || [] : [];
-    const teams = teamsResult.status === 'fulfilled' ? teamsResult.value.data || [] : [];
-    const predictions = predictionsResult.status === 'fulfilled' ? predictionsResult.value.data || [] : [];
-    const odds = oddsResult.status === 'fulfilled' ? oddsResult.value.data || [] : [];
+    // Use cached queries to prevent duplicate database calls
+    const games = await cachedSupabaseQuery(
+      'games',
+      'select',
+      { fields: 'id, sport, status, updated_at', limit: 1000 },
+      async () => {
+        const { data, error } = await supabase.from('games').select('id, sport, status, updated_at').limit(1000);
+        if (error) throw error;
+        return data || [];
+      }
+    );
+
+    const teams = await cachedSupabaseQuery(
+      'teams',
+      'select',
+      { fields: 'id, sport, is_active', limit: 1000 },
+      async () => {
+        const { data, error } = await supabase.from('teams').select('id, sport, is_active').limit(1000);
+        if (error) throw error;
+        return data || [];
+      }
+    );
+
+    const predictions = await cachedSupabaseQuery(
+      'predictions',
+      'select',
+      { fields: 'id, sport, confidence', limit: 1000 },
+      async () => {
+        const { data, error } = await supabase.from('predictions').select('id, sport, confidence').limit(1000);
+        if (error) throw error;
+        return data || [];
+      }
+    );
+
+    const odds = await cachedSupabaseQuery(
+      'odds',
+      'select',
+      { fields: 'id, sport, last_updated', limit: 1000 },
+      async () => {
+        const { data, error } = await supabase.from('odds').select('id, sport, last_updated').limit(1000);
+        if (error) throw error;
+        return data || [];
+      }
+    );
     
     // Calculate analytics
     const analytics = {

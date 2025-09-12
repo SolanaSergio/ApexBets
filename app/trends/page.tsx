@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { TrendingUp, TrendingDown, BarChart3, Target, Calendar, DollarSign, Activity, ArrowUp, ArrowDown, RefreshCw } from "lucide-react"
-import { apiClient } from "@/lib/api-client"
+import { simpleApiClient as apiClient } from "@/lib/api-client-simple"
 import { format } from "date-fns"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 

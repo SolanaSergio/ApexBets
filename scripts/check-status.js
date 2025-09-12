@@ -6,16 +6,25 @@
  */
 
 const { createClient } = require('@supabase/supabase-js');
-require('dotenv').config({ path: '../.env.local' });
+require('dotenv').config({ path: './.env.local' });
 
 console.log('📊 ApexBets Data System Status');
 console.log('==============================\n');
 
 // Initialize Supabase client
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+console.log('Environment variables:');
+console.log('SUPABASE_URL:', supabaseUrl);
+console.log('SUPABASE_SERVICE_ROLE_KEY:', supabaseKey ? 'Set' : 'Missing');
+
+if (!supabaseUrl || !supabaseKey) {
+  console.log('❌ Missing Supabase environment variables');
+  process.exit(1);
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 async function checkStatus() {
   try {

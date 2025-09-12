@@ -11,6 +11,7 @@ import { intelligentRateLimiter } from './intelligent-rate-limiter'
 import { cacheManager } from '@/lib/cache'
 import { errorHandlingService } from './error-handling-service'
 import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
+import { queryOptimizer } from '@/lib/services/database/query-optimizer'
 
 interface PopulationStats {
   teams: number
@@ -122,11 +123,18 @@ export class ComprehensiveDataPopulationService {
         const externalTeams = await this.fetchTeamsWithRateLimit(sport)
         
         if (externalTeams.length > 0) {
-          // Check which teams already exist
-          const { data: existingTeams } = await this.supabase
-            .from('teams')
-            .select('name, abbreviation')
-            .eq('sport', sport)
+          // Use query optimizer to prevent duplicate calls
+          const cacheKey = `existing_teams_${sport}`;
+          const { data: existingTeams } = await queryOptimizer.cachedQuery(
+            cacheKey,
+            async () => {
+              return await this.supabase
+                .from('teams')
+                .select('name, abbreviation')
+                .eq('sport', sport);
+            },
+            300000 // 5 minute cache
+          );
           
           const existingTeamNames = new Set(existingTeams?.map((t: any) => t.name) || [])
           
@@ -134,27 +142,34 @@ export class ComprehensiveDataPopulationService {
           const newTeams = externalTeams.filter(team => !existingTeamNames.has(team.name))
           
           if (newTeams.length > 0) {
-            // Insert new teams
-            const { error } = await this.supabase
-              .from('teams')
-              .insert(newTeams.map(team => ({
-                name: team.name,
-                city: team.city || team.name.split(' ').slice(0, -1).join(' '),
-                league: team.league,
-                sport: team.sport,
-                abbreviation: team.abbreviation,
-                logo_url: team.logo_url || null,
-                conference: this.getConference(team.name, team.league),
-                division: this.getDivision(team.name, team.league),
-                is_active: true
-              })))
+            // Batch insert new teams to reduce database calls
+            const teamData = newTeams.map(team => ({
+              name: team.name,
+              city: team.city || team.name.split(' ').slice(0, -1).join(' '),
+              league: team.league,
+              sport: team.sport,
+              abbreviation: team.abbreviation,
+              logo_url: team.logo_url || null,
+              conference: this.getConference(team.name, team.league),
+              division: this.getDivision(team.name, team.league),
+              is_active: true
+            }));
             
-            if (error) {
-              this.stats.errors.push(`Teams insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+            const { error } = await queryOptimizer.bulkUpsert(
+              'teams',
+              teamData,
+              ['name', 'league']
+            );
+            
+            if (error && error.length > 0) {
+              this.stats.errors.push(...error.map(e => `Teams insertion error: ${e}`));
             } else {
-              this.stats.teams += newTeams.length
-              console.log(`   ✅ ${newTeams.length} ${sport} teams added`)
+              this.stats.teams += teamData.length;
+              console.log(`   ✅ ${teamData.length} ${sport} teams added`);
             }
+            
+            // Clear cache for this sport since we've added new teams
+            queryOptimizer.clearCache(cacheKey);
           }
         }
         
@@ -165,7 +180,7 @@ export class ComprehensiveDataPopulationService {
         await new Promise(resolve => setTimeout(resolve, intelligentRateLimiter.getRecommendedDelay('thesportsdb')))
       }
     } catch (error) {
-      this.stats.errors.push(`Teams population error: ${error instanceof Error ? error instanceof Error ? error.message : 'Unknown error' : 'Unknown error'}`)
+      this.stats.errors.push(`Teams population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
       console.error('Error populating teams:', error)
     }
   }

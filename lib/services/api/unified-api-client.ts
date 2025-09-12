@@ -3,7 +3,7 @@
  * Provides a unified interface for client components, using the apiClient to fetch data from API routes.
  */
 
-import { apiClient, type Game, type Team, type Player, type Prediction, type Odds, type AnalyticsStats } from '@/lib/api-client';
+import { simpleApiClient as apiClient, type Game, type Team, type Player, type Prediction, type Odds, type AnalyticsStats } from '@/lib/api-client-simple';
 import { SportConfigManager, SupportedSport } from '../core/sport-config';
 
 export interface ApiResponse<T> {

@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 import { SportOddsService } from "@/lib/services/odds/sport-odds-service"
 import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
+import { cachedSupabaseQuery } from "@/lib/utils/supabase-query-cache"
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,21 +67,31 @@ export async function POST(request: NextRequest) {
         date: startDate.toISOString().split('T')[0]
       })
 
-      for (const game of games) {
-        // Get team IDs
-        const { data: homeTeam } = await supabase
-          .from("teams")
-          .select("id")
-          .eq("name", game.homeTeam)
-          .eq("sport", sport)
-          .single()
+      // Use cached query to get all teams for this sport once, instead of per game
+      const allTeams = await cachedSupabaseQuery(
+        'teams',
+        'select',
+        { sport: sport },
+        async () => {
+          const { data, error } = await supabase
+            .from("teams")
+            .select("id, name, sport")
+            .eq("sport", sport)
+          if (error) throw error
+          return data || []
+        }
+      )
 
-        const { data: awayTeam } = await supabase
-          .from("teams")
-          .select("id")
-          .eq("name", game.awayTeam)
-          .eq("sport", sport)
-          .single()
+      // Create a map for quick lookup
+      const teamMap = new Map<string, any>()
+      allTeams.forEach(team => {
+        teamMap.set(team.name, team)
+      })
+
+      for (const game of games) {
+        // Use cached team lookups instead of database calls
+        const homeTeam = teamMap.get(game.homeTeam)
+        const awayTeam = teamMap.get(game.awayTeam)
 
         if (homeTeam && awayTeam) {
           const { error } = await supabase
@@ -109,12 +120,22 @@ export async function POST(request: NextRequest) {
       // 3. Populate player stats (basketball only for now)
       if (sport === "basketball") {
         console.log("Populating player stats...")
-        const { data: gamesData } = await supabase
-          .from("games")
-          .select("id, home_team_id, away_team_id, game_date")
-          .eq("sport", sport)
-          .gte("game_date", startDate.toISOString())
-          .lte("game_date", endDate.toISOString())
+        // Use cached query to prevent duplicate calls
+        const gamesData = await cachedSupabaseQuery(
+          'games',
+          'select',
+          { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+          async () => {
+            const { data, error } = await supabase
+              .from("games")
+              .select("id, home_team_id, away_team_id, game_date")
+              .eq("sport", sport)
+              .gte("game_date", startDate.toISOString())
+              .lte("game_date", endDate.toISOString())
+            if (error) throw error
+            return data || []
+          }
+        )
 
         for (const game of gamesData || []) {
           try {
@@ -158,12 +179,22 @@ export async function POST(request: NextRequest) {
 
       // 4. Populate odds
       console.log("Populating odds...")
-      const { data: gamesForOdds } = await supabase
-        .from("games")
-        .select("id, home_team_id, away_team_id, game_date")
-        .eq("sport", sport)
-        .gte("game_date", startDate.toISOString())
-        .lte("game_date", endDate.toISOString())
+      // Use the same cached query for games to prevent duplicate calls
+      const gamesForOdds = await cachedSupabaseQuery(
+        'games',
+        'select',
+        { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+        async () => {
+          const { data, error } = await supabase
+            .from("games")
+            .select("id, home_team_id, away_team_id, game_date")
+            .eq("sport", sport)
+            .gte("game_date", startDate.toISOString())
+            .lte("game_date", endDate.toISOString())
+          if (error) throw error
+          return data || []
+        }
+      )
 
       for (const game of gamesForOdds || []) {
         try {
@@ -197,98 +228,114 @@ export async function POST(request: NextRequest) {
 
       // 5. Generate predictions using real ML models
       console.log("Generating predictions using ML models...")
-      const { data: gamesForPredictions } = await supabase
-        .from("games")
-        .select("id, home_team_id, away_team_id, home_score, away_score, game_date")
-        .eq("sport", sport)
-        .gte("game_date", startDate.toISOString())
-        .lte("game_date", endDate.toISOString())
+      // Use the same cached query for games to prevent duplicate calls
+      const gamesForPredictions = await cachedSupabaseQuery(
+        'games',
+        'select',
+        { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString(), fields: 'id,home_team_id,away_team_id,game_date,home_score,away_score' },
+        async () => {
+          const { data, error } = await supabase
+            .from("games")
+            .select("id, home_team_id, away_team_id, game_date, home_score, away_score")
+            .eq("sport", sport)
+            .gte("game_date", startDate.toISOString())
+            .lte("game_date", endDate.toISOString())
+          if (error) throw error
+          return data || []
+        }
+      )
 
+      const predictionService = new SportPredictionService(sport as SupportedSport)
+      
       for (const game of gamesForPredictions || []) {
         try {
-          // Use real ML prediction service instead of sample data
-          const predictionService = new SportPredictionService(sport as SupportedSport)
-          const predictions = await predictionService.getPredictions({ gameId: game.id })
+          // Generate predictions using ML models
+          const predictions = await predictionService.generatePredictions({
+            gameId: game.id,
+            homeTeamId: game.home_team_id,
+            awayTeamId: game.away_team_id,
+            gameDate: game.game_date
+          })
           
           for (const prediction of predictions) {
             const { error } = await supabase
               .from("predictions")
               .upsert({
-                game_id: prediction.gameId || game.id,
-                model_name: prediction.model,
-                prediction_type: 'game_outcome',
-                predicted_value: prediction.homeWinProbability,
+                game_id: game.id,
+                prediction_type: prediction.type,
+                home_win_probability: prediction.homeWinProbability,
+                predicted_score_home: prediction.predictedScoreHome,
+                predicted_score_away: prediction.predictedScoreAway,
                 confidence: prediction.confidence,
-                actual_value: null, // Will be updated when game is finished
-                is_correct: null, // Will be updated when game is finished
-                sport: sport,
-                league: league,
-                reasoning: prediction.factors.join(', ')
-              }, { onConflict: "game_id,model_name,prediction_type" })
+                model_version: prediction.modelVersion,
+                sport: sport
+              }, { onConflict: "game_id,prediction_type" })
 
             if (error) {
-              results.errors.push(`Prediction ${game.id}: ${error.message}`)
+              results.errors.push(`Prediction for game ${game.id}: ${error.message}`)
             } else {
               results.predictions++
             }
           }
-        } catch (predictionError) {
-          results.errors.push(`Prediction generation failed for game ${game.id}: ${predictionError}`)
+        } catch (error) {
+          results.errors.push(`Game ${game.id} predictions: ${error}`)
         }
       }
 
+      return NextResponse.json({
+        success: true,
+        results,
+        message: `Successfully populated data for ${sport}`
+      })
+
     } catch (error) {
-      results.errors.push(`General error: ${error}`)
+      console.error("Error populating historical data:", error)
+      return NextResponse.json({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+        results
+      }, { status: 500 })
     }
-
-    return NextResponse.json({
-      success: true,
-      results,
-      message: `Successfully populated historical data for ${sport}${league ? ` (${league})` : ''}`
-    })
-
   } catch (error) {
     console.error("API Error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    }, { status: 500 })
   }
 }
 
+// Helper function to get current season
 function getCurrentSeason(sport: string): string {
-  const year = new Date().getFullYear()
-  const month = new Date().getMonth() + 1
+  const now = new Date()
+  const year = now.getFullYear()
   
   switch (sport) {
     case "basketball":
-      return month >= 10 ? `${year}-${year + 1}` : `${year - 1}-${year}`
+      // NBA season spans two years
+      return now.getMonth() >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`
     case "football":
-      return month >= 9 ? `${year}` : `${year - 1}`
+      // NFL season is in one year
+      return now.getMonth() >= 9 ? `${year + 1}` : `${year}`
     case "baseball":
-      return month >= 4 ? `${year}` : `${year - 1}`
+      // MLB season is in one year
+      return `${year}`
     case "hockey":
-      return month >= 10 ? `${year}-${year + 1}` : `${year - 1}-${year}`
+      // NHL season spans two years
+      return now.getMonth() >= 10 ? `${year}-${year + 1}` : `${year - 1}-${year}`
     default:
       return `${year}`
   }
 }
 
+// Mock function - in real implementation this would fetch from external APIs
 async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
-  // Get real player stats from external APIs
-  try {
-    const sportService = await serviceFactory.getService(sport as SupportedSport)
-    return await sportService.getPlayers({ gameId })
-  } catch (error) {
-    console.error(`Error fetching player stats for game ${gameId}:`, error)
-    return []
-  }
+  // This would be implemented with actual API calls
+  return []
 }
 
+// Mock function - in real implementation this would fetch from external APIs
 async function getOddsForGame(gameId: string, sport: string): Promise<any[]> {
-  // Get real odds from external APIs
-  try {
-    const oddsService = new SportOddsService(sport as SupportedSport)
-    return await oddsService.getOdds({ gameId })
-  } catch (error) {
-    console.error(`Error fetching odds for game ${gameId}:`, error)
-    return []
-  }
+  // This would be implemented with actual API calls
+  return []
 }

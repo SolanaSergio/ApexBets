@@ -3,7 +3,7 @@
  * Ensures data quality and consistency
  */
 
-import { apiClient, type Game, type Team, type Player } from '@/lib/api-client';
+import { simpleApiClient as apiClient, type Game, type Team, type Player } from '@/lib/api-client-simple';
 import { SportConfigManager, SupportedSport } from './core/sport-config';
 
 export interface ValidationResult {
