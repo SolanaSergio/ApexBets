@@ -138,16 +138,32 @@ export interface ApiSportsStanding {
   }
 }
 
+import { apiKeyRotation } from '../services/api-key-rotation'
+import { errorHandlingService } from '../services/error-handling-service'
+
 export class ApiSportsClient {
   private baseUrl = 'https://api-football-v1.p.rapidapi.com/v3'
-  private apiKey: string
   private rateLimitDelay = 600 // 0.6 seconds between requests (100 requests/minute = 0.6 seconds)
   private lastRequestTime = 0
   private retryCount = 0
   private maxRetries = 3
 
-  constructor(apiKey: string) {
-    this.apiKey = apiKey
+  constructor() {
+    // API key is now managed by the rotation service
+  }
+
+  private getApiKey(): string | null {
+    const key = apiKeyRotation.getCurrentKey('api-sports')
+    if (!key || key === 'your_rapidapi_key_here') {
+      console.warn('API-Sports: No valid RapidAPI key configured')
+      return null
+    }
+    return key
+  }
+
+  public get isConfigured(): boolean {
+    const key = this.getApiKey()
+    return !!key && key !== 'your_rapidapi_key_here'
   }
 
   private async rateLimit(): Promise<void> {
@@ -170,8 +186,9 @@ export class ApiSportsClient {
   private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
     await this.rateLimit()
     
-    // Check if API key is available
-    if (!this.apiKey || this.apiKey === '') {
+    // Get current API key from rotation service
+    const apiKey = this.getApiKey()
+    if (!apiKey || apiKey === '') {
       console.warn('API-SPORTS API key not configured, returning empty data')
       return { response: [] } as T
     }
@@ -179,7 +196,7 @@ export class ApiSportsClient {
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
-          'X-RapidAPI-Key': this.apiKey,
+          'X-RapidAPI-Key': apiKey,
           'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com'
         }
       })
@@ -188,7 +205,11 @@ export class ApiSportsClient {
         const errorMessage = await response.text().catch(() => response.statusText)
         
         if (response.status === 401) {
-          console.warn('API-SPORTS API: 401 Unauthorized - Invalid API key. Returning empty data.')
+          console.warn('API-SPORTS API: 401 Unauthorized - Invalid API key. Rotating to next key.')
+          apiKeyRotation.rotateToNextKey('api-sports', 'invalid')
+          if (retryAttempt < this.maxRetries) {
+            return this.request<T>(endpoint, retryAttempt + 1)
+          }
           return { response: [] } as T
         } else if (response.status === 403) {
           if (retryAttempt < this.maxRetries) {
@@ -200,6 +221,8 @@ export class ApiSportsClient {
             return { response: [] } as T
           }
         } else if (response.status === 429) {
+          // Rate limit exceeded - rotate to next key
+          apiKeyRotation.rotateToNextKey('api-sports', 'rate_limit')
           if (retryAttempt < this.maxRetries) {
             const retryAfter = response.headers.get('Retry-After')
             const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // Default 1 minute
@@ -317,9 +340,9 @@ export class ApiSportsClient {
   }
 }
 
-// Create instance with API key from environment
+// Create instance with API key rotation support
 const getApiSportsKey = (): string => {
-  const apiKey = process.env.NEXT_PUBLIC_RAPIDAPI_KEY
+  const apiKey = apiKeyRotation.getCurrentKey('api-sports')
   if (!apiKey || apiKey === '') {
     return '' // Return empty string instead of throwing error
   }
@@ -331,8 +354,7 @@ let _apiSportsClient: ApiSportsClient | null = null
 
 const getClient = (): ApiSportsClient => {
   if (!_apiSportsClient) {
-    const apiKey = getApiSportsKey()
-    _apiSportsClient = new ApiSportsClient(apiKey)
+    _apiSportsClient = new ApiSportsClient()
   }
   return _apiSportsClient
 }
@@ -383,5 +405,13 @@ export const apiSportsClient = {
       return null
     }
     return getClient().getTeamStatistics(teamId, leagueId, season)
+  },
+
+  async getStandings(leagueId: number, season: number): Promise<any> {
+    if (!this.isConfigured) {
+      console.warn('API-SPORTS API key not configured, returning empty data')
+      return []
+    }
+    return getClient().getStandings(leagueId, season)
   }
 }

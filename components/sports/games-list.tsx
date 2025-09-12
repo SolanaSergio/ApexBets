@@ -25,6 +25,7 @@ import {
 import { simpleApiClient, type Game } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { TeamLogo } from "@/components/ui/team-logo"
+import { cn } from "@/lib/utils"
 
 type GameData = Game
 
@@ -55,16 +56,28 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     try {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
-      const params: any = { sport, date: dateFilter || today }
+      const params: any = { sport, date: dateFilter || today, external: true, real: true }
 
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        simpleApiClient.getGames({ sport, status: 'in_progress' }),
-        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }),
-        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10 })
+        simpleApiClient.getGames({ sport, status: 'in_progress', external: true }),
+        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20, external: true }),
+        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10, external: true })
       ])
 
-      const allGames = [...liveGames, ...scheduledGames, ...finishedGames]
-      setGames(allGames)
+      // Filter out games that don't meet live criteria
+      const trulyLiveGames = liveGames.filter(game => 
+        isGameActuallyLive(game)
+      )
+
+      // Combine all games and remove duplicates based on game ID
+      const allGames = [...trulyLiveGames, ...scheduledGames, ...finishedGames]
+      
+      // Remove duplicates by game ID while preserving the first occurrence
+      const uniqueGames = allGames.filter((game, index, array) => 
+        array.findIndex(g => g.id === game.id) === index
+      )
+      
+      setGames(uniqueGames)
     } catch (error) {
       console.error('Error loading games:', error)
     } finally {
@@ -252,10 +265,25 @@ function GamesGrid({ games, sport }: GamesGridProps) {
     )
   }
 
+  // Create unique keys for games to prevent React key conflicts
+  const createUniqueKey = (game: GameData, index: number): string => {
+    // Primary: use game ID if available
+    if (game.id) {
+      return game.id
+    }
+    
+    // Fallback: create composite key from game details
+    const homeTeam = game.home_team?.name || 'home'
+    const awayTeam = game.away_team?.name || 'away'
+    const gameDate = game.game_date || new Date().toISOString()
+    
+    return `${homeTeam}-${awayTeam}-${gameDate}-${index}`
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {games.map((game) => (
-        <GameCard key={game.id} game={game} sport={sport} />
+      {games.map((game, index) => (
+        <GameCard key={createUniqueKey(game, index)} game={game} sport={sport} />
       ))}
     </div>
   )
@@ -266,81 +294,158 @@ interface GameCardProps {
   sport: SupportedSport
 }
 
+// Helper function to determine if a game is actually live
+function isGameActuallyLive(game: GameData): boolean {
+  const status = game.status?.toLowerCase() || ''
+  
+  // Must have live status AND actual scores (not 0-0)
+  const hasLiveStatus = status === 'live' || status === 'in_progress' || status === 'in progress'
+  const hasRealScores = (game.home_score !== null && game.home_score !== undefined && game.away_score !== null && game.away_score !== undefined) && 
+                       (game.home_score > 0 || game.away_score > 0)
+  
+  // Additional checks for various live statuses
+  const hasLiveIndicators = status.includes('live') || 
+                           status.includes('progress') ||
+                           status.includes('quarter') ||
+                           status.includes('period') ||
+                           status.includes('inning') ||
+                           status.includes('half')
+  
+  return hasLiveStatus && (hasRealScores || hasLiveIndicators)
+}
+
 function GameCard({ game, sport }: GameCardProps) {
   const sportConfig = SportConfigManager.getSportConfig(sport)
-  const isLive = game.status === 'in_progress'
-  const isFinished = game.status === 'completed'
+  const isLive = isGameActuallyLive(game)
+  const isFinished = game.status === 'completed' || game.status === 'finished' || game.status === 'final'
 
   const getStatusBadge = () => {
     if (isLive) {
       return (
-        <Badge className="bg-red-500 hover:bg-red-600 animate-pulse">
-          <Zap className="h-3 w-3 mr-1" />
+        <Badge className="bg-red-500 hover:bg-red-600 animate-pulse font-bold">
+          <div className="w-2 h-2 bg-white rounded-full mr-2 animate-pulse" />
           LIVE
         </Badge>
       )
     }
     if (isFinished) {
       return (
-        <Badge variant="secondary">
+        <Badge variant="secondary" className="bg-gray-100 text-gray-700">
           <CheckCircle className="h-3 w-3 mr-1" />
-          FT
+          FINAL
         </Badge>
       )
     }
     return (
-      <Badge variant="outline">
+      <Badge variant="outline" className="border-blue-300 text-blue-700">
         <Clock className="h-3 w-3 mr-1" />
-        {game.game_time ? game.game_time : 'TBD'}
+        {game.game_time ? game.game_time : new Date(game.game_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </Badge>
     )
   }
 
+  const cardClassName = cn(
+    "hover:shadow-md transition-all duration-200",
+    isLive && "ring-2 ring-red-200 bg-gradient-to-r from-red-50 to-pink-50",
+    isFinished && "bg-gradient-to-r from-gray-50 to-slate-50",
+    !isLive && !isFinished && "bg-gradient-to-r from-blue-50 to-sky-50"
+  )
+
   return (
-    <Card className={`hover:shadow-md transition-shadow ${isLive ? 'ring-2 ring-red-200' : ''}`}>
-      <CardContent className="p-4">
-        <div className="space-y-3">
+    <Card className={cardClassName}>
+      <CardContent className="p-5">
+        <div className="space-y-4">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className={`text-lg ${sportConfig?.color}`}>{sportConfig?.icon}</span>
-              <span className="text-sm text-muted-foreground">{game.league}</span>
+              <span className="text-sm font-medium text-muted-foreground">{game.league}</span>
             </div>
             {getStatusBadge()}
           </div>
 
           {/* Teams and Score */}
           <div className="space-y-3">
+            {/* Away Team */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <TeamLogo
-                  logoUrl={game.home_team?.logo_url}
-                  teamName={game.home_team?.name || 'Home Team'}
-                  abbreviation={game.home_team?.abbreviation}
-                  size="sm"
-                />
-                <span className="font-medium text-sm">{game.home_team?.name}</span>
-              </div>
-              <span className="font-bold">{game.home_score ?? '-'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <TeamLogo
                   logoUrl={game.away_team?.logo_url}
                   teamName={game.away_team?.name || 'Away Team'}
                   abbreviation={game.away_team?.abbreviation}
-                  size="sm"
+                  size="md"
                 />
-                <span className="font-medium text-sm">{game.away_team?.name}</span>
+                <div>
+                  <span className="font-semibold text-base">{game.away_team?.name}</span>
+                  <div className="text-xs text-muted-foreground">Away</div>
+                </div>
               </div>
-              <span className="font-bold">{game.away_score ?? '-'}</span>
+              <div className="text-right">
+                <span className={cn(
+                  "font-bold text-2xl",
+                  isLive && "text-green-600",
+                  isFinished && "text-gray-700",
+                  !isLive && !isFinished && "text-muted-foreground"
+                )}>
+                  {game.away_score !== null && game.away_score !== undefined ? game.away_score : '-'}
+                </span>
+              </div>
+            </div>
+            
+            {/* Home Team */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <TeamLogo
+                  logoUrl={game.home_team?.logo_url}
+                  teamName={game.home_team?.name || 'Home Team'}
+                  abbreviation={game.home_team?.abbreviation}
+                  size="md"
+                />
+                <div>
+                  <span className="font-semibold text-base">{game.home_team?.name}</span>
+                  <div className="text-xs text-muted-foreground">Home</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className={cn(
+                  "font-bold text-2xl",
+                  isLive && "text-green-600",
+                  isFinished && "text-gray-700",
+                  !isLive && !isFinished && "text-muted-foreground"
+                )}>
+                  {game.home_score !== null && game.home_score !== undefined ? game.home_score : '-'}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Date and Venue */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <div>{new Date(game.game_date).toLocaleDateString()}</div>
-            {game.venue && <div>{game.venue}</div>}
+          {/* Game Info */}
+          <div className="border-t pt-3">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-3 w-3" />
+                <span>{new Date(game.game_date).toLocaleDateString()}</span>
+                {isLive && game.time_remaining && (
+                  <>
+                    <span>•</span>
+                    <Badge variant="outline" className="text-xs px-1 py-0">
+                      {game.time_remaining}
+                    </Badge>
+                  </>
+                )}
+                {isLive && game.time_remaining && (
+                  <>
+                    <span>•</span>
+                    <span className="font-mono text-green-600">{game.time_remaining}</span>
+                  </>
+                )}
+              </div>
+              {game.venue && (
+                <span className="truncate max-w-32" title={game.venue}>
+                  {game.venue}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </CardContent>

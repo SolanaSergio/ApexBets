@@ -212,7 +212,7 @@ export class MLPredictionService {
     return strengthDiff + homeAdvantage
   }
 
-  private async calculateTotalValue(game: any, historicalData: any): Promise<number> {
+  private async calculateTotalValue(_game: any, historicalData: any): Promise<number> {
     const { homeTeam, awayTeam } = historicalData
     
     // Calculate expected total points

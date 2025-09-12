@@ -178,7 +178,7 @@ export class SportPlayerStatsService extends BaseService {
       try {
         const playerStats = await this.getPlayerStats({
           teamId,
-          season,
+          season: season || undefined,
           limit: 100
         })
 
@@ -441,7 +441,7 @@ export class SportPlayerStatsService extends BaseService {
    */
   private async getSportsDBStats(playerId: string, season?: string): Promise<any> {
     try {
-      const { sportsDBClient } = await import('../../sports-apis')
+      const { } = await import('../../sports-apis')
       
       // SportsDB doesn't have detailed player stats, return generic stats
       return this.getGenericStats(playerId, season)
@@ -454,7 +454,7 @@ export class SportPlayerStatsService extends BaseService {
   /**
    * Get generic statistics when specific APIs are not available
    */
-  private async getGenericStats(playerId: string, season?: string): Promise<any> {
+  private async getGenericStats(_playerId: string, _season?: string): Promise<any> {
     // Return empty structure when no real data is available
     return {
       gamesPlayed: 0,
@@ -609,7 +609,7 @@ export class SportPlayerStatsService extends BaseService {
       const sortedTeams = Object.entries(teamTotals)
         .sort(([,a], [,b]) => b - a) // Sort descending
       
-      sortedTeams.forEach(([teamId, value], index) => {
+      sortedTeams.forEach(([teamId, _value], index) => {
         if (!rankings[teamId]) {
           rankings[teamId] = {}
         }

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const playerAnalytics = await analyticsService.getPlayerPerformance()
     
     // Transform data for chart display - sport-agnostic
-    const players = playerAnalytics.map((player: any, index: number) => ({
+    const players = playerAnalytics.slice(0, limit).map((player: any, index: number) => ({
       id: player.playerId,
       name: player.playerName,
       team: player.team,

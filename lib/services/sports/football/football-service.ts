@@ -131,43 +131,60 @@ export class FootballService extends SportSpecificService {
     }
   }
 
-  private getTeamAbbreviation(teamName: string): string {
-    // Map common NFL team names to abbreviations
-    const abbreviations: Record<string, string> = {
-      'Arizona Cardinals': 'ARI',
-      'Atlanta Falcons': 'ATL',
-      'Baltimore Ravens': 'BAL',
-      'Buffalo Bills': 'BUF',
-      'Carolina Panthers': 'CAR',
-      'Chicago Bears': 'CHI',
-      'Cincinnati Bengals': 'CIN',
-      'Cleveland Browns': 'CLE',
-      'Dallas Cowboys': 'DAL',
-      'Denver Broncos': 'DEN',
-      'Detroit Lions': 'DET',
-      'Green Bay Packers': 'GB',
-      'Houston Texans': 'HOU',
-      'Indianapolis Colts': 'IND',
-      'Jacksonville Jaguars': 'JAX',
-      'Kansas City Chiefs': 'KC',
-      'Las Vegas Raiders': 'LV',
-      'Los Angeles Chargers': 'LAC',
-      'Los Angeles Rams': 'LAR',
-      'Miami Dolphins': 'MIA',
-      'Minnesota Vikings': 'MIN',
-      'New England Patriots': 'NE',
-      'New Orleans Saints': 'NO',
-      'New York Giants': 'NYG',
-      'New York Jets': 'NYJ',
-      'Philadelphia Eagles': 'PHI',
-      'Pittsburgh Steelers': 'PIT',
-      'San Francisco 49ers': 'SF',
-      'Seattle Seahawks': 'SEA',
-      'Tampa Bay Buccaneers': 'TB',
-      'Tennessee Titans': 'TEN',
-      'Washington Commanders': 'WAS'
+  private async getTeamAbbreviation(teamName: string): Promise<string> {
+    // First try to get abbreviation from database
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      if (supabase) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('abbreviation')
+          .eq('name', teamName)
+          .eq('sport', this.sport)
+          .single()
+        
+        if (team?.abbreviation) {
+          return team.abbreviation
+        }
+      }
+    } catch (error) {
+      // Database lookup failed, fall back to API or extraction
     }
-    return abbreviations[teamName] || teamName.split(' ').map(word => word[0]).join('').toUpperCase()
+
+    // Try to get from API data if available
+    try {
+      const teams = await this.fetchTeamsFromSportsDB()
+      const matchingTeam = teams.find(team => 
+        team.name.toLowerCase() === teamName.toLowerCase()
+      )
+      if (matchingTeam?.abbreviation) {
+        return matchingTeam.abbreviation
+      }
+    } catch (error) {
+      // API lookup failed
+    }
+
+    // Fall back to extracting abbreviation from team name
+    return this.extractAbbreviationFromName(teamName)
+  }
+
+  private extractAbbreviationFromName(teamName: string): string {
+    // Extract abbreviation from team name by taking first letters
+    const words = teamName.split(' ').filter(word => 
+      !['of', 'the', 'and', 'at'].includes(word.toLowerCase())
+    )
+    
+    if (words.length >= 2) {
+      // For multi-word teams, take first letter of each major word
+      return words.slice(-2).map(word => word[0]).join('').toUpperCase()
+    } else if (words.length === 1) {
+      // For single word teams, take first 3 letters
+      return words[0].substring(0, 3).toUpperCase()
+    }
+    
+    return teamName.substring(0, 3).toUpperCase()
   }
 
   private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
@@ -241,7 +258,8 @@ export class FootballService extends SportSpecificService {
       // Get NFL teams from RapidAPI
       const teams = await apiSportsClient.getTeams(1, new Date().getFullYear()) // NFL league ID
       if (teams?.response && Array.isArray(teams.response)) {
-        return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+        const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
+        return mappedTeams
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
@@ -276,14 +294,14 @@ export class FootballService extends SportSpecificService {
     })
   }
 
-  private mapRapidAPITeamData(team: any): TeamData {
+  private async mapRapidAPITeamData(team: any): Promise<TeamData> {
     return {
       id: team.team?.id?.toString() || '',
       sport: this.sport,
       league: this.league,
       name: team.team?.name || '',
       city: this.extractCityFromName(team.team?.name),
-      abbreviation: this.getTeamAbbreviation(team.team?.name),
+      abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString()
     }
@@ -330,7 +348,7 @@ export class FootballService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchPlayers(params), ttl)
   }
 
-  private async fetchPlayers(params: any): Promise<PlayerData[]> {
+  private async fetchPlayers(_params: any): Promise<PlayerData[]> {
     try {
       // Football players would need different API integration
       return []
@@ -351,7 +369,7 @@ export class FootballService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchStandings(season), ttl)
   }
 
-  private async fetchStandings(season?: string): Promise<any[]> {
+  private async fetchStandings(_season?: string): Promise<any[]> {
     try {
       // Would integrate with appropriate API
       return []
@@ -368,7 +386,7 @@ export class FootballService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchOdds(params), ttl)
   }
 
-  private async fetchOdds(params: any): Promise<any[]> {
+  private async fetchOdds(_params: any): Promise<any[]> {
     try {
       if (!oddsApiClient) {
         console.warn('Odds API client not configured, returning empty odds')
@@ -432,8 +450,8 @@ export class FootballService extends SportSpecificService {
       time: rawData.strTime,
       status: rawData.strStatus === 'FT' ? 'finished' : 
               rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
-      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : undefined,
-      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : undefined,
+      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
+      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
       venue: rawData.strVenue,
       lastUpdated: new Date().toISOString()
     }

@@ -10,7 +10,16 @@ export async function POST(request: NextRequest) {
     console.log('🚀 Starting data population via API...')
     
     // Check if this is a valid request
-    const { populate } = await request.json()
+    let populate = false
+    
+    try {
+      const body = await request.json()
+      populate = body.populate
+    } catch (jsonError) {
+      // If no JSON body or invalid JSON, treat as a simple trigger request
+      console.log('No JSON body provided, treating as trigger request')
+      populate = true
+    }
     
     if (!populate) {
       return NextResponse.json(

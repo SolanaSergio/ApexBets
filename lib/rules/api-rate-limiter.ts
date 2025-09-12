@@ -57,9 +57,9 @@ export class ApiRateLimiter {
         burstLimit: 5
       },
       balldontlie: {
-        // BALLDONTLIE: 6 requests/minute, 10,000 requests/day (free tier) - very conservative
-        requestsPerMinute: 3, // Even more conservative
-        requestsPerDay: 10000,
+        // BALLDONTLIE: 5 requests/minute, 7,200 requests/day (free tier) - official limits
+        requestsPerMinute: 5, // Official free tier limit
+        requestsPerDay: 7200, // 5 req/min * 60 min * 24 hours
         burstLimit: 1
       },
       espn: {

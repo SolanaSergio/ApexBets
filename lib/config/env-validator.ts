@@ -17,6 +17,9 @@ interface EnvConfig {
   sportsDbApiKey: string
   ballDontLieApiKey: string
   
+  // Security
+  webhookSecret: string
+  
   // App Configuration
   apiUrl: string
   appName: string
@@ -89,15 +92,15 @@ class EnvValidator {
       }
     })
 
-    // BALLDONTLIE (Requires API key)
+    // BALLDONTLIE (Requires API key for all requests)
     this.apiKeyStatuses.set('balldontlie', {
       key: 'NEXT_PUBLIC_BALLDONTLIE_API_KEY',
       isValid: this.isValidApiKey(this.config.ballDontLieApiKey),
       hasValue: !!this.config.ballDontLieApiKey,
       rateLimit: {
-        requestsPerMinute: 5, // Free tier: 5 requests per minute
-        requestsPerDay: 10000,
-        burstLimit: 5
+        requestsPerMinute: 5, // Free tier: 5 requests per minute (strict limit)
+        requestsPerDay: 7200, // 5 req/min * 60 min * 24 hours
+        burstLimit: 1 // No burst allowed on free tier
       }
     })
 

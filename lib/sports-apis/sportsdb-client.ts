@@ -182,6 +182,43 @@ export class SportsDBClient {
     return data.event || []
   }
 
+  // Additional methods needed by API fallback strategy
+  async getEvents(params: { date?: string; sport?: string } = {}): Promise<SportsDBEvent[]> {
+    const date = params.date || new Date().toISOString().split('T')[0]
+    return this.getEventsByDate(date, params.sport)
+  }
+
+  async getTeams(league?: string): Promise<SportsDBTeam[]> {
+    if (league) {
+      // Try to find league ID first
+      const leagues = await this.getLeaguesBySport('Soccer') // Default fallback
+      const targetLeague = leagues.find(l => l.strLeague?.toLowerCase().includes(league.toLowerCase()))
+      if (targetLeague) {
+        return this.getTeamsByLeague(targetLeague.idLeague)
+      }
+    }
+    // Return empty array if no league specified or found
+    return []
+  }
+
+  async getPlayers(teamName?: string): Promise<SportsDBPlayer[]> {
+    if (teamName) {
+      const teams = await this.searchTeams(teamName)
+      if (teams.length > 0) {
+        return this.getPlayersByTeam(teams[0].idTeam)
+      }
+    }
+    return []
+  }
+
+  async getTable(league: string, season: string): Promise<any[]> {
+    // TheSportsDB doesn't have a direct standings endpoint
+    // Return empty array for now - this would need to be implemented
+    // with a different endpoint or API
+    console.warn('getTable method not fully implemented for TheSportsDB')
+    return []
+  }
+
   // Health check method
   async healthCheck(): Promise<boolean> {
     try {

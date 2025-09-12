@@ -20,7 +20,6 @@ export async function GET(request: NextRequest) {
     }
     const league = searchParams.get('league') || undefined
     const season = searchParams.get('season') || await SeasonManager.getCurrentSeason(sport)
-    const limit = parseInt(searchParams.get('limit') || '10')
     
     // Validate sport
     if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
@@ -35,7 +34,7 @@ export async function GET(request: NextRequest) {
     const sportService = await serviceFactory.getService(sport as SupportedSport, league)
     
     // Get comprehensive data for trend analysis
-    const [games, teams, players] = await Promise.all([
+    const [games, teamsData, playersData] = await Promise.all([
       sportService.getGames({ 
         season, 
         limit: 100, // Get more games for better trend calculation
@@ -67,7 +66,7 @@ export async function GET(request: NextRequest) {
     ])
 
     // Calculate real trends with comprehensive data
-    const trends = await calculateSportTrends(sport, games, teams, players, predictions, await season, historicalGames, historicalTeams)
+    const trends = await calculateSportTrends(sport, games, teamsData, playersData, predictions, historicalGames, historicalTeams)
     
     return NextResponse.json({
       success: true,
@@ -84,14 +83,14 @@ export async function GET(request: NextRequest) {
       },
       meta: {
         games_analyzed: games.length,
-        teams_analyzed: teams.length,
-        players_analyzed: players.length,
+        teams_analyzed: teamsData.length,
+        players_analyzed: playersData.length,
         predictions_analyzed: predictions.length,
         historical_games: historicalGames.length,
         historical_teams: historicalTeams.length,
         season_active: await SeasonManager.isSeasonActive(sport, await season),
         previous_season: previousSeason,
-        data_quality: calculateDataQuality(games, teams, players, predictions)
+        data_quality: calculateDataQuality(games, teamsData, playersData, predictions)
       }
     })
     
@@ -114,7 +113,6 @@ async function calculateSportTrends(
   teams: any[], 
   players: any[], 
   predictions: any[], 
-  season: string,
   historicalGames: any[] = [],
   historicalTeams: any[] = []
 ) {
@@ -150,7 +148,7 @@ async function calculateSportTrends(
   
   // Calculate confidence based on data quality and completeness
   const dataCompleteness = calculateDataCompleteness(games, teams, players, predictions)
-  const dataConsistency = calculateDataConsistency(games, teams, players)
+  const dataConsistency = calculateDataConsistency(games, teams)
   const confidence = Math.min(95, Math.max(60, 
     (dataCompleteness * 40) + 
     (dataConsistency * 30) + 
@@ -190,7 +188,6 @@ async function calculateSportTrends(
  * Calculate data completeness score (0-100)
  */
 function calculateDataCompleteness(games: any[], teams: any[], players: any[], predictions: any[]): number {
-  const totalPossibleData = 4 // games, teams, players, predictions
   let completenessScore = 0
   
   if (games.length > 0) completenessScore += 25
@@ -204,7 +201,7 @@ function calculateDataCompleteness(games: any[], teams: any[], players: any[], p
 /**
  * Calculate data consistency score (0-100)
  */
-function calculateDataConsistency(games: any[], teams: any[], players: any[]): number {
+function calculateDataConsistency(games: any[], teams: any[]): number {
   let consistencyScore = 100
   
   // Check for missing required fields in games
@@ -272,7 +269,7 @@ function calculateSportSpecificMetrics(sport: string, games: any[], teams: any[]
  */
 function calculateDataQuality(games: any[], teams: any[], players: any[], predictions: any[]): number {
   const completeness = calculateDataCompleteness(games, teams, players, predictions)
-  const consistency = calculateDataConsistency(games, teams, players)
+  const consistency = calculateDataConsistency(games, teams)
   
   return Math.round((completeness + consistency) / 2)
 }

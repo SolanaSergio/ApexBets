@@ -1,0 +1,54 @@
+{
+  "timestamp": "2025-09-10T15:42:29.592Z",
+  "summary": {
+    "total": 6,
+    "passed": 0,
+    "failed": 6
+  },
+  "results": [
+    {
+      "name": "Unit Tests",
+      "success": false,
+      "duration": 31301,
+      "error": "Command failed: pnpm test -- --testPathPattern=unit\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Integration Tests",
+      "success": false,
+      "duration": 39263,
+      "error": "Command failed: pnpm test -- --testPathPattern=integration\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Comprehensive API Tests",
+      "success": false,
+      "duration": 47940,
+      "error": "Command failed: pnpm test -- --testPathPattern=comprehensive\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Performance Tests",
+      "success": false,
+      "duration": 56980,
+      "error": "Command failed: pnpm test -- --testPathPattern=performance\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "Security Tests",
+      "success": false,
+      "duration": 65338,
+      "error": "Command failed: pnpm test -- --testPathPattern=security\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n● Validation Warning:\n\n  Unknown option \"moduleNameMapping\" with value {\"^@/(.*)$\": \"<rootDir>/$1\"} was found.\n  This is probably a typing mistake. Fixing it will remove this message.\n\n  Configuration Documentation:\n  https://jestjs.io/docs/configuration\n\n"
+    },
+    {
+      "name": "E2E Tests",
+      "success": false,
+      "duration": 135662,
+      "error": "Command failed: pnpm test:e2e\n\u001b[1A\u001b[2K\u001b[2m[WebServer] \u001b[22m \u001b[33m\u001b[1m⚠\u001b[22m\u001b[39m Port 3000 is in use by process 20800, using available port 3001 instead.\n"
+    }
+  ],
+  "testCategories": {
+    "unit": 1,
+    "integration": 1,
+    "e2e": 1,
+    "comprehensive": 1,
+    "performance": 1,
+    "security": 1
+  }
+}

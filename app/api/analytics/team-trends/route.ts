@@ -111,11 +111,6 @@ function processTeamTrends(gamesData: any[], team: string, sport: string) {
     game.home_team?.name?.toLowerCase().includes(team.toLowerCase())
   )
   
-  const awayGames = gamesData.filter(game => 
-    team === "all" || 
-    game.away_team?.name?.toLowerCase().includes(team.toLowerCase())
-  )
-  
   if (homeGames.length > 0) {
     const homeWins = homeGames.filter(game => game.home_score > game.away_score).length
     const homeWinRate = homeWins / homeGames.length

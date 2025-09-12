@@ -40,7 +40,7 @@ class AutomatedDataManager {
       },
       ballDontLie: {
         baseUrl: 'https://www.balldontlie.io/api/v1',
-        rateLimit: 1000, // requests per hour
+        rateLimit: 1000, // requests per hour (actually 5 per minute for free tier)
         lastCall: 0
       },
       rapidAPI: {

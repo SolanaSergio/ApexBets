@@ -51,6 +51,23 @@ export class EnvironmentRules {
         this.validationErrors.push(`Placeholder detected in ${varName}`)
       }
     }
+
+    // Validate webhook secret for security
+    this.validateWebhookSecret()
+  }
+
+  private validateWebhookSecret(): void {
+    const webhookSecret = process.env.WEBHOOK_SECRET
+    
+    if (webhookSecret) {
+      if (this.containsPlaceholder(webhookSecret)) {
+        this.validationErrors.push('Placeholder detected in WEBHOOK_SECRET')
+      }
+      
+      if (webhookSecret.length < 32) {
+        this.validationErrors.push('WEBHOOK_SECRET must be at least 32 characters long')
+      }
+    }
   }
 
   private validateApiKeys(): void {
@@ -133,6 +150,7 @@ export class EnvironmentRules {
       oddsApiKey: process.env.NEXT_PUBLIC_ODDS_API_KEY || '',
       sportsDbApiKey: process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123',
       ballDontLieApiKey: process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || '',
+      webhookSecret: process.env.WEBHOOK_SECRET || '',
       apiUrl: process.env.NEXT_PUBLIC_API_URL || '/api',
       appName: process.env.NEXT_PUBLIC_APP_NAME || 'ApexBets',
       appVersion: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',

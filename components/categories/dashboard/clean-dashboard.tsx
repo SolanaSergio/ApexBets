@@ -121,37 +121,32 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       console.log(`Loading teams for ${sport}...`)
       
-      // Use database first for reliable data
+      // Use external API first for real-time data
       let teams: TeamData[] = []
       try {
-        teams = await simpleApiClient.getTeams({ sport, external: false })
-        console.log(`Database: Loaded ${teams.length} teams for ${sport}`)
+        teams = await simpleApiClient.getTeams({ sport, external: true })
+        console.log(`External API: Loaded ${teams.length} teams for ${sport}`)
         
-        // Try external API as enhancement if database has data
-        if (teams.length > 0) {
+        // Fallback to database if external API fails
+        if (teams.length === 0) {
           try {
-            const externalTeams = await simpleApiClient.getTeams({ sport, external: true })
-            if (externalTeams.length > teams.length) {
-              console.log(`External API enhancement: Found ${externalTeams.length} teams for ${sport}`)
-              teams = externalTeams
-            }
-          } catch (externalError) {
-            console.warn(`External API enhancement failed for teams ${sport}:`, externalError)
-            // Continue with database data
-          }
-        } else {
-          // If no database data, try external API
-          try {
-            teams = await simpleApiClient.getTeams({ sport, external: true })
-            console.log(`External API fallback: Loaded ${teams.length} teams for ${sport}`)
-          } catch (externalError) {
-            console.warn(`External API fallback failed for teams ${sport}:`, externalError)
+            teams = await simpleApiClient.getTeams({ sport, external: false })
+            console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
+          } catch (dbError) {
+            console.warn(`Database fallback failed for teams ${sport}:`, dbError)
             teams = []
           }
         }
-      } catch (dbError) {
-        console.error(`Database failed for teams ${sport}:`, dbError)
-        teams = []
+      } catch (externalError) {
+        console.warn(`External API failed for teams ${sport}:`, externalError)
+        // Fallback to database data
+        try {
+          teams = await simpleApiClient.getTeams({ sport, external: false })
+          console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
+        } catch (dbError) {
+          console.warn(`Database fallback failed for teams ${sport}:`, dbError)
+          teams = []
+        }
       }
       
       setAllTeams(prev => {
@@ -189,7 +184,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       const today = new Date().toISOString().split('T')[0]
       console.log(`Loading upcoming games for ${sport} on ${today}...`)
       
-      // Use database first for reliable data
+      // Use external API first for real-time data
       let games: GameData[] = []
       try {
         games = await simpleApiClient.getGames({
@@ -197,9 +192,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           dateFrom: today,
           status: 'scheduled',
           limit: 20,
-          external: false
+          external: true
         })
-        console.log(`Database: Loaded ${games.length} upcoming games for ${sport}`)
+        console.log(`External API: Loaded ${games.length} upcoming games for ${sport}`)
         
         // If no games found for today, try without date filter to get any scheduled games
         if (games.length === 0) {
@@ -208,14 +203,43 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             sport,
             status: 'scheduled',
             limit: 20,
-            external: false
+            external: true
           })
-          console.log(`Database (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
+          console.log(`External API (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
           games = allScheduledGames
         }
-      } catch (dbError) {
-        console.error(`Database failed for upcoming games ${sport}:`, dbError)
-        games = []
+        
+        // Fallback to database if external API fails or returns no data
+        if (games.length === 0) {
+          try {
+            games = await simpleApiClient.getGames({
+              sport,
+              dateFrom: today,
+              status: 'scheduled',
+              limit: 20,
+              external: false
+            })
+            console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
+          } catch (dbError) {
+            console.warn(`Database fallback failed for upcoming games ${sport}:`, dbError)
+          }
+        }
+      } catch (externalError) {
+        console.warn(`External API failed for upcoming games ${sport}:`, externalError)
+        // Fallback to database
+        try {
+          games = await simpleApiClient.getGames({
+            sport,
+            dateFrom: today,
+            status: 'scheduled',
+            limit: 20,
+            external: false
+          })
+          console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
+        } catch (dbError) {
+          console.warn(`Database fallback failed for upcoming games ${sport}:`, dbError)
+          games = []
+        }
       }
       
       setAllUpcomingGames(prev => {
@@ -259,18 +283,43 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       console.log(`Loading live games for ${sport}...`)
       
-      // Use database first for reliable data
+      // Use external API first for real-time data
       let games: GameData[] = []
       try {
         games = await simpleApiClient.getGames({ 
           sport, 
           status: 'in_progress',
-          external: false 
+          external: true 
         })
-        console.log(`Database: Loaded ${games.length} live games for ${sport}`)
-      } catch (dbError) {
-        console.error(`Database failed for live games ${sport}:`, dbError)
-        games = []
+        console.log(`External API: Loaded ${games.length} live games for ${sport}`)
+        
+        // Fallback to database if external API fails
+        if (games.length === 0) {
+          try {
+            games = await simpleApiClient.getGames({ 
+              sport, 
+              status: 'in_progress',
+              external: false 
+            })
+            console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
+          } catch (dbError) {
+            console.warn(`Database fallback failed for live games ${sport}:`, dbError)
+          }
+        }
+      } catch (externalError) {
+        console.warn(`External API failed for live games ${sport}:`, externalError)
+        // Fallback to database
+        try {
+          games = await simpleApiClient.getGames({ 
+            sport, 
+            status: 'in_progress',
+            external: false 
+          })
+          console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
+        } catch (dbError) {
+          console.warn(`Database fallback failed for live games ${sport}:`, dbError)
+          games = []
+        }
       }
       
       setAllLiveGames(prev => {
@@ -601,46 +650,55 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 <div className="space-y-3">
                   {allLiveGames.length > 0 ? (
                     allLiveGames.slice(0, 5).map((game) => (
-                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border border-muted bg-card">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-1">
-                            <TeamLogo
-                              logoUrl={game.home_team?.logo_url}
-                              teamName={game.home_team?.name || 'Home Team'}
-                              abbreviation={game.home_team?.abbreviation}
-                              size="sm"
-                            />
-                            <span className="text-muted-foreground">vs</span>
+                      <div key={game.id} className="flex items-center justify-between p-4 rounded-lg border-2 border-green-200 bg-gradient-to-r from-green-50 to-emerald-50 hover:shadow-md transition-all">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
                             <TeamLogo
                               logoUrl={game.away_team?.logo_url}
                               teamName={game.away_team?.name || 'Away Team'}
                               abbreviation={game.away_team?.abbreviation}
-                              size="sm"
+                              size="md"
+                            />
+                            <div className="text-center">
+                              <span className="text-sm font-medium text-muted-foreground">@</span>
+                            </div>
+                            <TeamLogo
+                              logoUrl={game.home_team?.logo_url}
+                              teamName={game.home_team?.name || 'Home Team'}
+                              abbreviation={game.home_team?.abbreviation}
+                              size="md"
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-base">
-                              {game.home_team?.name} vs {game.away_team?.name}
+                            <div className="font-semibold text-base">
+                              {game.away_team?.name} @ {game.home_team?.name}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {game.league} • {game.game_time}
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Badge className="bg-red-500 text-white text-xs animate-pulse">
+                                🔴 LIVE
+                              </Badge>
+                              {game.league} • {game.game_time || new Date(game.game_date).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-extrabold text-lg text-green-600">
-                            {game.home_score} - {game.away_score}
+                          <div className="font-extrabold text-2xl text-green-600">
+                            {(game.away_score !== null && game.home_score !== null) ? 
+                              `${game.away_score} - ${game.home_score}` : 
+                              <span className="text-muted-foreground text-lg">0 - 0</span>
+                            }
                           </div>
-                          <Badge className="bg-green-500 text-xs px-2 py-1 rounded-full">
-                            LIVE
-                          </Badge>
+                          <div className="text-xs text-muted-foreground">
+                            {(game.away_score !== null && game.home_score !== null) ? 'LIVE SCORE' : 'STARTING SOON'}
+                          </div>
                         </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-6 text-muted-foreground">
                       <Zap className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No live games at the moment</p>
+                      <p className="font-medium">No live games at the moment</p>
+                      <p className="text-sm mt-1">Games will appear here when they start</p>
                     </div>
                   )}
                 </div>
@@ -662,41 +720,52 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 <div className="space-y-3">
                   {allUpcomingGames.length > 0 ? (
                     allUpcomingGames.slice(0, 5).map((game) => (
-                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border border-muted bg-card">
-                        <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-1">
-                            <TeamLogo
-                              logoUrl={game.home_team?.logo_url}
-                              teamName={game.home_team?.name || 'Home Team'}
-                              abbreviation={game.home_team?.abbreviation}
-                              size="sm"
-                            />
-                            <span className="text-muted-foreground">vs</span>
+                      <div key={game.id} className="flex items-center justify-between p-4 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 hover:shadow-md transition-all">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
                             <TeamLogo
                               logoUrl={game.away_team?.logo_url}
                               teamName={game.away_team?.name || 'Away Team'}
                               abbreviation={game.away_team?.abbreviation}
-                              size="sm"
+                              size="md"
+                            />
+                            <div className="text-center">
+                              <span className="text-sm font-medium text-muted-foreground">@</span>
+                            </div>
+                            <TeamLogo
+                              logoUrl={game.home_team?.logo_url}
+                              teamName={game.home_team?.name || 'Home Team'}
+                              abbreviation={game.home_team?.abbreviation}
+                              size="md"
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-base">
-                              {game.home_team?.name} vs {game.away_team?.name}
+                            <div className="font-semibold text-base">
+                              {game.away_team?.name} @ {game.home_team?.name}
                             </div>
-                            <div className="text-xs text-muted-foreground">
-                              {game.league} • {game.game_time}
+                            <div className="text-xs text-muted-foreground flex items-center gap-2">
+                              <Badge variant="outline" className="border-blue-300 text-blue-700 text-xs">
+                                🕒 SCHEDULED
+                              </Badge>
+                              {game.league} • {game.game_time || new Date(game.game_date).toLocaleString()}
                             </div>
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-xs px-2 py-1 rounded-full">
-                          {game.status}
-                        </Badge>
+                        <div className="text-center">
+                          <div className="text-lg font-medium text-blue-600">
+                            {new Date(game.game_date).toLocaleDateString()}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {new Date(game.game_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </div>
+                        </div>
                       </div>
                     ))
                   ) : (
                     <div className="text-center py-6 text-muted-foreground">
                       <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p>No upcoming games today</p>
+                      <p className="font-medium">No upcoming games today</p>
+                      <p className="text-sm mt-1">Check back later for scheduled games</p>
                     </div>
                   )}
                 </div>

@@ -1,7 +1,11 @@
 /**
- * Error Handling Service
- * Centralized error handling, logging, and rate limiting
+ * Enhanced Error Handling Service
+ * Centralized error handling, logging, rate limiting, and provider-specific recovery
  */
+
+import { structuredLogger as logger } from './structured-logger'
+import { apiFallbackStrategy } from './api-fallback-strategy'
+import { apiCostTracker } from './api-cost-tracker'
 
 interface ErrorContext {
   userId?: string
@@ -11,6 +15,10 @@ interface ErrorContext {
   method: string
   userAgent?: string
   ip?: string
+  provider?: string
+  operation?: string
+  sport?: string
+  dataType?: string
 }
 
 interface RateLimitInfo {
@@ -20,18 +28,91 @@ interface RateLimitInfo {
   retryAfter?: number
 }
 
+interface RecoveryStrategy {
+  type: 'retry' | 'fallback' | 'cache' | 'circuit_breaker' | 'degrade'
+  maxAttempts?: number
+  delay?: number
+  fallbackProvider?: string
+  cacheKey?: string
+}
+
 interface ApiError extends Error {
   statusCode: number
   code: string
   context?: ErrorContext
   retryable: boolean
-  rateLimitInfo?: RateLimitInfo
+  rateLimitInfo?: RateLimitInfo | undefined
+  recoveryStrategy?: RecoveryStrategy | undefined
+  provider?: string
+  originalError?: Error
 }
 
-export class ErrorHandlingService {
+export class EnhancedErrorHandlingService {
   private rateLimitStore = new Map<string, { count: number; resetTime: number }>()
   private readonly DEFAULT_RATE_LIMIT = 100 // requests per minute
   private readonly RATE_LIMIT_WINDOW = 60 * 1000 // 1 minute in milliseconds
+  private providerRetryDelays = new Map<string, number>()
+  private providerFailureCounts = new Map<string, number>()
+
+  // Provider-specific error handling configurations
+  private readonly providerConfigs = {
+    'api-sports': {
+      maxRetries: 3,
+      baseDelay: 1000,
+      maxDelay: 60000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['thesportsdb', 'espn']
+    },
+    'odds-api': {
+      maxRetries: 2,
+      baseDelay: 2000,
+      maxDelay: 120000,
+      retryableStatuses: [429, 500, 502, 503],
+      fallbackProviders: [] // No fallback for odds data
+    },
+    'thesportsdb': {
+      maxRetries: 2,
+      baseDelay: 500,
+      maxDelay: 30000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['nba-stats', 'mlb-stats', 'nhl', 'espn']
+    },
+    'espn': {
+      maxRetries: 2,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['thesportsdb']
+    },
+    'balldontlie': {
+      maxRetries: 3,
+      baseDelay: 600,
+      maxDelay: 60000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['nba-stats', 'thesportsdb', 'espn']
+    },
+    'nba-stats': {
+      maxRetries: 2,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      retryableStatuses: [429, 500, 502, 503, 504, 403],
+      fallbackProviders: ['balldontlie', 'thesportsdb', 'espn']
+    },
+    'mlb-stats': {
+      maxRetries: 2,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['thesportsdb', 'espn']
+    },
+    'nhl': {
+      maxRetries: 2,
+      baseDelay: 1000,
+      maxDelay: 30000,
+      retryableStatuses: [429, 500, 502, 503, 504],
+      fallbackProviders: ['thesportsdb', 'espn']
+    }
+  }
 
   // Rate limiting
   checkRateLimit(identifier: string, limit: number = this.DEFAULT_RATE_LIMIT): RateLimitInfo {
@@ -97,47 +178,137 @@ export class ErrorHandlingService {
     return error
   }
 
-  // API-specific errors
-  createApiError(
-    apiName: string,
+  // Enhanced error creation with provider-specific recovery strategies
+  createProviderError(
+    provider: string,
     originalError: any,
     context?: Partial<ErrorContext>
   ): ApiError {
-    let message = `API Error from ${apiName}`
+    const config = this.providerConfigs[provider as keyof typeof this.providerConfigs]
+    let message = `API Error from ${provider}`
     let statusCode = 500
     let code = 'API_ERROR'
     let retryable = false
+    let recoveryStrategy: RecoveryStrategy | undefined
+
+    // Log the error with structured logging
+    logger.logApiRequest(
+      provider,
+      context?.endpoint || 'unknown',
+      context?.method || 'GET',
+      0, // responseTime
+      originalError.status || 500,
+      false, // success
+      false, // cached
+      0 // cost
+    )
 
     if (originalError.status === 429) {
-      message = `Rate limit exceeded for ${apiName}`
+      message = `Rate limit exceeded for ${provider}`
       statusCode = 429
       code = 'RATE_LIMIT_EXCEEDED'
       retryable = true
+      
+      // Exponential backoff strategy
+      const currentDelay = this.providerRetryDelays.get(provider) || config?.baseDelay || 1000
+      const nextDelay = Math.min(currentDelay * 2, config?.maxDelay || 60000)
+      this.providerRetryDelays.set(provider, nextDelay)
+      
+      recoveryStrategy = {
+        type: 'retry',
+        maxAttempts: config?.maxRetries || 2,
+        delay: nextDelay
+      }
+      
+      // If rate limited and has fallback providers, suggest fallback
+      if (config?.fallbackProviders?.length) {
+        recoveryStrategy = {
+          type: 'fallback',
+          fallbackProvider: config.fallbackProviders[0]
+        }
+      }
     } else if (originalError.status === 401) {
-      message = `Authentication failed for ${apiName}`
+      message = `Authentication failed for ${provider}`
       statusCode = 401
       code = 'AUTHENTICATION_ERROR'
+      
+      // For authentication errors, try fallback providers immediately
+      if (config?.fallbackProviders?.length) {
+        recoveryStrategy = {
+          type: 'fallback',
+          fallbackProvider: config.fallbackProviders[0]
+        }
+      }
     } else if (originalError.status === 403) {
-      message = `Access forbidden for ${apiName}`
+      message = `Access forbidden for ${provider}`
       statusCode = 403
       code = 'FORBIDDEN_ERROR'
-    } else if (originalError.status >= 400 && originalError.status < 500) {
-      message = `Client error from ${apiName}: ${originalError.message}`
-      statusCode = originalError.status
-      code = 'CLIENT_ERROR'
-    } else if (originalError.status >= 500) {
-      message = `Server error from ${apiName}: ${originalError.message}`
+      
+      recoveryStrategy = {
+        type: 'fallback',
+        fallbackProvider: config?.fallbackProviders?.[0]
+      }
+    } else if (config?.retryableStatuses?.includes(originalError.status)) {
+      message = `Server error from ${provider}: ${originalError.message}`
       statusCode = originalError.status
       code = 'SERVER_ERROR'
       retryable = true
+      
+      recoveryStrategy = {
+        type: 'retry',
+        maxAttempts: config.maxRetries,
+        delay: config.baseDelay
+      }
     } else if (originalError.code === 'ENOTFOUND' || originalError.code === 'ECONNREFUSED') {
-      message = `Network error connecting to ${apiName}`
+      message = `Network error connecting to ${provider}`
       statusCode = 503
       code = 'NETWORK_ERROR'
       retryable = true
+      
+      // Increment failure count for circuit breaker
+      const failures = this.providerFailureCounts.get(provider) || 0
+      this.providerFailureCounts.set(provider, failures + 1)
+      
+      if (failures >= 3) {
+        recoveryStrategy = {
+          type: 'circuit_breaker',
+          fallbackProvider: config?.fallbackProviders?.[0]
+        }
+      } else {
+        recoveryStrategy = {
+          type: 'retry',
+          maxAttempts: 2,
+          delay: 5000
+        }
+      }
     }
 
-    return this.createError(message, statusCode, code, context, retryable)
+    const error = this.createError(
+      message,
+      statusCode,
+      code,
+      {
+        ...context,
+        provider,
+        operation: context?.operation || 'api_request'
+      },
+      retryable
+    ) as ApiError
+    
+    error.provider = provider
+    error.originalError = originalError
+    error.recoveryStrategy = recoveryStrategy
+    
+    // Track API costs even for failures
+    apiCostTracker.trackRequest(
+      provider,
+      context?.endpoint || 'unknown',
+      0, // responseTime for failed requests
+      false, // success
+      false // cached
+    )
+    
+    return error
   }
 
   // Validation errors
@@ -212,20 +383,35 @@ export class ErrorHandlingService {
       retryable: boolean
       requestId: string
       timestamp: string
-      rateLimitInfo?: RateLimitInfo
+      rateLimitInfo?: RateLimitInfo | undefined
     }
   } {
-    return {
+    const response: {
+      error: {
+        code: string
+        message: string
+        statusCode: number
+        retryable: boolean
+        requestId: string
+        timestamp: string
+        rateLimitInfo?: RateLimitInfo | undefined
+      }
+    } = {
       error: {
         code: error.code,
         message: error.message,
         statusCode: error.statusCode,
         retryable: error.retryable,
         requestId: error.context?.requestId || 'unknown',
-        timestamp: error.context?.timestamp || new Date().toISOString(),
-        rateLimitInfo: error.rateLimitInfo
+        timestamp: error.context?.timestamp || new Date().toISOString()
       }
     }
+    
+    if (error.rateLimitInfo) {
+      response.error.rateLimitInfo = error.rateLimitInfo
+    }
+    
+    return response
   }
 
   // Retry logic
@@ -241,7 +427,7 @@ export class ErrorHandlingService {
       try {
         return await operation()
       } catch (error) {
-        lastError = this.createApiError('retry_operation', error, context)
+        lastError = this.createProviderError('retry_operation', error, context)
         
         if (!lastError.retryable || attempt === maxRetries) {
           throw lastError
@@ -321,7 +507,7 @@ export class ErrorHandlingService {
       }
       
       this.circuitBreakerState.set(serviceName, state)
-      throw this.createApiError(serviceName, error, context)
+      throw this.createProviderError(serviceName, error, context)
     }
   }
 
@@ -363,7 +549,7 @@ export class ErrorHandlingService {
   }
 }
 
-export const errorHandlingService = new ErrorHandlingService()
+export const errorHandlingService = new EnhancedErrorHandlingService()
 
 // Cleanup every 5 minutes
 setInterval(() => {

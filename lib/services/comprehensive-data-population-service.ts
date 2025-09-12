@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
 import { rateLimiter } from './rate-limiter'
+import { intelligentRateLimiter } from './intelligent-rate-limiter'
 import { cacheManager } from '@/lib/cache'
 import { errorHandlingService } from './error-handling-service'
 import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
@@ -60,25 +61,33 @@ export class ComprehensiveDataPopulationService {
         errors: []
       }
 
-      // 1. Populate teams and logos
+      // Implement batch processing with delays to avoid rate limits
+      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+      // 1. Populate teams and logos (prioritize free APIs)
       await this.populateTeamsAndLogos()
+      await delay(2000) // 2 second delay between major operations
       
-      // 2. Populate games
+      // 2. Populate games (with rate limiting)
       await this.populateGames()
+      await delay(2000)
       
-      // 3. Populate player statistics
+      // 3. Populate player statistics (use caching heavily)
       await this.populatePlayerStats()
+      await delay(2000)
       
-      // 4. Populate odds
+      // 4. Populate odds (lowest priority, use cached data when possible)
       await this.populateOdds()
+      await delay(2000)
       
-      // 5. Populate predictions
+      // 5. Populate predictions (use ML models, minimal API calls)
       await this.populatePredictions()
+      await delay(1000)
       
-      // 6. Populate standings
+      // 6. Populate standings (use official APIs first)
       await this.populateStandings()
       
-      // 7. Set up automated updates
+      // 7. Set up automated updates with proper scheduling
       await this.setupAutomatedUpdates()
 
       console.log('✅ Comprehensive data population completed!')
@@ -102,8 +111,15 @@ export class ComprehensiveDataPopulationService {
       for (const sport of sports) {
         console.log(`   Processing ${sport} teams...`)
         
-        // Get teams from external APIs
-        const externalTeams = await unifiedApiClient.getTeams(sport)
+        // Check rate limits before making API calls
+        const rateCheck = await intelligentRateLimiter.checkRateLimit('thesportsdb')
+        if (!rateCheck.allowed) {
+          console.log(`   ⏳ Rate limit for TheSportsDB, waiting ${rateCheck.waitTime}ms...`)
+          await new Promise(resolve => setTimeout(resolve, rateCheck.waitTime))
+        }
+        
+        // Get teams from external APIs with rate limiting
+        const externalTeams = await this.fetchTeamsWithRateLimit(sport)
         
         if (externalTeams.length > 0) {
           // Check which teams already exist
@@ -142,8 +158,11 @@ export class ComprehensiveDataPopulationService {
           }
         }
         
-        // Update logos for existing teams
-        await this.updateTeamLogos(sport)
+        // Update logos for existing teams with rate limiting
+        await this.updateTeamLogosWithRateLimit(sport)
+        
+        // Add delay between sports to prevent rate limiting
+        await new Promise(resolve => setTimeout(resolve, intelligentRateLimiter.getRecommendedDelay('thesportsdb')))
       }
     } catch (error) {
       this.stats.errors.push(`Teams population error: ${error instanceof Error ? error instanceof Error ? error.message : 'Unknown error' : 'Unknown error'}`)
@@ -151,8 +170,35 @@ export class ComprehensiveDataPopulationService {
     }
   }
 
-  // Update team logos
-  private async updateTeamLogos(sport: string): Promise<void> {
+  // Fetch teams with intelligent rate limiting
+  private async fetchTeamsWithRateLimit(sport: string): Promise<any[]> {
+    try {
+      // Record the request
+      await intelligentRateLimiter.recordRequest('thesportsdb')
+      
+      // Use cached data first
+      const cacheKey = `teams_${sport}`
+      const cached = await cacheManager.get(cacheKey)
+      if (cached) {
+        console.log(`   💾 Using cached teams for ${sport}`)
+        return cached
+      }
+      
+      // Make API call with fallback strategy
+      const teams = await unifiedApiClient.getTeams(sport)
+      
+      // Cache the result for 1 hour
+      await cacheManager.set(cacheKey, teams, 3600)
+      
+      return teams
+    } catch (error) {
+      console.warn(`   ⚠️ Failed to fetch teams for ${sport}:`, error)
+      return []
+    }
+  }
+
+  // Update team logos with rate limiting
+  private async updateTeamLogosWithRateLimit(sport: string): Promise<void> {
     try {
       // Get teams without logos
       const { data: teamsWithoutLogos } = await this.supabase
@@ -164,10 +210,21 @@ export class ComprehensiveDataPopulationService {
       if (teamsWithoutLogos?.length > 0) {
         console.log(`   🖼️  Updating ${teamsWithoutLogos.length} team logos...`)
         
-        for (const team of teamsWithoutLogos) {
+        // Limit logo updates to prevent rate limiting
+        const maxLogosPerRun = 5
+        const teamsToUpdate = teamsWithoutLogos.slice(0, maxLogosPerRun)
+        
+        for (const team of teamsToUpdate) {
           try {
+            // Check rate limit before each logo fetch
+            const rateCheck = await intelligentRateLimiter.checkRateLimit('thesportsdb')
+            if (!rateCheck.allowed) {
+              console.log(`   ⏳ Rate limit hit, skipping remaining logos`)
+              break
+            }
+            
             // Try to get logo from external API
-            const logoUrl = await this.fetchTeamLogo(team.name, team.abbreviation, sport)
+            const logoUrl = await this.fetchTeamLogoWithRateLimit(team.name, team.abbreviation, sport)
             
             if (logoUrl) {
               await this.supabase
@@ -177,6 +234,10 @@ export class ComprehensiveDataPopulationService {
               
               this.stats.logos++
             }
+            
+            // Add delay between logo requests
+            await new Promise(resolve => setTimeout(resolve, intelligentRateLimiter.getRecommendedDelay('thesportsdb')))
+            
           } catch (error) {
             // Continue with other teams if one fails
             console.warn(`   ⚠️  Could not fetch logo for ${team.name}`)
@@ -188,30 +249,47 @@ export class ComprehensiveDataPopulationService {
     }
   }
 
-  // Fetch team logo from external API
-  private async fetchTeamLogo(teamName: string, abbreviation: string, sport: string): Promise<string | null> {
+  // Fetch team logo with rate limiting
+  private async fetchTeamLogoWithRateLimit(teamName: string, abbreviation: string, sport: string): Promise<string | null> {
     try {
-      // Check rate limit before making request
-      apiRateLimiter.checkRateLimit('sportsdb')
+      // Check cache first
+      const cacheKey = `logo_${teamName}_${sport}`
+      const cached = await cacheManager.get(cacheKey)
+      if (cached) {
+        return cached
+      }
+      
+      // Record the API request
+      await intelligentRateLimiter.recordRequest('thesportsdb')
       
       // Use SportsDB API to get team logo
+      const apiKey = process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123' // Use free key if not configured
       const response = await fetch(
-        `https://www.thesportsdb.com/api/v1/json/${process.env.NEXT_PUBLIC_SPORTSDB_API_KEY}/searchteams.php?t=${encodeURIComponent(teamName)}`
+        `https://www.thesportsdb.com/api/v1/json/${apiKey}/searchteams.php?t=${encodeURIComponent(teamName)}`
       )
       
-      if (response.ok) {
-        const data = await response.json()
-        if (data.teams && data.teams.length > 0) {
-          // Record successful request
-          apiRateLimiter.recordRequest('sportsdb')
-          return data.teams[0].strTeamBadge
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
       }
+      
+      const data = await response.json()
+      const team = data.teams?.[0]
+      
+      let logoUrl = null
+      if (team?.strTeamBadge) {
+        logoUrl = team.strTeamBadge
+      } else if (team?.strTeamLogo) {
+        logoUrl = team.strTeamLogo
+      }
+      
+      // Cache the result (even if null) for 1 day
+      await cacheManager.set(cacheKey, logoUrl, 86400)
+      
+      return logoUrl
     } catch (error) {
-      console.warn(`Error fetching logo for ${teamName}:`, error)
+      console.warn(`Failed to fetch logo for ${teamName}:`, error)
+      return null
     }
-    
-    return null
   }
 
   // Populate games data
@@ -788,3 +866,4 @@ export function getComprehensiveDataPopulationService(): ComprehensiveDataPopula
   }
   return _comprehensiveDataPopulationService
 }
+

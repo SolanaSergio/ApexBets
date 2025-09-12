@@ -19,9 +19,9 @@ export interface GameData extends SportData {
   date: string
   time?: string
   status: 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'
-  homeScore?: number
-  awayScore?: number
-  venue?: string
+  homeScore: number | null
+  awayScore: number | null
+  venue: string
   odds?: any[]
   predictions?: any[]
 }

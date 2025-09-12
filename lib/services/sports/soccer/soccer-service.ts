@@ -74,9 +74,10 @@ export class SoccerService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get Premier League fixtures (39 is Premier League in RapidAPI)
+      // Use dynamic league configuration
+      const leagueConfig = this.getLeagueConfig()
       const fixtures = await apiSportsClient.getFixtures({
-        league: 39, // Premier League
+        league: leagueConfig?.rapidApiId || 39, // Premier League default fallback
         season: new Date().getFullYear(),
         date: date
       })
@@ -132,31 +133,60 @@ export class SoccerService extends SportSpecificService {
     }
   }
 
-  private getTeamAbbreviation(teamName: string): string {
-    // Map common Premier League team names to abbreviations
-    const abbreviations: Record<string, string> = {
-      'Arsenal': 'ARS',
-      'Aston Villa': 'AVL',
-      'Bournemouth': 'BOU',
-      'Brentford': 'BRE',
-      'Brighton & Hove Albion': 'BHA',
-      'Chelsea': 'CHE',
-      'Crystal Palace': 'CRY',
-      'Everton': 'EVE',
-      'Fulham': 'FUL',
-      'Leeds United': 'LEE',
-      'Leicester City': 'LEI',
-      'Liverpool': 'LIV',
-      'Manchester City': 'MCI',
-      'Manchester United': 'MUN',
-      'Newcastle United': 'NEW',
-      'Nottingham Forest': 'NFO',
-      'Southampton': 'SOU',
-      'Tottenham Hotspur': 'TOT',
-      'West Ham United': 'WHU',
-      'Wolverhampton Wanderers': 'WOL'
+  private async getTeamAbbreviation(teamName: string): Promise<string> {
+    // First try to get abbreviation from database
+    try {
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      if (supabase) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('abbreviation')
+          .eq('name', teamName)
+          .eq('sport', this.sport)
+          .single()
+        
+        if (team?.abbreviation) {
+          return team.abbreviation
+        }
+      }
+    } catch (error) {
+      // Database lookup failed, fall back to API or extraction
     }
-    return abbreviations[teamName] || teamName.split(' ').map(word => word[0]).join('').toUpperCase()
+
+    // Try to get from API data if available
+    try {
+      const teams = await this.fetchTeamsFromSportsDB()
+      const matchingTeam = teams.find(team => 
+        team.name.toLowerCase() === teamName.toLowerCase()
+      )
+      if (matchingTeam?.abbreviation) {
+        return matchingTeam.abbreviation
+      }
+    } catch (error) {
+      // API lookup failed
+    }
+
+    // Fall back to extracting abbreviation from team name
+    return this.extractAbbreviationFromName(teamName)
+  }
+
+  private extractAbbreviationFromName(teamName: string): string {
+    // Extract abbreviation from team name by taking first letters
+    const words = teamName.split(' ').filter(word => 
+      !['of', 'the', 'and', 'at', 'fc', 'united', 'city'].includes(word.toLowerCase())
+    )
+    
+    if (words.length >= 2) {
+      // For multi-word teams, take first letter of each major word
+      return words.slice(0, 3).map(word => word[0]).join('').toUpperCase()
+    } else if (words.length === 1) {
+      // For single word teams, take first 3 letters
+      return words[0].substring(0, 3).toUpperCase()
+    }
+    
+    return teamName.substring(0, 3).toUpperCase()
   }
 
   private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
@@ -226,10 +256,12 @@ export class SoccerService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get Premier League teams from RapidAPI
-      const teams = await apiSportsClient.getTeams(39, new Date().getFullYear()) // Premier League
+      // Use dynamic league configuration
+      const leagueConfig = this.getLeagueConfig()
+      const teams = await apiSportsClient.getTeams(leagueConfig?.rapidApiId || 39, new Date().getFullYear())
       if (teams?.response && Array.isArray(teams.response)) {
-        return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+        const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
+        return mappedTeams
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
@@ -264,14 +296,14 @@ export class SoccerService extends SportSpecificService {
     })
   }
 
-  private mapRapidAPITeamData(team: any): TeamData {
+  private async mapRapidAPITeamData(team: any): Promise<TeamData> {
     return {
       id: team.team?.id?.toString() || '',
       sport: this.sport,
       league: this.league,
       name: team.team?.name || '',
       city: this.extractCityFromName(team.team?.name),
-      abbreviation: this.getTeamAbbreviation(team.team?.name),
+      abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString()
     }
@@ -290,6 +322,23 @@ export class SoccerService extends SportSpecificService {
 
   private recordRapidAPIError(): void {
     this.rapidAPIErrorTime = Date.now()
+  }
+
+  private getLeagueConfig(): any {
+    // Get league configuration from sport config manager
+    try {
+      const sportConfig = require('../../core/sport-config').SportConfigManager.getSportConfig(this.sport)
+      return sportConfig?.leagues?.find((l: any) => l.name === this.league) || {
+        rapidApiId: this.sport === 'soccer' ? 39 : undefined, // Premier League default
+        teamSuffixes: undefined
+      }
+    } catch (error) {
+      // Fallback configuration
+      return {
+        rapidApiId: this.sport === 'soccer' ? 39 : undefined,
+        teamSuffixes: undefined
+      }
+    }
   }
 
   private extractCityFromName(teamName: string): string {

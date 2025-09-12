@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { sportsAPI } from "@/lib/api/sports-api"
 import { SupportedSport } from "@/lib/services/core/service-factory"
 
 export async function GET(request: NextRequest) {

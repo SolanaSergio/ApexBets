@@ -4,9 +4,9 @@ import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 interface TeamLogoProps {
-  logoUrl?: string | null
+  logoUrl?: string | null | undefined
   teamName: string
-  abbreviation?: string
+  abbreviation?: string | undefined
   size?: "sm" | "md" | "lg" | "xl"
   className?: string
   fallbackIcon?: React.ReactNode

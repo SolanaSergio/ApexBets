@@ -96,18 +96,8 @@ export async function GET(request: NextRequest) {
           id: game.away_team_id
         },
         status: game.status,
-        period: game.period || (game.status === 'live' ? 
-          (finalSport === 'basketball' ? '1st Quarter' : 
-           finalSport === 'football' ? '1st Quarter' : 
-           finalSport === 'baseball' ? '1st Inning' : 
-           finalSport === 'hockey' ? '1st Period' : 
-           finalSport === 'soccer' ? '1st Half' : '1st Period') : null),
-        timeRemaining: game.time_remaining || (game.status === 'live' ? 
-          (finalSport === 'basketball' ? '12:00' : 
-           finalSport === 'football' ? '15:00' : 
-           finalSport === 'baseball' ? '∞' : 
-           finalSport === 'hockey' ? '20:00' : 
-           finalSport === 'soccer' ? '45:00' : '12:00') : null),
+        period: game.period,
+        timeRemaining: game.time_remaining,
         date: game.game_date,
         league: game.league,
         venue: game.venue,

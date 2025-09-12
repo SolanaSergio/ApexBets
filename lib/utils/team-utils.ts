@@ -95,7 +95,7 @@ export const getTeamColors = async (teamName: string, sport: string): Promise<{ 
   }
 }
 
-const getTeamColorsFromAPI = async (teamName: string, sport: string): Promise<{ primary: string; secondary: string } | null> => {
+const getTeamColorsFromAPI = async (teamName: string, _sport: string): Promise<{ primary: string; secondary: string } | null> => {
   try {
     // This would call the appropriate API to get team colors
     // For now, return null as this is a fallback

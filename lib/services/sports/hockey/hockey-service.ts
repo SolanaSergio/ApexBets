@@ -4,7 +4,7 @@
  */
 
 import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
-import { sportsDBClient, oddsApiClient, apiSportsClient } from '../../../sports-apis'
+import { sportsDBClient, oddsApiClient, apiSportsClient, nhlClient, espnClient } from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
 
 export class HockeyService extends SportSpecificService {
@@ -35,8 +35,24 @@ export class HockeyService extends SportSpecificService {
     const date = params.date || new Date().toISOString().split('T')[0]
 
     try {
-      // Try APIs in sequence to avoid rate limits
-      // Start with SportsDB first (more reliable than RapidAPI)
+      // Following comprehensive sports data API guide priority for hockey:
+      // 1. NHL API (official, highest quality)
+      // 2. TheSportsDB (free, reliable)
+      // 3. ESPN (free, good coverage)
+      // 4. API-Sports (cost-based)
+
+      // First: Try NHL API (official, free, no key required)
+      try {
+        const nhlGames = await this.fetchGamesFromNHL(date)
+        if (nhlGames.length > 0) {
+          games.push(...nhlGames)
+          return this.removeDuplicateGames(games)
+        }
+      } catch (error) {
+        console.warn('NHL API failed, trying fallback APIs:', error instanceof Error ? error.message : 'Unknown error')
+      }
+
+      // Second: Try TheSportsDB (free, unlimited)
       if (this.hasSportsDBKey()) {
         try {
           const sportsDBGames = await this.fetchGamesFromSportsDB(date)
@@ -45,11 +61,22 @@ export class HockeyService extends SportSpecificService {
             return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('SportsDB failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn('SportsDB failed, trying ESPN:', error instanceof Error ? error.message : 'Unknown error')
         }
       }
 
-      // Only try RapidAPI if SportsDB failed and we haven't hit rate limits recently
+      // Third: Try ESPN (free, no key required)
+      try {
+        const espnGames = await this.fetchGamesFromESPN(date)
+        if (espnGames.length > 0) {
+          games.push(...espnGames)
+          return this.removeDuplicateGames(games)
+        }
+      } catch (error) {
+        console.warn('ESPN failed, trying RapidAPI as last resort:', error instanceof Error ? error.message : 'Unknown error')
+      }
+
+      // Last resort: Try RapidAPI (cost-based, limited free tier)
       if (apiSportsClient.isConfigured && !this.hasRecentRapidAPIError()) {
         try {
           const rapidAPIGames = await this.fetchGamesFromRapidAPI(date)
@@ -73,9 +100,10 @@ export class HockeyService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get NHL league ID (57 is NHL in RapidAPI)
+      // Use dynamic league configuration
+      const leagueConfig = this.getLeagueConfig()
       const fixtures = await apiSportsClient.getFixtures({
-        league: 57, // NHL
+        league: leagueConfig?.rapidApiId || 57, // NHL default fallback
         season: new Date().getFullYear(),
         date: date
       })
@@ -103,6 +131,32 @@ export class HockeyService extends SportSpecificService {
     return []
   }
 
+  // NHL API methods (Official, free, no key required)
+  private async fetchGamesFromNHL(date: string): Promise<GameData[]> {
+    try {
+      const games = await nhlClient.getSchedule(date)
+      if (games && Array.isArray(games)) {
+        return games.map((game: any) => this.mapNHLGameData(game))
+      }
+    } catch (error) {
+      console.warn('NHL API error:', error)
+    }
+    return []
+  }
+
+  // ESPN API methods (free, no key required)
+  private async fetchGamesFromESPN(date: string): Promise<GameData[]> {
+    try {
+      const games = await espnClient.getNHLScoreboard(date)
+      if (games && Array.isArray(games)) {
+        return games.map(game => this.mapESPNGameData(game))
+      }
+    } catch (error) {
+      console.warn('ESPN API error:', error)
+    }
+    return []
+  }
+
   private removeDuplicateGames(games: GameData[]): GameData[] {
     const seen = new Set<string>()
     return games.filter(game => {
@@ -126,48 +180,66 @@ export class HockeyService extends SportSpecificService {
       status: this.mapRapidAPIStatus(fixture.fixture?.status?.short),
       homeScore: fixture.goals?.home || null,
       awayScore: fixture.goals?.away || null,
-      venue: fixture.fixture?.venue?.name || '',
+      venue: fixture.fixture?.venue?.name || 'TBD',
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private getTeamAbbreviation(teamName: string): string {
-    // Map common NHL team names to abbreviations
-    const abbreviations: Record<string, string> = {
-      'Anaheim Ducks': 'ANA',
-      'Arizona Coyotes': 'ARI',
-      'Boston Bruins': 'BOS',
-      'Buffalo Sabres': 'BUF',
-      'Calgary Flames': 'CGY',
-      'Carolina Hurricanes': 'CAR',
-      'Chicago Blackhawks': 'CHI',
-      'Colorado Avalanche': 'COL',
-      'Columbus Blue Jackets': 'CBJ',
-      'Dallas Stars': 'DAL',
-      'Detroit Red Wings': 'DET',
-      'Edmonton Oilers': 'EDM',
-      'Florida Panthers': 'FLA',
-      'Los Angeles Kings': 'LAK',
-      'Minnesota Wild': 'MIN',
-      'Montreal Canadiens': 'MTL',
-      'Nashville Predators': 'NSH',
-      'New Jersey Devils': 'NJD',
-      'New York Islanders': 'NYI',
-      'New York Rangers': 'NYR',
-      'Ottawa Senators': 'OTT',
-      'Philadelphia Flyers': 'PHI',
-      'Pittsburgh Penguins': 'PIT',
-      'San Jose Sharks': 'SJ',
-      'Seattle Kraken': 'SEA',
-      'St. Louis Blues': 'STL',
-      'Tampa Bay Lightning': 'TB',
-      'Toronto Maple Leafs': 'TOR',
-      'Vancouver Canucks': 'VAN',
-      'Vegas Golden Knights': 'VGK',
-      'Washington Capitals': 'WSH',
-      'Winnipeg Jets': 'WPG'
+  private async getTeamAbbreviation(teamName: string): Promise<string> {
+    // First try to get abbreviation from NHL API dynamically
+    try {
+      const teams = await nhlClient.getTeams()
+      const matchingTeam = teams.find(team => 
+        team.fullName?.toLowerCase() === teamName.toLowerCase() ||
+        team.name?.toLowerCase() === teamName.toLowerCase()
+      )
+      if (matchingTeam?.triCode || matchingTeam?.abbreviations?.default) {
+        return matchingTeam.triCode || matchingTeam.abbreviations.default
+      }
+    } catch (error) {
+      console.warn('Failed to get team abbreviation from NHL API:', error)
     }
-    return abbreviations[teamName] || teamName.split(' ').map(word => word[0]).join('').toUpperCase()
+
+    // Try to get abbreviation from database
+    try {
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+      
+      if (supabase) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('abbreviation')
+          .eq('name', teamName)
+          .eq('sport', 'hockey')
+          .single()
+        
+        if (team?.abbreviation) {
+          return team.abbreviation
+        }
+      }
+    } catch (error) {
+      // Database lookup failed, fall back to extraction
+    }
+
+    // Fall back to extracting abbreviation from team name
+    return this.extractAbbreviationFromName(teamName)
+  }
+
+  private extractAbbreviationFromName(teamName: string): string {
+    // Extract abbreviation from team name by taking first letters
+    const words = teamName.split(' ').filter(word => 
+      !['of', 'the', 'and', 'at'].includes(word.toLowerCase())
+    )
+    
+    if (words.length >= 2) {
+      // For multi-word teams, take first letter of each major word
+      return words.slice(-2).map(word => word[0]).join('').toUpperCase()
+    } else if (words.length === 1) {
+      // For single word teams, take first 3 letters
+      return words[0].substring(0, 3).toUpperCase()
+    }
+    
+    return teamName.substring(0, 3).toUpperCase()
   }
 
   private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
@@ -237,8 +309,9 @@ export class HockeyService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get NHL teams from RapidAPI
-      const teams = await apiSportsClient.getTeams(57, new Date().getFullYear()) // NHL league ID
+      // Use dynamic league configuration
+      const leagueConfig = this.getLeagueConfig()
+      const teams = await apiSportsClient.getTeams(leagueConfig?.rapidApiId || 57, new Date().getFullYear())
       if (teams?.response && Array.isArray(teams.response)) {
         return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
       }
@@ -282,7 +355,7 @@ export class HockeyService extends SportSpecificService {
       league: this.league,
       name: team.team?.name || '',
       city: this.extractCityFromName(team.team?.name),
-      abbreviation: this.getTeamAbbreviation(team.team?.name),
+      abbreviation: this.extractAbbreviationFromName(team.team?.name || ''),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString()
     }
@@ -301,6 +374,23 @@ export class HockeyService extends SportSpecificService {
 
   private recordRapidAPIError(): void {
     this.rapidAPIErrorTime = Date.now()
+  }
+
+  private getLeagueConfig(): any {
+    // Get league configuration from sport config manager
+    try {
+      const sportConfig = require('../../core/sport-config').SportConfigManager.getSportConfig(this.sport)
+      return sportConfig?.leagues?.find((l: any) => l.name === this.league) || {
+        rapidApiId: this.sport === 'hockey' ? 57 : undefined, // NHL default
+        teamSuffixes: undefined
+      }
+    } catch (error) {
+      // Fallback configuration
+      return {
+        rapidApiId: this.sport === 'hockey' ? 57 : undefined,
+        teamSuffixes: undefined
+      }
+    }
   }
 
   private extractCityFromName(teamName: string): string {
@@ -329,7 +419,7 @@ export class HockeyService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchPlayers(params), ttl)
   }
 
-  private async fetchPlayers(params: any): Promise<PlayerData[]> {
+  private async fetchPlayers(_params: any): Promise<PlayerData[]> {
     try {
       // Hockey players would need different API integration
       return []
@@ -350,7 +440,7 @@ export class HockeyService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchStandings(season), ttl)
   }
 
-  private async fetchStandings(season?: string): Promise<any[]> {
+  private async fetchStandings(_season?: string): Promise<any[]> {
     try {
       // Would integrate with appropriate API
       return []
@@ -367,7 +457,7 @@ export class HockeyService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchOdds(params), ttl)
   }
 
-  private async fetchOdds(params: any): Promise<any[]> {
+  private async fetchOdds(_params: any): Promise<any[]> {
     try {
       if (!oddsApiClient) {
         throw new Error('Odds API client not configured')
@@ -429,9 +519,9 @@ export class HockeyService extends SportSpecificService {
       time: rawData.strTime,
       status: rawData.strStatus === 'FT' ? 'finished' : 
               rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
-      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : undefined,
-      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : undefined,
-      venue: rawData.strVenue,
+      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
+      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
+      venue: rawData.strVenue || 'TBD',
       lastUpdated: new Date().toISOString()
     }
   }
@@ -460,6 +550,81 @@ export class HockeyService extends SportSpecificService {
       stats: rawData.stats || {},
       lastUpdated: new Date().toISOString()
     }
+  }
+
+  // NHL API data mapping methods
+  private mapNHLGameData(game: any): GameData {
+    return {
+      id: game.id?.toString() || '',
+      sport: this.sport,
+      league: 'NHL',
+      homeTeam: game.homeTeam?.name?.default || '',
+      awayTeam: game.awayTeam?.name?.default || '',
+      date: game.gameDate || new Date().toISOString(),
+      status: this.mapNHLStatus(game.gameState),
+      homeScore: game.homeTeam?.score || null,
+      awayScore: game.awayTeam?.score || null,
+      venue: game.venue?.default || 'TBD',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+
+  private mapNHLStatus(gameState: string | number): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    // NHL game states: 1=scheduled, 2=live, 3=final, 4=final_ot, 5=final_so, 6=postponed, 7=cancelled
+    if (typeof gameState === 'number') {
+      switch (gameState) {
+        case 1: return 'scheduled'
+        case 2: return 'live'
+        case 3:
+        case 4:
+        case 5: return 'finished'
+        case 6: return 'postponed'
+        case 7: return 'cancelled'
+        default: return 'scheduled'
+      }
+    }
+    
+    if (typeof gameState === 'string') {
+      const state = gameState.toLowerCase()
+      if (state.includes('final')) return 'finished'
+      if (state.includes('live') || state.includes('progress')) return 'live'
+      if (state.includes('postponed')) return 'postponed'
+      if (state.includes('cancelled')) return 'cancelled'
+    }
+    
+    return 'scheduled'
+  }
+
+  // ESPN API data mapping methods
+  private mapESPNGameData(game: any): GameData {
+    const homeTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'home')
+    const awayTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'away')
+    
+    return {
+      id: game.id?.toString() || '',
+      sport: this.sport,
+      league: 'NHL',
+      homeTeam: homeTeam?.team?.displayName || '',
+      awayTeam: awayTeam?.team?.displayName || '',
+      date: game.date || new Date().toISOString(),
+      status: this.mapESPNStatus(game.status?.type?.name),
+      homeScore: parseInt(homeTeam?.score) || null,
+      awayScore: parseInt(awayTeam?.score) || null,
+      venue: game.competitions?.[0]?.venue?.fullName || 'TBD',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+
+  private mapESPNStatus(statusName: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    if (!statusName) return 'scheduled'
+    
+    const status = statusName.toLowerCase()
+    if (status.includes('final')) return 'finished'
+    if (status.includes('in progress') || status.includes('live')) return 'live'
+    if (status.includes('postponed')) return 'postponed'
+    if (status.includes('cancelled')) return 'cancelled'
+    
+    return 'scheduled'
   }
 
   async healthCheck(): Promise<boolean> {

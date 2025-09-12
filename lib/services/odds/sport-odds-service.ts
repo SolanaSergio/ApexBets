@@ -130,19 +130,23 @@ export class SportOddsService extends BaseService {
         awayTeam: game.away_team?.name || game.awayTeam || 'Unknown',
         markets: {
           moneyline: oddsData.moneyline ? {
-            home: oddsData.moneyline.home,
-            away: oddsData.moneyline.away
+            home: Number(oddsData.moneyline.home) || 0,
+            away: Number(oddsData.moneyline.away) || 0
           } : undefined,
           spread: oddsData.spread ? {
-            home: oddsData.spread.home,
-            away: oddsData.spread.away,
-            line: oddsData.spread.line
+            home: Number(oddsData.spread.home) || 0,
+            away: Number(oddsData.spread.away) || 0,
+            line: Number(oddsData.spread.line) || 0
           } : undefined,
           total: oddsData.total ? {
-            over: oddsData.total.over,
-            under: oddsData.total.under,
-            line: oddsData.total.line
+            over: Number(oddsData.total.over) || 0,
+            under: Number(oddsData.total.under) || 0,
+            line: Number(oddsData.total.line) || 0
           } : undefined
+        } as {
+          moneyline?: { home: number; away: number }
+          spread?: { home: number; away: number; line: number }
+          total?: { over: number; under: number; line: number }
         },
         bookmaker: oddsData.bookmaker || 'Unknown',
         lastUpdated: oddsData.last_updated || new Date().toISOString()

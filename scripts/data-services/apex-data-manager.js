@@ -129,12 +129,12 @@ class ApexDataManager {
       ballDontLie: {
         baseUrl: 'https://api.balldontlie.io/v1',
         key: process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY,
-        rateLimit: 10000, // Reduced for better performance
+        rateLimit: 12000, // 12 seconds (5 requests/minute free tier)
         lastCall: 0,
         enabled: this.isValidApiKey(process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY),
-        priority: 2,
-        reliability: 0.90,
-        maxRetries: 2
+        priority: 5, // Lower priority due to strict rate limits
+        reliability: 0.85, // Lower due to rate limiting issues
+        maxRetries: 1 // Minimal retries for free tier
       },
       rapidAPI: {
         baseUrl: 'https://api-sports.p.rapidapi.com',
@@ -754,7 +754,7 @@ class ApexDataManager {
       
       const response = await fetch(url, {
         headers: {
-          'Authorization': api.key
+          'Authorization': api.key // Ball Don't Lie uses direct API key (not Bearer)
         }
       });
     
@@ -1224,17 +1224,17 @@ class ApexDataManager {
       
       const response = await fetch(url, {
         headers: {
-          'Authorization': api.key
+          'Authorization': api.key // Ball Don't Lie uses direct API key (not Bearer)
         }
       });
       
       if (response.status === 429) {
-        // Rate limited - retry with backoff
+        // Rate limited - retry with backoff (5 req/min limit)
         if (retryCount < 3) {
-          console.log(`   ⚠️  Rate limited by BallDontLie API, retrying... (attempt ${retryCount + 1})`);
+          console.log(`   ⚠️  Rate limited by BallDontLie API (5 req/min), retrying... (attempt ${retryCount + 1})`);
           return await this.fetchBasketballPlayerStatsFromBallDontLie(api, retryCount + 1);
         } else {
-          throw new Error(`BallDontLie API rate limit exceeded after ${retryCount + 1} attempts`);
+          throw new Error(`BallDontLie API rate limit exceeded after ${retryCount + 1} attempts. Free tier: 5 requests/minute.`);
         }
       }
       

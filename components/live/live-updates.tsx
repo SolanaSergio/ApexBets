@@ -27,10 +27,15 @@ interface LiveGame {
   homeScore?: number
   awayScore?: number
   status: string
+  period?: string
+  timeRemaining?: string
   time?: string
   league: string
-  sport: string
+  sport?: string
   venue?: string
+  homeTeamLogo?: string
+  awayTeamLogo?: string
+  dataSource?: string
 }
 
 interface LiveOdds {
@@ -94,9 +99,31 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
       setConnectionStatus('connected')
 
       if (activeTab === 'scores') {
-        const response = await fetch(`/api/live-scores?sport=${sport}`)
+        // Use real-time data for live scores - ONLY fetch truly live games
+        const response = await fetch(`/api/live-updates?sport=${sport}&real=true`)
         const data = await response.json()
-        setLiveGames(data.games || [])
+        
+        // ONLY show games that are actually live (in progress) with real scores
+        const trulyLiveGames = (data.live || []).filter((game: any) => {
+          const status = game.status?.toLowerCase() || ''
+          const hasLiveStatus = status === 'live' || 
+                               status === 'in_progress' ||
+                               status === 'in progress' ||
+                               status.includes('live') ||
+                               status.includes('progress') ||
+                               status.includes('quarter') ||
+                               status.includes('period') ||
+                               status.includes('inning') ||
+                               status.includes('half')
+          
+          // Must have real scores (not 0-0) to be considered truly live
+          const hasRealScores = (game.homeScore > 0 || game.awayScore > 0)
+          
+          return hasLiveStatus && hasRealScores
+        })
+        
+        console.log(`Fetched ${data.live?.length || 0} live games, filtered to ${trulyLiveGames.length} truly live games`)
+        setLiveGames(trulyLiveGames)
       } else if (activeTab === 'odds') {
         const response = await fetch(`/api/odds?external=true&sport=${sport}`)
         const data = await response.json()
@@ -162,6 +189,11 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
             <CardTitle className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
               Live Updates
+              {liveGames.length > 0 && (
+                <Badge className="bg-red-500 text-white ml-2 animate-pulse">
+                  {liveGames.length} Live
+                </Badge>
+              )}
             </CardTitle>
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
@@ -213,21 +245,42 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
           <TabsTrigger value="scores" className="flex items-center gap-2">
             <Target className="h-4 w-4" />
             Live Scores
+            {liveGames.length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+                {liveGames.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="odds" className="flex items-center gap-2">
             <DollarSign className="h-4 w-4" />
             Live Odds
+            {liveOdds.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+                {liveOdds.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="value-bets" className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4" />
             Value Bets
+            {valueBets.length > 0 && (
+              <Badge variant="default" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+                {valueBets.length}
+              </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="scores" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Live Game Scores</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                Live Game Scores 
+                <Badge className="bg-red-500 text-white">
+                  {liveGames.length} Games Live
+                </Badge>
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {error && (
@@ -262,31 +315,76 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                   {liveGames.map((game) => (
                     <div
                       key={game.id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                      className="flex items-center justify-between p-6 border-2 border-green-200 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 hover:shadow-lg transition-all duration-200"
                     >
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">
-                            {game.awayTeam} @ {game.homeTeam}
-                          </h3>
-                          <Badge className={getStatusColor(game.status)}>
-                            {game.status}
-                          </Badge>
+                        <div className="flex items-center gap-4 mb-3">
+                          {/* Team Logos and Names */}
+                          <div className="flex items-center gap-2">
+                            {game.awayTeamLogo && (
+                              <img 
+                                src={game.awayTeamLogo} 
+                                alt={`${game.awayTeam} logo`}
+                                className="w-8 h-8 rounded-full object-contain"
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            )}
+                            <span className="font-semibold text-lg">{game.awayTeam}</span>
+                          </div>
+                          <span className="text-2xl font-bold text-muted-foreground mx-2">@</span>
+                          <div className="flex items-center gap-2">
+                            {game.homeTeamLogo && (
+                              <img 
+                                src={game.homeTeamLogo} 
+                                alt={`${game.homeTeam} logo`}
+                                className="w-8 h-8 rounded-full object-contain"
+                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                              />
+                            )}
+                            <span className="font-semibold text-lg">{game.homeTeam}</span>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {game.league} • {game.venue || 'TBD'}
+                        
+                        <div className="flex items-center gap-4">
+                          <Badge className="bg-red-500 text-white animate-pulse font-bold px-3 py-1">
+                            🔴 LIVE
+                          </Badge>
+                          
+                          {game.period && (
+                            <Badge variant="outline" className="border-green-300 text-green-700">
+                              {game.period}
+                            </Badge>
+                          )}
+                          
+                          {game.timeRemaining && (
+                            <div className="text-sm text-muted-foreground flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {game.timeRemaining}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div className="text-sm text-muted-foreground mt-2">
+                          {game.league}{game.venue && ` • ${game.venue}`}
+                          {game.dataSource && (
+                            <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                              {game.dataSource}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold">
-                          {game.awayScore !== undefined ? game.awayScore : '-'} - {game.homeScore !== undefined ? game.homeScore : '-'}
+                      
+                      <div className="text-center ml-6">
+                        <div className="text-4xl font-bold text-green-600 mb-1">
+                          {game.awayScore !== undefined && game.homeScore !== undefined ? (
+                            `${game.awayScore} - ${game.homeScore}`
+                          ) : (
+                            <span className="text-muted-foreground text-2xl">0 - 0</span>
+                          )}
                         </div>
-                        {game.time && (
-                          <div className="text-sm text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {game.time}
-                          </div>
-                        )}
+                        <div className="text-xs text-muted-foreground">
+                          {game.awayScore !== undefined && game.homeScore !== undefined ? 'LIVE SCORE' : 'STARTING SOON'}
+                        </div>
                       </div>
                     </div>
                   ))}

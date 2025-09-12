@@ -5,6 +5,7 @@
 
 import { serviceFactory, SupportedSport } from '../core/service-factory'
 import { ServiceRegistry } from '../core/service-registry'
+import { unifiedCacheManager } from '../cache/unified-cache-manager'
 import { databaseCacheService } from '../database-cache-service'
 import { cacheService } from '../cache-service'
 

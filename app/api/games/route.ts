@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-// import { enhancedApiClient } from "@/lib/services/enhanced-api-client" // Module not available
+import { apiFallbackStrategy } from "@/lib/services/api-fallback-strategy"
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,61 +8,133 @@ export async function GET(request: NextRequest) {
     const useExternalApi = searchParams.get("external") === "true"
     
     if (useExternalApi) {
-      // Use direct API calls to avoid circular dependencies
+      // Use API fallback strategy for real-time data
       const sport = searchParams.get("sport")
       
       if (!sport) {
         return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
       }
+      
       const status = searchParams.get("status") as "scheduled" | "live" | "finished" | undefined
       const date = searchParams.get("date") || new Date().toISOString().split('T')[0]
       
-      const games: any[] = []
-      
       try {
-        // Use the unified API client for all sports
-        const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-        
-        // Get games for the specified sport and date
-        const sportGames = await cachedUnifiedApiClient.getGames(sport as any, { 
-          date: date,
-          limit: 50
+        // Use the API fallback strategy to get games
+        const fallbackResult = await apiFallbackStrategy.executeWithFallback({
+          sport,
+          dataType: 'games',
+          params: { date, status },
+          priority: 'medium'
         })
         
-        games.push(...sportGames.map((game: any) => ({
-          id: game.id?.toString() || game.gameId?.toString() || Math.random().toString(),
-          home_team_id: game.home_team_id || 'external_home',
-          away_team_id: game.away_team_id || 'external_away',
-          game_date: game.game_date || game.date || game.startTime || new Date().toISOString(),
-          season: game.season || '2024-25',
-          home_score: game.home_score || game.homeTeamScore || null,
-          away_score: game.away_score || game.awayTeamScore || null,
-          status: game.status || 'scheduled',
-          venue: game.venue || game.location || null,
-          home_team: { 
-            name: game.home_team?.name || game.homeTeam?.name || 'Home Team', 
-            abbreviation: game.home_team?.abbreviation || game.homeTeam?.abbreviation || 'HT',
-            logo_url: game.home_team?.logoUrl || game.homeTeam?.logoUrl || undefined
-          },
-          away_team: { 
-            name: game.away_team?.name || game.awayTeam?.name || 'Away Team', 
-            abbreviation: game.away_team?.abbreviation || game.awayTeam?.abbreviation || 'AT',
-            logo_url: game.away_team?.logoUrl || game.awayTeam?.logoUrl || undefined
-          }
-        })))
-      } catch (error) {
-        console.error('Unified API error:', error)
-        // Fall through to database fallback
-      }
-      
-      return NextResponse.json({
-        data: games,
-        meta: {
-          fromCache: false,
-          responseTime: 0,
-          source: "direct_apis"
+        if (fallbackResult.success && fallbackResult.data) {
+          // Normalize the data to our expected format - use real team data
+          const normalizedGames = await Promise.all(
+            Array.isArray(fallbackResult.data) 
+            ? fallbackResult.data.map(async (game: any) => {
+                // Extract real team names from API response - no hardcoded fallbacks
+                const homeTeamName = game.home_team?.name || game.strHomeTeam || game.homeTeam?.name || game.homeTeam;
+                const awayTeamName = game.away_team?.name || game.strAwayTeam || game.awayTeam?.name || game.awayTeam;
+                
+                // Use dynamic abbreviation generation
+                const generateAbbreviation = (teamName: string): string => {
+                  if (!teamName) return 'TBD';
+                  const words = teamName.split(' ').filter(word => word.length > 0);
+                  if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
+                  return words.map(word => word.charAt(0)).join('').toUpperCase().substring(0, 3);
+                };
+                
+                // Use fallback values instead of async calls in map
+                const currentYear = new Date().getFullYear()
+                const season = game.season || `${currentYear}-${(currentYear + 1).toString().slice(-2)}`
+                const status = game.status || 'scheduled'
+                const league = game.league || game.strLeague || 'Unknown'
+                
+                // Create a truly unique ID by combining multiple identifiers
+                const createUniqueGameId = (game: any): string => {
+                  const baseId = game.id?.toString() || game.idEvent || '';
+                  const homeTeam = game.home_team?.name || game.strHomeTeam || game.homeTeam?.name || game.homeTeam || 'home';
+                  const awayTeam = game.away_team?.name || game.strAwayTeam || game.awayTeam?.name || game.awayTeam || 'away';
+                  const gameDate = game.date || game.dateEvent || game.game_date || new Date().toISOString();
+                  
+                  // If we have a base ID, use it with a hash of game details to ensure uniqueness
+                  if (baseId) {
+                    const gameHash = `${homeTeam}-${awayTeam}-${gameDate}`.replace(/\s+/g, '').toLowerCase();
+                    return `${baseId}_${gameHash.slice(0, 8)}`;
+                  }
+                  
+                  // Fallback: create ID from game details with timestamp
+                  const timestamp = Date.now();
+                  const randomSuffix = Math.random().toString(36).substr(2, 9);
+                  return `external_${timestamp}_${randomSuffix}`;
+                };
+                
+                return {
+                  id: createUniqueGameId(game),
+                  home_team_id: `external_home_${game.id || Math.random().toString(36).substr(2, 9)}`,
+                  away_team_id: `external_away_${game.id || Math.random().toString(36).substr(2, 9)}`,
+                  game_date: game.date || game.dateEvent || game.game_date || new Date().toISOString(),
+                  season,
+                  home_score: game.home_score || game.intHomeScore || null,
+                  away_score: game.away_score || game.intAwayScore || null,
+                  status,
+                  venue: game.venue || game.strVenue || null,
+                  league,
+                  home_team: {
+                    name: homeTeamName,
+                    abbreviation: game.home_team?.abbreviation || generateAbbreviation(homeTeamName),
+                    logo_url: game.home_team?.logoUrl || game.home_team?.logo || undefined
+                  },
+                  away_team: {
+                    name: awayTeamName,
+                    abbreviation: game.away_team?.abbreviation || generateAbbreviation(awayTeamName),
+                    logo_url: game.away_team?.logoUrl || game.away_team?.logo || undefined
+                  }
+                }
+              })
+            : []
+          )
+          
+          // Remove duplicates by ID (in case APIs return the same game multiple times)
+          const deduplicatedGames = normalizedGames.filter((game, index, array) => 
+            array.findIndex(g => g.id === game.id) === index
+          )
+          
+          return NextResponse.json({
+            data: deduplicatedGames,
+            meta: {
+              fromCache: fallbackResult.cached,
+              responseTime: fallbackResult.responseTime,
+              source: `api_fallback_${fallbackResult.provider}`,
+              fallbacksUsed: fallbackResult.fallbacksUsed,
+              originalCount: normalizedGames.length,
+              deduplicatedCount: deduplicatedGames.length
+            }
+          })
+        } else {
+          console.warn('API fallback failed:', fallbackResult.error)
+          return NextResponse.json({
+            data: [],
+            meta: {
+              fromCache: false,
+              responseTime: fallbackResult.responseTime,
+              source: "api_fallback_failed",
+              error: fallbackResult.error
+            }
+          })
         }
-      })
+      } catch (error) {
+        console.error('External API error:', error)
+        return NextResponse.json({
+          data: [],
+          meta: {
+            fromCache: false,
+            responseTime: 0,
+            source: "external_api_error",
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }
+        })
+      }
     }
 
     // Fallback to Supabase for stored data

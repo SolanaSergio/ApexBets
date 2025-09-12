@@ -35,6 +35,7 @@ export interface Game {
   game_time?: string
   time_remaining?: string
   quarter?: number
+  period?: string
   possession?: string
   last_play?: string
   home_team_stats?: GameStats

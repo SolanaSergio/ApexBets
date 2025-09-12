@@ -1,0 +1,129 @@
+{
+  "summary": {
+    "totalTests": 15,
+    "passedTests": 11,
+    "failedTests": 13,
+    "errors": [
+      "SportsDB Events by Date: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=2024-01-01\"",
+      "SportsDB Team Search: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=basketball\"",
+      "SportsDB Leagues by Sport: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/search_all_leagues.php?s=basketball\"",
+      "BallDontLie Teams (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.balldontlie.io/v1/teams?per_page=1\"",
+      "BallDontLie Players (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.balldontlie.io/v1/players?per_page=1\"",
+      "API-SPORTS Leagues (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api-football-v1.p.rapidapi.com/v3/leagues\"",
+      "API-SPORTS Fixtures (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api-football-v1.p.rapidapi.com/v3/fixtures?next=1\"",
+      "Odds API Sports (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.the-odds-api.com/v4/sports\"",
+      "Odds API Odds (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.the-odds-api.com/v4/odds?sport=basketball_nba&regions=us&markets=h2h\""
+    ],
+    "successRate": "73.33",
+    "startTime": "2025-09-12T15:43:17.839Z",
+    "endTime": "2025-09-12T15:43:22.307Z",
+    "duration": 4468
+  },
+  "tests": {
+    "File: lib/sports-apis/sportsdb-client.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\sports-apis\\sportsdb-client.ts",
+      "timestamp": "2025-09-12T15:43:17.850Z"
+    },
+    "File: lib/sports-apis/balldontlie-client.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\sports-apis\\balldontlie-client.ts",
+      "timestamp": "2025-09-12T15:43:17.851Z"
+    },
+    "File: lib/sports-apis/api-sports-client.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\sports-apis\\api-sports-client.ts",
+      "timestamp": "2025-09-12T15:43:17.851Z"
+    },
+    "File: lib/sports-apis/odds-api-client.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\sports-apis\\odds-api-client.ts",
+      "timestamp": "2025-09-12T15:43:17.852Z"
+    },
+    "File: lib/services/sports/basketball/basketball-service.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\services\\sports\\basketball\\basketball-service.ts",
+      "timestamp": "2025-09-12T15:43:17.852Z"
+    },
+    "File: lib/services/predictions/sport-prediction-service.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\services\\predictions\\sport-prediction-service.ts",
+      "timestamp": "2025-09-12T15:43:17.852Z"
+    },
+    "File: lib/services/comprehensive-data-population-service.ts": {
+      "success": true,
+      "exists": true,
+      "path": "C:\\Users\\sergi\\OneDrive\\Desktop\\ProjectApex\\lib\\services\\comprehensive-data-population-service.ts",
+      "timestamp": "2025-09-12T15:43:17.853Z"
+    },
+    "Environment: NEXT_PUBLIC_SPORTSDB_API_KEY": {
+      "success": false,
+      "configured": false,
+      "present": false,
+      "timestamp": "2025-09-12T15:43:17.854Z"
+    },
+    "Environment: NEXT_PUBLIC_BALLDONTLIE_API_KEY": {
+      "success": false,
+      "configured": false,
+      "present": false,
+      "timestamp": "2025-09-12T15:43:17.854Z"
+    },
+    "Environment: NEXT_PUBLIC_RAPIDAPI_KEY": {
+      "success": false,
+      "configured": false,
+      "present": false,
+      "timestamp": "2025-09-12T15:43:17.854Z"
+    },
+    "Environment: NEXT_PUBLIC_ODDS_API_KEY": {
+      "success": false,
+      "configured": false,
+      "present": false,
+      "timestamp": "2025-09-12T15:43:17.855Z"
+    },
+    "Rate Limiting: lib/sports-apis/sportsdb-client.ts": {
+      "success": true,
+      "hasRateLimit": true,
+      "hasDelay": true,
+      "hasErrorHandling": true,
+      "timestamp": "2025-09-12T15:43:17.857Z"
+    },
+    "Rate Limiting: lib/sports-apis/balldontlie-client.ts": {
+      "success": true,
+      "hasRateLimit": true,
+      "hasDelay": true,
+      "hasErrorHandling": true,
+      "timestamp": "2025-09-12T15:43:17.858Z"
+    },
+    "Rate Limiting: lib/sports-apis/api-sports-client.ts": {
+      "success": true,
+      "hasRateLimit": true,
+      "hasDelay": true,
+      "hasErrorHandling": true,
+      "timestamp": "2025-09-12T15:43:17.859Z"
+    },
+    "Rate Limiting: lib/sports-apis/odds-api-client.ts": {
+      "success": true,
+      "hasRateLimit": true,
+      "hasDelay": true,
+      "hasErrorHandling": true,
+      "timestamp": "2025-09-12T15:43:17.859Z"
+    }
+  },
+  "errors": [
+    "SportsDB Events by Date: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/eventsday.php?d=2024-01-01\"",
+    "SportsDB Team Search: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=basketball\"",
+    "SportsDB Leagues by Sport: Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://www.thesportsdb.com/api/v1/json/3/search_all_leagues.php?s=basketball\"",
+    "BallDontLie Teams (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.balldontlie.io/v1/teams?per_page=1\"",
+    "BallDontLie Players (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.balldontlie.io/v1/players?per_page=1\"",
+    "API-SPORTS Leagues (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api-football-v1.p.rapidapi.com/v3/leagues\"",
+    "API-SPORTS Fixtures (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api-football-v1.p.rapidapi.com/v3/fixtures?next=1\"",
+    "Odds API Sports (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.the-odds-api.com/v4/sports\"",
+    "Odds API Odds (requires API key): Command failed: curl -s -w \"%{http_code}\" -o /dev/null \"https://api.the-odds-api.com/v4/odds?sport=basketball_nba&regions=us&markets=h2h\""
+  ]
+}

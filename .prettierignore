@@ -1,0 +1,52 @@
+# Prettier ignore file
+node_modules/
+.next/
+out/
+dist/
+build/
+coverage/
+.nyc_output/
+*.log
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Generated files
+*.d.ts
+*.tsbuildinfo
+
+# Environment files
+.env*
+
+# Build outputs
+.vercel/
+.turbo/
+
+# Database files
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+
+# Cache directories
+.cache/
+.parcel-cache/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
