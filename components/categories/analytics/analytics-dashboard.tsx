@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
-import { apiClient, type Team } from "@/lib/api-client"
+import { simpleApiClient, type Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import TeamPerformanceChart from "./team-performance-chart"
 import PredictionAccuracyChart from "./prediction-accuracy-chart"
@@ -77,7 +77,7 @@ export default function AnalyticsDashboard({
   const loadAvailableTeams = async () => {
     if (!selectedSport) return
     try {
-      const teams = await apiClient.getTeams({ sport: selectedSport, league: selectedLeague })
+      const teams = await simpleApiClient.getTeams({ sport: selectedSport, league: selectedLeague })
       setAvailableTeams(teams)
     } catch (error) {
       console.error('Error loading available teams:', error)
@@ -88,7 +88,7 @@ export default function AnalyticsDashboard({
   const fetchAnalyticsOverview = async () => {
     try {
       setLoading(true)
-      const data = await apiClient.getAnalyticsStats()
+      const data = await simpleApiClient.getAnalyticsStats()
       
       // Transform the API response to match our interface
       setOverview({

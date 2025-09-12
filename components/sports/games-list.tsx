@@ -22,8 +22,9 @@ import {
   Clock, 
   CheckCircle 
 } from "lucide-react"
-import { apiClient, type Game } from "@/lib/api-client"
+import { simpleApiClient, type Game } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { TeamLogo } from "@/components/ui/team-logo"
 
 type GameData = Game
 
@@ -57,9 +58,9 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
       const params: any = { sport, date: dateFilter || today }
 
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        apiClient.getGames({ sport, status: 'live' }),
-        apiClient.getGames({ sport, status: 'scheduled', dateFrom: params.date, limit: 20 }),
-        apiClient.getGames({ sport, status: 'finished', dateTo: params.date, limit: 10 })
+        simpleApiClient.getGames({ sport, status: 'live' }),
+        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }),
+        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'finished', limit: 10 })
       ])
 
       const allGames = [...liveGames, ...scheduledGames, ...finishedGames]
@@ -309,13 +310,29 @@ function GameCard({ game, sport }: GameCardProps) {
           </div>
 
           {/* Teams and Score */}
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">{game.home_team?.name}</span>
+              <div className="flex items-center gap-2">
+                <TeamLogo
+                  logoUrl={game.home_team?.logo_url}
+                  teamName={game.home_team?.name || 'Home Team'}
+                  abbreviation={game.home_team?.abbreviation}
+                  size="sm"
+                />
+                <span className="font-medium text-sm">{game.home_team?.name}</span>
+              </div>
               <span className="font-bold">{game.home_score ?? '-'}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="font-medium text-sm">{game.away_team?.name}</span>
+              <div className="flex items-center gap-2">
+                <TeamLogo
+                  logoUrl={game.away_team?.logo_url}
+                  teamName={game.away_team?.name || 'Away Team'}
+                  abbreviation={game.away_team?.abbreviation}
+                  size="sm"
+                />
+                <span className="font-medium text-sm">{game.away_team?.name}</span>
+              </div>
               <span className="font-bold">{game.away_score ?? '-'}</span>
             </div>
           </div>

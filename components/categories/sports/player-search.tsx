@@ -8,7 +8,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react";
-import { apiClient, type Player, type Team } from "@/lib/api-client";
+import { simpleApiClient, type Player, type Team } from "@/lib/api-client-simple";
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
 import { cn } from "@/lib/utils";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
@@ -103,7 +103,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     if (!sport) return;
 
     try {
-      const teamsData = await apiClient.getTeams({ sport: sport as SupportedSport });
+      const teamsData = await simpleApiClient.getTeams({ sport: sport as SupportedSport });
       setTeams(teamsData);
     } catch (error) {
       console.error("Error fetching teams:", error);
@@ -121,13 +121,19 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     setError(null);
 
     try {
-      const playersData = await apiClient.getPlayers({
+      const playersData = await simpleApiClient.getPlayers({
         sport: sport as SupportedSport,
-        search: searchQuery,
         limit: 20,
       });
 
       let filteredPlayers = playersData;
+
+      // Filter by search query
+      if (searchQuery.trim()) {
+        filteredPlayers = filteredPlayers.filter(player => 
+          player.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+      }
 
       // Filter by team
       if (selectedTeam !== "all") {

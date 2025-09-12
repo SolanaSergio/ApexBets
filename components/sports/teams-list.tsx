@@ -20,8 +20,9 @@ import {
   Trophy, 
   MapPin 
 } from "lucide-react"
-import { apiClient, type Team } from "@/lib/api-client"
+import { simpleApiClient, type Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { TeamLogo } from "@/components/ui/team-logo"
 
 type TeamData = Team
 
@@ -50,7 +51,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
   const loadTeams = async () => {
     try {
       setLoading(true)
-      const sportTeams = await apiClient.getTeams({ sport })
+      const sportTeams = await simpleApiClient.getTeams({ sport })
       setTeams(sportTeams)
     } catch (error) {
       console.error('Error loading teams:', error)
@@ -241,9 +242,15 @@ function TeamCard({ team, sport }: TeamCardProps) {
           {/* Header */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg bg-muted/50`}>
-                <span className={`text-lg ${sportConfig?.color}`}>{sportConfig?.icon}</span>
-              </div>
+              <TeamLogo
+                logoUrl={team.logo_url}
+                teamName={team.name}
+                abbreviation={team.abbreviation}
+                size="md"
+                fallbackIcon={
+                  <span className={`text-lg ${sportConfig?.color}`}>{sportConfig?.icon}</span>
+                }
+              />
               <div className="flex-1 min-w-0">
                 <h3 className="font-semibold text-sm truncate">{team.name}</h3>
                 <p className="text-xs text-muted-foreground">#{team.abbreviation || 'N/A'}</p>

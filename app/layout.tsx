@@ -1,9 +1,8 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Analytics } from "@vercel/analytics/next"
-import { ThemeProvider } from "next-themes"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Inter } from "next/font/google"
-import { Suspense } from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -30,14 +29,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${inter.variable} antialiased`} suppressHydrationWarning>
-      <body className="min-h-screen bg-background font-sans antialiased">
+      <body className="min-h-screen bg-background font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider
           attribute="class" 
           defaultTheme="system" 
           enableSystem 
           disableTransitionOnChange
         >
-          <Suspense fallback={null}>{children}</Suspense>
+          {children}
         </ThemeProvider>
         <Analytics />
       </body>

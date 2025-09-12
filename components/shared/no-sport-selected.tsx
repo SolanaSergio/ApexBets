@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { AlertCircle, Settings, RefreshCw } from "lucide-react"
-import { SupportedSport } from "@/lib/services/core/service-factory"
+import { SupportedSport } from "@/lib/services/core/sport-config"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 
 

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, ChevronDown, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
 import { SportSelector, SportSelectorCompact } from "./sport-selector"
+import { SupportedSport } from "@/lib/services/core/sport-config"
 
 const navigationItems = [
   {
@@ -74,9 +75,11 @@ export function Navigation() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [selectedSport, setSelectedSport] = useState("basketball")
+  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const handleScroll = () => {
       setScrolled(window.scrollY > 10)
     }
@@ -87,7 +90,7 @@ export function Navigation() {
   return (
     <header className={cn(
       "sticky top-0 z-50 w-full transition-all duration-200",
-      scrolled 
+      mounted && scrolled 
         ? "bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm" 
         : "bg-background/80 backdrop-blur-sm border-b border-border/30"
     )}>

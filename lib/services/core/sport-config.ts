@@ -59,32 +59,96 @@ export class SportConfigManager {
     if (this.initialized) return
 
     try {
-      // This will be replaced with Supabase MCP integration
-      // For now, load from environment variables dynamically
-      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
-      
-      for (const sport of sports) {
-        const config = await this.loadSportConfigFromEnvironment(sport)
-        if (config) {
-          this.configs[sport] = config
+      // Load from database via API endpoint
+      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
+      const response = await fetch(`${baseUrl}/api/sports`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        
+        if (result.data && result.data.length > 0) {
+          for (const sport of result.data) {
+            this.configs[sport.name] = {
+              name: sport.display_name || sport.name,
+              leagues: [], // Will be loaded separately
+              defaultLeague: '', // Will be set from leagues
+              icon: sport.icon || '🏆',
+              color: sport.color || 'text-gray-500',
+              apiKey: sport.api_key || '',
+              dataSource: sport.data_source || 'sportsdb',
+              positions: sport.positions || [],
+              scoringFields: sport.scoring_fields || {},
+              bettingMarkets: sport.betting_markets || [],
+              seasonConfig: sport.season_config || {},
+              rateLimits: sport.rate_limits || {
+                requestsPerMinute: 30,
+                requestsPerHour: 500,
+                requestsPerDay: 5000,
+                burstLimit: 5
+              },
+              updateFrequency: sport.update_frequency || 30
+            }
+          }
+        } else {
+          // Fallback to environment variables if no database data
+          console.warn('No sports found in database, falling back to environment variables')
+          const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+          
+          for (const sport of sports) {
+            const config = await this.loadSportConfigFromEnvironment(sport)
+            if (config) {
+              this.configs[sport] = config
+            }
+          }
+        }
+      } else {
+        // Fallback to environment variables if API fails
+        console.warn('Failed to load sports from API, falling back to environment variables')
+        const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+        
+        for (const sport of sports) {
+          const config = await this.loadSportConfigFromEnvironment(sport)
+          if (config) {
+            this.configs[sport] = config
+          }
         }
       }
       
       this.initialized = true
     } catch (error) {
       console.error('Failed to initialize sport configurations:', error)
-      throw error
+      // Fallback to environment variables
+      try {
+        const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+        
+        for (const sport of sports) {
+          const config = await this.loadSportConfigFromEnvironment(sport)
+          if (config) {
+            this.configs[sport] = config
+          }
+        }
+        this.initialized = true
+      } catch (fallbackError) {
+        console.error('Fallback initialization also failed:', fallbackError)
+        throw error
+      }
     }
   }
 
   /**
    * Synchronous initialization for React components
+   * This is a fallback that uses environment variables when database is not available
    */
   static initializeSync(): void {
     if (this.initialized) return
 
     try {
-      // Load basic configs synchronously from environment
+      // Load basic configs synchronously from environment as fallback
       const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
       
       for (const sport of sports) {

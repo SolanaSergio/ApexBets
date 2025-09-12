@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Bell } from "lucide-react"
-import { apiClient } from "@/lib/api-client"
+import { simpleApiClient } from "@/lib/api-client-simple"
 
 interface UserAlert {
   id: string

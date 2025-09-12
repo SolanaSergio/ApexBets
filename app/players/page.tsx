@@ -12,21 +12,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
-import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
-import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client"
+import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
+import { Player } from "@/lib/api-client-simple"
 
 export default function PlayersPage() {
-  const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | UnifiedPlayerData | null>(null)
+  const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | Player | null>(null)
   const [selectedSport, setSelectedSport] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<string[]>([])
 
   useEffect(() => {
-    // Load supported sports dynamically from service factory
-    const loadSports = async () => {
-      const sports = await serviceFactory.getSupportedSports()
-      setSupportedSports(sports)
-    }
-    loadSports()
+    // Load supported sports from config
+    const sports = SportConfigManager.getSupportedSports()
+    setSupportedSports(sports)
     // Don't set default sport - let user choose
   }, [])
 

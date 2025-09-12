@@ -149,11 +149,5 @@ export class ServiceRegistry {
   }
 }
 
-// Auto-initialize when this module is imported
-if (typeof window === 'undefined') {
-  // Server-side initialization
-  ServiceRegistry.initialize().catch(console.error)
-} else {
-  // Client-side initialization
-  ServiceRegistry.initializeSync()
-}
+// Note: Service registry should be initialized explicitly when needed
+// Auto-initialization removed to prevent build-time execution

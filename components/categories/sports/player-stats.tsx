@@ -20,7 +20,7 @@ import {
   Zap
 } from "lucide-react"
 import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
-import { apiClient, type Player, type PlayerStats as ApiPlayerStats } from "@/lib/api-client";
+import { simpleApiClient, type Player, type PlayerStats as ApiPlayerStats } from "@/lib/api-client-simple";
 import { SupportedSport } from "@/lib/services/core/sport-config";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
@@ -99,7 +99,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
 
     setLoading(true);
     try {
-      const playerStats = await apiClient.getPlayerStats({
+      const playerStats = await simpleApiClient.getPlayerStats({
         sport,
         player_id: getPlayerId(selectedPlayer),
         season: selectedSeason,

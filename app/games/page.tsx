@@ -10,10 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, RefreshCw, Zap, CheckCircle } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { apiClient, type Game } from "@/lib/api-client"
+import { simpleApiClient, type Game } from "@/lib/api-client-simple"
 import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 export default function GamesPage() {
   const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
@@ -37,7 +36,7 @@ export default function GamesPage() {
   }, [selectedSport])
 
   const loadSupportedSports = async () => {
-    const sports = await serviceFactory.getSupportedSports()
+    const sports = SportConfigManager.getSupportedSports()
     setSupportedSports(sports)
     // Set first available sport as default
     if (sports.length > 0) {
@@ -276,7 +275,7 @@ function LiveGamesSection({
       setLoading(true)
       
       // Fetch from database with date range and search
-      const games = await apiClient.getGames({
+      const games = await simpleApiClient.getGames({
         sport: selectedSport,
         status: "in_progress",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
@@ -395,7 +394,7 @@ function UpcomingGamesSection({
     try {
       setLoading(true)
       
-      const games = await apiClient.getGames({
+      const games = await simpleApiClient.getGames({
         sport: selectedSport,
         status: "scheduled",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
@@ -513,7 +512,7 @@ function CompletedGamesSection({
     try {
       setLoading(true)
       
-      const games = await apiClient.getGames({
+      const games = await simpleApiClient.getGames({
         sport: selectedSport,
         status: "completed",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),

@@ -41,11 +41,13 @@ export async function GET(request: NextRequest) {
           venue: game.venue || game.location || null,
           home_team: { 
             name: game.home_team?.name || game.homeTeam?.name || 'Home Team', 
-            abbreviation: game.home_team?.abbreviation || game.homeTeam?.abbreviation || 'HT' 
+            abbreviation: game.home_team?.abbreviation || game.homeTeam?.abbreviation || 'HT',
+            logo_url: game.home_team?.logoUrl || game.homeTeam?.logoUrl || undefined
           },
           away_team: { 
             name: game.away_team?.name || game.awayTeam?.name || 'Away Team', 
-            abbreviation: game.away_team?.abbreviation || game.awayTeam?.abbreviation || 'AT' 
+            abbreviation: game.away_team?.abbreviation || game.awayTeam?.abbreviation || 'AT',
+            logo_url: game.away_team?.logoUrl || game.awayTeam?.logoUrl || undefined
           }
         })))
       } catch (error) {
@@ -77,8 +79,8 @@ export async function GET(request: NextRequest) {
     }
     let query = supabase.from("games").select(`
         *,
-        home_team:teams!games_home_team_id_fkey(id, name, abbreviation),
-        away_team:teams!games_away_team_id_fkey(id, name, abbreviation)
+        home_team:teams!games_home_team_id_fkey(id, name, abbreviation, logo_url),
+        away_team:teams!games_away_team_id_fkey(id, name, abbreviation, logo_url)
       `)
 
     if (dateFrom) {

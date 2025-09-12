@@ -13,8 +13,9 @@ export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
     setMounted(true)
   }, [])
 
+  // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {
-    return <>{children}</>
+    return <div suppressHydrationWarning>{children}</div>
   }
 
   return <NextThemesProvider {...props}>{children}</NextThemesProvider>

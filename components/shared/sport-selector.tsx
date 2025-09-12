@@ -19,7 +19,7 @@ import {
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface SportSelectorProps {
-  selectedSport: SupportedSport
+  selectedSport: SupportedSport | null
   onSportChange: (sport: SupportedSport) => void
   className?: string
   variant?: 'default' | 'compact'
@@ -39,19 +39,25 @@ export function SportSelector({
     loadSportData()
   }, [])
 
-  const loadSportData = () => {
+  const loadSportData = async () => {
     try {
       setLoading(true)
+      // Initialize sport config manager first
+      await SportConfigManager.initialize()
       const sports = SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
     } catch (error) {
       console.error('Error loading sport data:', error)
+      // Fallback to synchronous initialization
+      SportConfigManager.initializeSync()
+      const sports = SportConfigManager.getSupportedSports()
+      setSupportedSports(sports)
     } finally {
       setLoading(false)
     }
   }
 
-  const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
+  const currentSportConfig = selectedSport ? SportConfigManager.getSportConfig(selectedSport) : null
   const isServiceHealthy = true // Assume healthy
 
   if (loading) {
