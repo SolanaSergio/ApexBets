@@ -37,7 +37,11 @@
     "test:watch": "jest --config jest.config.js --watch",
     "test:coverage": "jest --config jest.config.js --coverage",
     "verify": "node tests/quick-verification.js",
-    "verify:full": "node tests/comprehensive-tests.js"
+    "verify:full": "node tests/comprehensive-tests.js",
+    "mcp:start": "node supabase-mcp-server.js",
+    "mcp:dev": "nodemon supabase-mcp-server.js",
+    "mcp:test": "node test-mcp-server.js",
+    "mcp:setup": "node scripts/setup/setup-mcp-database.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
