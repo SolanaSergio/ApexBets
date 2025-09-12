@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,7 @@ import { simpleApiClient, Game, Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { ErrorBoundary } from "@/components/error-boundary"
 import { LoadingCard, LoadingGameCard, LoadingTeamCard, LoadingSpinner } from "@/components/loading-states"
+import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
 type GameData = Game
 type TeamData = Team
@@ -27,6 +28,7 @@ import { GamesList } from "@/components/sports/games-list"
 import { TeamsList } from "@/components/sports/teams-list"
 import { NoSportSelected } from "@/components/shared/no-sport-selected"
 import { TeamLogo } from "@/components/ui/team-logo"
+import { normalizeTeamData, normalizeGameData, deduplicateGames, deduplicateTeams } from "@/lib/utils/data-utils"
 
 interface CleanDashboardProps {
   className?: string
@@ -51,17 +53,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     totalTeams: 0,
     totalSupportedSports: 0
   })
-  const [cacheStats, setCacheStats] = useState({ size: 0, keys: [] as string[] })
-  // const [rateLimitStatus, setRateLimitStatus] = useState<Record<string, any>>({})
-  // const [cacheStatus, setCacheStatus] = useState<{
-  //   databaseAvailable: boolean
-  //   memoryAvailable: boolean
-  //   totalEntries: number
-  // }>({
-  //   databaseAvailable: false,
-  //   memoryAvailable: true,
-  //   totalEntries: 0
-  // })
+  
+  // Use real-time updates hook
+  const { gameUpdates: liveGameUpdates, isConnected, lastUpdate, error: realtimeError } = useRealTimeUpdates(selectedSupportedSport || "basketball")
 
   // All function definitions moved to top to prevent reference errors
   const loadServiceHealth = async () => {
@@ -127,10 +121,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         teams = await simpleApiClient.getTeams({ sport, external: true })
         console.log(`External API: Loaded ${teams.length} teams for ${sport}`)
         
+        // Normalize team data to ensure consistency
+        teams = teams.map(team => normalizeTeamData(team, sport))
+        
+        // Deduplicate teams
+        teams = deduplicateTeams(teams)
+        
         // Fallback to database if external API fails
         if (teams.length === 0) {
           try {
             teams = await simpleApiClient.getTeams({ sport, external: false })
+            teams = teams.map(team => normalizeTeamData(team, sport))
+            teams = deduplicateTeams(teams)
             console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
           } catch (dbError) {
             console.warn(`Database fallback failed for teams ${sport}:`, dbError)
@@ -142,6 +144,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         // Fallback to database data
         try {
           teams = await simpleApiClient.getTeams({ sport, external: false })
+          teams = teams.map(team => normalizeTeamData(team, sport))
+          teams = deduplicateTeams(teams)
           console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
         } catch (dbError) {
           console.warn(`Database fallback failed for teams ${sport}:`, dbError)
@@ -196,6 +200,12 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         })
         console.log(`External API: Loaded ${games.length} upcoming games for ${sport}`)
         
+        // Normalize game data
+        games = games.map(game => normalizeGameData(game, sport))
+        
+        // Deduplicate games
+        games = deduplicateGames(games)
+        
         // If no games found for today, try without date filter to get any scheduled games
         if (games.length === 0) {
           console.log(`No games found for today, trying without date filter...`)
@@ -206,7 +216,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             external: true
           })
           console.log(`External API (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
-          games = allScheduledGames
+          games = allScheduledGames.map(game => normalizeGameData(game, sport))
+          games = deduplicateGames(games)
         }
         
         // Fallback to database if external API fails or returns no data
@@ -219,6 +230,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               limit: 20,
               external: false
             })
+            games = games.map(game => normalizeGameData(game, sport))
+            games = deduplicateGames(games)
             console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
           } catch (dbError) {
             console.warn(`Database fallback failed for upcoming games ${sport}:`, dbError)
@@ -235,6 +248,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             limit: 20,
             external: false
           })
+          games = games.map(game => normalizeGameData(game, sport))
+          games = deduplicateGames(games)
           console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
         } catch (dbError) {
           console.warn(`Database fallback failed for upcoming games ${sport}:`, dbError)
@@ -293,6 +308,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         })
         console.log(`External API: Loaded ${games.length} live games for ${sport}`)
         
+        // Normalize and filter games
+        games = games.map(game => normalizeGameData(game, sport))
+        games = deduplicateGames(games)
+        
         // Fallback to database if external API fails
         if (games.length === 0) {
           try {
@@ -301,6 +320,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               status: 'in_progress',
               external: false 
             })
+            games = games.map(game => normalizeGameData(game, sport))
+            games = deduplicateGames(games)
             console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
           } catch (dbError) {
             console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -315,6 +336,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             status: 'in_progress',
             external: false 
           })
+          games = games.map(game => normalizeGameData(game, sport))
+          games = deduplicateGames(games)
           console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
         } catch (dbError) {
           console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -481,6 +504,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     }
   }, [selectedSupportedSport, mounted])
 
+  // Update live games with real-time updates
+  useEffect(() => {
+    if (liveGameUpdates.length > 0) {
+      setAllLiveGames(prev => {
+        // Combine existing games with new updates
+        const combined = [...prev, ...liveGameUpdates]
+        // Remove duplicates and return
+        return deduplicateGames(combined) as GameData[]
+      })
+    }
+  }, [liveGameUpdates])
+
   // Recalculate stats when data changes
   useEffect(() => {
     if (mounted) {
@@ -545,8 +580,12 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                   <><AlertCircle className="h-3 w-3 mr-1" /> Issues</>
                 )}
               </Badge>
-              <Badge variant="outline" className="text-xs">
-                Cache: {cacheStats.size} items
+              <Badge variant={isConnected ? "default" : "destructive"}>
+                {isConnected ? (
+                  <><Zap className="h-3 w-3 mr-1" /> Live</>
+                ) : (
+                  <><AlertCircle className="h-3 w-3 mr-1" /> Disconnected</>
+                )}
               </Badge>
             </div>
           </div>
@@ -655,7 +694,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                           <div className="flex items-center space-x-2">
                             <TeamLogo
                               logoUrl={game.away_team?.logo_url}
-                              teamName={game.away_team?.name || 'Away Team'}
+                              teamName={game.away_team?.name || 'Visiting Team'}
                               abbreviation={game.away_team?.abbreviation}
                               size="md"
                             />
@@ -725,7 +764,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                           <div className="flex items-center space-x-2">
                             <TeamLogo
                               logoUrl={game.away_team?.logo_url}
-                              teamName={game.away_team?.name || 'Away Team'}
+                              teamName={game.away_team?.name || 'Visiting Team'}
                               abbreviation={game.away_team?.abbreviation}
                               size="md"
                             />
@@ -853,5 +892,3 @@ function DashboardSkeleton() {
 }
 
 export default CleanDashboard
-
-

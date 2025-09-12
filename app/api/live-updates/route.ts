@@ -4,6 +4,7 @@ import { apiFallbackStrategy } from "@/lib/services/api-fallback-strategy"
 import { espnClient } from "@/lib/sports-apis/espn-client"
 import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
 import { sportsDBClient } from "@/lib/sports-apis/sportsdb-client"
+import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
 
 export async function GET(request: NextRequest) {
   try {
@@ -112,71 +113,122 @@ export async function GET(request: NextRequest) {
 
     // Format live games with enhanced data - NO hardcoded sport values
     const formattedLiveGames = (liveGames || []).map(game => {
-      const homeTeam = game.home_team_data || { name: game.home_team || 'TBD', logo_url: null, abbreviation: null }
-      const awayTeam = game.away_team_data || { name: game.away_team || 'TBD', logo_url: null, abbreviation: null }
+      const homeTeam = game.home_team_data || { name: game.home_team || 'Visiting Team', logo_url: null, abbreviation: null }
+      const awayTeam = game.away_team_data || { name: game.away_team || 'Visiting Team', logo_url: null, abbreviation: null }
       
-      return {
+      // Normalize team data
+      const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league)
+      const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league)
+      
+      const gameData = {
         id: game.id,
-        homeTeam: homeTeam.name,
-        awayTeam: awayTeam.name,
-        homeScore: game.home_score,
-        awayScore: game.away_score,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
         status: game.status,
-        period: game.period,
-        timeRemaining: game.time_remaining,
-        date: game.game_date,
-        homeTeamLogo: homeTeam.logo_url,
-        awayTeamLogo: awayTeam.logo_url,
-        homeTeamAbbr: homeTeam.abbreviation,
-        awayTeamAbbr: awayTeam.abbreviation,
-        league: game.league,
         venue: game.venue,
-        dataSource: 'database'
+        league: game.league,
+        sport: game.sport,
+        broadcast: game.broadcast,
+        attendance: game.attendance,
+        game_time: game.game_time,
+        time_remaining: game.time_remaining,
+        quarter: game.quarter,
+        period: game.period,
+        possession: game.possession,
+        last_play: game.last_play,
+        home_team: normalizedHomeTeam,
+        away_team: normalizedAwayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
       }
+      
+      // Normalize and return the game data
+      return normalizeGameData(gameData, sport, game.league)
     })
 
     // Format recent games with enhanced data
     const formattedRecentGames = (recentGames || []).map(game => {
-      const homeTeam = game.home_team_data || { name: game.home_team || 'TBD', logo_url: null, abbreviation: null }
-      const awayTeam = game.away_team_data || { name: game.away_team || 'TBD', logo_url: null, abbreviation: null }
+      const homeTeam = game.home_team_data || { name: game.home_team || 'Visiting Team', logo_url: null, abbreviation: null }
+      const awayTeam = game.away_team_data || { name: game.away_team || 'Visiting Team', logo_url: null, abbreviation: null }
       
-      return {
+      // Normalize team data
+      const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league)
+      const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league)
+      
+      const gameData = {
         id: game.id,
-        homeTeam: homeTeam.name,
-        awayTeam: awayTeam.name,
-        homeScore: game.home_score,
-        awayScore: game.away_score,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
         status: game.status,
-        date: game.game_date,
-        homeTeamLogo: homeTeam.logo_url,
-        awayTeamLogo: awayTeam.logo_url,
-        homeTeamAbbr: homeTeam.abbreviation,
-        awayTeamAbbr: awayTeam.abbreviation,
-        league: game.league,
         venue: game.venue,
-        dataSource: 'database'
+        league: game.league,
+        sport: game.sport,
+        broadcast: game.broadcast,
+        attendance: game.attendance,
+        game_time: game.game_time,
+        time_remaining: game.time_remaining,
+        quarter: game.quarter,
+        period: game.period,
+        possession: game.possession,
+        last_play: game.last_play,
+        home_team: normalizedHomeTeam,
+        away_team: normalizedAwayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
       }
+      
+      // Normalize and return the game data
+      return normalizeGameData(gameData, sport, game.league)
     })
 
     // Format upcoming games with enhanced data
     const formattedUpcomingGames = (upcomingGames || []).map(game => {
-      const homeTeam = game.home_team_data || { name: game.home_team || 'TBD', logo_url: null, abbreviation: null }
-      const awayTeam = game.away_team_data || { name: game.away_team || 'TBD', logo_url: null, abbreviation: null }
+      const homeTeam = game.home_team_data || { name: game.home_team || 'Visiting Team', logo_url: null, abbreviation: null }
+      const awayTeam = game.away_team_data || { name: game.away_team || 'Visiting Team', logo_url: null, abbreviation: null }
       
-      return {
+      // Normalize team data
+      const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league)
+      const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league)
+      
+      const gameData = {
         id: game.id,
-        homeTeam: homeTeam.name,
-        awayTeam: awayTeam.name,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
         status: game.status,
-        date: game.game_date,
-        homeTeamLogo: homeTeam.logo_url,
-        awayTeamLogo: awayTeam.logo_url,
-        homeTeamAbbr: homeTeam.abbreviation,
-        awayTeamAbbr: awayTeam.abbreviation,
-        league: game.league,
         venue: game.venue,
-        dataSource: 'database'
+        league: game.league,
+        sport: game.sport,
+        broadcast: game.broadcast,
+        attendance: game.attendance,
+        game_time: game.game_time,
+        time_remaining: game.time_remaining,
+        quarter: game.quarter,
+        period: game.period,
+        possession: game.possession,
+        last_play: game.last_play,
+        home_team: normalizedHomeTeam,
+        away_team: normalizedAwayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
       }
+      
+      // Normalize and return the game data
+      return normalizeGameData(gameData, sport, game.league)
     })
 
     // Get live odds for live games
@@ -264,32 +316,51 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         const espnGames = await espnClient.getNBAScoreboard()
         if (espnGames && espnGames.length > 0) {
           espnGames.forEach(game => {
+            const homeTeamData = game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.team || {}
+            const awayTeamData = game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team || {}
+            
+            const homeTeam = {
+              name: homeTeamData.displayName || 'Home Team',
+              logo_url: homeTeamData.logo,
+              abbreviation: homeTeamData.abbreviation
+            }
+            
+            const awayTeam = {
+              name: awayTeamData.displayName || 'Away Team',
+              logo_url: awayTeamData.logo,
+              abbreviation: awayTeamData.abbreviation
+            }
+            
             const formattedGame = {
               id: game.id,
-              homeTeam: game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.team?.displayName || 'TBD',
-              awayTeam: game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team?.displayName || 'TBD',
-              homeScore: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.score || '0'),
-              awayScore: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.score || '0'),
+              home_team_id: `espn_home_${game.id}`,
+              away_team_id: `espn_away_${game.id}`,
+              game_date: game.date,
+              season: new Date().getFullYear().toString(),
+              home_score: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.score || '0'),
+              away_score: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.score || '0'),
               status: game.status.type.state === 'in' ? 'live' : 
                      game.status.type.completed ? 'finished' : 'scheduled',
               period: game.status.period ? `${game.status.period}Q` : null,
-              timeRemaining: game.status.displayClock || null,
-              date: game.date,
+              time_remaining: game.status.displayClock || null,
               league: "NBA",
               venue: game.competitions[0]?.venue?.fullName,
-              homeTeamLogo: game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.team?.logo,
-              awayTeamLogo: game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team?.logo,
-              dataSource: "ESPN"
+              sport: "basketball",
+              home_team: homeTeam,
+              away_team: awayTeam
             }
 
+            // Normalize the game data
+            const normalizedGame = normalizeGameData(formattedGame, "basketball", "NBA")
+
             // Only add to appropriate arrays based on ACTUAL status and scores
-            if (formattedGame.status === 'live' && game.status.type.state === 'in' && 
-               (formattedGame.homeScore > 0 || formattedGame.awayScore > 0)) {
-              liveGames.push(formattedGame)
-            } else if (formattedGame.status === 'finished' && game.status.type.completed) {
-              recentGames.push(formattedGame)
-            } else if (formattedGame.status === 'scheduled' && !game.status.type.completed && game.status.type.state !== 'in') {
-              upcomingGames.push(formattedGame)
+            if (normalizedGame.status === 'live' && game.status.type.state === 'in' && 
+               (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
+              liveGames.push(normalizedGame)
+            } else if (normalizedGame.status === 'finished' && game.status.type.completed) {
+              recentGames.push(normalizedGame)
+            } else if (normalizedGame.status === 'scheduled' && !game.status.type.completed && game.status.type.state !== 'in') {
+              upcomingGames.push(normalizedGame)
             }
           })
         }
@@ -302,29 +373,46 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         try {
           const todaysGames = await ballDontLieClient.getTodaysGames()
           todaysGames.forEach(game => {
+            const homeTeam = {
+              name: game.home_team.full_name,
+              logo_url: null,
+              abbreviation: game.home_team.abbreviation
+            }
+            
+            const awayTeam = {
+              name: game.visitor_team.full_name,
+              logo_url: null,
+              abbreviation: game.visitor_team.abbreviation
+            }
+            
             const formattedGame = {
-              id: game.id.toString(),
-              homeTeam: game.home_team.full_name,
-              awayTeam: game.visitor_team.full_name,
-              homeScore: game.home_team_score,
-              awayScore: game.visitor_team_score,
+              id: `bdl_${game.id}`,
+              home_team_id: `bdl_home_${game.id}`,
+              away_team_id: `bdl_away_${game.id}`,
+              game_date: game.date,
+              season: new Date().getFullYear().toString(),
+              home_score: game.home_team_score,
+              away_score: game.visitor_team_score,
               status: game.status === 'Final' ? 'finished' : 
                      game.status.includes('Q') && (game.home_team_score > 0 || game.visitor_team_score > 0) ? 'live' : 'scheduled',
               period: game.period ? `${game.period}Q` : null,
-              timeRemaining: game.time || null,
-              date: game.date,
+              time_remaining: game.time || null,
               league: "NBA",
-              venue: null,
-              dataSource: "BallDontLie"
+              sport: "basketball",
+              home_team: homeTeam,
+              away_team: awayTeam
             }
 
+            // Normalize the game data
+            const normalizedGame = normalizeGameData(formattedGame, "basketball", "NBA")
+
             // Only add truly live games (with actual scores)
-            if (formattedGame.status === 'live' && (formattedGame.homeScore > 0 || formattedGame.awayScore > 0)) {
-              liveGames.push(formattedGame)
-            } else if (formattedGame.status === 'finished') {
-              recentGames.push(formattedGame)
+            if (normalizedGame.status === 'live' && (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
+              liveGames.push(normalizedGame)
+            } else if (normalizedGame.status === 'finished') {
+              recentGames.push(normalizedGame)
             } else {
-              upcomingGames.push(formattedGame)
+              upcomingGames.push(normalizedGame)
             }
           })
         } catch (error) {
@@ -376,28 +464,45 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         const events = await sportsDBClient.getEventsByDate(today, sport)
         
         events.forEach(event => {
+          const homeTeam = {
+            name: event.strHomeTeam,
+            logo_url: null,
+            abbreviation: null
+          }
+          
+          const awayTeam = {
+            name: event.strAwayTeam,
+            logo_url: null,
+            abbreviation: null
+          }
+          
           const formattedGame = {
-            id: event.idEvent,
-            homeTeam: event.strHomeTeam,
-            awayTeam: event.strAwayTeam,
-            homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : null,
-            awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : null,
+            id: `tsdb_${event.idEvent}`,
+            home_team_id: `tsdb_home_${event.idEvent}`,
+            away_team_id: `tsdb_away_${event.idEvent}`,
+            game_date: event.dateEvent,
+            season: new Date().getFullYear().toString(),
+            home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
+            away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
             status: event.strStatus?.toLowerCase().includes('live') ? 'live' : 
                    event.strStatus?.toLowerCase().includes('finished') ? 'finished' : 'scheduled',
             period: null,
-            timeRemaining: event.strTime,
-            date: event.dateEvent,
+            time_remaining: event.strTime,
             league: event.strLeague,
-            venue: event.strVenue,
-            dataSource: "TheSportsDB"
+            sport: sport,
+            home_team: homeTeam,
+            away_team: awayTeam
           }
 
-          if (formattedGame.status === 'live') {
-            liveGames.push(formattedGame)
-          } else if (formattedGame.status === 'finished') {
-            recentGames.push(formattedGame)
+          // Normalize the game data
+          const normalizedGame = normalizeGameData(formattedGame, sport, event.strLeague)
+
+          if (normalizedGame.status === 'live') {
+            liveGames.push(normalizedGame)
+          } else if (normalizedGame.status === 'finished') {
+            recentGames.push(normalizedGame)
           } else {
-            upcomingGames.push(formattedGame)
+            upcomingGames.push(normalizedGame)
           }
         })
       } catch (error) {

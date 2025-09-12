@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,7 @@ import {
 import { simpleApiClient, type Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { TeamLogo } from "@/components/ui/team-logo"
+import { normalizeTeamData, deduplicateTeams } from "@/lib/utils/data-utils"
 
 type TeamData = Team
 
@@ -33,7 +34,6 @@ interface TeamsListProps {
 
 export function TeamsList({ sport, className = "" }: TeamsListProps) {
   const [teams, setTeams] = useState<TeamData[]>([])
-  const [filteredTeams, setFilteredTeams] = useState<TeamData[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -44,15 +44,15 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
     loadTeams()
   }, [sport])
 
-  useEffect(() => {
-    filterAndSortTeams()
-  }, [teams, searchTerm, leagueFilter, sortBy])
-
   const loadTeams = async () => {
     try {
       setLoading(true)
       const sportTeams = await simpleApiClient.getTeams({ sport })
-      setTeams(sportTeams)
+      // Normalize team data to ensure consistency
+      const normalizedTeams = sportTeams.map(team => normalizeTeamData(team, sport))
+      // Deduplicate teams
+      const uniqueTeams = deduplicateTeams(normalizedTeams)
+      setTeams(uniqueTeams)
     } catch (error) {
       console.error('Error loading teams:', error)
       setTeams([])
@@ -67,7 +67,8 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
     setRefreshing(false)
   }
 
-  const filterAndSortTeams = () => {
+  // Memoize filtered and sorted teams to improve performance
+  const filteredAndSortedTeams = useMemo(() => {
     let filtered = [...teams]
 
     // Search filter
@@ -97,21 +98,20 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
       }
     })
 
-    setFilteredTeams(filtered)
-  }
+    return filtered
+  }, [teams, searchTerm, leagueFilter, sortBy])
 
-  const getUniqueLeagues = () => {
+  // Memoize unique leagues to improve performance
+  const uniqueLeagues = useMemo(() => {
     const leagues = Array.from(new Set(teams.map(team => team.league)))
     return leagues.sort()
-  }
+  }, [teams])
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
 
   if (loading) {
     return <TeamsListSkeleton />
   }
-
-  const uniqueLeagues = getUniqueLeagues()
 
   return (
     <Card className={className}>
@@ -179,9 +179,9 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
       <CardContent>
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-muted-foreground">
-            Showing {filteredTeams.length} {filteredTeams.length === 1 ? 'team' : 'teams'}
+            Showing {filteredAndSortedTeams.length} {filteredAndSortedTeams.length === 1 ? 'team' : 'teams'}
           </div>
-          {filteredTeams.length > teams.length * 0.5 && (
+          {filteredAndSortedTeams.length > teams.length * 0.5 && (
             <Badge variant="outline">
               <Star className="h-3 w-3 mr-1" />
               Most active
@@ -189,7 +189,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
           )}
         </div>
 
-        {filteredTeams.length === 0 ? (
+        {filteredAndSortedTeams.length === 0 ? (
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-lg font-medium text-muted-foreground">No teams found</p>
@@ -199,16 +199,16 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTeams.slice(0, 50).map((team) => (
+            {filteredAndSortedTeams.slice(0, 50).map((team) => (
               <TeamCard key={team.id} team={team} sport={sport} />
             ))}
           </div>
         )}
 
-        {filteredTeams.length > 50 && (
+        {filteredAndSortedTeams.length > 50 && (
           <div className="text-center mt-6">
             <Button variant="outline">
-              Load More Teams ({filteredTeams.length - 50} remaining)
+              Load More Teams ({filteredAndSortedTeams.length - 50} remaining)
             </Button>
           </div>
         )}
@@ -262,12 +262,18 @@ function TeamCard({ team, sport }: TeamCardProps) {
           <div className="space-y-2 text-xs">
             <div className="flex items-center gap-2">
               <MapPin className="h-3 w-3 text-muted-foreground" />
-              <span>{team.city || 'Unknown'}</span>
+              <span>{team.city || 'Location N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Trophy className="h-3 w-3 text-muted-foreground" />
               <span>{team.league}</span>
             </div>
+            {team.founded && (
+              <div className="flex items-center gap-2">
+                <Star className="h-3 w-3 text-muted-foreground" />
+                <span>Founded: {team.founded}</span>
+              </div>
+            )}
           </div>
 
           {/* Stats/Highlights */}

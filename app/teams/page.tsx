@@ -12,7 +12,7 @@ import { Progress } from "@/components/ui/progress"
 import { Users, Search, Filter, Trophy, TrendingUp, Target, Calendar, MapPin, RefreshCw } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
 import { apiClient, type Team } from "@/lib/api-client"
-import TeamsList from "@/components/categories/sports/teams-list"
+import { TeamsList } from "@/components/sports/teams-list"
 import StandingsTable from "@/components/categories/sports/standings-table"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
@@ -196,106 +196,12 @@ export default function TeamsPage() {
 
 // Teams Overview Section
 function TeamsOverviewSection({ selectedSport }: { selectedSport: SupportedSport | null }) {
-  const [teams, setTeams] = useState<Team[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (selectedSport) {
-      fetchTeams()
-    }
-  }, [selectedSport])
-
-  async function fetchTeams() {
-    if (!selectedSport) return
-    
-    try {
-      setLoading(true)
-      const teamsData = await apiClient.getTeams({
-        sport: selectedSport
-      })
-      setTeams(teamsData)
-    } catch (error) {
-      console.error("Error fetching teams:", error)
-      setTeams([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <TeamsOverviewSkeleton />
-  }
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Team Overview</h2>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary">{teams.length} Teams</Badge>
-          <Button variant="ghost" size="sm" onClick={fetchTeams} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
       </div>
-
-      {teams.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Teams Found</h3>
-            <p className="text-muted-foreground">No teams available at the moment</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {teams.map((team) => (
-            <Card key={team.id} className="card-hover-enhanced">
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <TeamLogo teamName={team.name} alt={team.abbreviation || team.name} width={48} height={48} className="rounded-full" />
-                    <div>
-                      <CardTitle className="text-lg">{team.name}</CardTitle>
-                      <p className="text-sm text-muted-foreground">{team.city || 'Unknown City'}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline">{team.league}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-muted-foreground">League</div>
-                    <div className="font-semibold">{team.league}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground">Sport</div>
-                    <div className="font-semibold capitalize">{team.sport}</div>
-                  </div>
-                </div>
-
-                {/* Abbreviation */}
-                {team.abbreviation && (
-                  <div className="text-center p-3 bg-muted/50 rounded-lg">
-                    <div className="text-2xl font-bold text-primary">{team.abbreviation}</div>
-                    <div className="text-xs text-muted-foreground">Abbreviation</div>
-                  </div>
-                )}
-
-                {/* Created Date */}
-                <div className="text-xs text-muted-foreground pt-2 border-t">
-                  Added: {new Date(team.created_at).toLocaleDateString()}
-                </div>
-
-                <Button variant="outline" size="sm" className="w-full">
-                  View Details
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      {selectedSport && <TeamsList sport={selectedSport} />}
     </div>
   )
 }

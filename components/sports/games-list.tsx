@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -26,6 +26,7 @@ import { simpleApiClient, type Game } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { TeamLogo } from "@/components/ui/team-logo"
 import { cn } from "@/lib/utils"
+import { normalizeGameData, deduplicateGames, isGameActuallyLive } from "@/lib/utils/data-utils"
 
 type GameData = Game
 
@@ -36,7 +37,6 @@ interface GamesListProps {
 
 export function GamesList({ sport, className = "" }: GamesListProps) {
   const [games, setGames] = useState<GameData[]>([])
-  const [filteredGames, setFilteredGames] = useState<GameData[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
@@ -48,34 +48,34 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     loadGames()
   }, [sport])
 
-  useEffect(() => {
-    filterGames()
-  }, [games, searchTerm, statusFilter, dateFilter])
-
   const loadGames = async () => {
     try {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
       const params: any = { sport, date: dateFilter || today, external: true, real: true }
 
+      // Use Promise.all for parallel data fetching
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        simpleApiClient.getGames({ sport, status: 'in_progress', external: true }),
-        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20, external: true }),
-        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10, external: true })
+        simpleApiClient.getGames({ sport, status: 'in_progress', external: true }).catch(() => []),
+        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20, external: true }).catch(() => []),
+        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10, external: true }).catch(() => [])
       ])
 
-      // Filter out games that don't meet live criteria
-      const trulyLiveGames = liveGames.filter(game => 
+      // Normalize and filter out games that don't meet live criteria
+      const normalizedLiveGames = liveGames.map(game => normalizeGameData(game, sport))
+      const trulyLiveGames = normalizedLiveGames.filter(game => 
         isGameActuallyLive(game)
       )
 
+      // Normalize other games
+      const normalizedScheduledGames = scheduledGames.map(game => normalizeGameData(game, sport))
+      const normalizedFinishedGames = finishedGames.map(game => normalizeGameData(game, sport))
+
       // Combine all games and remove duplicates based on game ID
-      const allGames = [...trulyLiveGames, ...scheduledGames, ...finishedGames]
+      const allGames = [...trulyLiveGames, ...normalizedScheduledGames, ...normalizedFinishedGames]
       
       // Remove duplicates by game ID while preserving the first occurrence
-      const uniqueGames = allGames.filter((game, index, array) => 
-        array.findIndex(g => g.id === game.id) === index
-      )
+      const uniqueGames = deduplicateGames(allGames)
       
       setGames(uniqueGames)
     } catch (error) {
@@ -91,7 +91,8 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     setRefreshing(false)
   }
 
-  const filterGames = () => {
+  // Memoize filtered games to improve performance
+  const filteredGames = useMemo(() => {
     let filtered = [...games]
 
     // Search filter
@@ -108,22 +109,30 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
       filtered = filtered.filter(game => game.status === statusFilter)
     }
 
-    setFilteredGames(filtered)
-  }
+    return filtered
+  }, [games, searchTerm, statusFilter])
 
-  const getGamesByStatus = (status: 'in_progress' | 'scheduled' | 'completed') => {
-    return filteredGames.filter(game => game.status === status)
-  }
+  // Memoize games by status to improve performance
+  const liveGames = useMemo(() => 
+    filteredGames.filter(game => game.status === 'in_progress'), 
+    [filteredGames]
+  )
+  
+  const scheduledGames = useMemo(() => 
+    filteredGames.filter(game => game.status === 'scheduled'), 
+    [filteredGames]
+  )
+  
+  const finishedGames = useMemo(() => 
+    filteredGames.filter(game => game.status === 'completed'), 
+    [filteredGames]
+  )
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
 
   if (loading) {
     return <GamesListSkeleton />
   }
-
-  const liveGames = getGamesByStatus('in_progress')
-  const scheduledGames = getGamesByStatus('scheduled')
-  const finishedGames = getGamesByStatus('completed')
 
   return (
     <Card className={className}>
@@ -294,26 +303,6 @@ interface GameCardProps {
   sport: SupportedSport
 }
 
-// Helper function to determine if a game is actually live
-function isGameActuallyLive(game: GameData): boolean {
-  const status = game.status?.toLowerCase() || ''
-  
-  // Must have live status AND actual scores (not 0-0)
-  const hasLiveStatus = status === 'live' || status === 'in_progress' || status === 'in progress'
-  const hasRealScores = (game.home_score !== null && game.home_score !== undefined && game.away_score !== null && game.away_score !== undefined) && 
-                       (game.home_score > 0 || game.away_score > 0)
-  
-  // Additional checks for various live statuses
-  const hasLiveIndicators = status.includes('live') || 
-                           status.includes('progress') ||
-                           status.includes('quarter') ||
-                           status.includes('period') ||
-                           status.includes('inning') ||
-                           status.includes('half')
-  
-  return hasLiveStatus && (hasRealScores || hasLiveIndicators)
-}
-
 function GameCard({ game, sport }: GameCardProps) {
   const sportConfig = SportConfigManager.getSportConfig(sport)
   const isLive = isGameActuallyLive(game)
@@ -371,12 +360,12 @@ function GameCard({ game, sport }: GameCardProps) {
               <div className="flex items-center gap-3">
                 <TeamLogo
                   logoUrl={game.away_team?.logo_url}
-                  teamName={game.away_team?.name || 'Away Team'}
+                  teamName={game.away_team?.name || 'Visiting Team'}
                   abbreviation={game.away_team?.abbreviation}
                   size="md"
                 />
                 <div>
-                  <span className="font-semibold text-base">{game.away_team?.name}</span>
+                  <span className="font-semibold text-base">{game.away_team?.name || 'Visiting Team'}</span>
                   <div className="text-xs text-muted-foreground">Away</div>
                 </div>
               </div>
@@ -402,7 +391,7 @@ function GameCard({ game, sport }: GameCardProps) {
                   size="md"
                 />
                 <div>
-                  <span className="font-semibold text-base">{game.home_team?.name}</span>
+                  <span className="font-semibold text-base">{game.home_team?.name || 'Home Team'}</span>
                   <div className="text-xs text-muted-foreground">Home</div>
                 </div>
               </div>
@@ -431,12 +420,6 @@ function GameCard({ game, sport }: GameCardProps) {
                     <Badge variant="outline" className="text-xs px-1 py-0">
                       {game.time_remaining}
                     </Badge>
-                  </>
-                )}
-                {isLive && game.time_remaining && (
-                  <>
-                    <span>•</span>
-                    <span className="font-mono text-green-600">{game.time_remaining}</span>
                   </>
                 )}
               </div>

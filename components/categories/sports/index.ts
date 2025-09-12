@@ -1,6 +1,4 @@
 // Sports Category Components
-export { default as GamesList } from './games-list'
-export { default as TeamsList } from './teams-list'
 export { default as SportSelector } from './sport-selector'
 export { default as LiveUpdates } from './live-updates'
 export { default as StandingsTable } from './standings-table'
