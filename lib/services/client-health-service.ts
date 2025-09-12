@@ -129,7 +129,7 @@ class ClientHealthService {
    */
   isServiceHealthy(service: string): boolean {
     const health = this.healthCache.get(service)
-    return health?.status === 'healthy' ?? false
+    return health?.status === 'healthy'
   }
 
   /**

@@ -88,7 +88,7 @@ export default function AnalyticsDashboard({
   const fetchAnalyticsOverview = async () => {
     try {
       setLoading(true)
-      const data = await simpleApiClient.getAnalyticsStats()
+      const data = await simpleApiClient.getAnalyticsStats(selectedSport)
       
       // Transform the API response to match our interface
       setOverview({

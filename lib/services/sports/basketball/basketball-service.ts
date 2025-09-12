@@ -4,8 +4,9 @@
  */
 
 import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
-import { ballDontLieClient, sportsDBClient, oddsApiClient } from '../../../sports-apis'
+import { ballDontLieClient, sportsDBClient, oddsApiClient, apiSportsClient } from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
+import { SportConfigManager } from '../../core/sport-config'
 
 export class BasketballService extends SportSpecificService {
   constructor(league: string = 'NBA') {
@@ -32,41 +33,106 @@ export class BasketballService extends SportSpecificService {
 
   private async fetchGames(params: any): Promise<GameData[]> {
     const games: GameData[] = []
+    const date = params.date || new Date().toISOString().split('T')[0]
 
     try {
-      // Try BallDontLie first (NBA-specific, high quality)
+      // Try APIs in sequence to avoid rate limits
+      // Start with the most reliable API first
       if (this.hasBallDontLieKey()) {
         try {
-          const nbaGames = await ballDontLieClient.getGames({
-            start_date: params.date || new Date().toISOString().split('T')[0],
-            end_date: params.date || new Date().toISOString().split('T')[0]
-          })
-          if (nbaGames && nbaGames.data && Array.isArray(nbaGames.data)) {
-            games.push(...nbaGames.data.map(game => this.mapGameData(game)))
+          const ballDontLieGames = await this.fetchGamesFromBallDontLie(date)
+          if (ballDontLieGames.length > 0) {
+            games.push(...ballDontLieGames)
+            // If we got good data from BallDontLie, return it (basketball-specific)
+            return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('BallDontLie API error:', error)
+          console.warn('BallDontLie failed, trying other APIs:', error instanceof Error ? error.message : 'Unknown error')
         }
       }
 
-      // Fallback to SportsDB for broader coverage
-      try {
-        const events = await sportsDBClient.getEventsByDate(
-          params.date || new Date().toISOString().split('T')[0],
-          'basketball'
-        )
-        if (events && Array.isArray(events)) {
-          games.push(...events.map(event => this.mapGameData(event)))
+      // Try SportsDB as fallback (more reliable than RapidAPI)
+      if (this.hasSportsDBKey()) {
+        try {
+          const sportsDBGames = await this.fetchGamesFromSportsDB(date)
+          if (sportsDBGames.length > 0) {
+            games.push(...sportsDBGames)
+            return this.removeDuplicateGames(games)
+          }
+        } catch (error) {
+          console.warn('SportsDB failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
         }
-      } catch (error) {
-        console.warn('SportsDB API error:', error)
       }
 
-      return games
+      // Only try RapidAPI if other APIs failed and we haven't hit rate limits recently
+      if (apiSportsClient.isConfigured && !this.hasRecentRapidAPIError()) {
+        try {
+          const rapidAPIGames = await this.fetchGamesFromRapidAPI(date)
+          if (rapidAPIGames.length > 0) {
+            games.push(...rapidAPIGames)
+          }
+        } catch (error) {
+          console.warn('RapidAPI failed:', error instanceof Error ? error.message : 'Unknown error')
+          this.recordRapidAPIError()
+        }
+      }
+
+      return this.removeDuplicateGames(games)
     } catch (error) {
       console.error('Error fetching basketball games:', error)
       return []
     }
+  }
+
+  private async fetchGamesFromBallDontLie(date: string): Promise<GameData[]> {
+    if (!this.hasBallDontLieKey()) return []
+    
+    try {
+      const nbaGames = await ballDontLieClient.getGames({
+        start_date: date,
+        end_date: date
+      })
+      if (nbaGames?.data && Array.isArray(nbaGames.data)) {
+        return nbaGames.data.map(game => this.mapGameData(game))
+      }
+    } catch (error) {
+      console.warn('BallDontLie API error:', error)
+    }
+    return []
+  }
+
+  private async fetchGamesFromRapidAPI(date: string): Promise<GameData[]> {
+    if (!apiSportsClient.isConfigured) return []
+    
+    try {
+      // Get NBA league ID (39 is NBA in RapidAPI)
+      const fixtures = await apiSportsClient.getFixtures({
+        league: 39, // NBA
+        season: new Date().getFullYear(),
+        date: date
+      })
+      if (fixtures?.response && Array.isArray(fixtures.response)) {
+        return fixtures.response.map((fixture: any) => this.mapRapidAPIGameData(fixture))
+      }
+    } catch (error) {
+      // Log the error but don't throw - let other APIs handle the request
+      console.warn('RapidAPI error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+    }
+    return []
+  }
+
+  private async fetchGamesFromSportsDB(date: string): Promise<GameData[]> {
+    if (!this.hasSportsDBKey()) return []
+    
+    try {
+      const events = await sportsDBClient.getEventsByDate(date, this.sport)
+      if (events && Array.isArray(events)) {
+        return events.map(event => this.mapGameData(event))
+      }
+    } catch (error) {
+      console.warn('SportsDB API error:', error)
+    }
+    return []
   }
 
   async getTeams(params: {
@@ -83,33 +149,157 @@ export class BasketballService extends SportSpecificService {
     const teams: TeamData[] = []
 
     try {
-      // Try BallDontLie for NBA teams
+      // Try APIs in sequence to avoid rate limits
+      // Start with the most reliable API first
       if (this.hasBallDontLieKey()) {
         try {
-          const nbaTeams = await ballDontLieClient.getTeams()
-          if (nbaTeams && nbaTeams.data && Array.isArray(nbaTeams.data)) {
-            teams.push(...nbaTeams.data.map(team => this.mapTeamData(team)))
+          const ballDontLieTeams = await this.fetchTeamsFromBallDontLie()
+          if (ballDontLieTeams.length > 0) {
+            teams.push(...ballDontLieTeams)
+            // If we got good data from BallDontLie, return it (basketball-specific)
+            return this.removeDuplicateTeams(teams)
           }
         } catch (error) {
-          console.warn('BallDontLie teams error:', error)
+          console.warn('BallDontLie teams failed, trying other APIs:', error instanceof Error ? error.message : 'Unknown error')
         }
       }
 
-      // Fallback to SportsDB
-      try {
-        const sportsDBTeams = await sportsDBClient.searchTeams(params.search || 'basketball')
-        if (sportsDBTeams && Array.isArray(sportsDBTeams)) {
-          teams.push(...sportsDBTeams.map(team => this.mapTeamData(team)))
+      // Try SportsDB as fallback (more reliable than RapidAPI)
+      if (this.hasSportsDBKey()) {
+        try {
+          const sportsDBTeams = await this.fetchTeamsFromSportsDB(params.search)
+          if (sportsDBTeams.length > 0) {
+            teams.push(...sportsDBTeams)
+            return this.removeDuplicateTeams(teams)
+          }
+        } catch (error) {
+          console.warn('SportsDB teams failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
         }
-      } catch (error) {
-        console.warn('SportsDB teams error:', error)
       }
 
-      return teams
+      // Only try RapidAPI if other APIs failed and we haven't hit rate limits recently
+      if (apiSportsClient.isConfigured && !this.hasRecentRapidAPIError()) {
+        try {
+          const rapidAPITeams = await this.fetchTeamsFromRapidAPI()
+          if (rapidAPITeams.length > 0) {
+            teams.push(...rapidAPITeams)
+          }
+        } catch (error) {
+          console.warn('RapidAPI teams failed:', error instanceof Error ? error.message : 'Unknown error')
+          this.recordRapidAPIError()
+        }
+      }
+
+      return this.removeDuplicateTeams(teams)
     } catch (error) {
       console.error('Error fetching basketball teams:', error)
       return []
     }
+  }
+
+  private async fetchTeamsFromBallDontLie(): Promise<TeamData[]> {
+    if (!this.hasBallDontLieKey()) return []
+    
+    try {
+      const nbaTeams = await ballDontLieClient.getTeams()
+      if (nbaTeams?.data && Array.isArray(nbaTeams.data)) {
+        return nbaTeams.data.map(team => this.mapTeamData(team))
+      }
+    } catch (error) {
+      console.warn('BallDontLie teams error:', error)
+    }
+    return []
+  }
+
+  private async fetchTeamsFromRapidAPI(): Promise<TeamData[]> {
+    if (!apiSportsClient.isConfigured) return []
+    
+    try {
+      // Get NBA teams from RapidAPI
+      const teams = await apiSportsClient.getTeams(39, new Date().getFullYear()) // NBA league ID
+      if (teams?.response && Array.isArray(teams.response)) {
+        return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+      }
+    } catch (error) {
+      // Log the error but don't throw - let other APIs handle the request
+      console.warn('RapidAPI teams error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+    }
+    return []
+  }
+
+  private async fetchTeamsFromSportsDB(search?: string): Promise<TeamData[]> {
+    if (!this.hasSportsDBKey()) return []
+    
+    try {
+      const sportsDBTeams = await sportsDBClient.searchTeams(search || this.sport)
+      if (sportsDBTeams && Array.isArray(sportsDBTeams)) {
+        return sportsDBTeams.map(team => this.mapTeamData(team))
+      }
+    } catch (error) {
+      console.warn('SportsDB teams error:', error)
+    }
+    return []
+  }
+
+  private removeDuplicateTeams(teams: TeamData[]): TeamData[] {
+    const seen = new Set<string>()
+    return teams.filter(team => {
+      const key = team.name.toLowerCase()
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }
+
+  private mapRapidAPITeamData(team: any): TeamData {
+    return {
+      id: team.team?.id?.toString() || '',
+      sport: this.sport,
+      league: this.league,
+      name: team.team?.name || '',
+      city: this.extractCityFromName(team.team?.name),
+      abbreviation: this.getTeamAbbreviation(team.team?.name),
+      logo: team.team?.logo || '',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+
+
+  private extractCityFromName(teamName: string): string {
+    // Extract city from team name (e.g., "Los Angeles Lakers" -> "Los Angeles")
+    const parts = teamName.split(' ')
+    if (parts.length > 1) {
+      // Remove common team suffixes
+      const suffixes = ['Lakers', 'Celtics', 'Warriors', 'Heat', 'Bulls', 'Knicks', '76ers', 'Nets', 'Hawks', 'Hornets', 'Cavaliers', 'Mavericks', 'Nuggets', 'Pistons', 'Rockets', 'Pacers', 'Clippers', 'Grizzlies', 'Bucks', 'Timberwolves', 'Pelicans', 'Thunder', 'Magic', 'Suns', 'Trail Blazers', 'Kings', 'Spurs', 'Raptors', 'Jazz', 'Wizards']
+      
+      for (let i = parts.length - 1; i >= 0; i--) {
+        if (suffixes.includes(parts[i])) {
+          return parts.slice(0, i).join(' ')
+        }
+      }
+    }
+    return teamName
+  }
+
+  private hasSportsDBKey(): boolean {
+    return !!process.env.NEXT_PUBLIC_SPORTSDB_API_KEY
+  }
+
+  private hasBallDontLieKey(): boolean {
+    return !!process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY
+  }
+
+  private rapidAPIErrorTime: number = 0
+  private readonly RAPIDAPI_ERROR_COOLDOWN = 5 * 60 * 1000 // 5 minutes
+
+  private hasRecentRapidAPIError(): boolean {
+    return Date.now() - this.rapidAPIErrorTime < this.RAPIDAPI_ERROR_COOLDOWN
+  }
+
+  private recordRapidAPIError(): void {
+    this.rapidAPIErrorTime = Date.now()
   }
 
   async getPlayers(params: {
@@ -123,18 +313,61 @@ export class BasketballService extends SportSpecificService {
   }
 
   private async fetchPlayers(params: any): Promise<PlayerData[]> {
+    const players: PlayerData[] = []
+    const dataSource = await this.getDataSource()
+
     try {
-      if (this.hasBallDontLieKey()) {
-        const players = await ballDontLieClient.getPlayers({
-          search: params.search
-        })
-        
-        if (players && players.data && Array.isArray(players.data)) {
-          return players.data.map(player => this.mapPlayerData(player))
+      // Use configured data source
+      if (dataSource === 'balldontlie' && this.hasBallDontLieKey()) {
+        try {
+          const nbaPlayers = await ballDontLieClient.getPlayers({
+            search: params.search
+          })
+          
+          if (nbaPlayers && nbaPlayers.data && Array.isArray(nbaPlayers.data)) {
+            players.push(...nbaPlayers.data.map(player => this.mapPlayerData(player)))
+          }
+        } catch (error) {
+          console.warn('BallDontLie players error:', error)
+        }
+      } else if (dataSource === 'sportsdb' && this.hasSportsDBKey()) {
+        try {
+          const sportsDBPlayers = await sportsDBClient.getPlayersByTeam('')
+          if (sportsDBPlayers && Array.isArray(sportsDBPlayers)) {
+            players.push(...sportsDBPlayers.map(player => this.mapPlayerData(player)))
+          }
+        } catch (error) {
+          console.warn('SportsDB players error:', error)
+        }
+      } else {
+        // Fallback to available APIs
+        if (this.hasBallDontLieKey()) {
+          try {
+            const nbaPlayers = await ballDontLieClient.getPlayers({
+              search: params.search
+            })
+            
+            if (nbaPlayers && nbaPlayers.data && Array.isArray(nbaPlayers.data)) {
+              players.push(...nbaPlayers.data.map(player => this.mapPlayerData(player)))
+            }
+          } catch (error) {
+            console.warn('BallDontLie players fallback error:', error)
+          }
+        }
+
+        if (this.hasSportsDBKey()) {
+          try {
+            const sportsDBPlayers = await sportsDBClient.getPlayersByTeam('')
+            if (sportsDBPlayers && Array.isArray(sportsDBPlayers)) {
+              players.push(...sportsDBPlayers.map(player => this.mapPlayerData(player)))
+            }
+          } catch (error) {
+            console.warn('SportsDB players fallback error:', error)
+          }
         }
       }
-      
-      return []
+
+      return players
     } catch (error) {
       console.error('Error fetching basketball players:', error)
       return []
@@ -201,6 +434,85 @@ export class BasketballService extends SportSpecificService {
       console.error('Error fetching basketball odds:', error)
       return []
     }
+  }
+
+  private removeDuplicateGames(games: GameData[]): GameData[] {
+    const seen = new Set<string>()
+    return games.filter(game => {
+      const key = `${game.homeTeam}-${game.awayTeam}-${game.date}`
+      if (seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
+  }
+
+  private mapRapidAPIGameData(fixture: any): GameData {
+    return {
+      id: fixture.fixture?.id?.toString() || '',
+      sport: this.sport,
+      league: this.league,
+      homeTeam: fixture.teams?.home?.name || '',
+      awayTeam: fixture.teams?.away?.name || '',
+      date: fixture.fixture?.date || new Date().toISOString(),
+      status: this.mapRapidAPIStatus(fixture.fixture?.status?.short),
+      homeScore: fixture.goals?.home || null,
+      awayScore: fixture.goals?.away || null,
+      venue: fixture.fixture?.venue?.name || '',
+      lastUpdated: new Date().toISOString()
+    }
+  }
+
+  private getTeamAbbreviation(teamName: string): string {
+    // Map common team names to abbreviations
+    const abbreviations: Record<string, string> = {
+      'Los Angeles Lakers': 'LAL',
+      'Boston Celtics': 'BOS',
+      'Golden State Warriors': 'GSW',
+      'Miami Heat': 'MIA',
+      'Chicago Bulls': 'CHI',
+      'New York Knicks': 'NYK',
+      'Philadelphia 76ers': 'PHI',
+      'Brooklyn Nets': 'BKN',
+      'Atlanta Hawks': 'ATL',
+      'Charlotte Hornets': 'CHA',
+      'Cleveland Cavaliers': 'CLE',
+      'Dallas Mavericks': 'DAL',
+      'Denver Nuggets': 'DEN',
+      'Detroit Pistons': 'DET',
+      'Houston Rockets': 'HOU',
+      'Indiana Pacers': 'IND',
+      'LA Clippers': 'LAC',
+      'Memphis Grizzlies': 'MEM',
+      'Milwaukee Bucks': 'MIL',
+      'Minnesota Timberwolves': 'MIN',
+      'New Orleans Pelicans': 'NOP',
+      'Oklahoma City Thunder': 'OKC',
+      'Orlando Magic': 'ORL',
+      'Phoenix Suns': 'PHX',
+      'Portland Trail Blazers': 'POR',
+      'Sacramento Kings': 'SAC',
+      'San Antonio Spurs': 'SAS',
+      'Toronto Raptors': 'TOR',
+      'Utah Jazz': 'UTA',
+      'Washington Wizards': 'WAS'
+    }
+    return abbreviations[teamName] || teamName.split(' ').map(word => word[0]).join('').toUpperCase()
+  }
+
+  private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> = {
+      'NS': 'scheduled',
+      'LIVE': 'live',
+      'FT': 'finished',
+      'HT': 'live',
+      '1H': 'live',
+      '2H': 'live',
+      'PST': 'postponed',
+      'CANC': 'cancelled'
+    }
+    return statusMap[status] || 'scheduled'
   }
 
   // Abstract method implementations
@@ -396,10 +708,9 @@ export class BasketballService extends SportSpecificService {
   }
 
   // Helper methods
-  private hasBallDontLieKey(): boolean {
-    const apiKey = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY
-    return !!(apiKey && 
-              apiKey !== '' && 
-              apiKey.length > 10)
+  private async getDataSource(): Promise<string> {
+    const config = await SportConfigManager.getSportConfigAsync(this.sport)
+    return config?.dataSource || 'sportsdb'
   }
+
 }

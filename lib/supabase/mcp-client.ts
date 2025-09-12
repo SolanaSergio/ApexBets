@@ -4,11 +4,12 @@
  */
 
 // Re-export MCP functions for use in client-side code
-export { mcp_supabase_execute_sql } from '@supabase/mcp-client'
-export { mcp_supabase_list_tables } from '@supabase/mcp-client'
-export { mcp_supabase_apply_migration } from '@supabase/mcp-client'
-export { mcp_supabase_get_project } from '@supabase/mcp-client'
-export { mcp_supabase_list_projects } from '@supabase/mcp-client'
+// Re-export MCP functions for use in client-side code
+// export { mcp_supabase_execute_sql } from '@supabase/mcp-client'
+// export { mcp_supabase_list_tables } from '@supabase/mcp-client'
+// export { mcp_supabase_apply_migration } from '@supabase/mcp-client'
+// export { mcp_supabase_get_project } from '@supabase/mcp-client'
+// export { mcp_supabase_list_projects } from '@supabase/mcp-client'
 
 // For now, we'll create a simple wrapper that uses the project ID from environment
 export async function executeSql(query: string) {

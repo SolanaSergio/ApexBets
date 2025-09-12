@@ -72,6 +72,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status")
     const teamId = searchParams.get("team_id")
     const search = searchParams.get("search")
+    const sport = searchParams.get("sport")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
 
     if (!supabase) {
@@ -97,6 +98,10 @@ export async function GET(request: NextRequest) {
 
     if (teamId) {
       query = query.or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+    }
+
+    if (sport) {
+      query = query.eq("sport", sport)
     }
 
     const { data: games, error } = await query.order("game_date", { ascending: false }).limit(limit)

@@ -54,7 +54,7 @@ export function UserAlerts() {
 
   async function fetchTeams() {
     try {
-      const teamsData = await apiClient.getTeams()
+      const teamsData = await simpleApiClient.getTeams()
       setTeams(teamsData)
     } catch (error) {
       console.error("Error fetching teams:", error)

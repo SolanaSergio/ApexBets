@@ -130,6 +130,20 @@ export interface AnalyticsStats {
   }
 }
 
+export interface Prediction {
+  id: string;
+  game_id: string;
+  prediction_type: string;
+  predicted_outcome: string;
+  confidence: number;
+  model_name: string;
+  is_correct?: boolean | null;
+  predicted_value: number;
+  created_at: string;
+  updated_at: string;
+  // Add other fields as they become apparent from usage
+}
+
 class SimpleApiClient {
   private baseUrl: string
   private cache: Map<string, { data: any; timestamp: number }> = new Map()
@@ -373,8 +387,9 @@ class SimpleApiClient {
   }
 
   // Analytics
-  async getAnalyticsStats(): Promise<AnalyticsStats> {
-    const response = await this.request<{ data: AnalyticsStats }>("/analytics/stats")
+  async getAnalyticsStats(sport?: string): Promise<AnalyticsStats> {
+    const url = sport ? `/analytics/stats?sport=${sport}` : "/analytics/stats"
+    const response = await this.request<{ data: AnalyticsStats }>(url)
     return response.data
   }
 

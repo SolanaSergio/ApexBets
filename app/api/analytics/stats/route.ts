@@ -9,8 +9,52 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league")
     const useExternalApi = searchParams.get("external") === "true"
     
+    // Fallback to Supabase for basic stats
+    const supabase = await createClient()
+
+    if (!supabase) {
+      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    }
+
+    // If no sport is provided, return aggregated stats for all sports
     if (!sport) {
-      return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
+      // Get counts for all sports
+      const { count: totalGames } = await supabase.from("games").select("*", { count: "exact", head: true })
+      const { count: totalPredictions } = await supabase.from("predictions").select("*", { count: "exact", head: true })
+      const { count: totalTeams } = await supabase.from("teams").select("*", { count: "exact", head: true })
+
+      // Get overall accuracy
+      const { data: accuracyData } = await supabase
+        .from("predictions")
+        .select("prediction_type, is_correct")
+        .not("is_correct", "is", null)
+      
+      let overallAccuracy = 0
+      if (accuracyData && accuracyData.length > 0) {
+        const correct = accuracyData.filter(p => p.is_correct).length
+        overallAccuracy = correct / accuracyData.length
+      }
+
+      return NextResponse.json({
+        data: {
+          total_games: totalGames || 0,
+          total_predictions: totalPredictions || 0,
+          total_teams: totalTeams || 0,
+          accuracy_rate: overallAccuracy,
+          recent_predictions: totalPredictions || 0,
+          recent_performance: {
+            accuracy_by_type: {},
+            daily_stats: []
+          }
+        },
+        meta: {
+          fromCache: false,
+          responseTime: 0,
+          source: "supabase",
+          sport: "all",
+          league: "all"
+        }
+      })
     }
     
     // Use external analytics service if requested
@@ -32,13 +76,6 @@ export async function GET(request: NextRequest) {
         console.error('Analytics service error:', error)
         return NextResponse.json({ error: "Analytics service unavailable" }, { status: 503 })
       }
-    }
-
-    // Fallback to Supabase for basic stats
-    const supabase = await createClient()
-
-    if (!supabase) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
     }
 
     // Build sport-specific queries

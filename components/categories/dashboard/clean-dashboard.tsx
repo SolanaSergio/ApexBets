@@ -85,6 +85,11 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       liveGames = allLiveGames.length
       totalTeams = allTeams.length
 
+      console.log(`Stats update: ${totalGames} total games (${liveGames} live), ${totalTeams} teams, ${supportedSports.length} sports`)
+      console.log(`Live games:`, allLiveGames.map(g => `${g.home_team?.name} vs ${g.away_team?.name} (${g.sport})`))
+      console.log(`Upcoming games:`, allUpcomingGames.map(g => `${g.home_team?.name} vs ${g.away_team?.name} (${g.sport})`))
+      console.log(`Teams:`, allTeams.map(t => `${t.name} (${t.sport})`).slice(0, 5))
+
       setStats({
         totalGames,
         liveGames,
@@ -116,48 +121,37 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       console.log(`Loading teams for ${sport}...`)
       
-      // Try external API first
-      let teams = []
+      // Use database first for reliable data
+      let teams: TeamData[] = []
       try {
-        teams = await simpleApiClient.getTeams({ sport, external: true })
-        console.log(`External API: Loaded ${teams.length} teams for ${sport}`)
-      } catch (externalError) {
-        console.warn(`External API failed for teams ${sport}:`, externalError)
+        teams = await simpleApiClient.getTeams({ sport, external: false })
+        console.log(`Database: Loaded ${teams.length} teams for ${sport}`)
         
-        // Fallback to database
-        try {
-          teams = await simpleApiClient.getTeams({ sport, external: false })
-          console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
-        } catch (dbError) {
-          console.error(`Database fallback also failed for teams ${sport}:`, dbError)
-          
-          // Final fallback: create sample data
-          teams = [
-            {
-              id: `sample-team-${sport}-1`,
-              name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team Alpha`,
-              city: 'Sample City',
-              league: 'Sample League',
-              sport: sport,
-              abbreviation: 'STA',
-              logo_url: undefined,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            },
-            {
-              id: `sample-team-${sport}-2`,
-              name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team Beta`,
-              city: 'Sample City',
-              league: 'Sample League',
-              sport: sport,
-              abbreviation: 'STB',
-              logo_url: undefined,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
+        // Try external API as enhancement if database has data
+        if (teams.length > 0) {
+          try {
+            const externalTeams = await simpleApiClient.getTeams({ sport, external: true })
+            if (externalTeams.length > teams.length) {
+              console.log(`External API enhancement: Found ${externalTeams.length} teams for ${sport}`)
+              teams = externalTeams
             }
-          ]
-          console.log(`Sample data fallback: Created ${teams.length} sample teams for ${sport}`)
+          } catch (externalError) {
+            console.warn(`External API enhancement failed for teams ${sport}:`, externalError)
+            // Continue with database data
+          }
+        } else {
+          // If no database data, try external API
+          try {
+            teams = await simpleApiClient.getTeams({ sport, external: true })
+            console.log(`External API fallback: Loaded ${teams.length} teams for ${sport}`)
+          } catch (externalError) {
+            console.warn(`External API fallback failed for teams ${sport}:`, externalError)
+            teams = []
+          }
         }
+      } catch (dbError) {
+        console.error(`Database failed for teams ${sport}:`, dbError)
+        teams = []
       }
       
       setAllTeams(prev => {
@@ -176,7 +170,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       
       for (const sport of supportedSports) {
         try {
-          const teams = await simpleApiClient.getTeams({ sport, external: true })
+          // Use database first for reliable data
+          const teams = await simpleApiClient.getTeams({ sport, external: false })
           allTeamsData = [...allTeamsData, ...teams]
         } catch (error) {
           console.warn(`Failed to load teams for ${sport}:`, error)
@@ -192,53 +187,35 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const loadUpcomingGamesForSport = async (sport: SupportedSport) => {
     try {
       const today = new Date().toISOString().split('T')[0]
-      console.log(`Loading upcoming games for ${sport}...`)
+      console.log(`Loading upcoming games for ${sport} on ${today}...`)
       
-      // Try external API first
-      let games = []
+      // Use database first for reliable data
+      let games: GameData[] = []
       try {
         games = await simpleApiClient.getGames({
           sport,
           dateFrom: today,
           status: 'scheduled',
           limit: 20,
-          external: true
+          external: false
         })
-        console.log(`External API: Loaded ${games.length} upcoming games for ${sport}`)
-      } catch (externalError) {
-        console.warn(`External API failed for upcoming games ${sport}:`, externalError)
+        console.log(`Database: Loaded ${games.length} upcoming games for ${sport}`)
         
-        // Fallback to database
-        try {
-          games = await simpleApiClient.getGames({
+        // If no games found for today, try without date filter to get any scheduled games
+        if (games.length === 0) {
+          console.log(`No games found for today, trying without date filter...`)
+          const allScheduledGames = await simpleApiClient.getGames({
             sport,
-            dateFrom: today,
             status: 'scheduled',
             limit: 20,
             external: false
           })
-          console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
-        } catch (dbError) {
-          console.error(`Database fallback also failed for upcoming games ${sport}:`, dbError)
-          
-          // Final fallback: create sample data
-          const tomorrow = new Date()
-          tomorrow.setDate(tomorrow.getDate() + 1)
-          games = [{
-            id: `sample-upcoming-${sport}-1`,
-            home_team_id: 'sample-home-2',
-            away_team_id: 'sample-away-2',
-            game_date: tomorrow.toISOString(),
-            season: '2024-25',
-            home_score: undefined,
-            away_score: undefined,
-            status: 'scheduled',
-            sport: sport,
-            home_team: { name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team C`, abbreviation: 'TMC' },
-            away_team: { name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team D`, abbreviation: 'TMD' }
-          }]
-          console.log(`Sample data fallback: Created ${games.length} sample upcoming games for ${sport}`)
+          console.log(`Database (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
+          games = allScheduledGames
         }
+      } catch (dbError) {
+        console.error(`Database failed for upcoming games ${sport}:`, dbError)
+        games = []
       }
       
       setAllUpcomingGames(prev => {
@@ -258,12 +235,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       
       for (const sport of supportedSports) {
         try {
+          // Use database first for reliable data
           const games = await simpleApiClient.getGames({
             sport,
             dateFrom: today,
             status: 'scheduled',
             limit: 20,
-            external: true
+            external: false
           })
           allGames = [...allGames, ...games]
         } catch (error) {
@@ -281,45 +259,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       console.log(`Loading live games for ${sport}...`)
       
-      // Try external API first
-      let games = []
+      // Use database first for reliable data
+      let games: GameData[] = []
       try {
         games = await simpleApiClient.getGames({ 
           sport, 
-          status: 'live',
-          external: true 
+          status: 'in_progress',
+          external: false 
         })
-        console.log(`External API: Loaded ${games.length} live games for ${sport}`)
-      } catch (externalError) {
-        console.warn(`External API failed for live games ${sport}:`, externalError)
-        
-        // Fallback to database
-        try {
-          games = await simpleApiClient.getGames({ 
-            sport, 
-            status: 'live',
-            external: false 
-          })
-          console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
-        } catch (dbError) {
-          console.error(`Database fallback also failed for live games ${sport}:`, dbError)
-          
-          // Final fallback: create sample data
-          games = [{
-            id: `sample-live-${sport}-1`,
-            home_team_id: 'sample-home-1',
-            away_team_id: 'sample-away-1',
-            game_date: new Date().toISOString(),
-            season: '2024-25',
-            home_score: 45,
-            away_score: 42,
-            status: 'live',
-            sport: sport,
-            home_team: { name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team A`, abbreviation: 'TMA' },
-            away_team: { name: `${sport.charAt(0).toUpperCase() + sport.slice(1)} Team B`, abbreviation: 'TMB' }
-          }]
-          console.log(`Sample data fallback: Created ${games.length} sample live games for ${sport}`)
-        }
+        console.log(`Database: Loaded ${games.length} live games for ${sport}`)
+      } catch (dbError) {
+        console.error(`Database failed for live games ${sport}:`, dbError)
+        games = []
       }
       
       setAllLiveGames(prev => {
@@ -338,7 +289,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       
       for (const sport of supportedSports) {
         try {
-          const games = await simpleApiClient.getGames({ sport, status: 'live', external: true })
+          // Use database first for reliable data
+          const games = await simpleApiClient.getGames({ sport, status: 'in_progress', external: false })
           allGames = [...allGames, ...games]
         } catch (error) {
           console.warn(`Failed to load live games for ${sport}:`, error)
@@ -403,9 +355,6 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         loadLiveGamesForSport(sport),
         loadUpcomingGamesForSport(sport)
       ])
-      
-      // Calculate stats after data is loaded
-      await loadStats()
       
       console.log(`Successfully loaded data for ${sport}`)
     } catch (error) {
@@ -483,6 +432,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     }
   }, [selectedSupportedSport, mounted])
 
+  // Recalculate stats when data changes
+  useEffect(() => {
+    if (mounted) {
+      loadStats()
+    }
+  }, [allLiveGames, allUpcomingGames, allTeams, mounted])
+
   // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {
     return <LoadingSpinner />
@@ -510,7 +466,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
 
   return (
     <ErrorBoundary>
-      <div className={`space-y-6 ${className}`}>
+      <div className={`space-y-8 ${className}`}>
       {/* Header */}
       <div className="flex flex-col space-y-4">
         <div className="flex items-center justify-between">
@@ -567,7 +523,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Games</CardTitle>
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -580,7 +536,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Live Games</CardTitle>
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -593,7 +549,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Teams</CardTitle>
             <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -606,7 +562,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         </Card>
         
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">SupportedSports</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
@@ -632,7 +588,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           <div className="grid gap-4 md:grid-cols-2">
             {/* Live Games Overview */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-green-500" />
                   Live Games
@@ -645,9 +601,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 <div className="space-y-3">
                   {allLiveGames.length > 0 ? (
                     allLiveGames.slice(0, 5).map((game) => (
-                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border bg-green-50 dark:bg-green-950">
+                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border border-muted bg-card">
                         <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
                             <TeamLogo
                               logoUrl={game.home_team?.logo_url}
                               teamName={game.home_team?.name || 'Home Team'}
@@ -663,7 +619,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-sm">
+                            <div className="font-medium text-base">
                               {game.home_team?.name} vs {game.away_team?.name}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -672,10 +628,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-green-600">
+                          <div className="font-extrabold text-lg text-green-600">
                             {game.home_score} - {game.away_score}
                           </div>
-                          <Badge className="bg-green-500 text-xs">
+                          <Badge className="bg-green-500 text-xs px-2 py-1 rounded-full">
                             LIVE
                           </Badge>
                         </div>
@@ -693,7 +649,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
 
             {/* Upcoming Games Overview */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
                   Upcoming Games
@@ -706,9 +662,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 <div className="space-y-3">
                   {allUpcomingGames.length > 0 ? (
                     allUpcomingGames.slice(0, 5).map((game) => (
-                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border">
+                      <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border border-muted bg-card">
                         <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-1">
                             <TeamLogo
                               logoUrl={game.home_team?.logo_url}
                               teamName={game.home_team?.name || 'Home Team'}
@@ -724,7 +680,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                             />
                           </div>
                           <div>
-                            <div className="font-medium text-sm">
+                            <div className="font-medium text-base">
                               {game.home_team?.name} vs {game.away_team?.name}
                             </div>
                             <div className="text-xs text-muted-foreground">
@@ -732,7 +688,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                             </div>
                           </div>
                         </div>
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs px-2 py-1 rounded-full">
                           {game.status}
                         </Badge>
                       </div>
@@ -765,17 +721,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               
               return (
                 <Card key={sport} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedSupportedSport(sport)}>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 flex items-center space-x-4">
                     <div className="flex items-center space-x-3">
-                      <div className={`p-3 rounded-lg bg-muted/50 ${selectedSupportedSport === sport ? 'bg-primary/10' : ''}`}>
+                      <div className={`p-3 rounded-full bg-muted flex items-center justify-center ${selectedSupportedSport === sport ? 'bg-primary/10' : ''}`}>
                         <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-bold text-lg">{config?.name}</div>
+                        <div className="font-semibold text-lg">{config?.name}</div>
                         <div className="text-sm text-muted-foreground">
                           {config?.leagues.length} leagues
                         </div>
-                        <div className="flex items-center gap-2 mt-2">
+                        <div className="flex items-center gap-1 mt-1">
                           {isHealthy ? (
                             <CheckCircle className="h-4 w-4 text-green-500" />
                           ) : (

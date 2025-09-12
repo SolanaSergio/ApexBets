@@ -39,7 +39,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "scheduled" | "live" | "finished">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "scheduled" | "in_progress" | "completed">("all")
   const [dateFilter, setDateFilter] = useState<string>("")
   const [activeTab, setActiveTab] = useState("all")
 
@@ -58,9 +58,9 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
       const params: any = { sport, date: dateFilter || today }
 
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        simpleApiClient.getGames({ sport, status: 'live' }),
+        simpleApiClient.getGames({ sport, status: 'in_progress' }),
         simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }),
-        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'finished', limit: 10 })
+        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10 })
       ])
 
       const allGames = [...liveGames, ...scheduledGames, ...finishedGames]
@@ -98,7 +98,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     setFilteredGames(filtered)
   }
 
-  const getGamesByStatus = (status: 'live' | 'scheduled' | 'finished') => {
+  const getGamesByStatus = (status: 'in_progress' | 'scheduled' | 'completed') => {
     return filteredGames.filter(game => game.status === status)
   }
 
@@ -108,9 +108,9 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     return <GamesListSkeleton />
   }
 
-  const liveGames = getGamesByStatus('live')
+  const liveGames = getGamesByStatus('in_progress')
   const scheduledGames = getGamesByStatus('scheduled')
-  const finishedGames = getGamesByStatus('finished')
+  const finishedGames = getGamesByStatus('completed')
 
   return (
     <Card className={className}>
@@ -155,9 +155,9 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
-                <SelectItem value="live">Live</SelectItem>
+                <SelectItem value="in_progress">Live</SelectItem>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
-                <SelectItem value="finished">Finished</SelectItem>
+                <SelectItem value="completed">Finished</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -189,7 +189,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
               All
               <Badge variant="outline">{filteredGames.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="live" className="flex items-center gap-2">
+            <TabsTrigger value="in_progress" className="flex items-center gap-2">
               <Zap className="h-3 w-3" />
               Live
               {liveGames.length > 0 && (
@@ -201,7 +201,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
               Scheduled
               <Badge variant="outline">{scheduledGames.length}</Badge>
             </TabsTrigger>
-            <TabsTrigger value="finished" className="flex items-center gap-2">
+            <TabsTrigger value="completed" className="flex items-center gap-2">
               Finished
               <Badge variant="secondary">{finishedGames.length}</Badge>
             </TabsTrigger>
@@ -211,7 +211,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
             <GamesGrid games={filteredGames} sport={sport} />
           </TabsContent>
 
-          <TabsContent value="live" className="mt-6 space-y-4">
+          <TabsContent value="in_progress" className="mt-6 space-y-4">
             <GamesGrid games={liveGames} sport={sport} />
           </TabsContent>
 
@@ -219,7 +219,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
             <GamesGrid games={scheduledGames} sport={sport} />
           </TabsContent>
 
-          <TabsContent value="finished" className="mt-6 space-y-4">
+          <TabsContent value="completed" className="mt-6 space-y-4">
             <GamesGrid games={finishedGames} sport={sport} />
           </TabsContent>
         </Tabs>
@@ -268,8 +268,8 @@ interface GameCardProps {
 
 function GameCard({ game, sport }: GameCardProps) {
   const sportConfig = SportConfigManager.getSportConfig(sport)
-  const isLive = game.status === 'live'
-  const isFinished = game.status === 'finished'
+  const isLive = game.status === 'in_progress'
+  const isFinished = game.status === 'completed'
 
   const getStatusBadge = () => {
     if (isLive) {
