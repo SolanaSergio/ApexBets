@@ -235,7 +235,7 @@ function calculateDataConsistency(games: any[], teams: any[]): number {
 /**
  * Calculate sport-specific metrics
  */
-function calculateSportSpecificMetrics(sport: string, games: any[], teams: any[], players: any[]): any {
+function calculateSportSpecificMetrics(sport: string, games: any[], _teams: any[], _players: any[]): any {
   const metrics: any = {
     sport,
     average_score: 0,

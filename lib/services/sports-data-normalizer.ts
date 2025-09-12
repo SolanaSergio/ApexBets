@@ -15,19 +15,19 @@ export interface UnifiedTeam {
   league: string
   sport: string
   logo?: string
-  founded?: number
+  founded: number | undefined
   venue?: string
   colors?: {
     primary: string
     secondary: string
   }
-  record?: {
+  record: {
     wins: number
     losses: number
     ties?: number
     otLosses?: number
     winPercentage: number
-  }
+  } | undefined
   provider: string
   lastUpdated: string
 }
@@ -38,14 +38,14 @@ export interface UnifiedPlayer {
   firstName: string
   lastName: string
   position: string
-  jerseyNumber?: number
+  jerseyNumber: number | undefined
   team: {
     id: string
     name: string
     abbreviation: string
   }
-  height?: string
-  weight?: number
+  height: string | undefined
+  weight: number | undefined
   age?: number
   birthDate?: string
   birthPlace?: {
@@ -72,14 +72,14 @@ export interface UnifiedGame {
     id: string
     name: string
     abbreviation: string
-    score?: number
+    score: number | undefined
     record?: string
   }
   awayTeam: {
     id: string
     name: string
     abbreviation: string
-    score?: number
+    score: number | undefined
     record?: string
   }
   venue?: {
@@ -690,5 +690,4 @@ export class SportsDataNormalizer {
   }
 }
 
-// Export normalized data classes
-export { SportsDataNormalizer }
+// SportsDataNormalizer is already exported above as a class

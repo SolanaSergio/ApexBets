@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
-import { SportOddsService } from "@/lib/services/odds/sport-odds-service"
 import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
 import { cachedSupabaseQuery } from "@/lib/utils/supabase-query-cache"
 
@@ -69,9 +68,7 @@ export async function POST(request: NextRequest) {
 
       // Use cached query to get all teams for this sport once, instead of per game
       const allTeams = await cachedSupabaseQuery(
-        'teams',
-        'select',
-        { sport: sport },
+        `teams-select-${sport}`,
         async () => {
           const { data, error } = await supabase
             .from("teams")
@@ -122,9 +119,7 @@ export async function POST(request: NextRequest) {
         console.log("Populating player stats...")
         // Use cached query to prevent duplicate calls
         const gamesData = await cachedSupabaseQuery(
-          'games',
-          'select',
-          { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+          `games-select-${sport}-${startDate.toISOString()}-${endDate.toISOString()}`,
           async () => {
             const { data, error } = await supabase
               .from("games")
@@ -181,9 +176,7 @@ export async function POST(request: NextRequest) {
       console.log("Populating odds...")
       // Use the same cached query for games to prevent duplicate calls
       const gamesForOdds = await cachedSupabaseQuery(
-        'games',
-        'select',
-        { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+        `games-odds-${sport}-${startDate.toISOString()}-${endDate.toISOString()}`,
         async () => {
           const { data, error } = await supabase
             .from("games")
@@ -230,9 +223,7 @@ export async function POST(request: NextRequest) {
       console.log("Generating predictions using ML models...")
       // Use the same cached query for games to prevent duplicate calls
       const gamesForPredictions = await cachedSupabaseQuery(
-        'games',
-        'select',
-        { sport: sport, startDate: startDate.toISOString(), endDate: endDate.toISOString(), fields: 'id,home_team_id,away_team_id,game_date,home_score,away_score' },
+        `games-predictions-${sport}-${startDate.toISOString()}-${endDate.toISOString()}`,
         async () => {
           const { data, error } = await supabase
             .from("games")
@@ -250,11 +241,8 @@ export async function POST(request: NextRequest) {
       for (const game of gamesForPredictions || []) {
         try {
           // Generate predictions using ML models
-          const predictions = await predictionService.generatePredictions({
-            gameId: game.id,
-            homeTeamId: game.home_team_id,
-            awayTeamId: game.away_team_id,
-            gameDate: game.game_date
+          const predictions = await predictionService.getPredictions({
+            gameId: game.id
           })
           
           for (const prediction of predictions) {
@@ -262,12 +250,12 @@ export async function POST(request: NextRequest) {
               .from("predictions")
               .upsert({
                 game_id: game.id,
-                prediction_type: prediction.type,
+                prediction_type: prediction.model,
                 home_win_probability: prediction.homeWinProbability,
-                predicted_score_home: prediction.predictedScoreHome,
-                predicted_score_away: prediction.predictedScoreAway,
+                predicted_score_home: prediction.predictedSpread,
+                predicted_score_away: prediction.predictedTotal,
                 confidence: prediction.confidence,
-                model_version: prediction.modelVersion,
+                model_version: prediction.model,
                 sport: sport
               }, { onConflict: "game_id,prediction_type" })
 
@@ -329,13 +317,13 @@ function getCurrentSeason(sport: string): string {
 }
 
 // Mock function - in real implementation this would fetch from external APIs
-async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
+async function getPlayerStatsForGame(_gameId: string, _sport: string): Promise<any[]> {
   // This would be implemented with actual API calls
   return []
 }
 
 // Mock function - in real implementation this would fetch from external APIs
-async function getOddsForGame(gameId: string, sport: string): Promise<any[]> {
+async function getOddsForGame(_gameId: string, _sport: string): Promise<any[]> {
   // This would be implemented with actual API calls
   return []
 }

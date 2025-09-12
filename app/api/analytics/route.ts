@@ -11,9 +11,7 @@ export async function GET() {
 
     // Use cached queries to prevent duplicate database calls
     const games = await cachedSupabaseQuery(
-      'games',
-      'select',
-      { fields: 'id, sport, status, updated_at', limit: 1000 },
+      'games-analytics-overview',
       async () => {
         const { data, error } = await supabase.from('games').select('id, sport, status, updated_at').limit(1000);
         if (error) throw error;
@@ -22,9 +20,7 @@ export async function GET() {
     );
 
     const teams = await cachedSupabaseQuery(
-      'teams',
-      'select',
-      { fields: 'id, sport, is_active', limit: 1000 },
+      'teams-analytics-overview',
       async () => {
         const { data, error } = await supabase.from('teams').select('id, sport, is_active').limit(1000);
         if (error) throw error;
@@ -33,9 +29,7 @@ export async function GET() {
     );
 
     const predictions = await cachedSupabaseQuery(
-      'predictions',
-      'select',
-      { fields: 'id, sport, confidence', limit: 1000 },
+      'predictions-analytics-overview',
       async () => {
         const { data, error } = await supabase.from('predictions').select('id, sport, confidence').limit(1000);
         if (error) throw error;
@@ -44,9 +38,7 @@ export async function GET() {
     );
 
     const odds = await cachedSupabaseQuery(
-      'odds',
-      'select',
-      { fields: 'id, sport, last_updated', limit: 1000 },
+      'odds-analytics-overview',
       async () => {
         const { data, error } = await supabase.from('odds').select('id, sport, last_updated').limit(1000);
         if (error) throw error;

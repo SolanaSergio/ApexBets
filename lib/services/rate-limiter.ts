@@ -28,8 +28,8 @@ interface UsageStats {
   lastRequestTime: number
   averageResponseTime: number
   errorRate: number
-  isBlocked?: boolean
-  blockUntil?: number
+  isBlocked: boolean
+  blockUntil: number | undefined
 }
 
 class RateLimiter {
@@ -300,8 +300,8 @@ class RateLimiter {
 
   getRateLimitStatus(service: string): {
     canMakeRequest: boolean
-    waitTime?: number
-    reason?: string
+    waitTime: number | undefined
+    reason: string | undefined
     usage: UsageStats
     limits: RateLimitConfig
   } {
