@@ -9,12 +9,11 @@ import { ForgotPasswordForm } from '@/components/auth/forgot-password-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Eye, EyeOff } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import { SportsImage } from '@/components/ui/sports-image'
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState('login')
-  const [showPassword, setShowPassword] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
 

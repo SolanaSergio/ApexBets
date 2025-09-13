@@ -211,7 +211,7 @@ export class SportsDBClient {
     return []
   }
 
-  async getTable(league: string, season: string): Promise<any[]> {
+  async getTable(_league: string, _season: string): Promise<any[]> {
     // TheSportsDB doesn't have a direct standings endpoint
     // Return empty array for now - this would need to be implemented
     // with a different endpoint or API

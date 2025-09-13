@@ -3,9 +3,7 @@
  * PGA/LPGA golf service
  */
 
-import { sportsDBClient } from '../../sports-apis'
 import { cacheManager } from '@/lib/cache'
-import { rateLimiter } from '../../services/rate-limiter'
 import { errorHandlingService } from '../../services/error-handling-service'
 
 export interface GolfTournament {
@@ -55,9 +53,6 @@ export interface GolfLeaderboard {
 }
 
 export class GolfService {
-  private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes
-  private readonly LIVE_TTL = 30 * 1000 // 30 seconds
-
   constructor() {}
 
   async getTournaments(params: {
@@ -67,10 +62,10 @@ export class GolfService {
     const cacheKey = `golf:tournaments:${JSON.stringify(params)}`
 
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchTournaments(params, cacheKey)
+    return cached || await this.fetchTournaments(cacheKey)
   }
 
-  private async fetchTournaments(params: any, cacheKey: string): Promise<GolfTournament[]> {
+  private async fetchTournaments(cacheKey: string): Promise<GolfTournament[]> {
     try {
       // For now, return empty array - would integrate with golf API
       const tournaments: GolfTournament[] = []
@@ -89,10 +84,10 @@ export class GolfService {
     const cacheKey = `golf:players:${JSON.stringify(params)}`
 
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchPlayers(params, cacheKey)
+    return cached || await this.fetchPlayers(cacheKey)
   }
 
-  private async fetchPlayers(params: any, cacheKey: string): Promise<GolfPlayer[]> {
+  private async fetchPlayers(cacheKey: string): Promise<GolfPlayer[]> {
     try {
       // For now, return empty array - would integrate with golf API
       const players: GolfPlayer[] = []
@@ -108,10 +103,10 @@ export class GolfService {
     const cacheKey = `golf:leaderboard:${tournamentId}`
     
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchLeaderboard(tournamentId, cacheKey)
+    return cached || await this.fetchLeaderboard(cacheKey)
   }
 
-  private async fetchLeaderboard(tournamentId: string, cacheKey: string): Promise<GolfLeaderboard[]> {
+  private async fetchLeaderboard(cacheKey: string): Promise<GolfLeaderboard[]> {
     try {
       // For now, return empty array - would integrate with golf API
       const leaderboard: GolfLeaderboard[] = []
@@ -127,10 +122,10 @@ export class GolfService {
     const cacheKey = `golf:rankings:${limit}`
     
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchRankings(limit, cacheKey)
+    return cached || await this.fetchRankings(cacheKey)
   }
 
-  private async fetchRankings(limit: number, cacheKey: string): Promise<GolfPlayer[]> {
+  private async fetchRankings(cacheKey: string): Promise<GolfPlayer[]> {
     try {
       // For now, return empty array - would integrate with golf API
       const rankings: GolfPlayer[] = []
@@ -146,10 +141,10 @@ export class GolfService {
     const cacheKey = `golf:odds:${JSON.stringify(params)}`
     
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchOdds(params, cacheKey)
+    return cached || await this.fetchOdds(cacheKey)
   }
 
-  private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
+  private async fetchOdds(cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []

@@ -4,7 +4,6 @@
  */
 
 import { hmacWebhookAuthenticator } from '../../../lib/security'
-import { environmentRules } from '../../../lib/rules/environment-rules'
 
 describe('Webhook Authentication Integration', () => {
   const originalEnv = process.env

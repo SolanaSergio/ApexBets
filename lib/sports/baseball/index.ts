@@ -95,7 +95,7 @@ export class BaseballService {
     return cached || await this.fetchTeams(params, cacheKey)
   }
 
-  private async fetchTeams(params: any, cacheKey: string): Promise<BaseballTeam[]> {
+  private async fetchTeams(_params: any, cacheKey: string): Promise<BaseballTeam[]> {
     try {
       await rateLimiter.waitForRateLimit('sportsdb')
       const teams = await sportsDBClient.searchTeams('baseball')
@@ -108,7 +108,7 @@ export class BaseballService {
     }
   }
 
-  async getPlayers(params: any = {}): Promise<BaseballPlayer[]> {
+  async getPlayers(_params: any = {}): Promise<BaseballPlayer[]> {
     return []
   }
 
@@ -116,11 +116,11 @@ export class BaseballService {
     return this.getGames({ status: 'live' })
   }
 
-  async getStandings(league: string = 'MLB'): Promise<any[]> {
+  async getStandings(_league: string = 'MLB'): Promise<any[]> {
     return []
   }
 
-  async getOdds(params: any = {}): Promise<any[]> {
+  async getOdds(_params: any = {}): Promise<any[]> {
     return []
   }
 

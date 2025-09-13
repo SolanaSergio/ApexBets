@@ -253,7 +253,6 @@ describe('Sports Data Service Integration Tests', () => {
       // Make some requests to populate cache
       await cachedUnifiedApiClient.getGames('basketball')
       
-      const statsBefore = await cachedUnifiedApiClient.getCacheStats()
       cachedUnifiedApiClient.clearCache()
       const statsAfter = await cachedUnifiedApiClient.getCacheStats()
 

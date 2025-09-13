@@ -5,11 +5,6 @@
 
 import { serviceFactory } from './core/service-factory'
 
-interface PredictionRequest {
-  game: any
-  betType: string
-  side: string
-}
 
 interface PredictionResult {
   model_name: string
@@ -37,7 +32,7 @@ export class MLPredictionService {
       // Calculate probability based on bet type
       switch (betType) {
         case "Moneyline":
-          return this.calculateMoneylineProbability(game, side, historicalData)
+          return this.calculateMoneylineProbability(side, historicalData)
         case "Spread":
           return this.calculateSpreadProbability(game, side, historicalData)
         case "Over/Under":
@@ -54,7 +49,7 @@ export class MLPredictionService {
   /**
    * Calculate moneyline probability
    */
-  private calculateMoneylineProbability(game: any, side: string, historicalData: any): number {
+  private calculateMoneylineProbability(side: string, historicalData: any): number {
     // Simple implementation - in production, this would use actual ML models
     const homeTeamWins = historicalData.homeTeamWins || 0
     const totalGames = historicalData.totalGames || 1
@@ -97,13 +92,13 @@ export class MLPredictionService {
   /**
    * Generate predictions for a game
    */
-  async generatePredictions(game: any, sport: string): Promise<PredictionResult[]> {
+  async generatePredictions(game: any): Promise<PredictionResult[]> {
     try {
       const predictions: PredictionResult[] = []
       const historicalData = await this.getHistoricalData(game)
       
       // Moneyline prediction
-      const homeWinProb = await this.calculateMoneylineProbability(game, game.homeTeam, historicalData)
+      const homeWinProb = await this.calculateMoneylineProbability(game.homeTeam, historicalData)
       predictions.push({
         model_name: "ml_ensemble_v1",
         prediction_type: "winner",
@@ -115,7 +110,7 @@ export class MLPredictionService {
       })
 
       // Spread prediction
-      const predictedSpread = await this.calculateSpreadValue(game, historicalData)
+      const predictedSpread = await this.calculateSpreadValue(historicalData)
       const actualSpread = (game.home_score || 0) - (game.away_score || 0)
       predictions.push({
         model_name: "ml_ensemble_v1",
@@ -201,7 +196,7 @@ export class MLPredictionService {
   }
 
 
-  private async calculateSpreadValue(game: any, historicalData: any): Promise<number> {
+  private async calculateSpreadValue(historicalData: any): Promise<number> {
     const { homeTeam, awayTeam } = historicalData
     
     // Calculate expected point differential

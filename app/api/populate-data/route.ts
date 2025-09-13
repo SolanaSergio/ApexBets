@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Return current database status
     const { createClient } = await import('@/lib/supabase/server')

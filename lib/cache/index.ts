@@ -128,22 +128,6 @@ class UnifiedCacheManager implements CacheManager {
     }
   }
 
-  private extractDataType(key: string): string {
-    // Extract data type from cache key pattern
-    if (key.includes(':games:')) return 'games'
-    if (key.includes(':teams:')) return 'teams'
-    if (key.includes(':players:')) return 'players'
-    if (key.includes(':odds:')) return 'odds'
-    if (key.includes(':standings:')) return 'standings'
-    if (key.includes(':analytics:')) return 'analytics'
-    return 'api_response'
-  }
-
-  private extractSport(key: string): string | undefined {
-    // Extract sport from cache key pattern
-    const match = key.match(/:([^:]+):/)
-    return match ? match[1] : undefined
-  }
 }
 
 export const cacheManager = new UnifiedCacheManager()

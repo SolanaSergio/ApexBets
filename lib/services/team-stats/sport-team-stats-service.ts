@@ -399,7 +399,7 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Add sport-specific statistics from real game data
    */
-  private async addSportSpecificStats(rawStats: Record<string, number>, game: any, teamId: string, isHomeTeam: boolean): Promise<void> {
+  private async addSportSpecificStats(rawStats: Record<string, number>, game: any, _teamId: string, isHomeTeam: boolean): Promise<void> {
     try {
       // Get sport configuration to determine scoring field names
       const sportConfig = await SportConfigManager.getSportConfig(this.sport)

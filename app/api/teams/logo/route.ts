@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { dynamicTeamServiceClient } from '@/lib/services/dynamic-team-service-client'
 
 /**
@@ -34,7 +33,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const body = await request.json()
     
     const { teamName, league, logoUrl, teamData } = body

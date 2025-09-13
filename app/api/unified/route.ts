@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getGames(sport, { league, date, status, limit })
+        data = await unifiedApiClient.getGames(sport, { 
+          ...(league && { league }), 
+          ...(date && { date }), 
+          ...(status && { status }), 
+          ...(limit && { limit })
+        })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -73,7 +78,10 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getTeams(sport, { league, limit })
+        data = await unifiedApiClient.getTeams(sport, { 
+          ...(league && { league }), 
+          ...(limit && { limit })
+        })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -86,7 +94,10 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getPlayers(sport, { league, limit })
+        data = await unifiedApiClient.getPlayers(sport, { 
+          ...(league && { league }), 
+          ...(limit && { limit })
+        })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -99,7 +110,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getStandings(sport, league)
+        data = await unifiedApiClient.getStandings(sport, league || undefined)
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -112,7 +123,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getOdds(sport, { league })
+        data = await unifiedApiClient.getOdds(sport, league ? { league } : {})
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -125,7 +136,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getPredictions(sport, { league })
+        data = await unifiedApiClient.getPredictions(sport, league ? { league } : {})
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)

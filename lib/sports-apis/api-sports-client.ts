@@ -139,13 +139,11 @@ export interface ApiSportsStanding {
 }
 
 import { apiKeyRotation } from '../services/api-key-rotation'
-import { errorHandlingService } from '../services/error-handling-service'
 
 export class ApiSportsClient {
   private baseUrl = 'https://api-football-v1.p.rapidapi.com/v3'
   private rateLimitDelay = 600 // 0.6 seconds between requests (100 requests/minute = 0.6 seconds)
   private lastRequestTime = 0
-  private retryCount = 0
   private maxRetries = 3
 
   constructor() {
@@ -245,7 +243,6 @@ export class ApiSportsClient {
       }
 
       // Reset retry count on successful request
-      this.retryCount = 0
       const data = await response.json()
       return data
     } catch (error) {

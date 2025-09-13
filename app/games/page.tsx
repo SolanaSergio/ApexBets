@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Calendar, Clock, MapPin, Filter, Search, Trophy, Target, TrendingUp, RefreshCw, Zap, CheckCircle } from "lucide-react"
+import { Calendar, Clock, Filter, Search, Trophy, RefreshCw } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
 import { simpleApiClient, type Game } from "@/lib/api-client-simple"
-import { format, addDays, subDays, isToday, isTomorrow, isYesterday } from "date-fns"
+import { format, addDays, subDays } from "date-fns"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 export default function GamesPage() {

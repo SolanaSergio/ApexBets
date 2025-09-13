@@ -335,13 +335,13 @@ export class CachedUnifiedApiClient {
           homeTeam: game.homeTeam,
           awayTeam: game.awayTeam,
           date: game.date,
-          time: game.time,
+          time: game.time || '',
           status: game.status,
-          homeScore: game.homeScore,
-          awayScore: game.awayScore,
+          ...(game.homeScore !== null && { homeScore: game.homeScore }),
+          ...(game.awayScore !== null && { awayScore: game.awayScore }),
           venue: game.venue,
-          odds: game.odds,
-          predictions: game.predictions,
+          ...(game.odds && { odds: game.odds }),
+          ...(game.predictions && { predictions: game.predictions }),
           lastUpdated: new Date().toISOString()
         }))
         await this.setCachedData(cacheKey, unifiedGames, 'live_games', sport)

@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate real team statistics dynamically
-    const stats = await calculateTeamStats(sport, team, games, players, season)
+    const stats = await calculateTeamStats(sport, team, games, players)
     
     return NextResponse.json({
       success: true,
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
 /**
  * Calculate real team statistics based on actual data dynamically
  */
-async function calculateTeamStats(sport: string, team: any, games: any[], players: any[], season: string) {
+async function calculateTeamStats(sport: string, team: any, games: any[], players: any[]) {
   const completedGames = games.filter(g => g.status === 'completed')
   const wins = completedGames.filter(g => {
     if (g.home_team_id === team.id) {
@@ -126,7 +126,7 @@ async function calculateTeamStats(sport: string, team: any, games: any[], player
 /**
  * Calculate sport-specific statistics based on configuration
  */
-function calculateSportSpecificStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number, scoringFields: any) {
+function calculateSportSpecificStats(team: any, games: any[], _players: any[], wins: number, losses: number, winPercentage: number, scoringFields: any) {
   const primaryField = scoringFields.primary || 'score'
   const forField = scoringFields.for || `${primaryField}For`
   const againstField = scoringFields.against || `${primaryField}Against`
@@ -162,7 +162,7 @@ function calculateSportSpecificStats(team: any, games: any[], players: any[], wi
 }
 
 
-function calculateGenericStats(team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
+function calculateGenericStats(_team: any, games: any[], players: any[], wins: number, losses: number, winPercentage: number) {
   return [
     { category: "Wins", value: wins.toString(), rank: 1, trend: "up" },
     { category: "Losses", value: losses.toString(), rank: 1, trend: "down" },

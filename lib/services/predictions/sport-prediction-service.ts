@@ -4,7 +4,6 @@
  */
 
 import { SportConfigManager } from '../core/sport-config'
-import { errorHandlingService } from '../error-handling-service'
 
 export interface PredictionResult {
   gameId?: string
@@ -48,7 +47,7 @@ export class SportPredictionService {
       }
 
       // Generate predictions based on sport-specific logic
-      const predictions = await this.generatePredictions(gameData, sportConfig)
+      const predictions = await this.generatePredictions(gameData)
       
       return predictions
     } catch (error) {
@@ -100,7 +99,7 @@ export class SportPredictionService {
     }
   }
 
-  private async generatePredictions(gameData: any, sportConfig: any): Promise<PredictionResult[]> {
+  private async generatePredictions(gameData: any): Promise<PredictionResult[]> {
     const predictions: PredictionResult[] = []
 
     try {
@@ -109,11 +108,11 @@ export class SportPredictionService {
       const awayTeamStats = await this.getTeamStats(gameData.awayTeam)
 
       // Generate ML-based prediction
-      const mlPrediction = await this.generateMLPrediction(homeTeamStats, awayTeamStats, sportConfig, gameData)
+      const mlPrediction = await this.generateMLPrediction(homeTeamStats, awayTeamStats, gameData)
       predictions.push(mlPrediction)
 
       // Generate statistical prediction
-      const statPrediction = await this.generateStatisticalPrediction(homeTeamStats, awayTeamStats, sportConfig, gameData)
+      const statPrediction = await this.generateStatisticalPrediction(homeTeamStats, awayTeamStats, gameData)
       predictions.push(statPrediction)
 
     } catch (error) {
@@ -198,10 +197,9 @@ export class SportPredictionService {
     return form
   }
 
-  private async generateMLPrediction(homeStats: any, awayStats: any, sportConfig: any, gameData: any): Promise<PredictionResult> {
+  private async generateMLPrediction(homeStats: any, awayStats: any, gameData: any): Promise<PredictionResult> {
     // Calculate probabilities based on real team performance data
     const homeWinRate = homeStats.wins / Math.max(homeStats.wins + homeStats.losses + homeStats.ties, 1)
-    const awayWinRate = awayStats.wins / Math.max(awayStats.wins + awayStats.losses + awayStats.ties, 1)
     
     // Factor in home advantage (typically 3-5% in most sports)
     const homeAdvantage = 0.04
@@ -242,7 +240,7 @@ export class SportPredictionService {
     }
   }
 
-  private async generateStatisticalPrediction(homeStats: any, awayStats: any, sportConfig: any, gameData: any): Promise<PredictionResult> {
+  private async generateStatisticalPrediction(homeStats: any, awayStats: any, gameData: any): Promise<PredictionResult> {
     // Statistical analysis based on team records
     const homeTotalGames = homeStats.wins + homeStats.losses + homeStats.ties
     const awayTotalGames = awayStats.wins + awayStats.losses + awayStats.ties
@@ -330,7 +328,7 @@ export class SportPredictionService {
         
         if (homeStats && awayStats) {
           // Generate predictions using real data
-          const mlPrediction = await this.generateMLPrediction(homeStats, awayStats, null, {
+          const mlPrediction = await this.generateMLPrediction(homeStats, awayStats, {
             id: game.id,
             homeTeam: game.home_team?.name || 'Unknown',
             awayTeam: game.away_team?.name || 'Unknown',

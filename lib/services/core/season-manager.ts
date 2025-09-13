@@ -218,7 +218,7 @@ export class SeasonManager {
    * Get previous season for comparison
    */
   static getPreviousSeason(_sport: string, currentSeason: string): string {
-    const now = new Date()
+    // const now = new Date()
     // const year = now.getFullYear()
     // const month = now.getMonth() + 1
     

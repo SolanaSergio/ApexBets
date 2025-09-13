@@ -6,18 +6,10 @@
 // Jest globals are available in the test environment
 import { WebhookValidator } from '@/lib/security/webhook-validator'
 import { WebhookDeduplicator } from '@/lib/security/webhook-deduplicator'
-import { WebhookProcessor } from '@/lib/security/webhook-processor'
 import { hmacWebhookAuthenticator } from '@/lib/security/hmac-webhook-authenticator'
 
 describe('Enhanced Webhook Processing', () => {
   const mockRequestId = 'test-req-123'
-  const mockClientIP = '192.168.1.100'
-  const mockContext = {
-    requestId: mockRequestId,
-    clientIP: mockClientIP,
-    userAgent: 'Test-Agent/1.0',
-    timestamp: new Date()
-  }
 
   beforeEach(() => {
     // Clear any existing cache
@@ -190,19 +182,19 @@ describe('Enhanced Webhook Processing', () => {
   describe('Webhook Deduplication', () => {
     test('should generate consistent hashes for identical payloads', () => {
       const payload1 = {
-        type: 'game_update',
+        type: 'full_sync' as const,
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { game_id: 'game-123', status: 'live' }
+        data: { sync_type: 'games' as const }
       }
 
       const payload2 = {
-        type: 'game_update',
+        type: 'full_sync' as const,
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { game_id: 'game-123', status: 'live' }
+        data: { sync_type: 'games' as const }
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)
@@ -214,19 +206,19 @@ describe('Enhanced Webhook Processing', () => {
 
     test('should generate different hashes for different payloads', () => {
       const payload1 = {
-        type: 'game_update',
+        type: 'full_sync' as const,
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { game_id: 'game-123', status: 'live' }
+        data: { sync_type: 'games' as const }
       }
 
       const payload2 = {
-        type: 'game_update',
+        type: 'full_sync' as const,
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { game_id: 'game-456', status: 'live' }
+        data: { sync_type: 'teams' as const }
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)
@@ -360,24 +352,6 @@ describe('Enhanced Webhook Processing', () => {
 
 describe('Webhook Processing Performance', () => {
   test('should process webhooks within acceptable time limits', async () => {
-    const payload = {
-      type: 'game_update',
-      sport: 'basketball',
-      league: 'NBA',
-      source: 'webhook',
-      data: {
-        game_id: 'perf-test-game',
-        status: 'live',
-        home_score: 85,
-        away_score: 78
-      }
-    }
-
-    const context = {
-      requestId: 'perf-test-req',
-      clientIP: '192.168.1.100',
-      timestamp: new Date()
-    }
 
     const startTime = Date.now()
     
@@ -391,29 +365,11 @@ describe('Webhook Processing Performance', () => {
   })
 
   test('should handle concurrent webhook processing', async () => {
-    const payloads = Array.from({ length: 10 }, (_, i) => ({
-      type: 'game_update',
-      sport: 'basketball',
-      league: 'NBA',
-      source: 'webhook',
-      data: {
-        game_id: `concurrent-game-${i}`,
-        status: 'live',
-        home_score: 85 + i,
-        away_score: 78 + i
-      }
-    }))
-
-    const contexts = payloads.map((_, i) => ({
-      requestId: `concurrent-req-${i}`,
-      clientIP: '192.168.1.100',
-      timestamp: new Date()
-    }))
 
     const startTime = Date.now()
     
     // Process all webhooks concurrently
-    const promises = payloads.map((payload, i) => {
+    const promises = Array.from({ length: 10 }, () => {
       // Note: This would require mocking the database in a real test
       // return WebhookProcessor.processWebhook(payload, contexts[i])
       return Promise.resolve({ success: true, processingTimeMs: 50 })
@@ -428,6 +384,6 @@ describe('Webhook Processing Performance', () => {
     })
 
     // Concurrent processing should be faster than sequential
-    expect(totalTime).toBeLessThan(payloads.length * 100) // Much faster than sequential
+    expect(totalTime).toBeLessThan(10 * 100) // Much faster than sequential
   })
 })

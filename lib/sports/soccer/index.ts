@@ -162,10 +162,10 @@ export class SoccerService {
     const cacheKey = `soccer:players:${JSON.stringify(params)}`
 
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchPlayers(params, cacheKey)
+    return cached || await this.fetchPlayers(cacheKey)
   }
 
-  private async fetchPlayers(params: any, cacheKey: string): Promise<SoccerPlayer[]> {
+  private async fetchPlayers(cacheKey: string): Promise<SoccerPlayer[]> {
     try {
       // For now, return empty array - would integrate with soccer API
       const players: SoccerPlayer[] = []
@@ -185,10 +185,10 @@ export class SoccerService {
     const cacheKey = `soccer:standings:${league}`
     
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchStandings(league, cacheKey)
+    return cached || await this.fetchStandings(cacheKey)
   }
 
-  private async fetchStandings(league: string, cacheKey: string): Promise<any[]> {
+  private async fetchStandings(cacheKey: string): Promise<any[]> {
     try {
       // For now, return empty array - would integrate with appropriate API
       const standings: any[] = []
@@ -204,10 +204,10 @@ export class SoccerService {
     const cacheKey = `soccer:odds:${JSON.stringify(params)}`
     
     const cached = await cacheManager.getAsync<any[]>(cacheKey)
-    return cached || await this.fetchOdds(params, cacheKey)
+    return cached || await this.fetchOdds(cacheKey)
   }
 
-  private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
+  private async fetchOdds(cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []

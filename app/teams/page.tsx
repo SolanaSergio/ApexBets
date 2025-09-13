@@ -9,11 +9,10 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Users, Search, Filter, Trophy, TrendingUp, Target, Calendar, MapPin, RefreshCw } from "lucide-react"
+import { Users, Search, Filter, Trophy, TrendingUp, Target } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { simpleApiClient as apiClient, type Team } from "@/lib/api-client-simple"
+import { simpleApiClient as apiClient } from "@/lib/api-client-simple"
 import { TeamsList } from "@/components/sports/teams-list"
-import StandingsTable from "@/components/categories/sports/standings-table"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 export default function TeamsPage() {

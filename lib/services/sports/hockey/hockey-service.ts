@@ -185,45 +185,6 @@ export class HockeyService extends SportSpecificService {
     }
   }
 
-  private async getTeamAbbreviation(teamName: string): Promise<string> {
-    // First try to get abbreviation from NHL API dynamically
-    try {
-      const teams = await nhlClient.getTeams()
-      const matchingTeam = teams.find(team => 
-        team.fullName?.toLowerCase() === teamName.toLowerCase() ||
-        team.name?.toLowerCase() === teamName.toLowerCase()
-      )
-      if (matchingTeam?.triCode || matchingTeam?.abbreviations?.default) {
-        return matchingTeam.triCode || matchingTeam.abbreviations.default
-      }
-    } catch (error) {
-      console.warn('Failed to get team abbreviation from NHL API:', error)
-    }
-
-    // Try to get abbreviation from database
-    try {
-      const { createClient } = await import('@/lib/supabase/server')
-      const supabase = await createClient()
-      
-      if (supabase) {
-        const { data: team } = await supabase
-          .from('teams')
-          .select('abbreviation')
-          .eq('name', teamName)
-          .eq('sport', 'hockey')
-          .single()
-        
-        if (team?.abbreviation) {
-          return team.abbreviation
-        }
-      }
-    } catch (error) {
-      // Database lookup failed, fall back to extraction
-    }
-
-    // Fall back to extracting abbreviation from team name
-    return this.extractAbbreviationFromName(teamName)
-  }
 
   private extractAbbreviationFromName(teamName: string): string {
     // Extract abbreviation from team name by taking first letters

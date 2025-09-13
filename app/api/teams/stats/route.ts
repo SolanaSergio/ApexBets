@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Dynamic stats calculation - works for any sport
-    const calculateTeamStats = (team: any, teamGames: any[], sport: string) => {
+    const calculateTeamStats = (team: any, teamGames: any[], _sport: string) => {
       const completedGames = teamGames.filter(game => 
         game.status === "completed" && game.home_score !== null && game.away_score !== null
       )

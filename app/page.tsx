@@ -1,8 +1,6 @@
-import { Suspense } from "react"
 import { ServerDashboard } from "@/components/categories/dashboard/server-dashboard"
 import { Navigation } from "@/components/navigation/navigation"
 import { SyncInitializer } from "@/components/sync-initializer"
-import { DashboardSkeleton } from "@/components/categories/dashboard/dashboard-skeleton"
 import { AuthGuard } from "@/components/auth/auth-guard"
 
 export default function HomePage() {

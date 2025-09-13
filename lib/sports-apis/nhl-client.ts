@@ -442,7 +442,7 @@ export class NHLClient {
     }
   }
 
-  async searchPlayers(name: string): Promise<NHLPlayer[]> {
+  async searchPlayers(_name: string): Promise<NHLPlayer[]> {
     try {
       // NHL API doesn't have a direct search endpoint
       // We'll need to implement this differently or use a different approach

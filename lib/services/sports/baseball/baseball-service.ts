@@ -189,44 +189,6 @@ export class BaseballService extends SportSpecificService {
     }
   }
 
-  private async getTeamAbbreviation(teamName: string): Promise<string> {
-    // Try to get abbreviation from database first
-    try {
-      const { createClient } = await import('@/lib/supabase/server')
-      const supabase = await createClient()
-      
-      if (supabase) {
-        const { data: team } = await supabase
-          .from('teams')
-          .select('abbreviation')
-          .eq('name', teamName)
-          .eq('sport', 'baseball')
-          .single()
-        
-        if (team?.abbreviation) {
-          return team.abbreviation
-        }
-      }
-    } catch (error) {
-      // Database lookup failed, fall back to API or extraction
-    }
-
-    // Try to get from API data if available
-    try {
-      const teams = await this.fetchTeamsFromSportsDB()
-      const matchingTeam = teams.find(team => 
-        team.name.toLowerCase() === teamName.toLowerCase()
-      )
-      if (matchingTeam?.abbreviation) {
-        return matchingTeam.abbreviation
-      }
-    } catch (error) {
-      // API lookup failed
-    }
-
-    // Fall back to extracting abbreviation from team name
-    return this.extractAbbreviationFromName(teamName)
-  }
 
   private extractAbbreviationFromName(teamName: string): string {
     // Extract abbreviation from team name by taking first letters

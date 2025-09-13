@@ -102,8 +102,7 @@ interface StaggerContainerProps {
 
 export function StaggerContainer({ 
   children, 
-  className, 
-  staggerDelay = 0.1 // eslint-disable-line @typescript-eslint/no-unused-vars
+  className
 }: StaggerContainerProps) {
   return (
     <div className={className}>

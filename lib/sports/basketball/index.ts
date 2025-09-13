@@ -211,10 +211,10 @@ export class BasketballService {
     const cacheKey = `basketball:standings:${league}`
     
     const cached = cacheManager.get<any[]>(cacheKey)
-    return cached || await this.fetchStandings(league, cacheKey)
+    return cached || await this.fetchStandings(cacheKey)
   }
 
-  private async fetchStandings(league: string, cacheKey: string): Promise<any[]> {
+  private async fetchStandings(cacheKey: string): Promise<any[]> {
     try {
       // For now, return empty array - would integrate with appropriate API
       const standings: any[] = []
@@ -230,10 +230,10 @@ export class BasketballService {
     const cacheKey = `basketball:odds:${JSON.stringify(params)}`
     
     const cached = cacheManager.get<any[]>(cacheKey)
-    return cached || await this.fetchOdds(params, cacheKey)
+    return cached || await this.fetchOdds(cacheKey)
   }
 
-  private async fetchOdds(params: any, cacheKey: string): Promise<any[]> {
+  private async fetchOdds(cacheKey: string): Promise<any[]> {
     try {
       // Would integrate with odds API
       const odds: any[] = []

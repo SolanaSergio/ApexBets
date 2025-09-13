@@ -12,7 +12,9 @@ function Slider({
   min = 0,
   max = 100,
   ...props
-}: React.ComponentProps<typeof SliderPrimitive.Root> & { value?: number[] | undefined }) {
+}: Omit<React.ComponentProps<typeof SliderPrimitive.Root>, 'value'> & {
+  value?: number[]
+}) {
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -26,8 +28,8 @@ function Slider({
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
+      {...(defaultValue && { defaultValue })}
+      {...(value && { value })}
       min={min}
       max={max}
       className={cn(

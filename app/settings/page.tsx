@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
-import { Settings, User, Bell, Shield, Palette, Database, Download, Upload, Trash2, Save } from "lucide-react"
+import { User, Bell, Shield, Palette, Database, Download, Upload, Trash2, Save } from "lucide-react"
 
 export default function SettingsPage() {
   return (

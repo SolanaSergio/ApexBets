@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
+import { serviceFactory } from '@/lib/services/core/service-factory'
 import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stats-service'
 
 export async function POST(request: NextRequest) {

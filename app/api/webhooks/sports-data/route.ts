@@ -60,7 +60,7 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
       type: 'webhook_auth_failure',
       timestamp: new Date().toISOString(),
       clientIP,
-      userAgent,
+      ...(userAgent && { userAgent }),
       error: 'Webhook secret not configured',
       requestId
     }
@@ -84,7 +84,7 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
         type: 'webhook_auth_failure',
         timestamp: new Date().toISOString(),
         clientIP,
-        userAgent,
+        ...(userAgent && { userAgent }),
         error: 'Missing signature header',
         requestId
       }
@@ -106,7 +106,7 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
         type: 'webhook_invalid_signature',
         timestamp: new Date().toISOString(),
         clientIP,
-        userAgent,
+        ...(userAgent && { userAgent }),
         signature: signature.substring(0, 20) + '...', // Log partial signature for debugging
         error: 'Invalid HMAC signature',
         requestId
@@ -131,7 +131,7 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
         type: 'webhook_ip_blocked',
         timestamp: new Date().toISOString(),
         clientIP,
-        userAgent,
+        ...(userAgent && { userAgent }),
         error: 'IP address not in allowlist',
         requestId
       }
@@ -151,7 +151,7 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
     type: 'webhook_auth_success',
     timestamp: new Date().toISOString(),
     clientIP,
-    userAgent,
+    ...(userAgent && { userAgent }),
     requestId
   }
   logSecurityEvent(event)
@@ -239,7 +239,7 @@ export async function POST(request: NextRequest) {
         type: 'webhook_validation_failure',
         timestamp: new Date().toISOString(),
         clientIP,
-        userAgent: request.headers.get('user-agent') || undefined,
+        ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
         error: `Validation failed: ${validationResult.errors.join(', ')}`,
         requestId
       }
@@ -267,7 +267,7 @@ export async function POST(request: NextRequest) {
     const processingContext = {
       requestId,
       clientIP,
-      userAgent: request.headers.get('user-agent') || undefined,
+      ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
       timestamp: new Date()
     }
 
@@ -278,7 +278,7 @@ export async function POST(request: NextRequest) {
         type: 'webhook_processing_failure',
         timestamp: new Date().toISOString(),
         clientIP,
-        userAgent: request.headers.get('user-agent') || undefined,
+        ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
         error: result.message,
         requestId
       }
@@ -331,7 +331,7 @@ export async function POST(request: NextRequest) {
       type: 'webhook_processing_failure',
       timestamp: new Date().toISOString(),
       clientIP,
-      userAgent: request.headers.get('user-agent') || undefined,
+      ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
       error: error instanceof Error ? error.message : 'Unknown processing error',
       requestId
     }

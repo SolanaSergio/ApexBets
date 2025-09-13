@@ -138,7 +138,7 @@ export class DynamicTrendsService {
           sharpActions.push({
             game: `${game.homeTeam} vs ${game.awayTeam}`,
             bet: `${game.homeTeam} ${this.calculateRealSpread(game)}`,
-            edge: await this.generateSharpEdge(game),
+            edge: await this.generateSharpEdge(),
             confidence: await this.calculateConfidence(game),
             timestamp: new Date().toISOString(),
             sport
@@ -238,7 +238,7 @@ export class DynamicTrendsService {
     return reasons[randomIndex]
   }
 
-  private async generateSharpEdge(game: any): Promise<string> {
+  private async generateSharpEdge(): Promise<string> {
     // Dynamically generate sharp edge based on game data
     // This is a placeholder; real implementation would analyze betting patterns, line movements, etc.
     const edges = [
@@ -278,63 +278,6 @@ export class DynamicTrendsService {
   }
 
 
-  private async getRealMovement(game: any): Promise<string> {
-    try {
-      // Calculate real movement based on team strength difference
-      const homeStrength = game.homeTeamStrength || 0.5
-      const awayStrength = game.awayTeamStrength || 0.5
-      const difference = homeStrength - awayStrength
-      
-      if (difference > 0.1) {
-        return `+${(difference * 10).toFixed(1)} → +${(difference * 10 + 1).toFixed(1)}`
-      } else if (difference < -0.1) {
-        return `${(difference * 10).toFixed(1)} → ${(difference * 10 - 1).toFixed(1)}`
-      } else {
-        return '+1.5 → +2.5'
-      }
-    } catch (error) {
-      console.error('Error getting real movement:', error)
-      return '+1.5 → +2.5'
-    }
-  }
-
-  private async getRealMovementReason(game: any): Promise<string> {
-    try {
-      // Get real reason based on available data
-      if (game.weather_conditions) {
-        return 'Weather conditions'
-      } else if (game.homeTeamStrength > game.awayTeamStrength) {
-        return 'Sharp money on home team'
-      } else if (game.awayTeamStrength > game.homeTeamStrength) {
-        return 'Sharp money on away team'
-      } else {
-        return 'Line movement analysis'
-      }
-    } catch (error) {
-      console.error('Error getting real movement reason:', error)
-      return 'Line movement analysis'
-    }
-  }
-
-  private async getRealSharpEdge(game: any): Promise<string> {
-    try {
-      // Get real edge based on team performance
-      const homeStrength = game.homeTeamStrength || 0.5
-      const awayStrength = game.awayTeamStrength || 0.5
-      const difference = Math.abs(homeStrength - awayStrength)
-      
-      if (difference > 0.2) {
-        return 'Sharp money on home team'
-      } else if (difference < 0.1) {
-        return 'Line value detected'
-      } else {
-        return 'Professional money flow'
-      }
-    } catch (error) {
-      console.error('Error getting real sharp edge:', error)
-      return 'Professional money flow'
-    }
-  }
 }
 
 // Export singleton instance

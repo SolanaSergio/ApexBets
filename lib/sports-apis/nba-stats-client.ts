@@ -67,7 +67,7 @@ export interface NBAStatsGame {
   PLUS_MINUS: number
 }
 
-export interface NBAStatsResponse<T> {
+export interface NBAStatsResponse {
   resource: string
   parameters: Record<string, any>
   resultSets: Array<{
@@ -92,7 +92,7 @@ export class NBAStatsClient {
     this.lastRequestTime = Date.now()
   }
 
-  private async request<T>(endpoint: string, params: Record<string, any> = {}): Promise<NBAStatsResponse<T>> {
+  private async request(endpoint: string, params: Record<string, any> = {}): Promise<NBAStatsResponse> {
     await this.rateLimit()
     
     try {
@@ -155,13 +155,13 @@ export class NBAStatsClient {
 
   // Common Info endpoints
   async getCommonAllPlayers(season: string = '2024-25'): Promise<NBAStatsPlayer[]> {
-    const data = await this.request<NBAStatsPlayer[]>('/commonallplayers', {
+    const data = await this.request('/commonallplayers', {
       IsOnlyCurrentSeason: '1',
       LeagueID: '00',
       Season: season
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'CommonAllPlayers')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'CommonAllPlayers')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects<NBAStatsPlayer>(resultSet.headers, resultSet.rowSet)
@@ -169,25 +169,25 @@ export class NBAStatsClient {
 
   // Player endpoints
   async getPlayerCareerStats(playerId: number): Promise<NBAStatsGame[]> {
-    const data = await this.request<NBAStatsGame[]>('/playercareerstats', {
+    const data = await this.request('/playercareerstats', {
       PlayerID: playerId,
       PerMode: 'PerGame'
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'SeasonTotalsRegularSeason')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'SeasonTotalsRegularSeason')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects<NBAStatsGame>(resultSet.headers, resultSet.rowSet)
   }
 
   async getPlayerGameLog(playerId: number, season: string = '2024-25'): Promise<NBAStatsGame[]> {
-    const data = await this.request<NBAStatsGame[]>('/playergamelog', {
+    const data = await this.request('/playergamelog', {
       PlayerID: playerId,
       Season: season,
       SeasonType: 'Regular Season'
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'PlayerGameLog')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'PlayerGameLog')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects<NBAStatsGame>(resultSet.headers, resultSet.rowSet)
@@ -201,7 +201,7 @@ export class NBAStatsClient {
       SeasonType: 'Regular Season'
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'TeamGameLog')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'TeamGameLog')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects(resultSet.headers, resultSet.rowSet)
@@ -213,7 +213,7 @@ export class NBAStatsClient {
       Season: season
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'CommonTeamRoster')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'CommonTeamRoster')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects(resultSet.headers, resultSet.rowSet)
@@ -227,7 +227,7 @@ export class NBAStatsClient {
       SeasonType: 'Regular Season'
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'Standings')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'Standings')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects(resultSet.headers, resultSet.rowSet)
@@ -249,7 +249,7 @@ export class NBAStatsClient {
       OutcomeGt: params.outcomeGt
     })
     
-    const resultSet = data.resultSets.find(rs => rs.name === 'LeagueGameFinderResults')
+    const resultSet = data.resultSets.find((rs: any) => rs.name === 'LeagueGameFinderResults')
     if (!resultSet) return []
     
     return this.transformRowSetToObjects(resultSet.headers, resultSet.rowSet)
@@ -313,7 +313,7 @@ export class NBAStatsClient {
     }
 
     try {
-      const data = await this.request<{ resultSets: Array<{ rowSet: any[][] }> }>('/commonteamyears')
+      const data = await this.request('/commonteamyears')
       
       if (data.resultSets && data.resultSets[0] && data.resultSets[0].rowSet) {
         this.teamCache = data.resultSets[0].rowSet.map((row: any[]) => ({
@@ -332,7 +332,7 @@ export class NBAStatsClient {
         // Set cache expiry
         this.teamCacheExpiry = Date.now() + this.TEAM_CACHE_TTL
         
-        return this.teamCache
+        return this.teamCache || []
       }
     } catch (error) {
       console.error('Failed to fetch NBA teams:', error)

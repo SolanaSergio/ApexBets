@@ -6,7 +6,6 @@
 import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
 import { sportsDBClient, oddsApiClient, apiSportsClient } from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
-import { SportConfigManager } from '../../core/sport-config'
 
 export class SoccerService extends SportSpecificService {
   constructor(league: string = 'Premier League') {
@@ -502,10 +501,5 @@ export class SoccerService extends SportSpecificService {
     }
   }
 
-  // Helper methods
-  private async getDataSource(): Promise<string> {
-    const config = await SportConfigManager.getSportConfigAsync(this.sport)
-    return config?.dataSource || 'sportsdb'
-  }
 
 }

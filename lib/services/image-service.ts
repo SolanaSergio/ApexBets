@@ -205,7 +205,7 @@ export function getSportsImageUrl(
   category: keyof typeof SPORTS_IMAGES,
   options: { width?: number; height?: number; quality?: number } = {}
 ): string {
-  const { width = 400, height = 250 } = options;
+  const { width = 400, height = 250, quality = 80 } = options;
   const baseUrl = SPORTS_IMAGES[category];
 
   if (!baseUrl) return getFallbackImageUrl('sports');

@@ -26,13 +26,11 @@ export interface PlayerTrend {
 }
 
 export class DynamicSportProcessor {
-  // private static projectId: string | null = null
 
   /**
    * Initialize with project ID
    */
   static async initialize(projectId: string): Promise<void> {
-    this.projectId = projectId
     await DynamicSportConfigService.initialize(projectId)
   }
 
@@ -74,7 +72,7 @@ export class DynamicSportProcessor {
       const games = player.games
       const stats = player.stats
       
-      const averages = this.calculateAverages(stats, games, sport)
+      const averages = this.calculateAverages(stats, games)
       
       return {
         ...player,
@@ -103,7 +101,7 @@ export class DynamicSportProcessor {
   /**
    * Calculate averages based on sport configuration
    */
-  private static calculateAverages(stats: Record<string, number>, games: number, sport: string): Record<string, string> {
+  private static calculateAverages(stats: Record<string, number>, games: number): Record<string, string> {
     const averages: Record<string, string> = {}
     
     if (games === 0) {

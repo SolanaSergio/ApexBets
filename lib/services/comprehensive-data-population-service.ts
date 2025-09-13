@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
 import { intelligentRateLimiter } from './intelligent-rate-limiter'
+import { cacheManager } from '@/lib/cache'
 
 interface PopulationStats {
   teams: number
@@ -150,7 +151,7 @@ export class ComprehensiveDataPopulationService {
               });
             
             if (error && error.length > 0) {
-              this.stats.errors.push(...error.map(e => `Teams insertion error: ${e}`));
+              this.stats.errors.push(...error.map((e: any) => `Teams insertion error: ${e}`));
             } else {
               this.stats.teams += teamData.length;
               console.log(`   ✅ ${teamData.length} ${sport} teams added`);

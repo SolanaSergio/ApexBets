@@ -7,10 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
-import { TrendingUp, TrendingDown, BarChart3, Target, Calendar, DollarSign, Activity, ArrowUp, ArrowDown, RefreshCw } from "lucide-react"
+import { TrendingUp, TrendingDown, BarChart3, Target, DollarSign, Activity, ArrowUp, ArrowDown } from "lucide-react"
 import { simpleApiClient as apiClient } from "@/lib/api-client-simple"
-import { format } from "date-fns"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface MarketMetrics {
@@ -366,7 +364,7 @@ function OverviewSection() {
     change: number
     trend: "up" | "down"
   }>>([])
-  const [loading, setLoading] = useState(true)
+  const [, setLoading] = useState(true)
 
   useEffect(() => {
     loadTrendData()
