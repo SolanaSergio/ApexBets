@@ -35,7 +35,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
     if (selectedPlayer && comparisonPlayer) {
       fetchComparisonStats()
     }
-  }, [selectedPlayer, comparisonPlayer])
+  }, [selectedPlayer, comparisonPlayer, fetchComparisonStats])
 
   const searchPlayers = async (query: string) => {
     if (query.length < 2) {

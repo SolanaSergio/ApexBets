@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         const testKey = 'test:cache:functionality'
         const testData = { message: 'Cache test successful', timestamp: new Date().toISOString() }
         
-        await databaseCacheService.set(testKey, testData, 60, 'test')
+        await databaseCacheService.set(testKey, testData, 60)
         const retrieved = await databaseCacheService.get(testKey)
         
         return NextResponse.json({

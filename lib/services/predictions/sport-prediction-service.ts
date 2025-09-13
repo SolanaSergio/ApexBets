@@ -188,8 +188,8 @@ export class SportPredictionService {
     if (!streak) return []
     
     const form: string[] = []
-    let currentStreak = streak.charAt(0)
-    let count = parseInt(streak.slice(1)) || 1
+    const currentStreak = streak.charAt(0)
+    const count = parseInt(streak.slice(1)) || 1
     
     for (let i = 0; i < Math.min(count, 5); i++) {
       form.push(currentStreak)

@@ -229,7 +229,7 @@ export function EnhancedLeagueSelector({ sport, selectedLeague, onLeagueChange, 
 
   useEffect(() => {
     loadLeagues()
-  }, [sport])
+  }, [sport, loadLeagues])
 
   const loadLeagues = async () => {
     try {

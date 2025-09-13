@@ -42,7 +42,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
 
   useEffect(() => {
     loadTeams()
-  }, [sport])
+  }, [sport, loadTeams])
 
   const loadTeams = async () => {
     try {

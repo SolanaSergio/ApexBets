@@ -266,7 +266,7 @@ function LiveGamesSection({
     if (selectedSport) {
       fetchLiveGames()
     }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchLiveGames])
 
   async function fetchLiveGames() {
     if (!selectedSport) return
@@ -386,7 +386,7 @@ function UpcomingGamesSection({
     if (selectedSport) {
       fetchUpcomingGames()
     }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchUpcomingGames])
 
   async function fetchUpcomingGames() {
     if (!selectedSport) return
@@ -504,7 +504,7 @@ function CompletedGamesSection({
     if (selectedSport) {
       fetchCompletedGames()
     }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm])
+  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchCompletedGames])
 
   async function fetchCompletedGames() {
     if (!selectedSport) return

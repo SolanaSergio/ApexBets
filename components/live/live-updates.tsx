@@ -1,18 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  RefreshCw, 
-  Play, 
-  Pause, 
-  TrendingUp, 
-  Target, 
+import {
+  RefreshCw,
+  Play,
+  Pause,
+  TrendingUp,
+  Target,
   DollarSign,
   Clock,
   AlertCircle,
@@ -70,10 +71,9 @@ interface ValueBet {
 
 interface LiveUpdatesProps {
   sport?: string
-  className?: string
 }
 
-export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
+export function LiveUpdates({ sport }: LiveUpdatesProps) {
   const [activeTab, setActiveTab] = useState("scores")
   const [isLive, setIsLive] = useState(false)
   const [liveGames, setLiveGames] = useState<LiveGame[]>([])
@@ -84,15 +84,7 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('connected')
 
-  useEffect(() => {
-    if (isLive) {
-      fetchLiveData()
-      const interval = setInterval(fetchLiveData, 30000) // Update every 30 seconds
-      return () => clearInterval(interval)
-    }
-  }, [isLive, activeTab])
-
-  const fetchLiveData = async () => {
+  const fetchLiveData = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
@@ -102,11 +94,11 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
         // Use real-time data for live scores - ONLY fetch truly live games
         const response = await fetch(`/api/live-updates?sport=${sport}&real=true`)
         const data = await response.json()
-        
+
         // ONLY show games that are actually live (in progress) with real scores
         const trulyLiveGames = (data.live || []).filter((game: any) => {
           const status = game.status?.toLowerCase() || ''
-          const hasLiveStatus = status === 'live' || 
+          const hasLiveStatus = status === 'live' ||
                                status === 'in_progress' ||
                                status === 'in progress' ||
                                status.includes('live') ||
@@ -115,13 +107,13 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                                status.includes('period') ||
                                status.includes('inning') ||
                                status.includes('half')
-          
+
           // Must have real scores (not 0-0) to be considered truly live
           const hasRealScores = (game.homeScore > 0 || game.awayScore > 0)
-          
+
           return hasLiveStatus && hasRealScores
         })
-        
+
         console.log(`Fetched ${data.live?.length || 0} live games, filtered to ${trulyLiveGames.length} truly live games`)
         setLiveGames(trulyLiveGames)
       } else if (activeTab === 'odds') {
@@ -142,32 +134,24 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport, activeTab])
 
-  const toggleLiveUpdates = () => {
+  useEffect(() => {
+    if (isLive) {
+      fetchLiveData()
+      const interval = setInterval(fetchLiveData, 30000) // Update every 30 seconds
+      return () => clearInterval(interval)
+    }
+  }, [isLive, fetchLiveData])
+
+  const toggleLiveUpdates = (): void => {
     setIsLive(!isLive)
     if (!isLive) {
       fetchLiveData()
     }
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'live':
-      case 'in progress':
-        return 'bg-red-100 text-red-800 border-red-200'
-      case 'finished':
-      case 'completed':
-        return 'bg-gray-100 text-gray-800 border-gray-200'
-      case 'scheduled':
-      case 'upcoming':
-        return 'bg-blue-100 text-blue-800 border-blue-200'
-      default:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-    }
-  }
-
-  const getRecommendationColor = (recommendation: string) => {
+  const getRecommendationColor = (recommendation: string): string => {
     switch (recommendation) {
       case 'strong':
         return 'bg-green-100 text-green-800 border-green-200'
@@ -182,7 +166,6 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -239,7 +222,6 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
         </CardHeader>
       </Card>
 
-      {/* Live Updates Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="scores" className="flex items-center gap-2">
@@ -276,7 +258,7 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
-                Live Game Scores 
+                Live Game Scores
                 <Badge className="bg-red-500 text-white">
                   {liveGames.length} Games Live
                 </Badge>
@@ -319,12 +301,13 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-4 mb-3">
-                          {/* Team Logos and Names */}
                           <div className="flex items-center gap-2">
                             {game.awayTeamLogo && (
-                              <img 
-                                src={game.awayTeamLogo} 
+                              <Image
+                                src={game.awayTeamLogo}
                                 alt={`${game.awayTeam} logo`}
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded-full object-contain"
                                 onError={(e) => { e.currentTarget.style.display = 'none' }}
                               />
@@ -334,9 +317,11 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                           <span className="text-2xl font-bold text-muted-foreground mx-2">@</span>
                           <div className="flex items-center gap-2">
                             {game.homeTeamLogo && (
-                              <img 
-                                src={game.homeTeamLogo} 
+                              <Image
+                                src={game.homeTeamLogo}
                                 alt={`${game.homeTeam} logo`}
+                                width={32}
+                                height={32}
                                 className="w-8 h-8 rounded-full object-contain"
                                 onError={(e) => { e.currentTarget.style.display = 'none' }}
                               />
@@ -344,18 +329,18 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                             <span className="font-semibold text-lg">{game.homeTeam}</span>
                           </div>
                         </div>
-                        
+
                         <div className="flex items-center gap-4">
                           <Badge className="bg-red-500 text-white animate-pulse font-bold px-3 py-1">
                             🔴 LIVE
                           </Badge>
-                          
+
                           {game.period && (
                             <Badge variant="outline" className="border-green-300 text-green-700">
                               {game.period}
                             </Badge>
                           )}
-                          
+
                           {game.timeRemaining && (
                             <div className="text-sm text-muted-foreground flex items-center gap-1">
                               <Clock className="h-3 w-3" />
@@ -363,7 +348,7 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                             </div>
                           )}
                         </div>
-                        
+
                         <div className="text-sm text-muted-foreground mt-2">
                           {game.league}{game.venue && ` • ${game.venue}`}
                           {game.dataSource && (
@@ -373,7 +358,7 @@ export function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="text-center ml-6">
                         <div className="text-4xl font-bold text-green-600 mb-1">
                           {game.awayScore !== undefined && game.homeScore !== undefined ? (

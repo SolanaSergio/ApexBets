@@ -92,7 +92,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
       fetchPlayerStats()
       fetchSeasonAverages()
     }
-  }, [selectedPlayer, selectedSeason, selectedPeriod])
+  }, [selectedPlayer, selectedSeason, selectedPeriod, fetchPlayerStats, fetchSeasonAverages])
 
   const fetchPlayerStats = async () => {
     if (!selectedPlayer || !sport) return;

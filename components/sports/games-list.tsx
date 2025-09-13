@@ -46,7 +46,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
 
   useEffect(() => {
     loadGames()
-  }, [sport])
+  }, [sport, loadGames])
 
   const loadGames = async () => {
     try {

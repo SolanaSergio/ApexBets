@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { databaseSchemaValidator } from '@/lib/services/database/schema-validator'
+import { SchemaValidator } from '@/lib/services/database/schema-validator'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const checkType = searchParams.get('type') || 'all' // all, orphaned, duplicates, invalid
 
     // Run data integrity checks
-    const integrityChecks = await databaseSchemaValidator.runDataIntegrityChecks()
+    const integrityChecks = await SchemaValidator.runDataIntegrityChecks()
 
     // Filter checks based on type if specified
     let filteredChecks = integrityChecks

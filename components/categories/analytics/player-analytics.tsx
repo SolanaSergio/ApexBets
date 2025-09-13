@@ -18,7 +18,7 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
 
   useEffect(() => {
     fetchPlayerData()
-  }, [team, timeRange, sport, league])
+  }, [team, timeRange, sport, league, fetchPlayerData])
 
   const fetchPlayerData = async () => {
     try {

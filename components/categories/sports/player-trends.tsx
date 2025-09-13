@@ -18,7 +18,7 @@ export default function PlayerTrends({ playerName, timeRange, sport, league }: P
 
   useEffect(() => {
     fetchTrendsData()
-  }, [playerName, timeRange, sport, league])
+  }, [playerName, timeRange, sport, league, fetchTrendsData])
 
   const fetchTrendsData = async () => {
     try {

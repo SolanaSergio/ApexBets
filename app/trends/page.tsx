@@ -74,13 +74,13 @@ export default function TrendsPage() {
     if (selectedSport) {
       loadTrendsData()
     }
-  }, [])
+  }, [selectedSport, loadTrendsData])
 
   useEffect(() => {
     if (selectedSport) {
       loadTrendsData()
     }
-  }, [selectedSport])
+  }, [selectedSport, loadTrendsData])
 
   async function loadTrendsData() {
     if (!selectedSport) return

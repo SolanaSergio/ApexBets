@@ -491,7 +491,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     if (mounted) {
       initializeAndLoadData()
     }
-  }, [mounted])
+  }, [mounted, initializeAndLoadData])
 
   // Add effect to reload data when sport selection changes with debouncing
   useEffect(() => {
@@ -502,7 +502,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       
       return () => clearTimeout(timeoutId)
     }
-  }, [selectedSupportedSport, mounted])
+  }, [selectedSupportedSport, mounted, loadDataForSport])
 
   // Update live games with real-time updates
   useEffect(() => {
@@ -521,7 +521,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     if (mounted) {
       loadStats()
     }
-  }, [allLiveGames, allUpcomingGames, allTeams, mounted])
+  }, [allLiveGames, allUpcomingGames, allTeams, mounted, loadStats])
 
   // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {

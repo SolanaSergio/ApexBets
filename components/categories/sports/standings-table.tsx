@@ -39,7 +39,7 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
 
   useEffect(() => {
     loadStandings()
-  }, [sport, selectedConference])
+  }, [sport, selectedConference, loadStandings])
 
   const loadStandings = async () => {
     try {

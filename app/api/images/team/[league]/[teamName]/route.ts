@@ -17,7 +17,7 @@ async function getLeagueStyles(league: string): Promise<LeagueStyles> {
     // Try to get league styles from database first
     const { createClient } = await import('@/lib/supabase/server')
     const supabase = await createClient()
-    
+
     if (supabase) {
       const { data } = await supabase
         .from('teams')
@@ -25,7 +25,7 @@ async function getLeagueStyles(league: string): Promise<LeagueStyles> {
         .eq('league', league)
         .limit(1)
         .single()
-      
+
       if (data?.primary_color && data?.secondary_color) {
         return {
           primaryColor: data.primary_color,
@@ -39,7 +39,7 @@ async function getLeagueStyles(league: string): Promise<LeagueStyles> {
   } catch (error) {
     console.warn('Error fetching league styles from database:', error)
   }
-  
+
   // Fallback to default styles
   return {
     primaryColor: '#1E3A8A',
@@ -85,9 +85,7 @@ async function generateSVG(league: string, teamName: string): Promise<string> {
     secondaryColor = `hsl(${complementaryHue}, 70%, 55%)`
   }
 
-  let shape
   let background
-  let initialsStyle
 
   switch (style.shape) {
     case 'circle':
@@ -143,7 +141,7 @@ async function generateSVG(league: string, teamName: string): Promise<string> {
       break
   }
 
-  initialsStyle = style.backgroundColor === '#FFFFFF' || style.backgroundColor === '#000000'
+  const initialsStyle = style.backgroundColor === '#FFFFFF' || style.backgroundColor === '#000000'
     ? primaryColor
     : secondaryColor
 
@@ -187,7 +185,7 @@ async function generateSVG(league: string, teamName: string): Promise<string> {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ league: string; teamName: string }> }
 ) {
   const { params } = context;

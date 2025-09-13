@@ -48,6 +48,28 @@ class DatabaseCacheService {
     this.cache.clear()
   }
 
+  clearBySport(sport: string): void {
+    const keysToDelete: string[] = []
+    for (const key of this.cache.keys()) {
+      if (key.includes(`:${sport}:`)) {
+        keysToDelete.push(key)
+      }
+    }
+    keysToDelete.forEach(key => this.cache.delete(key))
+  }
+
+  getStats(): { totalEntries: number; totalSize: number } {
+    let totalSize = 0
+    for (const entry of this.cache.values()) {
+      totalSize += JSON.stringify(entry.data).length
+    }
+    
+    return {
+      totalEntries: this.cache.size,
+      totalSize
+    }
+  }
+
   private evictOldest(): void {
     let oldestKey = ''
     let oldestTime = Date.now()

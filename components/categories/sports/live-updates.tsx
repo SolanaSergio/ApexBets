@@ -52,7 +52,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     // Set up auto-refresh every 30 seconds
     const interval = setInterval(loadLiveData, 30000)
     return () => clearInterval(interval)
-  }, [sport])
+  }, [sport, loadLiveData])
 
   const loadLiveData = async () => {
     try {

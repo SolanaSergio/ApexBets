@@ -18,7 +18,7 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
 
   useEffect(() => {
     fetchPerformanceData()
-  }, [team, timeRange, sport, league])
+  }, [team, timeRange, sport, league, fetchPerformanceData])
 
   const fetchPerformanceData = async () => {
     try {

@@ -35,7 +35,7 @@ export async function GET(
 
     const oddsService = new SportOddsService(sport, league)
     let data: any = null
-    let meta: any = {
+    const meta: any = {
       timestamp: new Date().toISOString(),
       sport,
       league: league || serviceFactory.getDefaultLeague(sport),
@@ -124,7 +124,7 @@ export async function POST(
 
     const oddsService = new SportOddsService(sport, requestData?.league)
     let result: any = null
-    let meta: any = {
+    const meta: any = {
       timestamp: new Date().toISOString(),
       sport,
       action

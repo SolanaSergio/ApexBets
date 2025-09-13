@@ -213,7 +213,7 @@ function StandingsSection({ selectedSport }: { selectedSport: SupportedSport }) 
 
   useEffect(() => {
     fetchStandings()
-  }, [selectedSport])
+  }, [selectedSport, fetchStandings])
 
   async function fetchStandings() {
     if (!selectedSport) return
@@ -319,7 +319,7 @@ function StatsSection({ selectedSport }: { selectedSport: SupportedSport }) {
 
   useEffect(() => {
     fetchTeamStats()
-  }, [selectedSport])
+  }, [selectedSport, fetchTeamStats])
 
   async function fetchTeamStats() {
     if (!selectedSport) return

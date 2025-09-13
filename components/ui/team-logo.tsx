@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 
 interface TeamLogoProps {
@@ -67,9 +68,11 @@ export function TeamLogo({
           </span>
         </div>
       )}
-      <img
+      <Image
         src={logoUrl}
         alt={`${teamName} logo`}
+        width={size === "sm" ? 24 : size === "md" ? 32 : size === "lg" ? 48 : 64}
+        height={size === "sm" ? 24 : size === "md" ? 32 : size === "lg" ? 48 : 64}
         className={cn(
           "rounded-full object-cover transition-opacity duration-200",
           sizeClasses[size],

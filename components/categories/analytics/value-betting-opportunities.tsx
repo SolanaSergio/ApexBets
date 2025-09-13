@@ -31,7 +31,7 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
 
   useEffect(() => {
     fetchValueBets()
-  }, [timeRange, sport, league])
+  }, [timeRange, sport, league, fetchValueBets])
 
   const fetchValueBets = async () => {
     try {

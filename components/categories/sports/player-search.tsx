@@ -85,7 +85,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     if (sport) {
       fetchTeams();
     }
-  }, [sport]);
+  }, [sport, fetchTeams]);
 
   // Search players when query changes
   useEffect(() => {
@@ -97,7 +97,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     } else {
       setPlayers([]);
     }
-  }, [searchQuery, selectedTeam, selectedPosition]);
+  }, [searchQuery, selectedTeam, selectedPosition, searchPlayers]);
 
   const fetchTeams = async () => {
     if (!sport) return;

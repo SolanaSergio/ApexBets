@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') as 'scheduled' | 'live' | 'finished' || undefined
 
     let data: any = null
-    let meta: any = {
+    const meta: any = {
       timestamp: new Date().toISOString(),
       action
     }
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     const { action, data: requestData } = body
 
     let result: any = null
-    let meta: any = {
+    const meta: any = {
       timestamp: new Date().toISOString(),
       action
     }
