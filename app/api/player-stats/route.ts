@@ -39,11 +39,11 @@ export async function GET(request: NextRequest) {
     
     // Get player statistics
     const playerStats = await playerStatsService.getPlayerStats({
-      teamId,
-      position,
-      season,
-      minGames,
-      sortBy,
+      ...(teamId && { teamId }),
+      ...(position && { position }),
+      ...(season && { season }),
+      ...(minGames && { minGames }),
+      ...(sortBy && { sortBy }),
       sortOrder,
       limit
     })

@@ -70,11 +70,14 @@ class UnifiedCacheManager implements CacheManager {
     // Set in database cache if available (async)
     if (databaseCacheService.isAvailable()) {
       // Extract data type from key pattern
-      const dataType = this.extractDataType(key)
-      const sport = this.extractSport(key)
+      // const dataType = this.extractDataType(key)
+      // const sport = this.extractSport(key)
       
-      databaseCacheService.set(key, data, Math.floor(ttl / 1000), dataType, sport)
-        .catch(error => console.warn('Database cache set error:', error))
+      try {
+        databaseCacheService.set(key, data, Math.floor(ttl / 1000))
+      } catch (error) {
+        console.warn('Database cache set error:', error)
+      }
     }
   }
 
@@ -83,8 +86,11 @@ class UnifiedCacheManager implements CacheManager {
     
     // Delete from database cache if available (async)
     if (databaseCacheService.isAvailable()) {
-      databaseCacheService.delete(key)
-        .catch(error => console.warn('Database cache delete error:', error))
+      try {
+        databaseCacheService.delete(key)
+      } catch (error) {
+        console.warn('Database cache delete error:', error)
+      }
     }
 
     return memDeleted
@@ -95,8 +101,11 @@ class UnifiedCacheManager implements CacheManager {
     
     // Clear database cache if available (async)
     if (databaseCacheService.isAvailable()) {
-      databaseCacheService.clear()
-        .catch(error => console.warn('Database cache clear error:', error))
+      try {
+        databaseCacheService.clear()
+      } catch (error) {
+        console.warn('Database cache clear error:', error)
+      }
     }
   }
 

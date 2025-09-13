@@ -179,7 +179,7 @@ export class WebhookProcessor {
       processingTimeMs: Date.now() - startTime,
       processed,
       skipped,
-      errors: errors.length > 0 ? errors : undefined
+      errors: errors.length > 0 ? errors : []
     }
   }
 

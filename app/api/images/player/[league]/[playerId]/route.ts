@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 // Dynamic player photo generation for missing player IDs
 // Creates professional SVG-based player photos with sport-specific styling
@@ -147,7 +147,6 @@ async function generatePlayerSVG(league: string, playerId: string | number): Pro
 }
 
 export async function GET(
-  request: NextRequest,
   context: { params: Promise<{ league: string; playerId: string }> }
 ) {
   const { params } = context;

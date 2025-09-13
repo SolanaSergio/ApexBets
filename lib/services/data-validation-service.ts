@@ -3,7 +3,7 @@
  * Ensures data quality and consistency
  */
 
-import { simpleApiClient as apiClient, type Game, type Team, type Player } from '@/lib/api-client-simple';
+import { simpleApiClient as apiClient } from '@/lib/api-client-simple';
 import { SportConfigManager, SupportedSport } from './core/sport-config';
 
 export interface ValidationResult {
@@ -246,7 +246,7 @@ export class DataValidationService {
     const recommendations: string[] = [];
     const results = await this.validateAllComponents();
 
-    const allSports = SportConfigManager.getSupportedSports();
+    // const allSports = SportConfigManager.getSupportedSports();
     const sportsWithMissingData = new Set<SupportedSport>();
 
     for (const result of results) {

@@ -4,7 +4,7 @@
  * Prevents overlapping cache entries and implements proper request deduplication
  */
 
-import { cacheManager } from '../cache-manager'
+import { cacheManager } from '@/lib/cache'
 
 export interface CacheEntry<T> {
   data: T

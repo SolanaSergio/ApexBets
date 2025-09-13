@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, Target, Trophy } from "lucide-react"
 
 interface TeamPerformanceChartProps {
@@ -15,10 +15,6 @@ interface TeamPerformanceChartProps {
 export default function TeamPerformanceChart({ team, timeRange, sport, league }: TeamPerformanceChartProps) {
   const [performanceData, setPerformanceData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchPerformanceData()
-  }, [team, timeRange, sport, league, fetchPerformanceData])
 
   const fetchPerformanceData = async () => {
     try {
@@ -57,6 +53,10 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchPerformanceData()
+  }, [team, timeRange, sport, league])
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -27,17 +27,11 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
   const [comparisonPlayer, setComparisonPlayer] = useState<BallDontLiePlayer | null>(null)
   const [player1Stats, setPlayer1Stats] = useState<BallDontLieStats[]>([])
   const [player2Stats, setPlayer2Stats] = useState<BallDontLieStats[]>([])
-  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<BallDontLiePlayer[]>([])
+  const [, setLoading] = useState(false)
 
-  useEffect(() => {
-    if (selectedPlayer && comparisonPlayer) {
-      fetchComparisonStats()
-    }
-  }, [selectedPlayer, comparisonPlayer, fetchComparisonStats])
-
-  const searchPlayers = async (query: string) => {
+  const searchPlayers = useCallback(async (query: string) => {
     if (query.length < 2) {
       setSearchResults([])
       return
@@ -52,9 +46,9 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
     } catch (error) {
       console.error("Error searching players:", error)
     }
-  }
+  }, [selectedPlayer]);
 
-  const fetchComparisonStats = async () => {
+  const fetchComparisonStats = useCallback(async () => {
     if (!selectedPlayer || !comparisonPlayer) return
 
     setLoading(true)
@@ -86,7 +80,13 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedPlayer, comparisonPlayer]);
+
+  useEffect(() => {
+    if (selectedPlayer && comparisonPlayer) {
+      fetchComparisonStats()
+    }
+  }, [selectedPlayer, comparisonPlayer, fetchComparisonStats])
 
   const calculateAverages = (stats: BallDontLieStats[]) => {
     if (stats.length === 0) return null

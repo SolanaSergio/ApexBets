@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Target, TrendingUp, CheckCircle } from "lucide-react"
 
 interface PredictionAccuracyChartProps {
@@ -15,10 +15,6 @@ interface PredictionAccuracyChartProps {
 export default function PredictionAccuracyChart({ team, timeRange, sport, league }: PredictionAccuracyChartProps) {
   const [accuracyData, setAccuracyData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchAccuracyData()
-  }, [team, timeRange, sport, league, fetchAccuracyData])
 
   const fetchAccuracyData = async () => {
     try {
@@ -46,6 +42,10 @@ export default function PredictionAccuracyChart({ team, timeRange, sport, league
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchAccuracyData()
+  }, [team, timeRange, sport, league])
 
   if (loading) {
     return (

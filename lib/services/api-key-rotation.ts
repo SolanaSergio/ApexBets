@@ -4,7 +4,6 @@
  */
 
 import { structuredLogger as logger } from './structured-logger'
-import { errorHandlingService } from './error-handling-service'
 
 interface ApiKeyConfig {
   provider: string

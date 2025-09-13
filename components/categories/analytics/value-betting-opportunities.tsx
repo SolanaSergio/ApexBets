@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { DollarSign, TrendingUp, Target } from "lucide-react"
 
 interface ValueBettingOpportunitiesProps {
@@ -29,10 +28,6 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
   const [valueBets, setValueBets] = useState<ValueBet[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchValueBets()
-  }, [timeRange, sport, league, fetchValueBets])
-
   const fetchValueBets = async () => {
     try {
       setLoading(true)
@@ -49,6 +44,10 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchValueBets()
+  }, [timeRange, sport, league])
 
   if (loading) {
     return (

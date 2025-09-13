@@ -1,16 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, X, User, Users, TrendingUp } from "lucide-react";
+import { Search, X, User } from "lucide-react";
 import { simpleApiClient, type Player, type Team } from "@/lib/api-client-simple";
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
-import { cn } from "@/lib/utils";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
 import { BallDontLiePlayer } from "@/lib/sports-apis";
 import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
@@ -55,15 +51,15 @@ interface PlayerSearchProps {
   league?: string;
 }
 
-export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, league }: PlayerSearchProps) {
+export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: PlayerSearchProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [players, setPlayers] = useState<Player[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<string>("all");
   const [selectedPosition, setSelectedPosition] = useState<string>("all");
-  const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, setIsOpen] = useState(false);
 
   // Dynamic positions based on sport
   const [positions, setPositions] = useState<string[]>([]);
@@ -80,26 +76,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     loadPositions();
   }, [sport]);
 
-  // Fetch teams on component mount and when sport changes
-  useEffect(() => {
-    if (sport) {
-      fetchTeams();
-    }
-  }, [sport, fetchTeams]);
-
-  // Search players when query changes
-  useEffect(() => {
-    if (searchQuery.length >= 2) {
-      const timeoutId = setTimeout(() => {
-        searchPlayers();
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setPlayers([]);
-    }
-  }, [searchQuery, selectedTeam, selectedPosition, searchPlayers]);
-
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     if (!sport) return;
 
     try {
@@ -109,9 +86,9 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
       console.error("Error fetching teams:", error);
       setError("Failed to load teams");
     }
-  };
+  }, [sport]);
 
-  const searchPlayers = async () => {
+  const searchPlayers = useCallback(async () => {
     if (!searchQuery.trim() || !sport) {
       setPlayers([]);
       return;
@@ -152,7 +129,27 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, selectedTeam, selectedPosition, sport]);
+
+  // Fetch teams on component mount and when sport changes
+  useEffect(() => {
+    if (sport) {
+      fetchTeams();
+    }
+  }, [sport, fetchTeams]);
+
+  // Search players when query changes
+  useEffect(() => {
+    if (searchQuery.length >= 2) {
+      const timeoutId = setTimeout(() => {
+        searchPlayers();
+      }, 300);
+      return () => clearTimeout(timeoutId);
+    } else {
+      setPlayers([]);
+      return undefined;
+    }
+  }, [searchQuery, selectedTeam, selectedPosition, searchPlayers]);
 
   const handlePlayerSelect = (player: Player) => {
     onPlayerSelect?.(player);
@@ -166,25 +163,6 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport, le
     onPlayerSelect?.(null);
   };
 
-  const getPlayerInitials = (player: PlayerUnion | null) => {
-    if (!player) return '??';
-    const name = getPlayerName(player);
-    return name ? name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '??';
-  };
-
-  const getPlayerPosition = (player: PlayerUnion | null) => {
-    if (!player) return 'Unknown';
-    if ('position' in player) {
-      return player.position || 'Unknown';
-    }
-    return 'Unknown';
-  };
-
-  const getPlayerTeam = (player: PlayerUnion | null) => {
-    if (!player) return 'Unknown Team';
-    const teamName = getPlayerTeamName(player);
-    return teamName || 'Unknown Team';
-  };
 
 
   // Show no sport selected state

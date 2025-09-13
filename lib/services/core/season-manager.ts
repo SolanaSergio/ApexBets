@@ -217,10 +217,10 @@ export class SeasonManager {
   /**
    * Get previous season for comparison
    */
-  static getPreviousSeason(sport: string, currentSeason: string): string {
+  static getPreviousSeason(_sport: string, currentSeason: string): string {
     const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
+    // const year = now.getFullYear()
+    // const month = now.getMonth() + 1
     
     // For sports with year-year format (basketball, football, hockey)
     if (currentSeason.includes('-')) {
@@ -238,7 +238,7 @@ export class SeasonManager {
   /**
    * Get season display name
    */
-  static getSeasonDisplayName(sport: string, season: string): string {
+  static getSeasonDisplayName(_sport: string, season: string): string {
     if (season.includes('-')) {
       return `${season} Season`
     } else {

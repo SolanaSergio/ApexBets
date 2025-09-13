@@ -58,7 +58,7 @@ export class DynamicExamplesService {
         abbreviation: team.abbreviation || team.name.substring(0, 3).toUpperCase(),
         league: team.league || defaultLeague,
         sport: sport,
-        logoUrl: team.logoUrl
+        logoUrl: team.logoUrl || ''
       }))
     } catch (error) {
       console.error(`Error fetching example teams for ${sport}:`, error)
@@ -77,11 +77,11 @@ export class DynamicExamplesService {
       return players.map(player => ({
         id: player.id,
         name: player.name,
-        position: player.position,
-        team: player.teamName,
+        position: player.position || '',
+        team: player.teamName || '',
         league: defaultLeague,
         sport: sport,
-        photoUrl: player.headshotUrl
+        photoUrl: player.headshotUrl || ''
       }))
     } catch (error) {
       console.error(`Error fetching example players for ${sport}:`, error)

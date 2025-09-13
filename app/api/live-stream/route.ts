@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
       console.error("Live stream error:", error)
       sendData({
         type: "error",
-        data: { message: "Internal server error", error: error.message },
+        data: { message: "Internal server error", error: error instanceof Error ? error.message : String(error) },
         timestamp: new Date().toISOString()
       })
     }

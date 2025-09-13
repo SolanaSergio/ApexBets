@@ -5,7 +5,6 @@
 
 import { BaseService, ServiceConfig } from '../core/base-service'
 import { serviceFactory, SupportedSport } from '../core/service-factory'
-import { GameData, TeamData, PlayerData } from '../core/sport-specific-service'
 
 export interface AnalyticsMetrics {
   totalGames: number

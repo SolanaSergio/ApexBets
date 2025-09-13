@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
-import { simpleApiClient, type Team } from "@/lib/api-client-simple"
+import { simpleApiClient } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import TeamPerformanceChart from "./team-performance-chart"
 import PredictionAccuracyChart from "./prediction-accuracy-chart"
@@ -52,14 +52,14 @@ export default function AnalyticsDashboard({
 
   useEffect(() => {
     loadSupportedSports()
-  }, [loadSupportedSports])
+  }, [])
 
   useEffect(() => {
     if (selectedSport) {
       fetchAnalyticsOverview()
       loadAvailableTeams()
     }
-  }, [timeRange, selectedSport, selectedLeague, fetchAnalyticsOverview, loadAvailableTeams])
+  }, [timeRange, selectedSport, selectedLeague])
 
   const loadSupportedSports = () => {
     try {

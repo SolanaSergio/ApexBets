@@ -260,7 +260,7 @@ export class DynamicTeamLogoService {
         const result: LogoResult = {
           url: apiUrl,
           source: 'api',
-          teamData: dbTeam || undefined
+          teamData: dbTeam!
         }
         logoCache.set(cacheKey, result)
         return result
@@ -271,7 +271,7 @@ export class DynamicTeamLogoService {
       const result: LogoResult = {
         url: generatedUrl,
         source: 'generated',
-        teamData: dbTeam || undefined
+        teamData: dbTeam!
       }
       logoCache.set(cacheKey, result)
       return result

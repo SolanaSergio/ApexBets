@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { User, TrendingUp, Target } from "lucide-react"
 
 interface PlayerAnalyticsProps {
@@ -15,10 +15,6 @@ interface PlayerAnalyticsProps {
 export default function PlayerAnalytics({ team, timeRange, sport, league }: PlayerAnalyticsProps) {
   const [playerData, setPlayerData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchPlayerData()
-  }, [team, timeRange, sport, league, fetchPlayerData])
 
   const fetchPlayerData = async () => {
     try {
@@ -70,6 +66,10 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchPlayerData()
+  }, [team, timeRange, sport, league])
 
   if (loading) {
     return (

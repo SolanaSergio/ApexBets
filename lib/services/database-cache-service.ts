@@ -11,12 +11,15 @@ interface CacheConfig {
 class DatabaseCacheService {
   private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
   private config: CacheConfig
+  private disabled = false
 
   constructor(config: CacheConfig = { ttl: 300000, maxSize: 1000 }) {
     this.config = config
   }
 
   set(key: string, data: any, ttl?: number): void {
+    if (this.disabled) return
+    
     if (this.cache.size >= this.config.maxSize) {
       this.evictOldest()
     }
@@ -28,7 +31,9 @@ class DatabaseCacheService {
     })
   }
 
-  get(key: string): any | null {
+  get<T>(key: string): T | null {
+    if (this.disabled) return null
+    
     const entry = this.cache.get(key)
     if (!entry) return null
 
@@ -67,6 +72,22 @@ class DatabaseCacheService {
     return {
       totalEntries: this.cache.size,
       totalSize
+    }
+  }
+
+  isAvailable(): boolean {
+    return !this.disabled
+  }
+
+  reEnableCache(): void {
+    this.disabled = false
+  }
+
+  getStatus(): { available: boolean; disabled: boolean; supabaseConnected: boolean } {
+    return {
+      available: !this.disabled,
+      disabled: this.disabled,
+      supabaseConnected: true // This is a simple in-memory cache, so always "connected"
     }
   }
 

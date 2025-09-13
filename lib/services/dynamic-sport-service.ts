@@ -263,7 +263,7 @@ export class DynamicSportService {
 
     // Must have actual scores (not 0-0) for most sports
     const hasRealScores = (homeScore !== null && awayScore !== null) && 
-                         (homeScore > 0 || awayScore > 0)
+                         ((homeScore ?? 0) > 0 || (awayScore ?? 0) > 0)
 
     return hasLiveStatus && hasRealScores
   }

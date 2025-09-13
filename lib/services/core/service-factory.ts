@@ -17,15 +17,15 @@ export interface ServiceFactoryConfig {
 
 export class ServiceFactory {
   private services: Map<string, SportSpecificService> = new Map()
-  private config: ServiceFactoryConfig
+  // private config: ServiceFactoryConfig
   private serviceRegistry: Map<string, new (league: string) => SportSpecificService> = new Map()
 
-  constructor(config: ServiceFactoryConfig = {}) {
-    this.config = {
-      enableCaching: true,
-      enableRateLimiting: true,
-      ...config
-    }
+  constructor(_config: ServiceFactoryConfig = {}) {
+    // this.config = {
+    //   enableCaching: true,
+    //   enableRateLimiting: true,
+    //   ...config
+    // }
   }
 
   /**

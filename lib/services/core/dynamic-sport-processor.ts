@@ -3,7 +3,7 @@
  * Handles sport-specific data processing without hardcoded sport names
  */
 
-import { DynamicSportConfigService, DynamicSportConfig } from './dynamic-sport-config'
+import { DynamicSportConfigService } from './dynamic-sport-config'
 
 export interface PlayerPerformance {
   name: string
@@ -26,7 +26,7 @@ export interface PlayerTrend {
 }
 
 export class DynamicSportProcessor {
-  private static projectId: string | null = null
+  // private static projectId: string | null = null
 
   /**
    * Initialize with project ID
@@ -110,7 +110,7 @@ export class DynamicSportProcessor {
       return averages
     }
 
-    const statFields = DynamicSportConfigService.getSportStatsColumns(sport).statFields
+    // const statFields = DynamicSportConfigService.getSportStatsColumns(sport).statFields
     
     Object.entries(stats).forEach(([statName, total]) => {
       if (statName === 'battingAvg' || statName === 'onBasePercentage' || statName === 'sluggingPercentage') {

@@ -367,7 +367,7 @@ export class SoccerService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchPlayers(params), ttl)
   }
 
-  private async fetchPlayers(params: any): Promise<PlayerData[]> {
+  private async fetchPlayers(_params: any): Promise<PlayerData[]> {
     try {
       // Soccer players would need different API integration
       return []
@@ -388,7 +388,7 @@ export class SoccerService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchStandings(season), ttl)
   }
 
-  private async fetchStandings(season?: string): Promise<any[]> {
+  private async fetchStandings(_season?: string): Promise<any[]> {
     try {
       // Would integrate with appropriate API
       return []
@@ -405,7 +405,7 @@ export class SoccerService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchOdds(params), ttl)
   }
 
-  private async fetchOdds(params: any): Promise<any[]> {
+  private async fetchOdds(_params: any): Promise<any[]> {
     try {
       if (!oddsApiClient) {
         console.warn('Odds API client not configured, returning empty odds')
@@ -469,8 +469,8 @@ export class SoccerService extends SportSpecificService {
       time: rawData.strTime,
       status: rawData.strStatus === 'FT' ? 'finished' : 
               rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
-      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : undefined,
-      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : undefined,
+      homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
+      awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
       venue: rawData.strVenue,
       lastUpdated: new Date().toISOString()
     }
@@ -508,10 +508,4 @@ export class SoccerService extends SportSpecificService {
     return config?.dataSource || 'sportsdb'
   }
 
-  private hasSportsDBKey(): boolean {
-    const apiKey = process.env.NEXT_PUBLIC_SPORTSDB_API_KEY
-    return !!(apiKey && 
-              apiKey !== '' && 
-              apiKey.length > 10)
-  }
 }

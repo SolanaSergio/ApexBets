@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
-import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, ChevronDown, User } from "lucide-react"
+import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
 import { SportSelector, SportSelectorCompact } from "./sport-selector"
 import { SupportedSport } from "@/lib/services/core/sport-config"
+import { UserProfileDropdown } from "@/components/auth/user-profile"
+import { useAuth } from "@/lib/auth/auth-context"
 
 const navigationItems = [
   {
@@ -77,6 +79,7 @@ export function Navigation() {
   const [scrolled, setScrolled] = useState(false)
   const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
   const [mounted, setMounted] = useState(false)
+  const { user } = useAuth()
 
   useEffect(() => {
     setMounted(true)
@@ -158,6 +161,13 @@ export function Navigation() {
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-3">
             <NotificationSystem />
+            {user ? (
+              <UserProfileDropdown />
+            ) : (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/login">Sign In</Link>
+              </Button>
+            )}
           </div>
 
           {/* Mobile Navigation */}
@@ -242,7 +252,27 @@ export function Navigation() {
                   </nav>
 
                   {/* Mobile Footer */}
-                  <div className="pt-6 border-t">
+                  <div className="pt-6 border-t space-y-4">
+                    {user ? (
+                      <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                          {user.user_metadata?.full_name?.[0] || user.email?.[0] || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {user.user_metadata?.full_name || user.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {user.email}
+                          </p>
+                        </div>
+                        <UserProfileDropdown />
+                      </div>
+                    ) : (
+                      <Button asChild variant="outline" className="w-full">
+                        <Link href="/login" onClick={() => setIsOpen(false)}>Sign In</Link>
+                      </Button>
+                    )}
                     <p className="text-xs text-muted-foreground text-center">
                       Version 1.0.0
                     </p>

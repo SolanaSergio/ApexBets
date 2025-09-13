@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
 import { SupportedSport } from '@/lib/services/core/service-factory'
 
 export async function GET(request: Request) {

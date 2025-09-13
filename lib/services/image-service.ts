@@ -3,8 +3,8 @@
  * Dynamic logo system for all teams and sports
  */
 
-import { promises as fs } from 'fs';
-import path from 'path';
+// import { promises as fs } from 'fs';
+// import path from 'path';
 
 // ============================================================================
 // TYPES AND INTERFACES
@@ -40,70 +40,12 @@ export interface PlayerPhotoConfig {
 // Dynamic team logo sources - loaded from database
 let TEAM_LOGOS: Record<string, any> = {}
 
-// Initialize team logos from database
-async function initializeTeamLogos() {
-  try {
-    const { createClient } = await import('@/lib/supabase/client')
-    const supabase = createClient()
-    
-    const response = await supabase
-      ?.from('sports')
-      .select('name, logo_base_url, headshot_base_url, image_sources')
-      .eq('is_active', true)
-    
-    if (response && !response.error && response.data) {
-      TEAM_LOGOS = response.data.reduce((acc, sport) => {
-        acc[sport.name] = {
-          logos: sport.logo_base_url || '',
-          headshots: sport.headshot_base_url || '',
-          sources: sport.image_sources || [],
-          teams: {} // Will be populated dynamically from database
-        }
-        return acc
-      }, {} as Record<string, any>)
-    }
-  } catch (error) {
-    console.warn('Failed to load team logos from database, using defaults:', error)
-    // Fallback to minimal default
-    TEAM_LOGOS = {
-      default: {
-        logos: '',
-        headshots: '',
-        sources: [],
-        teams: {}
-      }
-    }
-  }
-}
+// Initialize team logos from database - removed unused function
 
 // Dynamic sports images - loaded from database
 let SPORTS_IMAGES: Record<string, string> = {}
 
-// Initialize sports images from database
-async function initializeSportsImages() {
-  try {
-    const { createClient } = await import('@/lib/supabase/client')
-    const supabase = createClient()
-    
-    const response = await supabase
-      ?.from('sports')
-      .select('name, image_url')
-      .eq('is_active', true)
-    
-    if (response && !response.error && response.data) {
-      SPORTS_IMAGES = response.data.reduce((acc, sport) => {
-        acc[sport.name.toUpperCase()] = sport.image_url || ''
-        return acc
-      }, {} as Record<string, string>)
-    }
-  } catch (error) {
-    console.warn('Failed to load sports images from database, using defaults:', error)
-    // Fallback to minimal default
-    SPORTS_IMAGES = {
-      DEFAULT: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=400&h=250&auto=format&fit=crop'
-    }
-  }
-}
+// Initialize sports images from database - removed unused function
 
 // ============================================================================
 // MAIN SERVICE FUNCTIONS
@@ -136,7 +78,7 @@ export function getTeamLogoUrl(
   league: SportsLeague,
   config: TeamLogoConfig = {}
 ): string {
-  const { variant = 'primary', format = 'png', quality = 80 } = config;
+  const { variant = 'primary', format = 'png' } = config;
   const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
 
   try {
@@ -164,7 +106,7 @@ export function getApiLogoUrl(
   league: SportsLeague,
   config: TeamLogoConfig = {}
 ): string {
-  const { variant = 'primary', format = 'png', quality = 80 } = config;
+  const { variant = 'primary', format = 'png' } = config;
   const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
 
   try {
@@ -239,7 +181,7 @@ export function getPlayerPhotoUrl(
   league: SportsLeague = 'NBA',
   config: PlayerPhotoConfig = {}
 ): string {
-  const { variant = 'headshot', format = 'jpg', quality = 80 } = config;
+  const { format = 'jpg' } = config;
 
   try {
     // Dynamic league lookup - will be loaded from database configuration
@@ -263,7 +205,7 @@ export function getSportsImageUrl(
   category: keyof typeof SPORTS_IMAGES,
   options: { width?: number; height?: number; quality?: number } = {}
 ): string {
-  const { width = 400, height = 250, quality = 80 } = options;
+  const { width = 400, height = 250 } = options;
   const baseUrl = SPORTS_IMAGES[category];
 
   if (!baseUrl) return getFallbackImageUrl('sports');
@@ -316,7 +258,7 @@ interface SportLogos {
 class DynamicImageService {
   private static instance: DynamicImageService;
   private logoCache: Map<string, LogoInfo> = new Map();
-  private sportLogos: SportLogos = {};
+  // private sportLogos: SportLogos = {};
 
   private constructor() {}
 
@@ -341,7 +283,7 @@ class DynamicImageService {
   }
 
   private async fetchTeamLogo(sportId: string, teamId: string): Promise<LogoInfo> {
-    const normalizedTeam = teamId.toLowerCase().replace(/\s+/g, '-');
+    // const normalizedTeam = teamId.toLowerCase().replace(/\s+/g, '-');
 
     // Try direct mapping first
     const directUrl = getTeamLogoUrl(teamId, sportId as SportsLeague);
@@ -369,7 +311,7 @@ class DynamicImageService {
 
   clearCache(): void {
     this.logoCache.clear();
-    this.sportLogos = {};
+    // this.sportLogos = {};
   }
 }
 

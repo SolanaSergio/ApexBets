@@ -3,7 +3,7 @@
  * Golf-specific service implementation
  */
 
-import { SportSpecificService, GameData, TeamData, PlayerData, SportData } from '../core/sport-specific-service'
+import { SportSpecificService, GameData, TeamData, PlayerData } from '../core/sport-specific-service'
 import { ServiceConfig } from '../core/base-service'
 
 export class GolfService extends SportSpecificService {
@@ -18,19 +18,19 @@ export class GolfService extends SportSpecificService {
     super('golf', league, config)
   }
 
-  async getGames(params?: any): Promise<GameData[]> {
+  async getGames(_params?: any): Promise<GameData[]> {
     // Golf tournaments are individual events, not team games
     // Return empty array as golf doesn't have traditional team games
     return []
   }
 
-  async getTeams(params?: any): Promise<TeamData[]> {
+  async getTeams(_params?: any): Promise<TeamData[]> {
     // Golf doesn't have teams in the traditional sense
     // Return empty array
     return []
   }
 
-  async getPlayers(params?: any): Promise<PlayerData[]> {
+  async getPlayers(_params?: any): Promise<PlayerData[]> {
     // Golf players would be fetched from a golf-specific API
     // For now, return empty array
     return []
@@ -40,23 +40,23 @@ export class GolfService extends SportSpecificService {
     return []
   }
 
-  async getStandings(season?: string): Promise<any[]> {
+  async getStandings(_season?: string): Promise<any[]> {
     return []
   }
 
-  async getOdds(params?: any): Promise<any[]> {
+  async getOdds(_params?: any): Promise<any[]> {
     return []
   }
 
-  protected async fetchGameById(gameId: string): Promise<GameData | null> {
+  protected async fetchGameById(_gameId: string): Promise<GameData | null> {
     return null
   }
 
-  protected async fetchTeamById(teamId: string): Promise<TeamData | null> {
+  protected async fetchTeamById(_teamId: string): Promise<TeamData | null> {
     return null
   }
 
-  protected async fetchPlayerById(playerId: string): Promise<PlayerData | null> {
+  protected async fetchPlayerById(_playerId: string): Promise<PlayerData | null> {
     return null
   }
 
@@ -71,6 +71,7 @@ export class GolfService extends SportSpecificService {
       status: rawData.status || 'scheduled',
       homeScore: rawData.homeScore,
       awayScore: rawData.awayScore,
+      venue: rawData.venue || '',
       lastUpdated: new Date().toISOString()
     }
   }

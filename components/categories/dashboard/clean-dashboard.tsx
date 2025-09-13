@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import {
 import { simpleApiClient, Game, Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { LoadingCard, LoadingGameCard, LoadingTeamCard, LoadingSpinner } from "@/components/loading-states"
+import { LoadingCard, LoadingSpinner } from "@/components/loading-states"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
 type GameData = Game
@@ -29,6 +29,7 @@ import { TeamsList } from "@/components/sports/teams-list"
 import { NoSportSelected } from "@/components/shared/no-sport-selected"
 import { TeamLogo } from "@/components/ui/team-logo"
 import { normalizeTeamData, normalizeGameData, deduplicateGames, deduplicateTeams } from "@/lib/utils/data-utils"
+import { FadeIn, StaggerContainer, StaggerItem, ScaleIn } from "@/components/ui/page-transition"
 
 interface CleanDashboardProps {
   className?: string
@@ -55,19 +56,19 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   })
   
   // Use real-time updates hook
-  const { gameUpdates: liveGameUpdates, isConnected, lastUpdate, error: realtimeError } = useRealTimeUpdates(selectedSupportedSport || "basketball")
+  const { gameUpdates: liveGameUpdates, isConnected } = useRealTimeUpdates(selectedSupportedSport || "basketball")
 
   // All function definitions moved to top to prevent reference errors
-  const loadServiceHealth = async () => {
+  const loadServiceHealth = useCallback(async () => {
     try {
       const healthStatus = await simpleApiClient.getHealthStatus()
       setServiceHealth(healthStatus as Record<SupportedSport, boolean>)
     } catch (error) {
       console.error('Error loading service health:', error)
     }
-  }
+  }, [])
 
-  const loadStats = async () => {
+  const loadStats = useCallback(async () => {
     try {
       const supportedSports = SportConfigManager.getSupportedSports()
       let totalGames = 0
@@ -93,25 +94,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } catch (error) {
       console.error('Error loading stats:', error)
     }
-  }
+  }, [allLiveGames, allUpcomingGames, allTeams])
 
-  const loadStatsForSport = async (sport: SupportedSport) => {
-    try {
-      const sportGames = [...allLiveGames, ...allUpcomingGames].filter(game => game.sport === sport)
-      const sportTeams = allTeams.filter(team => team.sport === sport)
-      
-      setStats(prev => ({
-        ...prev,
-        totalGames: sportGames.length,
-        liveGames: allLiveGames.filter(game => game.sport === sport).length,
-        totalTeams: sportTeams.length
-      }))
-    } catch (error) {
-      console.error('Error loading stats for sport:', error)
-    }
-  }
 
-  const loadTeamsForSport = async (sport: SupportedSport) => {
+  const loadTeamsForSport = useCallback(async (sport: SupportedSport) => {
     try {
       console.log(`Loading teams for ${sport}...`)
       
@@ -160,30 +146,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } catch (error) {
       console.warn(`Failed to load teams for ${sport}:`, error)
     }
-  }
+  }, [])
 
-  const loadAllTeams = async () => {
-    try {
-      const supportedSports = SportConfigManager.getSupportedSports()
-      let allTeamsData: TeamData[] = []
-      
-      for (const sport of supportedSports) {
-        try {
-          // Use database first for reliable data
-          const teams = await simpleApiClient.getTeams({ sport, external: false })
-          allTeamsData = [...allTeamsData, ...teams]
-        } catch (error) {
-          console.warn(`Failed to load teams for ${sport}:`, error)
-        }
-      }
-      
-      setAllTeams(allTeamsData)
-    } catch (error) {
-      console.error('Error loading all teams:', error)
-    }
-  }
 
-  const loadUpcomingGamesForSport = async (sport: SupportedSport) => {
+  const loadUpcomingGamesForSport = useCallback(async (sport: SupportedSport) => {
     try {
       const today = new Date().toISOString().split('T')[0]
       console.log(`Loading upcoming games for ${sport} on ${today}...`)
@@ -264,37 +230,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } catch (error) {
       console.warn(`Failed to load upcoming games for ${sport}:`, error)
     }
-  }
+  }, [])
 
-  const loadAllUpcomingGames = async () => {
-    try {
-      const today = new Date().toISOString().split('T')[0]
-      const supportedSports = SportConfigManager.getSupportedSports()
-      let allGames: GameData[] = []
-      
-      for (const sport of supportedSports) {
-        try {
-          // Use database first for reliable data
-          const games = await simpleApiClient.getGames({
-            sport,
-            dateFrom: today,
-            status: 'scheduled',
-            limit: 20,
-            external: false
-          })
-          allGames = [...allGames, ...games]
-        } catch (error) {
-          console.warn(`Failed to load upcoming games for ${sport}:`, error)
-        }
-      }
-      
-      setAllUpcomingGames(allGames)
-    } catch (error) {
-      console.error('Error loading all upcoming games:', error)
-    }
-  }
 
-  const loadLiveGamesForSport = async (sport: SupportedSport) => {
+  const loadLiveGamesForSport = useCallback(async (sport: SupportedSport) => {
     try {
       console.log(`Loading live games for ${sport}...`)
       
@@ -352,30 +291,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } catch (error) {
       console.warn(`Failed to load live games for ${sport}:`, error)
     }
-  }
+  }, [])
 
-  const loadAllLiveGames = async () => {
-    try {
-      const supportedSports = SportConfigManager.getSupportedSports()
-      let allGames: GameData[] = []
-      
-      for (const sport of supportedSports) {
-        try {
-          // Use database first for reliable data
-          const games = await simpleApiClient.getGames({ sport, status: 'in_progress', external: false })
-          allGames = [...allGames, ...games]
-        } catch (error) {
-          console.warn(`Failed to load live games for ${sport}:`, error)
-        }
-      }
-      
-      setAllLiveGames(allGames)
-    } catch (error) {
-      console.error('Error loading all live games:', error)
-    }
-  }
 
-  const initializeAndLoadData = async () => {
+  const initializeAndLoadData = useCallback(async () => {
     try {
       // Initialize sport configuration first
       await SportConfigManager.initialize()
@@ -386,12 +305,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
-          // Load data for the selected sport immediately
-          await loadDataForSport(sportToSet)
         }
-      } else {
-        // If sport is already selected, load data for it
-        await loadDataForSport(selectedSupportedSport)
       }
     } catch (error) {
       console.error('Error initializing dashboard:', error)
@@ -404,15 +318,12 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
-          await loadDataForSport(sportToSet)
         }
-      } else {
-        await loadDataForSport(selectedSupportedSport)
       }
     }
-  }
+  }, [selectedSupportedSport, defaultSport])
 
-  const loadDataForSport = async (sport: SupportedSport, retryCount = 0) => {
+  const loadDataForSport = useCallback(async (sport: SupportedSport, retryCount = 0) => {
     try {
       setLoading(true)
       
@@ -442,38 +353,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } finally {
       setLoading(false)
     }
-  }
+  }, [loadServiceHealth, loadTeamsForSport, loadLiveGamesForSport, loadUpcomingGamesForSport])
 
-  const loadSportSpecificData = async () => {
-    if (!selectedSupportedSport) return
-    
-    try {
-      setLoading(true)
-      const sport = selectedSupportedSport
-      
-      // Load data sequentially to avoid rate limits
-      // Start with health check (fastest)
-      await loadServiceHealth()
-      
-      // Then load teams (less frequent data)
-      await loadTeamsForSport(sport)
-      
-      // Then load games data
-      await Promise.all([
-        loadLiveGamesForSport(sport),
-        loadUpcomingGamesForSport(sport)
-      ])
-      
-      // Recalculate stats after loading data
-      await loadStats()
-    } catch (error) {
-      console.error('Error loading sport-specific data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     // Clear cache to force fresh data
     simpleApiClient.clearCache()
@@ -481,7 +364,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       await loadDataForSport(selectedSupportedSport)
     }
     setRefreshing(false)
-  }
+  }, [selectedSupportedSport, loadDataForSport])
 
   useEffect(() => {
     setMounted(true)
@@ -493,16 +376,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     }
   }, [mounted, initializeAndLoadData])
 
-  // Add effect to reload data when sport selection changes with debouncing
+  // Load data when sport is selected after initialization
   useEffect(() => {
-    if (selectedSupportedSport && mounted) {
-      const timeoutId = setTimeout(() => {
-        loadDataForSport(selectedSupportedSport)
-      }, 300) // Debounce by 300ms
-      
-      return () => clearTimeout(timeoutId)
+    if (mounted && selectedSupportedSport) {
+      loadDataForSport(selectedSupportedSport)
     }
-  }, [selectedSupportedSport, mounted, loadDataForSport])
+  }, [mounted, selectedSupportedSport, loadDataForSport])
+
 
   // Update live games with real-time updates
   useEffect(() => {
@@ -528,7 +408,6 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     return <LoadingSpinner />
   }
 
-  const currentSupportedSportConfig = selectedSupportedSport ? SportConfigManager.getSportConfig(selectedSupportedSport) : null
   const isServiceHealthy = selectedSupportedSport ? (serviceHealth[selectedSupportedSport] ?? false) : false
 
   if (loading) {
@@ -552,130 +431,163 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     <ErrorBoundary>
       <div className={`space-y-8 ${className}`}>
       {/* Header */}
-      <div className="flex flex-col space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              ApexBets Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Multi-sport analytics and predictions
-            </p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleRefresh}
-              disabled={refreshing}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
+      <FadeIn delay={0.1}>
+        <div className="flex flex-col space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                ApexBets Dashboard
+              </h1>
+              <p className="text-muted-foreground">
+                Multi-sport analytics and predictions
+              </p>
+            </div>
             <div className="flex items-center space-x-2">
-              <Badge variant={isServiceHealthy ? "default" : "destructive"}>
-                {isServiceHealthy ? (
-                  <><CheckCircle className="h-3 w-3 mr-1" /> Healthy</>
-                ) : (
-                  <><AlertCircle className="h-3 w-3 mr-1" /> Issues</>
-                )}
-              </Badge>
-              <Badge variant={isConnected ? "default" : "destructive"}>
-                {isConnected ? (
-                  <><Zap className="h-3 w-3 mr-1" /> Live</>
-                ) : (
-                  <><AlertCircle className="h-3 w-3 mr-1" /> Disconnected</>
-                )}
-              </Badge>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="transition-all duration-200 hover:scale-105 hover:shadow-md"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+              <div className="flex items-center space-x-2">
+                <Badge variant={isServiceHealthy ? "default" : "destructive"} className="transition-all duration-200">
+                  {isServiceHealthy ? (
+                    <><CheckCircle className="h-3 w-3 mr-1" /> Healthy</>
+                  ) : (
+                    <><AlertCircle className="h-3 w-3 mr-1" /> Issues</>
+                  )}
+                </Badge>
+                <Badge variant={isConnected ? "default" : "destructive"} className="transition-all duration-200">
+                  {isConnected ? (
+                    <><Zap className="h-3 w-3 mr-1" /> Live</>
+                  ) : (
+                    <><AlertCircle className="h-3 w-3 mr-1" /> Disconnected</>
+                  )}
+                </Badge>
+              </div>
+            </div>
+          </div>
+
+          {/* SupportedSport Selector */}
+          <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+            <div className="flex-1">
+              <SportSelector
+                selectedSport={selectedSupportedSport}
+                onSportChange={setSelectedSupportedSport}
+              />
+            </div>
+            <div className="sm:hidden">
+              <SportSelectorCompact
+                selectedSport={selectedSupportedSport}
+                onSportChange={setSelectedSupportedSport}
+              />
             </div>
           </div>
         </div>
-
-        {/* SupportedSport Selector */}
-        <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-          <div className="flex-1">
-            <SportSelector
-              selectedSport={selectedSupportedSport}
-              onSportChange={setSelectedSupportedSport}
-            />
-          </div>
-          <div className="sm:hidden">
-            <SportSelectorCompact
-              selectedSport={selectedSupportedSport}
-              onSportChange={setSelectedSupportedSport}
-            />
-          </div>
-        </div>
-      </div>
+      </FadeIn>
 
       {/* Stats Overview */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Games</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalGames}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all sports
-            </p>
-          </CardContent>
-        </Card>
+      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StaggerItem index={0} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Games</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalGames}</div>
+              <p className="text-xs text-muted-foreground">
+                Across all sports
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
         
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Live Games</CardTitle>
-            <Zap className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.liveGames}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently playing
-            </p>
-          </CardContent>
-        </Card>
+        <StaggerItem index={1} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Live Games</CardTitle>
+              <Zap className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{stats.liveGames}</div>
+              <p className="text-xs text-muted-foreground">
+                Currently playing
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
         
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Teams</CardTitle>
-            <Star className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTeams}</div>
-            <p className="text-xs text-muted-foreground">
-              Across all leagues
-            </p>
-          </CardContent>
-        </Card>
+        <StaggerItem index={2} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Teams</CardTitle>
+              <Star className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalTeams}</div>
+              <p className="text-xs text-muted-foreground">
+                Across all leagues
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
         
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">SupportedSports</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalSupportedSports}</div>
-            <p className="text-xs text-muted-foreground">
-              Supported sports
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        <StaggerItem index={3} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">SupportedSports</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.totalSupportedSports}</div>
+              <p className="text-xs text-muted-foreground">
+                Supported sports
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+      </StaggerContainer>
 
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="games">Games</TabsTrigger>
-          <TabsTrigger value="teams">Teams</TabsTrigger>
-          <TabsTrigger value="all-sports">All SupportedSports</TabsTrigger>
-        </TabsList>
+      <FadeIn delay={0.3}>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4 bg-slate-100 p-1 rounded-lg">
+            <TabsTrigger 
+              value="overview"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger 
+              value="games"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Games
+            </TabsTrigger>
+            <TabsTrigger 
+              value="teams"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              Teams
+            </TabsTrigger>
+            <TabsTrigger 
+              value="all-sports"
+              className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            >
+              All SupportedSports
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* Live Games Overview */}
-            <Card>
+          <TabsContent value="overview" className="space-y-4 animate-fade-in">
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Live Games Overview */}
+              <ScaleIn delay={0.1}>
+                <Card className="transition-all duration-300 hover:shadow-lg">
               <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Zap className="h-5 w-5 text-green-500" />
@@ -743,9 +655,11 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 </div>
               </CardContent>
             </Card>
+              </ScaleIn>
 
             {/* Upcoming Games Overview */}
-            <Card>
+            <ScaleIn delay={0.2}>
+            <Card className="transition-all duration-300 hover:shadow-lg">
               <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
@@ -810,6 +724,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 </div>
               </CardContent>
             </Card>
+            </ScaleIn>
           </div>
         </TabsContent>
 
@@ -857,7 +772,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             })}
           </div>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </FadeIn>
     </div>
     </ErrorBoundary>
   )

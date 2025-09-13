@@ -3,7 +3,7 @@
  * Provides a unified interface for client components, using the apiClient to fetch data from API routes.
  */
 
-import { simpleApiClient as apiClient, type Game, type Team, type Player, type Prediction, type Odds, type AnalyticsStats } from '@/lib/api-client-simple';
+import { simpleApiClient as apiClient, type Game, type Team, type Player } from '@/lib/api-client-simple';
 import { SportConfigManager, SupportedSport } from '../core/sport-config';
 
 export interface ApiResponse<T> {
@@ -58,15 +58,15 @@ export class UnifiedApiClient {
   } = {}): Promise<UnifiedGameData[]> {
     return apiClient.getGames({
       sport,
-      dateFrom: params.date,
-      status: params.status,
-      team_id: params.teamId,
-      limit: params.limit,
+      ...(params.date && { dateFrom: params.date }),
+      ...(params.status && { status: params.status }),
+      ...(params.teamId && { team_id: params.teamId }),
+      ...(params.limit && { limit: params.limit }),
     });
   }
 
   async getLiveGames(sport: SupportedSport, league?: string): Promise<UnifiedGameData[]> {
-    return this.getGames(sport, { league, status: 'live' });
+    return this.getGames(sport, { ...(league && { league }), status: 'live' });
   }
 
   async getTeams(sport: SupportedSport, params: {
@@ -74,7 +74,7 @@ export class UnifiedApiClient {
     search?: string;
     limit?: number;
   } = {}): Promise<UnifiedTeamData[]> {
-    return apiClient.getTeams({ sport, league: params.league });
+    return apiClient.getTeams({ sport, ...(params.league && { league: params.league }) });
   }
 
   async getPlayers(sport: SupportedSport, params: {
@@ -83,38 +83,47 @@ export class UnifiedApiClient {
     search?: string;
     limit?: number;
   } = {}): Promise<UnifiedPlayerData[]> {
-    return apiClient.getPlayers({ sport, team_id: params.teamId, search: params.search, limit: params.limit });
+    return apiClient.getPlayers({ 
+      sport, 
+      ...(params.teamId && { team_id: params.teamId }), 
+      ...(params.search && { search: params.search }), 
+      ...(params.limit && { limit: params.limit }) 
+    });
   }
 
   async getStandings(sport: SupportedSport, league?: string, season?: string): Promise<any[]> {
-    return apiClient.getStandings({ sport, league, season });
+    return apiClient.getStandings({ 
+      sport, 
+      ...(league && { league }), 
+      ...(season && { season }) 
+    });
   }
 
-  async getOdds(sport: SupportedSport, params: {
+  async getOdds(_sport: SupportedSport, params: {
     league?: string;
     gameId?: string;
     date?: string;
   } = {}): Promise<any[]> {
-    return apiClient.getOdds({ game_id: params.gameId });
+    return apiClient.getOdds({ ...(params.gameId && { game_id: params.gameId }) });
   }
 
-  async getPredictions(sport: SupportedSport, params: {
+  async getPredictions(_sport: SupportedSport, params: {
     league?: string;
     gameId?: string;
   } = {}): Promise<any[]> {
-    return apiClient.getPredictions({ game_id: params.gameId });
+    return apiClient.getPredictions({ ...(params.gameId && { game_id: params.gameId }) });
   }
 
-  async getAnalytics(sport: SupportedSport, params: any = {}): Promise<any> {
+  async getAnalytics(_sport: SupportedSport, _params: any = {}): Promise<any> {
     return apiClient.getAnalyticsStats();
   }
 
-  async getTeamPerformance(sport: SupportedSport, params: { teamId?: string } = {}): Promise<any[]> {
+  async getTeamPerformance(_sport: SupportedSport, params: { teamId?: string } = {}): Promise<any[]> {
     if (!params.teamId) return [];
     return apiClient.getTeamAnalytics(params.teamId);
   }
 
-  async getValueBets(sport: SupportedSport, params: any = {}): Promise<any[]> {
+  async getValueBets(_sport: SupportedSport, _params: any = {}): Promise<any[]> {
     // This functionality does not exist on the client-side apiClient
     return Promise.resolve([]);
   }
@@ -129,7 +138,7 @@ export class UnifiedApiClient {
     return Promise.resolve({});
   }
 
-  async warmupServices(sports: SupportedSport[] = []): Promise<void> {
+  async warmupServices(_sports: SupportedSport[] = []): Promise<void> {
     return Promise.resolve();
   }
 

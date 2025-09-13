@@ -189,7 +189,7 @@ export class ApiRateLimiter {
   /**
    * Record successful API request
    */
-  recordRequest(apiName: keyof ApiConfig): void {
+  recordRequest(_apiName: keyof ApiConfig): void {
     // Counters already incremented in checkRateLimit
   }
 

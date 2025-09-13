@@ -243,8 +243,8 @@ export class FootballService {
       date: event.dateEvent,
       time: event.strTime,
       status: event.strStatus === 'FT' ? 'finished' : event.strStatus === 'LIVE' ? 'live' : 'scheduled',
-      homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
-      awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
+      homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : 0,
+      awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : 0,
       league: 'NFL',
       venue: event.strVenue
     }

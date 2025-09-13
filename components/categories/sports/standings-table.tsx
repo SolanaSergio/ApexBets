@@ -1,15 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useCallback } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { 
   Trophy, 
-  TrendingUp, 
-  RefreshCw,
-  Users
+  RefreshCw
 } from "lucide-react"
 import { unifiedApiClient, SupportedSport } from "@/lib/services/api/unified-api-client"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
@@ -37,11 +35,7 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
   const [loading, setLoading] = useState(true)
   const [selectedConference, setSelectedConference] = useState<string>("all")
 
-  useEffect(() => {
-    loadStandings()
-  }, [sport, selectedConference, loadStandings])
-
-  const loadStandings = async () => {
+  const loadStandings = useCallback(async () => {
     try {
       setLoading(true)
       const standingsData = await unifiedApiClient.getStandings(sport)
@@ -60,7 +54,11 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport, selectedConference]);
+
+  useEffect(() => {
+    loadStandings()
+  }, [loadStandings])
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
 

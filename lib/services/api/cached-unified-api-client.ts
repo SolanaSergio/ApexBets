@@ -5,7 +5,6 @@
 
 import { serviceFactory, SupportedSport } from '../core/service-factory'
 import { ServiceRegistry } from '../core/service-registry'
-import { unifiedCacheManager } from '../cache/unified-cache-manager'
 import { databaseCacheService } from '../database-cache-service'
 import { cacheService } from '../cache-service'
 
@@ -105,7 +104,7 @@ export class CachedUnifiedApiClient {
   }
 
   // Cache configuration
-  private getCacheTtl(dataType: string, sport?: string): number {
+  private getCacheTtl(dataType: string): number {
     const cacheConfig: Record<string, number> = {
       'live_games': 120000, // 2 minutes for live games
       'scheduled_games': 300000, // 5 minutes for scheduled games
@@ -164,7 +163,7 @@ export class CachedUnifiedApiClient {
   private async getCachedData<T>(
     cacheKey: string,
     dataType: string,
-    sport?: string
+    _sport?: string
   ): Promise<T | null> {
     if (!this.cacheEnabled) {
       return null
@@ -174,7 +173,7 @@ export class CachedUnifiedApiClient {
       // Try database cache first (only if available)
       if (databaseCacheService.isAvailable()) {
         try {
-          const dbCached = await databaseCacheService.get<T>(cacheKey)
+          const dbCached = databaseCacheService.get<T>(cacheKey)
           if (dbCached) {
             return dbCached
           }
@@ -190,12 +189,10 @@ export class CachedUnifiedApiClient {
         // Try to store in database cache for persistence (if available)
         if (databaseCacheService.isAvailable()) {
           try {
-            await databaseCacheService.set(
+            databaseCacheService.set(
               cacheKey,
               memCached,
-              this.getCacheTtl(dataType, sport),
-              dataType,
-              sport
+              this.getCacheTtl(dataType)
             )
           } catch (dbError) {
             // Database cache not available, just use memory cache
@@ -216,14 +213,14 @@ export class CachedUnifiedApiClient {
     cacheKey: string,
     data: T,
     dataType: string,
-    sport?: string
+    _sport?: string
   ): Promise<void> {
     if (!this.cacheEnabled) {
       return
     }
 
     try {
-      const ttl = this.getCacheTtl(dataType, sport)
+      const ttl = this.getCacheTtl(dataType)
 
       // Store in memory cache first (always available)
       cacheService.set(cacheKey, data, ttl * 1000) // Convert to milliseconds
@@ -231,7 +228,7 @@ export class CachedUnifiedApiClient {
       // Try to store in database cache (if available)
       if (databaseCacheService.isAvailable()) {
         try {
-          await databaseCacheService.set(cacheKey, data, ttl, dataType, sport)
+          databaseCacheService.set(cacheKey, data, ttl)
         } catch (dbError) {
           // Database cache not available, just use memory cache
           console.warn('Database cache storage error:', (dbError as Error).message)
@@ -300,8 +297,13 @@ export class CachedUnifiedApiClient {
       }
 
       const games = await service.getGames(params)
-      await this.setCachedData(cacheKey, games, 'scheduled_games', sport)
-      return games
+      const unifiedGames: UnifiedGameData[] = games.map(game => ({
+        ...game,
+        homeScore: game.homeScore ?? 0,
+        awayScore: game.awayScore ?? 0
+      }))
+      await this.setCachedData(cacheKey, unifiedGames, 'scheduled_games', sport)
+      return unifiedGames
     } catch (error) {
       console.error(`Error fetching games for ${sport}:`, error)
       return []
@@ -325,8 +327,25 @@ export class CachedUnifiedApiClient {
         }
 
         const games = await service.getLiveGames()
-        await this.setCachedData(cacheKey, games, 'live_games', sport)
-        return games
+        // Transform GameData to UnifiedGameData format
+        const unifiedGames: UnifiedGameData[] = games.map(game => ({
+          id: game.id || `${game.homeTeam}-${game.awayTeam}-${game.date}`,
+          sport: game.sport || sport,
+          league: game.league || 'Unknown',
+          homeTeam: game.homeTeam,
+          awayTeam: game.awayTeam,
+          date: game.date,
+          time: game.time,
+          status: game.status,
+          homeScore: game.homeScore,
+          awayScore: game.awayScore,
+          venue: game.venue,
+          odds: game.odds,
+          predictions: game.predictions,
+          lastUpdated: new Date().toISOString()
+        }))
+        await this.setCachedData(cacheKey, unifiedGames, 'live_games', sport)
+        return unifiedGames
       } catch (error) {
         console.error(`Error fetching live games for ${sport}:`, error)
         return []

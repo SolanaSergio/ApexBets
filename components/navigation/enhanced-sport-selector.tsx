@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { 
   DropdownMenu, 
@@ -227,11 +226,7 @@ export function EnhancedLeagueSelector({ sport, selectedLeague, onLeagueChange, 
   const [leagues, setLeagues] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadLeagues()
-  }, [sport, loadLeagues])
-
-  const loadLeagues = async () => {
+  const loadLeagues = useCallback(async () => {
     try {
       setLoading(true)
       const sportLeagues = await SportConfigManager.getLeaguesForSport(sport)
@@ -241,7 +236,11 @@ export function EnhancedLeagueSelector({ sport, selectedLeague, onLeagueChange, 
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport]);
+
+  useEffect(() => {
+    loadLeagues()
+  }, [loadLeagues])
 
   if (loading) {
     return <div className="flex space-x-2 overflow-x-auto pb-2">

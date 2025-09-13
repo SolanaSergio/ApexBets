@@ -352,7 +352,7 @@ export class APIFallbackStrategy {
     }
   }
 
-  private async executeTheSportsDBRequest<T>(sport: string, dataType: string, params: any): Promise<T> {
+  private async executeTheSportsDBRequest<T>(_sport: string, dataType: string, params: any): Promise<T> {
     switch (dataType) {
       case 'games':
         return await sportsDBClient.getEvents(params) as T
@@ -500,7 +500,7 @@ export class APIFallbackStrategy {
     }
   }
 
-  private async executeApiSportsRequest<T>(sport: string, dataType: string, params: any): Promise<T> {
+  private async executeApiSportsRequest<T>(_sport: string, dataType: string, params: any): Promise<T> {
     switch (dataType) {
       case 'games':
         return await apiSportsClient.getFixtures(params) as T

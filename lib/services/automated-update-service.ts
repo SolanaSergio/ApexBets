@@ -6,8 +6,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
-import { rateLimiter } from './rate-limiter'
-import { cacheManager } from '@/lib/cache'
 import { SportConfigManager } from './core/sport-config'
 
 interface UpdateStats {

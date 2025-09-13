@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { apiFallbackStrategy } from "@/lib/services/api-fallback-strategy"
 import { espnClient } from "@/lib/sports-apis/espn-client"
 import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
 import { sportsDBClient } from "@/lib/sports-apis/sportsdb-client"
@@ -320,15 +319,15 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
             const awayTeamData = game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team || {}
             
             const homeTeam = {
-              name: homeTeamData.displayName || 'Home Team',
-              logo_url: homeTeamData.logo,
-              abbreviation: homeTeamData.abbreviation
+              name: (homeTeamData as any).displayName || 'Home Team',
+              logo_url: (homeTeamData as any).logo,
+              abbreviation: (homeTeamData as any).abbreviation
             }
             
             const awayTeam = {
-              name: awayTeamData.displayName || 'Away Team',
-              logo_url: awayTeamData.logo,
-              abbreviation: awayTeamData.abbreviation
+              name: (awayTeamData as any).displayName || 'Away Team',
+              logo_url: (awayTeamData as any).logo,
+              abbreviation: (awayTeamData as any).abbreviation
             }
             
             const formattedGame = {

@@ -4,7 +4,6 @@
  */
 
 import { structuredLogger as logger } from './structured-logger'
-import { apiFallbackStrategy } from './api-fallback-strategy'
 import { apiCostTracker } from './api-cost-tracker'
 
 interface ErrorContext {
@@ -314,7 +313,6 @@ export class EnhancedErrorHandlingService {
   // Validation errors
   createValidationError(
     field: string,
-    value: any,
     rule: string,
     context?: Partial<ErrorContext>
   ): ApiError {

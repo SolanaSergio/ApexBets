@@ -1,18 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { 
-  BarChart3, 
-  TrendingUp, 
   Target, 
-  Award, 
   Calendar,
   RefreshCw,
   User,
@@ -22,7 +18,7 @@ import {
 import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
 import { simpleApiClient, type Player, type PlayerStats as ApiPlayerStats } from "@/lib/api-client-simple";
 import { SupportedSport } from "@/lib/services/core/sport-config";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 import { BallDontLiePlayer } from "@/lib/sports-apis";
 import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
@@ -87,14 +83,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
   const [selectedSeason, setSelectedSeason] = useState<number>(2024)
   const [selectedPeriod, setSelectedPeriod] = useState<string>("last10")
 
-  useEffect(() => {
-    if (selectedPlayer) {
-      fetchPlayerStats()
-      fetchSeasonAverages()
-    }
-  }, [selectedPlayer, selectedSeason, selectedPeriod, fetchPlayerStats, fetchSeasonAverages])
-
-  const fetchPlayerStats = async () => {
+  const fetchPlayerStats = useCallback(async () => {
     if (!selectedPlayer || !sport) return;
 
     setLoading(true);
@@ -110,15 +99,15 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedPlayer, sport, selectedSeason]);
 
-  const fetchSeasonAverages = async () => {
+  const fetchSeasonAverages = useCallback(async () => {
     if (!selectedPlayer) return
 
     try {
       const response = await ballDontLieClient.getSeasonAverages({
         season: selectedSeason,
-        player_ids: [selectedPlayer.id]
+        player_ids: [Number(selectedPlayer.id)]
       })
 
       if (response.data && response.data.length > 0) {
@@ -127,7 +116,14 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
     } catch (error) {
       console.error("Error fetching season averages:", error)
     }
-  }
+  }, [selectedPlayer, selectedSeason]);
+
+  useEffect(() => {
+    if (selectedPlayer) {
+      fetchPlayerStats()
+      fetchSeasonAverages()
+    }
+  }, [selectedPlayer, selectedSeason, selectedPeriod, fetchPlayerStats, fetchSeasonAverages])
 
   const calculateAverages = () => {
     if (stats.length === 0) return null
@@ -166,9 +162,6 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
     }
   }
 
-  const getPlayerInitials = (player: Player) => {
-    return player.name.split(' ').map((n: string) => n[0]).join('').toUpperCase();
-  };
 
 
 

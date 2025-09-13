@@ -38,7 +38,7 @@ export function withRateLimit(config: RateLimitConfig) {
       } catch (error) {
         if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
           // Return rate limit error with proper headers
-          const usage = apiRateLimiter.getUsage(config.service)
+          apiRateLimiter.getUsage(config.service)
           const response = NextResponse.json(
             { 
               error: config.errorMessage || 'Rate limit exceeded',

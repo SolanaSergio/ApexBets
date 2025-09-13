@@ -205,9 +205,9 @@ describe('Webhook Authentication Middleware', () => {
 
   describe('Error Handling', () => {
     test('should handle null/undefined inputs gracefully', () => {
-      expect(hmacWebhookAuthenticator.validateSignature(null, '', testSecret)).toBe(false)
-      expect(hmacWebhookAuthenticator.validateSignature({}, null, testSecret)).toBe(false)
-      expect(hmacWebhookAuthenticator.validateSignature({}, 'sha256=test', null)).toBe(false)
+      expect(hmacWebhookAuthenticator.validateSignature(null as any, '', testSecret)).toBe(false)
+      expect(hmacWebhookAuthenticator.validateSignature({}, null as any, testSecret)).toBe(false)
+      expect(hmacWebhookAuthenticator.validateSignature({}, 'sha256=test', null as any)).toBe(false)
     })
 
     test('should handle malformed signatures gracefully', () => {

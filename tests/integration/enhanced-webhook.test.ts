@@ -3,7 +3,7 @@
  * Tests the complete webhook processing pipeline with validation, deduplication, and batch processing
  */
 
-import { describe, test, expect, beforeEach, afterEach } from '@jest/globals'
+// Jest globals are available in the test environment
 import { WebhookValidator } from '@/lib/security/webhook-validator'
 import { WebhookDeduplicator } from '@/lib/security/webhook-deduplicator'
 import { WebhookProcessor } from '@/lib/security/webhook-processor'
@@ -30,6 +30,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'game_update',
         sport: 'basketball',
         league: 'NBA',
+        source: 'webhook',
         data: {
           game_id: 'game-123',
           status: 'live',
@@ -119,6 +120,7 @@ describe('Enhanced Webhook Processing', () => {
             type: 'game_update',
             sport: 'basketball',
             league: 'NBA',
+            source: 'webhook',
             data: {
               game_id: 'game-123',
               status: 'live',
@@ -150,6 +152,7 @@ describe('Enhanced Webhook Processing', () => {
       const payload = {
         type: 'game_update',
         sport: 'basketball',
+        source: 'webhook',
         // Missing league
         data: {
           // Missing game_id
@@ -190,6 +193,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'game_update',
         sport: 'basketball',
         league: 'NBA',
+        source: 'webhook',
         data: { game_id: 'game-123', status: 'live' }
       }
 
@@ -197,6 +201,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'game_update',
         sport: 'basketball',
         league: 'NBA',
+        source: 'webhook',
         data: { game_id: 'game-123', status: 'live' }
       }
 
@@ -212,6 +217,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'game_update',
         sport: 'basketball',
         league: 'NBA',
+        source: 'webhook',
         data: { game_id: 'game-123', status: 'live' }
       }
 
@@ -219,6 +225,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'game_update',
         sport: 'basketball',
         league: 'NBA',
+        source: 'webhook',
         data: { game_id: 'game-456', status: 'live' }
       }
 
@@ -357,6 +364,7 @@ describe('Webhook Processing Performance', () => {
       type: 'game_update',
       sport: 'basketball',
       league: 'NBA',
+      source: 'webhook',
       data: {
         game_id: 'perf-test-game',
         status: 'live',
@@ -387,6 +395,7 @@ describe('Webhook Processing Performance', () => {
       type: 'game_update',
       sport: 'basketball',
       league: 'NBA',
+      source: 'webhook',
       data: {
         game_id: `concurrent-game-${i}`,
         status: 'live',

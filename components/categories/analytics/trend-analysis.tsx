@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, BarChart3 } from "lucide-react"
 
 interface TrendAnalysisProps {
@@ -15,10 +15,6 @@ interface TrendAnalysisProps {
 export default function TrendAnalysis({ team, timeRange, sport, league }: TrendAnalysisProps) {
   const [trendData, setTrendData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchTrendData()
-  }, [team, timeRange, sport, league, fetchTrendData])
 
   const fetchTrendData = async () => {
     try {
@@ -46,6 +42,10 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchTrendData()
+  }, [team, timeRange, sport, league])
 
   if (loading) {
     return (

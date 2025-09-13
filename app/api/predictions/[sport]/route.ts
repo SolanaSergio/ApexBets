@@ -43,7 +43,10 @@ export async function GET(
 
     switch (action) {
       case 'predictions':
-        data = await predictionService.getPredictions({ gameId, date, limit })
+        const predictionsParams: Parameters<typeof predictionService.getPredictions>[0] = { limit }
+        if (gameId) predictionsParams.gameId = gameId
+        if (date) predictionsParams.date = date
+        data = await predictionService.getPredictions(predictionsParams)
         meta.count = data.length
         break
 
@@ -58,11 +61,14 @@ export async function GET(
         break
 
       case 'accuracy':
-        data = await predictionService.getPredictionAccuracy({
-          startDate: searchParams.get('startDate') || undefined,
-          endDate: searchParams.get('endDate') || undefined,
-          model: searchParams.get('model') || undefined
-        })
+        const accuracyParams: Parameters<typeof predictionService.getPredictionAccuracy>[0] = {}
+        const startDate = searchParams.get('startDate')
+        const endDate = searchParams.get('endDate')
+        const modelParam = searchParams.get('model')
+        if (startDate) accuracyParams.startDate = startDate
+        if (endDate) accuracyParams.endDate = endDate
+        if (modelParam) accuracyParams.model = modelParam
+        data = await predictionService.getPredictionAccuracy(accuracyParams)
         break
 
       case 'health':

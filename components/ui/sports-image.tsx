@@ -8,13 +8,12 @@ import {
   getPlayerPhotoUrl, 
   getSportsImageUrl, 
   getFallbackImageUrl,
-  getImageWithFallback,
   IMAGE_SOURCES,
   type SportsLeague,
   type TeamLogoConfig,
   type PlayerPhotoConfig
 } from '@/lib/services/image-service'
-import { getTeamLogoUrl, getTeamLogoData, type LogoResult } from '@/lib/services/dynamic-team-service-client'
+import { getTeamLogoData } from '@/lib/services/dynamic-team-service-client'
 
 interface SportsImageProps {
   src?: string
@@ -95,7 +94,7 @@ export function SportsImage({
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={src?.includes('cdn.nba.com') || src?.includes('espncdn.com')}
+        unoptimized={!!(src?.includes('cdn.nba.com') || src?.includes('espncdn.com'))}
       />
     </div>
   )
@@ -119,14 +118,12 @@ export function TeamLogo({
 }: TeamLogoProps) {
   const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
-  const [logoData, setLogoData] = useState<LogoResult | null>(null)
 
   // Load logo using dynamic service
   useEffect(() => {
     const loadLogo = async () => {
       try {
         const result = await getTeamLogoData(teamName, league, config)
-        setLogoData(result)
         setImgSrc(result.url)
       } catch (error) {
         console.warn('Failed to load team logo:', error)

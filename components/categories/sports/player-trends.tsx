@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, Target, Activity } from "lucide-react"
 
 interface PlayerTrendsProps {
@@ -16,11 +16,7 @@ export default function PlayerTrends({ playerName, timeRange, sport, league }: P
   const [trendsData, setTrendsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchTrendsData()
-  }, [playerName, timeRange, sport, league, fetchTrendsData])
-
-  const fetchTrendsData = async () => {
+  const fetchTrendsData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -35,7 +31,11 @@ export default function PlayerTrends({ playerName, timeRange, sport, league }: P
     } finally {
       setLoading(false)
     }
-  }
+  }, [playerName, timeRange, sport, league]);
+
+  useEffect(() => {
+    fetchTrendsData()
+  }, [fetchTrendsData])
 
   if (loading) {
     return (

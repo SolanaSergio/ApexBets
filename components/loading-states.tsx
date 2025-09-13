@@ -34,16 +34,22 @@ export function LoadingSpinner({ size = "default", className }: { size?: "sm" | 
   }
 
   return (
-    <Loader2 className={`animate-spin ${sizeClasses[size]} ${className}`} />
+    <div className="relative">
+      <Loader2 className={`animate-spin text-emerald-500 ${sizeClasses[size]} ${className}`} />
+      <div className="absolute inset-0 rounded-full border-2 border-emerald-200 animate-pulse" />
+    </div>
   )
 }
 
 export function LoadingOverlay({ message = "Loading..." }: { message?: string }) {
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="flex flex-col items-center gap-4">
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+      <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl shadow-2xl border border-slate-200">
         <LoadingSpinner size="lg" />
-        <p className="text-muted-foreground">{message}</p>
+        <p className="text-slate-600 font-medium">{message}</p>
+        <div className="w-32 bg-slate-200 rounded-full h-1">
+          <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-1 rounded-full animate-pulse" />
+        </div>
       </div>
     </div>
   )

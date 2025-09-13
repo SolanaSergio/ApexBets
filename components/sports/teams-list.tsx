@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,11 +40,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
   const [leagueFilter, setLeagueFilter] = useState<string>("all")
   const [sortBy, setSortBy] = useState<"name" | "league" | "city">("name")
 
-  useEffect(() => {
-    loadTeams()
-  }, [sport, loadTeams])
-
-  const loadTeams = async () => {
+  const loadTeams = useCallback(async () => {
     try {
       setLoading(true)
       const sportTeams = await simpleApiClient.getTeams({ sport })
@@ -59,7 +55,11 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport]);
+
+  useEffect(() => {
+    loadTeams()
+  }, [loadTeams])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -268,10 +268,10 @@ function TeamCard({ team, sport }: TeamCardProps) {
               <Trophy className="h-3 w-3 text-muted-foreground" />
               <span>{team.league}</span>
             </div>
-            {team.founded && (
+            {(team as any).founded && (
               <div className="flex items-center gap-2">
                 <Star className="h-3 w-3 text-muted-foreground" />
-                <span>Founded: {team.founded}</span>
+                <span>Founded: {(team as any).founded}</span>
               </div>
             )}
           </div>

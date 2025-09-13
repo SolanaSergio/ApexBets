@@ -178,7 +178,7 @@ export class SportPlayerStatsService extends BaseService {
       try {
         const playerStats = await this.getPlayerStats({
           teamId,
-          season: season || undefined,
+          ...(season && { season }),
           limit: 100
         })
 

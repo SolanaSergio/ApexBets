@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -11,8 +11,6 @@ import {
   TrendingUp, 
   DollarSign,
   RefreshCw,
-  AlertCircle,
-  CheckCircle
 } from "lucide-react"
 import { unifiedApiClient, SupportedSport } from "@/lib/services/api/unified-api-client"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
@@ -47,14 +45,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
   const [oddsUpdates, setOddsUpdates] = useState<any[]>([])
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  useEffect(() => {
-    loadLiveData()
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(loadLiveData, 30000)
-    return () => clearInterval(interval)
-  }, [sport, loadLiveData])
-
-  const loadLiveData = async () => {
+  const loadLiveData = useCallback(async () => {
     try {
       setLoading(true)
       await Promise.all([
@@ -68,7 +59,14 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport]);
+
+  useEffect(() => {
+    loadLiveData()
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(loadLiveData, 30000)
+    return () => clearInterval(interval)
+  }, [loadLiveData])
 
   const loadLiveGames = async () => {
     try {

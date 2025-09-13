@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bell, X, AlertCircle, CheckCircle, Info, AlertTriangle, Clock, MoreHorizontal } from "lucide-react"
+import { Bell, X, AlertCircle, CheckCircle, Info, AlertTriangle, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"

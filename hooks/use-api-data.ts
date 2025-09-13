@@ -68,6 +68,7 @@ export function useApiData<T>(
       const interval = setInterval(fetchData, refetchInterval)
       return () => clearInterval(interval)
     }
+    return undefined
   }, [fetchData, refetchInterval, enabled])
 
   return {
@@ -83,6 +84,7 @@ export function useApiData<T>(
 export function useGames(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
+      if (!sport) throw new Error('Sport is required for games data')
       const { simpleApiClient } = await import('@/lib/api-client-simple')
       return simpleApiClient.getGames({ sport, limit: 50 })
     },
@@ -94,7 +96,9 @@ export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
       const { simpleApiClient } = await import('@/lib/api-client-simple')
-      return simpleApiClient.getTeams({ sport })
+      const params: Parameters<typeof simpleApiClient.getTeams>[0] = {}
+      if (sport) params.sport = sport
+      return simpleApiClient.getTeams(params)
     },
     { enabled: !!sport, ...options }
   )
@@ -104,7 +108,9 @@ export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
       const { simpleApiClient } = await import('@/lib/api-client-simple')
-      return simpleApiClient.getPlayers({ sport, limit: 50 })
+      const params: Parameters<typeof simpleApiClient.getPlayers>[0] = { limit: 50 }
+      if (sport) params.sport = sport
+      return simpleApiClient.getPlayers(params)
     },
     { enabled: !!sport, ...options }
   )

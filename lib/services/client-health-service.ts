@@ -120,7 +120,7 @@ class ClientHealthService {
   stopPeriodicChecks(): void {
     if (this.checkInterval) {
       clearInterval(this.checkInterval)
-      this.checkInterval = undefined
+      this.checkInterval = undefined as any
     }
   }
 

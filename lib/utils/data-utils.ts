@@ -67,7 +67,7 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
     .trim();
 
   return {
-    id: team.id || generateTeamId({ name: normalizedTeamName, sport, league }),
+    id: team.id || generateTeamId({ name: normalizedTeamName, sport, league: league || 'Unknown' }),
     name: normalizedTeamName,
     city: team.city || team.location || team.venueCity || null,
     league: team.league || league || 'Unknown',
@@ -123,7 +123,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
       awayTeam: normalizedAwayTeam.name,
       date: gameDate,
       sport,
-      league
+      league: league || 'Unknown'
     }),
     home_team_id: normalizedHomeTeam.id,
     away_team_id: normalizedAwayTeam.id,

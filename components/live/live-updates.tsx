@@ -142,6 +142,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
       const interval = setInterval(fetchLiveData, 30000) // Update every 30 seconds
       return () => clearInterval(interval)
     }
+    return undefined
   }, [isLive, fetchLiveData])
 
   const toggleLiveUpdates = (): void => {

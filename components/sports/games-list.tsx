@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -44,11 +44,7 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
   const [dateFilter, setDateFilter] = useState<string>("")
   const [activeTab, setActiveTab] = useState("all")
 
-  useEffect(() => {
-    loadGames()
-  }, [sport, loadGames])
-
-  const loadGames = async () => {
+  const loadGames = useCallback(async () => {
     try {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
@@ -83,7 +79,11 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport, dateFilter]);
+
+  useEffect(() => {
+    loadGames()
+  }, [loadGames])
 
   const handleRefresh = async () => {
     setRefreshing(true)

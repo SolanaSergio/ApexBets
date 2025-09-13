@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { envValidator } from "@/lib/config/env-validator"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const environmentStatus = envValidator.getConfigurationReport()
     

@@ -44,7 +44,12 @@ export async function GET(
 
     switch (action) {
       case 'odds':
-        data = await oddsService.getOdds({ gameId, date, markets, limit })
+        data = await oddsService.getOdds({ 
+          ...(gameId && { gameId }), 
+          ...(date && { date }), 
+          ...(markets && { markets }), 
+          limit 
+        })
         meta.count = data.length
         break
 

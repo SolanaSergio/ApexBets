@@ -150,6 +150,12 @@ export class SportsDataNormalizer {
       logo: data.strTeamBadge || data.strTeamLogo,
       founded: data.intFormedYear ? parseInt(data.intFormedYear) : undefined,
       venue: data.strStadium || data.strArena,
+      record: {
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        ties: data.ties || 0,
+        winPercentage: data.winPercentage || 0
+      },
       provider: 'thesportsdb',
       lastUpdated: new Date().toISOString()
     }
@@ -167,6 +173,7 @@ export class SportsDataNormalizer {
       league: team.league?.name || this.getLeagueFromSport(sport),
       sport: sport,
       logo: team.logos?.[0]?.href || team.logo,
+      founded: team.founded ? parseInt(team.founded) : undefined,
       venue: team.venue?.fullName,
       colors: {
         primary: team.color || '#000000',
@@ -182,7 +189,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeBallDontLieTeam(data: any, sport: string): UnifiedTeam {
+  private static normalizeBallDontLieTeam(data: any, _sport: string): UnifiedTeam {
     return {
       id: data.id?.toString(),
       name: data.full_name || `${data.city} ${data.name}`,
@@ -192,6 +199,12 @@ export class SportsDataNormalizer {
       division: data.division,
       league: 'NBA',
       sport: 'basketball',
+      founded: data.founded ? parseInt(data.founded) : undefined,
+      record: {
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        winPercentage: data.winPercentage || 0
+      },
       provider: 'balldontlie',
       lastUpdated: new Date().toISOString()
     }
@@ -209,12 +222,17 @@ export class SportsDataNormalizer {
       logo: team.logo,
       founded: team.founded,
       venue: team.venue?.name,
+      record: {
+        wins: team.wins || 0,
+        losses: team.losses || 0,
+        winPercentage: team.winPercentage || 0
+      },
       provider: 'api-sports',
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private static normalizeNBAStatsTeam(data: any, sport: string): UnifiedTeam {
+  private static normalizeNBAStatsTeam(data: any, _sport: string): UnifiedTeam {
     return {
       id: data.TEAM_ID?.toString(),
       name: data.TEAM_NAME,
@@ -225,12 +243,17 @@ export class SportsDataNormalizer {
       league: 'NBA',
       sport: 'basketball',
       founded: data.YEAR_FOUNDED,
+      record: {
+        wins: data.W || 0,
+        losses: data.L || 0,
+        winPercentage: data.W_PCT || 0
+      },
       provider: 'nba-stats',
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private static normalizeMLBStatsTeam(data: any, sport: string): UnifiedTeam {
+  private static normalizeMLBStatsTeam(data: any, _sport: string): UnifiedTeam {
     return {
       id: data.id?.toString(),
       name: data.name,
@@ -241,12 +264,17 @@ export class SportsDataNormalizer {
       sport: 'baseball',
       founded: data.firstYearOfPlay ? parseInt(data.firstYearOfPlay) : undefined,
       venue: data.venue?.name,
+      record: {
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        winPercentage: data.winPercentage || 0
+      },
       provider: 'mlb-stats',
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private static normalizeNHLTeam(data: any, sport: string): UnifiedTeam {
+  private static normalizeNHLTeam(data: any, _sport: string): UnifiedTeam {
     return {
       id: data.id?.toString(),
       name: data.fullName || data.name,
@@ -256,7 +284,13 @@ export class SportsDataNormalizer {
       division: data.division?.name,
       league: 'NHL',
       sport: 'hockey',
+      founded: data.firstSeasonOfPlay ? parseInt(data.firstSeasonOfPlay) : undefined,
       logo: data.logo,
+      record: {
+        wins: data.wins || 0,
+        losses: data.losses || 0,
+        winPercentage: data.winPercentage || 0
+      },
       provider: 'nhl',
       lastUpdated: new Date().toISOString()
     }
@@ -282,13 +316,14 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeTheSportsDBPlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeTheSportsDBPlayer(data: any, _sport: string): UnifiedPlayer {
     return {
       id: data.idPlayer,
       name: data.strPlayer,
       firstName: this.extractFirstName(data.strPlayer),
       lastName: this.extractLastName(data.strPlayer),
       position: data.strPosition || 'Unknown',
+      jerseyNumber: data.strNumber ? parseInt(data.strNumber) : undefined,
       team: {
         id: data.idTeam,
         name: data.strTeam,
@@ -308,7 +343,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeBallDontLiePlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeBallDontLiePlayer(data: any, _sport: string): UnifiedPlayer {
     return {
       id: data.id?.toString(),
       name: `${data.first_name} ${data.last_name}`,
@@ -333,7 +368,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeNBAStatsPlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeNBAStatsPlayer(data: any, _sport: string): UnifiedPlayer {
     return {
       id: data.PERSON_ID?.toString(),
       name: data.DISPLAY_FIRST_LAST,
@@ -354,14 +389,14 @@ export class SportsDataNormalizer {
       birthPlace: {
         country: data.COUNTRY
       },
-      experience: data.EXP ? parseInt(data.EXP) : undefined,
+      experience: data.EXP ? parseInt(data.EXP) : 0,
       isActive: data.ROSTERSTATUS === 'Active',
       provider: 'nba-stats',
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private static normalizeMLBStatsPlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeMLBStatsPlayer(data: any, _sport: string): UnifiedPlayer {
     return {
       id: data.id?.toString(),
       name: data.fullName,
@@ -389,7 +424,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeNHLPlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeNHLPlayer(data: any, _sport: string): UnifiedPlayer {
     return {
       id: data.id?.toString(),
       name: data.fullName,
@@ -417,7 +452,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeESPNPlayer(data: any, sport: string): UnifiedPlayer {
+  private static normalizeESPNPlayer(data: any, _sport: string): UnifiedPlayer {
     const athlete = data.athlete || data
     return {
       id: athlete.id?.toString(),
@@ -462,7 +497,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeTheSportsDBGame(data: any, sport: string): UnifiedGame {
+  private static normalizeTheSportsDBGame(data: any, _sport: string): UnifiedGame {
     return {
       id: data.idEvent,
       date: data.dateEvent,
@@ -491,7 +526,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeBallDontLieGame(data: any, sport: string): UnifiedGame {
+  private static normalizeBallDontLieGame(data: any, _sport: string): UnifiedGame {
     return {
       id: data.id?.toString(),
       date: data.date,
@@ -519,7 +554,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeMLBStatsGame(data: any, sport: string): UnifiedGame {
+  private static normalizeMLBStatsGame(data: any, _sport: string): UnifiedGame {
     return {
       id: data.gamePk?.toString(),
       date: data.gameDate?.split('T')[0],
@@ -550,7 +585,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeNHLGame(data: any, sport: string): UnifiedGame {
+  private static normalizeNHLGame(data: any, _sport: string): UnifiedGame {
     return {
       id: data.id?.toString(),
       date: data.gameDate?.split('T')[0],
@@ -583,7 +618,7 @@ export class SportsDataNormalizer {
     }
   }
 
-  private static normalizeESPNGame(data: any, sport: string): UnifiedGame {
+  private static normalizeESPNGame(data: any, _sport: string): UnifiedGame {
     const competition = data.competitions?.[0] || data
     return {
       id: data.id || competition.id,

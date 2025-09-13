@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, DollarSign } from "lucide-react"
 
 interface OddsAnalysisChartProps {
@@ -15,10 +15,6 @@ interface OddsAnalysisChartProps {
 export default function OddsAnalysisChart({ team, timeRange, sport, league }: OddsAnalysisChartProps) {
   const [oddsData, setOddsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchOddsData()
-  }, [team, timeRange, sport, league, fetchOddsData])
 
   const fetchOddsData = async () => {
     try {
@@ -46,6 +42,10 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchOddsData()
+  }, [team, timeRange, sport, league])
 
   if (loading) {
     return (

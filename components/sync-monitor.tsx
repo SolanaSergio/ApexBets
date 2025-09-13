@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { RefreshCw, Play, Pause, Activity, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { RefreshCw, Play, Pause, Activity, Clock, AlertCircle } from 'lucide-react'
 
 interface SyncStatus {
   isRunning: boolean

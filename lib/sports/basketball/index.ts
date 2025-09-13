@@ -266,7 +266,7 @@ export class BasketballService {
       homeScore: game.home_team_score,
       awayScore: game.visitor_team_score,
       league: 'NBA',
-      venue: undefined
+      venue: game.venue || ''
     }
   }
 
@@ -278,8 +278,8 @@ export class BasketballService {
       date: event.dateEvent,
       time: event.strTime,
       status: event.strStatus === 'FT' ? 'finished' : event.strStatus === 'LIVE' ? 'live' : 'scheduled',
-      homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : undefined,
-      awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : undefined,
+      homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : 0,
+      awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : 0,
       league: event.strLeague,
       venue: event.strVenue
     }

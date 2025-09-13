@@ -13,10 +13,11 @@ export async function GET(request: Request) {
   }
 
   try {
-    const players = await cachedUnifiedApiClient.getPlayers(sport, {
-      teamId: teamId || undefined,
+    const params: Parameters<typeof cachedUnifiedApiClient.getPlayers>[1] = {
       limit: limit ? parseInt(limit) : 100,
-    })
+    }
+    if (teamId) params.teamId = teamId
+    const players = await cachedUnifiedApiClient.getPlayers(sport, params)
     return NextResponse.json(players)
   } catch (error) {
     console.error(`Error fetching players for ${sport}:`, error)

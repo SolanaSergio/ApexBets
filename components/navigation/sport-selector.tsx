@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { 
   DropdownMenu, 
@@ -129,7 +128,6 @@ export function SportSelector({ selectedSport, onSportChange, className = "" }: 
 // Compact version for mobile
 export function SportSelectorCompact({ selectedSport, onSportChange, className = "" }: SportSelectorProps) {
   const supportedSports = unifiedApiClient.getSupportedSportsSync()
-  const currentSportConfig = SportConfigManager.getSportConfig(selectedSport)
 
   return (
     <div className={`flex space-x-2 overflow-x-auto pb-2 ${className}`}>

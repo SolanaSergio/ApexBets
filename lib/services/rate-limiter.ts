@@ -96,7 +96,9 @@ class RateLimiter {
         requestsThisMinute: 0,
         lastRequestTime: 0,
         averageResponseTime: 0,
-        errorRate: 0
+        errorRate: 0,
+        isBlocked: false,
+        blockUntil: undefined
       })
 
       this.responseTimes.set(service, [])
@@ -128,7 +130,9 @@ class RateLimiter {
         requestsThisMinute: 0,
         lastRequestTime: 0,
         averageResponseTime: 0,
-        errorRate: 0
+        errorRate: 0,
+        isBlocked: false,
+        blockUntil: undefined
       }
       this.usageStats.set(service, stats)
     }
@@ -169,7 +173,7 @@ class RateLimiter {
     // Reset block if time has passed
     if (state.isBlocked && (!state.blockUntil || now >= state.blockUntil)) {
       state.isBlocked = false
-      state.blockUntil = undefined
+      state.blockUntil = 0
     }
 
     this.cleanupOldRequests(service)
@@ -288,7 +292,9 @@ class RateLimiter {
         requestsThisMinute: 0,
         lastRequestTime: 0,
         averageResponseTime: 0,
-        errorRate: 0
+        errorRate: 0,
+        isBlocked: false,
+        blockUntil: undefined
       })
       this.responseTimes.set(service, [])
     } else {

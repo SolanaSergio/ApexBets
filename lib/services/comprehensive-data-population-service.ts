@@ -6,12 +6,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
-import { rateLimiter } from './rate-limiter'
 import { intelligentRateLimiter } from './intelligent-rate-limiter'
-import { cacheManager } from '@/lib/cache'
-import { errorHandlingService } from './error-handling-service'
-import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
-import { queryOptimizer } from '@/lib/services/database/query-optimizer'
 
 interface PopulationStats {
   teams: number
@@ -123,18 +118,11 @@ export class ComprehensiveDataPopulationService {
         const externalTeams = await this.fetchTeamsWithRateLimit(sport)
         
         if (externalTeams.length > 0) {
-          // Use query optimizer to prevent duplicate calls
-          const cacheKey = `existing_teams_${sport}`;
-          const { data: existingTeams } = await queryOptimizer.cachedQuery(
-            cacheKey,
-            async () => {
-              return await this.supabase
-                .from('teams')
-                .select('name, abbreviation')
-                .eq('sport', sport);
-            },
-            300000 // 5 minute cache
-          );
+          // Get existing teams to prevent duplicates
+          const { data: existingTeams } = await this.supabase
+            .from('teams')
+            .select('name, abbreviation')
+            .eq('sport', sport);
           
           const existingTeamNames = new Set(existingTeams?.map((t: any) => t.name) || [])
           
@@ -155,11 +143,11 @@ export class ComprehensiveDataPopulationService {
               is_active: true
             }));
             
-            const { error } = await queryOptimizer.bulkUpsert(
-              'teams',
-              teamData,
-              ['name', 'league']
-            );
+            const { error } = await this.supabase
+              .from('teams')
+              .upsert(teamData, {
+                onConflict: 'name,league'
+              });
             
             if (error && error.length > 0) {
               this.stats.errors.push(...error.map(e => `Teams insertion error: ${e}`));
@@ -168,8 +156,7 @@ export class ComprehensiveDataPopulationService {
               console.log(`   ✅ ${teamData.length} ${sport} teams added`);
             }
             
-            // Clear cache for this sport since we've added new teams
-            queryOptimizer.clearCache(cacheKey);
+            // Cache cleared automatically by database operations
           }
         }
         
@@ -196,7 +183,7 @@ export class ComprehensiveDataPopulationService {
       const cached = await cacheManager.get(cacheKey)
       if (cached) {
         console.log(`   💾 Using cached teams for ${sport}`)
-        return cached
+        return cached as any[]
       }
       
       // Make API call with fallback strategy
@@ -265,13 +252,13 @@ export class ComprehensiveDataPopulationService {
   }
 
   // Fetch team logo with rate limiting
-  private async fetchTeamLogoWithRateLimit(teamName: string, abbreviation: string, sport: string): Promise<string | null> {
+  private async fetchTeamLogoWithRateLimit(teamName: string, _abbreviation: string, sport: string): Promise<string | null> {
     try {
       // Check cache first
       const cacheKey = `logo_${teamName}_${sport}`
       const cached = await cacheManager.get(cacheKey)
       if (cached) {
-        return cached
+        return cached as string | null
       }
       
       // Record the API request
@@ -771,7 +758,7 @@ export class ComprehensiveDataPopulationService {
     }
   }
 
-  private async getTeamFromAPI(teamName: string, league: string): Promise<any> {
+  private async getTeamFromAPI(teamName: string, _league: string): Promise<any> {
     try {
       // This would call the appropriate API based on the league
       // For now, return null as this is a fallback
@@ -845,31 +832,6 @@ export class ComprehensiveDataPopulationService {
     return 'player_stats'
   }
 
-  private async getRandomPosition(sport: string): Promise<string> {
-    try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      
-      const response = await supabase
-        ?.from('sports')
-        .select('name, positions')
-        .eq('name', sport)
-        .eq('is_active', true)
-        .single()
-      
-      if (response && !response.error && response.data?.positions) {
-        const positions = response.data.positions
-        if (Array.isArray(positions) && positions.length > 0) {
-          return positions[Math.floor(Math.random() * positions.length)]
-        }
-      }
-    } catch (error) {
-      console.warn(`Failed to get positions for ${sport}:`, error)
-    }
-    
-    // Fallback to generic position
-    return 'Player'
-  }
 }
 
 // Lazy-loaded service to avoid build-time initialization

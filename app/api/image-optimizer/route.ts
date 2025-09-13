@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   const width = parseInt(searchParams.get('w') || '800')
   const height = parseInt(searchParams.get('h') || '600')
   const quality = parseInt(searchParams.get('q') || '80')
-  const format = searchParams.get('f') || 'webp'
 
   // If no src parameter, return API info instead of error
   if (!src) {
