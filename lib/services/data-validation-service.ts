@@ -284,6 +284,73 @@ export class DataValidationService {
   getRules(): GameValidationRules {
     return { ...this.rules }
   }
+
+  /**
+   * Validate component data access
+   */
+  async validateComponentDataAccess(_component: string): Promise<{
+    hasRequiredData: boolean
+    dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
+    missingFields: string[]
+    recommendations: string[]
+  }> {
+    // Mock implementation for now
+    return {
+      hasRequiredData: true,
+      dataQuality: 'good',
+      missingFields: [],
+      recommendations: []
+    }
+  }
+
+  /**
+   * Validate all components
+   */
+  async validateAllComponents(): Promise<Array<{
+    component: string
+    hasRequiredData: boolean
+    dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
+    missingFields: string[]
+  }>> {
+    const components = ['dashboard', 'games', 'teams', 'players', 'standings']
+    const results = []
+
+    for (const component of components) {
+      const validation = await this.validateComponentDataAccess(component)
+      results.push({
+        component,
+        ...validation
+      })
+    }
+
+    return results
+  }
+
+  /**
+   * Get data population recommendations
+   */
+  async getDataPopulationRecommendations(): Promise<Array<{
+    component: string
+    priority: 'high' | 'medium' | 'low'
+    action: string
+    description: string
+  }>> {
+    // Mock implementation for now
+    return [
+      {
+        component: 'games',
+        priority: 'high',
+        action: 'Update live scores',
+        description: 'Ensure real-time game data is being fetched'
+      },
+      {
+        component: 'teams',
+        priority: 'medium',
+        action: 'Refresh team rosters',
+        description: 'Update player information for all teams'
+      }
+    ]
+  }
 }
 
 // Export singleton instance

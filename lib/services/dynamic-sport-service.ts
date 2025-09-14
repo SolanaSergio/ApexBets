@@ -60,127 +60,30 @@ export class DynamicSportService {
    * Load fallback configurations if database is unavailable
    */
   private static loadDefaultConfigurations(): void {
-    const defaults: SportConfiguration[] = [
-      {
-        name: 'basketball',
-        defaultPeriodFormat: 'Quarter',
-        defaultTimeFormat: '12:00',
-        defaultLeague: 'NBA',
-        apiMapping: {
-          sportsdb: 'basketball',
-          rapidapi: 'basketball',
-          espn: 'basketball'
-        },
-        statusMapping: {
-          'live': 'live',
-          'in_progress': 'live',
-          'finished': 'finished',
-          'final': 'finished'
-        },
-        periodMapping: {
-          '1': '1st Quarter',
-          '2': '2nd Quarter',
-          '3': '3rd Quarter',
-          '4': '4th Quarter'
-        }
+    console.warn('Loading fallback sport configurations - database unavailable')
+
+    // Load from environment variables or use minimal defaults
+    const getSportConfig = (sport: string) => ({
+      name: sport,
+      defaultPeriodFormat: process.env[`${sport.toUpperCase()}_PERIOD_FORMAT`] || 'Period',
+      defaultTimeFormat: process.env[`${sport.toUpperCase()}_TIME_FORMAT`] || '00:00',
+      defaultLeague: process.env[`${sport.toUpperCase()}_DEFAULT_LEAGUE`] || 'Unknown',
+      apiMapping: {
+        sportsdb: process.env[`${sport.toUpperCase()}_SPORTSDB_NAME`] || sport,
+        rapidapi: process.env[`${sport.toUpperCase()}_RAPIDAPI_NAME`] || sport,
+        espn: process.env[`${sport.toUpperCase()}_ESPN_NAME`] || sport
       },
-      {
-        name: 'football',
-        defaultPeriodFormat: 'Quarter',
-        defaultTimeFormat: '15:00',
-        defaultLeague: 'NFL',
-        apiMapping: {
-          sportsdb: 'americanfootball',
-          rapidapi: 'football',
-          espn: 'football'
-        },
-        statusMapping: {
-          'live': 'live',
-          'in_progress': 'live',
-          'finished': 'finished',
-          'final': 'finished'
-        },
-        periodMapping: {
-          '1': '1st Quarter',
-          '2': '2nd Quarter',
-          '3': '3rd Quarter',
-          '4': '4th Quarter'
-        }
+      statusMapping: {
+        'live': 'live',
+        'in_progress': 'live',
+        'finished': 'finished',
+        'final': 'finished'
       },
-      {
-        name: 'baseball',
-        defaultPeriodFormat: 'Inning',
-        defaultTimeFormat: '∞',
-        defaultLeague: 'MLB',
-        apiMapping: {
-          sportsdb: 'baseball',
-          rapidapi: 'baseball',
-          espn: 'baseball'
-        },
-        statusMapping: {
-          'live': 'live',
-          'in_progress': 'live',
-          'finished': 'finished',
-          'final': 'finished'
-        },
-        periodMapping: {
-          '1': '1st Inning',
-          '2': '2nd Inning',
-          '3': '3rd Inning',
-          '4': '4th Inning',
-          '5': '5th Inning',
-          '6': '6th Inning',
-          '7': '7th Inning',
-          '8': '8th Inning',
-          '9': '9th Inning'
-        }
-      },
-      {
-        name: 'hockey',
-        defaultPeriodFormat: 'Period',
-        defaultTimeFormat: '20:00',
-        defaultLeague: 'NHL',
-        apiMapping: {
-          sportsdb: 'icehockey',
-          rapidapi: 'hockey',
-          espn: 'hockey'
-        },
-        statusMapping: {
-          'live': 'live',
-          'in_progress': 'live',
-          'finished': 'finished',
-          'final': 'finished'
-        },
-        periodMapping: {
-          '1': '1st Period',
-          '2': '2nd Period',
-          '3': '3rd Period',
-          'OT': 'Overtime'
-        }
-      },
-      {
-        name: 'soccer',
-        defaultPeriodFormat: 'Half',
-        defaultTimeFormat: '45:00',
-        defaultLeague: 'MLS',
-        apiMapping: {
-          sportsdb: 'soccer',
-          rapidapi: 'soccer',
-          espn: 'soccer'
-        },
-        statusMapping: {
-          'live': 'live',
-          'in_progress': 'live',
-          'finished': 'finished',
-          'final': 'finished'
-        },
-        periodMapping: {
-          '1': '1st Half',
-          '2': '2nd Half',
-          'ET': 'Extra Time'
-        }
-      }
-    ]
+      periodMapping: {}
+    })
+
+    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+    const defaults: SportConfiguration[] = supportedSports.map(sport => getSportConfig(sport.trim()))
 
     defaults.forEach(config => {
       this.configurations.set(config.name, config)

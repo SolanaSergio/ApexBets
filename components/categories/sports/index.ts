@@ -1,5 +1,4 @@
 // Sports Category Components
-export { default as SportSelector } from './sport-selector'
 export { default as LiveUpdates } from './live-updates'
 export { default as StandingsTable } from './standings-table'
 export { default as PlayerSearch } from './player-search'

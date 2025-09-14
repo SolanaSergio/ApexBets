@@ -1,10 +1,10 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, TrendingUp, TrendingDown, Star, Eye, Heart, Zap, Activity, Target, Trophy, Gamepad2 } from "lucide-react"
+import { Clock, TrendingUp, Star, Eye, Heart, Zap, Activity, Target, Trophy, Gamepad2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Team {
@@ -66,7 +66,7 @@ export function ModernGameCard({
 
   const isLive = game.status === "live"
   const isFinal = game.status === "final"
-  const isScheduled = game.status === "scheduled"
+  // const isScheduled = game.status === "scheduled"
 
   // Simulate live updates for demo
   useEffect(() => {
@@ -76,6 +76,7 @@ export function ModernGameCard({
       }, 3000)
       return () => clearInterval(interval)
     }
+    return () => {} // Return empty cleanup function when not live
   }, [isLive])
 
   const handleFavorite = () => {
@@ -113,7 +114,7 @@ export function ModernGameCard({
   }
 
   const getSportIcon = (sport: string) => {
-    const icons: Record<string, React.ComponentType<{ className?: string }>> = {
+    const icons: Record<string, React.ComponentType<any>> = {
       basketball: Zap,
       football: Activity,
       baseball: Target,

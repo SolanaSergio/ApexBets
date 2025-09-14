@@ -12,6 +12,7 @@ import { NotificationSystem } from "@/components/notifications/notification-syst
 import { UserProfileDropdown } from "@/components/auth/user-profile"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
+import { useIsMobile, useDeviceType, useIsTouchDevice } from "@/hooks/use-mobile"
 
 const navigationItems = [
   {
@@ -78,6 +79,9 @@ export function Navigation() {
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
+  const isMobile = useIsMobile()
+  const deviceType = useDeviceType()
+  const isTouchDevice = useIsTouchDevice()
 
   useEffect(() => {
     setMounted(true)
@@ -97,22 +101,22 @@ export function Navigation() {
     )}>
         <div className="container mx-auto px-4">
           <div className="flex h-20 items-center justify-between gap-4">
-            {/* Modern Logo */}
-            <Link href="/" className="flex items-center space-x-4 group flex-shrink-0">
-              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 premium-glow">
-                <Target className="h-8 w-8" />
+            {/* Enhanced Mobile-First Logo */}
+            <Link href="/" className="flex items-center space-x-2 sm:space-x-4 group flex-shrink-0">
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 premium-glow">
+                <Target className="h-6 w-6 sm:h-8 sm:w-8" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-black text-gradient">
+              <div className="flex flex-col min-w-0">
+                <span className="text-lg sm:text-2xl font-black text-gradient truncate">
                   Project Apex
                 </span>
-                <span className="text-sm text-slate-600 -mt-1 font-bold">Sports Analytics</span>
+                <span className="text-xs sm:text-sm text-slate-600 -mt-1 font-bold truncate">Sports Analytics</span>
               </div>
             </Link>
 
 
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-2 flex-shrink-0">
+          {/* Enhanced Desktop Navigation */}
+          <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 flex-shrink-0">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -123,18 +127,21 @@ export function Navigation() {
                     variant={isActive ? "default" : "ghost"}
                     size="sm"
                     className={cn(
-                      "flex items-center space-x-3 relative group transition-all duration-500 px-6 py-3 rounded-lg",
+                      "flex items-center space-x-2 xl:space-x-3 relative group transition-all duration-500 px-3 xl:px-6 py-2 xl:py-3 rounded-lg min-h-[44px] touch-manipulation",
                       isActive
                         ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-xl premium-glow"
-                        : "glass-card hover:bg-white/80 hover:text-slate-800 hover:scale-105 hover:shadow-lg"
+                        : "glass-card hover:bg-white/80 hover:text-slate-800 hover:scale-105 hover:shadow-lg",
+                      isTouchDevice && "touch-feedback",
+                      deviceType === 'mobile' && "text-sm px-2 py-2",
+                      deviceType === 'tablet' && "text-base px-4 py-3"
                     )}
                   >
-                    <Icon className="h-5 w-5" />
-                    <span className="font-bold">{item.title}</span>
+                    <Icon className="h-4 w-4 xl:h-5 xl:w-5 flex-shrink-0" />
+                    <span className="font-bold text-sm xl:text-base truncate">{item.title}</span>
                     {item.badge && (
                       <Badge
                         variant={item.badge === "Live" ? "destructive" : "secondary"}
-                        className="ml-2 text-xs px-2 py-1 rounded-md font-bold"
+                        className="ml-1 xl:ml-2 text-xs px-1.5 xl:px-2 py-0.5 xl:py-1 rounded-md font-bold flex-shrink-0"
                       >
                         {item.badge}
                       </Badge>
@@ -148,31 +155,38 @@ export function Navigation() {
             })}
           </nav>
 
-          {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center space-x-3">
+          {/* Enhanced Desktop Actions */}
+          <div className="hidden lg:flex items-center space-x-2 xl:space-x-3">
             <ThemeToggle />
             <NotificationSystem />
             {user ? (
               <UserProfileDropdown />
             ) : (
-              <Button asChild variant="outline" size="sm">
-                <Link href="/login">Sign In</Link>
+              <Button asChild variant="outline" size="sm" className="min-h-[44px] touch-manipulation">
+                <Link href="/login" className="text-sm xl:text-base">Sign In</Link>
               </Button>
             )}
           </div>
 
-          {/* Mobile Navigation */}
-          <div className="flex items-center space-x-2 lg:hidden">
+          {/* Enhanced Mobile Navigation */}
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:hidden">
             <ThemeToggle />
             <NotificationSystem />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="relative">
+                <Button variant="ghost" size="sm" className="relative min-h-[44px] min-w-[44px] touch-manipulation">
                   <Menu className="h-5 w-5" />
                   <span className="sr-only">Toggle navigation menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80 sm:w-96">
+              <SheetContent
+                side="right"
+                className={cn(
+                  "w-80 sm:w-96",
+                  isMobile && "w-full max-w-sm",
+                  deviceType === 'mobile' && "mobile-safe-area"
+                )}
+              >
                 <div className="flex flex-col h-full">
                   {/* Mobile Header */}
                   <div className="flex items-center justify-between pb-6 border-b">

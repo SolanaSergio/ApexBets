@@ -696,6 +696,45 @@
   .mobile-card-padding {
     @apply p-4;
   }
+
+  .mobile-safe-area {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-full-width {
+    @apply w-full;
+  }
+
+  .mobile-overflow-scroll {
+    @apply overflow-x-auto;
+  }
+
+  .mobile-text-center {
+    @apply text-center;
+  }
+
+  .mobile-flex-col {
+    @apply flex-col;
+  }
+
+  .mobile-gap-2 {
+    @apply gap-2;
+  }
+
+  .mobile-gap-4 {
+    @apply gap-4;
+  }
+
+  .mobile-rounded-lg {
+    @apply rounded-lg;
+  }
+
+  .mobile-shadow-sm {
+    @apply shadow-sm;
+  }
 }
 
 @media (min-width: 641px) {
@@ -728,6 +767,53 @@
 
   .touch-spacing {
     @apply space-y-4;
+  }
+
+  .touch-padding {
+    @apply p-4;
+  }
+
+  .touch-margin {
+    @apply m-2;
+  }
+
+  .touch-text-lg {
+    @apply text-lg;
+  }
+
+  .touch-rounded {
+    @apply rounded-xl;
+  }
+
+  .touch-shadow {
+    @apply shadow-lg;
+  }
+
+  /* Disable hover effects on touch devices */
+  .card-hover:hover,
+  .card-hover-enhanced:hover,
+  .premium-hover:hover {
+    transform: none;
+    box-shadow: inherit;
+  }
+
+  /* Enhance tap feedback */
+  .touch-feedback {
+    transition: transform 0.1s ease;
+  }
+
+  .touch-feedback:active {
+    transform: scale(0.98);
+  }
+
+  /* Improve button accessibility */
+  button, .btn, [role="button"] {
+    @apply min-h-[44px] min-w-[44px] touch-manipulation;
+  }
+
+  /* Improve input accessibility */
+  input, textarea, select {
+    @apply min-h-[44px] touch-manipulation;
   }
 }
 

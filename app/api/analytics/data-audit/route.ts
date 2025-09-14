@@ -24,17 +24,17 @@ export async function GET(request: NextRequest) {
 
       const summary = {
         totalComponents: componentResults.length,
-        componentsWithData: componentResults.filter(r => r.hasRequiredData).length,
-        componentsMissingData: componentResults.filter(r => !r.hasRequiredData).length,
+        componentsWithData: componentResults.filter((r: any) => r.hasRequiredData).length,
+        componentsMissingData: componentResults.filter((r: any) => !r.hasRequiredData).length,
         dataQualityDistribution: {
-          excellent: componentResults.filter(r => r.dataQuality === 'excellent').length,
-          good: componentResults.filter(r => r.dataQuality === 'good').length,
-          fair: componentResults.filter(r => r.dataQuality === 'fair').length,
-          poor: componentResults.filter(r => r.dataQuality === 'poor').length
+          excellent: componentResults.filter((r: any) => r.dataQuality === 'excellent').length,
+          good: componentResults.filter((r: any) => r.dataQuality === 'good').length,
+          fair: componentResults.filter((r: any) => r.dataQuality === 'fair').length,
+          poor: componentResults.filter((r: any) => r.dataQuality === 'poor').length
         },
         criticalIssues: componentResults
-          .filter(r => !r.hasRequiredData)
-          .map(r => ({
+          .filter((r: any) => !r.hasRequiredData)
+          .map((r: any) => ({
             component: r.component,
             missingData: r.missingData,
             recommendations: r.recommendations

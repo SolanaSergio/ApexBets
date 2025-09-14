@@ -412,10 +412,12 @@ class ApexDataManager {
           updates.name = team.name?.trim() || 'Unknown Team';
         }
         if (error.includes('Missing required field: sport')) {
-          updates.sport = 'basketball'; // Default fallback
+          // Try to determine sport from context or use environment default
+          updates.sport = process.env.DEFAULT_SPORT || 'unknown';
         }
         if (error.includes('Missing required field: league')) {
-          updates.league = 'NBA'; // Default fallback
+          // Try to determine league from context or use environment default
+          updates.league = process.env.DEFAULT_LEAGUE || 'unknown';
         }
       }
       

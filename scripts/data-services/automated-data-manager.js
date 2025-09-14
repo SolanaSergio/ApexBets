@@ -51,32 +51,84 @@ class AutomatedDataManager {
       }
     };
     
-    // Sports configuration
+    // Sports configuration - loaded dynamically from database
+    this.sports = {};
+    this.loadSportsConfiguration();
+  }
+
+  async loadSportsConfiguration() {
+    try {
+      console.log('📊 Loading sports configuration from database...');
+
+      const { data: sports, error } = await supabase
+        .from('sports')
+        .select(`
+          name,
+          display_name,
+          season_config,
+          update_frequency,
+          rate_limits
+        `)
+        .eq('is_active', true);
+
+      if (error) {
+        console.warn('⚠️ Failed to load sports from database:', error.message);
+        this.loadDefaultSportsConfiguration();
+        return;
+      }
+
+      if (sports && sports.length > 0) {
+        for (const sport of sports) {
+          const seasonConfig = sport.season_config || {};
+          this.sports[sport.name] = {
+            leagues: seasonConfig.leagues || [],
+            seasons: seasonConfig.seasons || [new Date().getFullYear().toString()],
+            updateFrequency: sport.update_frequency || 30
+          };
+        }
+        console.log(`✅ Loaded ${sports.length} sports configurations from database`);
+      } else {
+        console.log('⚠️ No sports found in database, using defaults');
+        this.loadDefaultSportsConfiguration();
+      }
+    } catch (error) {
+      console.error('❌ Error loading sports configuration:', error.message);
+      this.loadDefaultSportsConfiguration();
+    }
+  }
+
+  loadDefaultSportsConfiguration() {
+    console.log('📊 Loading default sports configuration...');
+
+    // Minimal fallback configuration - will be populated from environment or API
+    const currentYear = new Date().getFullYear();
+    const currentSeason = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
+
     this.sports = {
       basketball: {
-        leagues: ['NBA', 'WNBA', 'NCAA'],
-        seasons: ['2023-24', '2024-25'],
-        updateFrequency: 15 // minutes
+        leagues: process.env.BASKETBALL_LEAGUES?.split(',') || ['NBA'],
+        seasons: [currentSeason],
+        updateFrequency: parseInt(process.env.BASKETBALL_UPDATE_FREQUENCY) || 15
       },
       football: {
-        leagues: ['NFL', 'NCAA'],
-        seasons: ['2023-24', '2024-25'],
-        updateFrequency: 30 // minutes
+        leagues: process.env.FOOTBALL_LEAGUES?.split(',') || ['NFL'],
+        seasons: [currentSeason],
+        updateFrequency: parseInt(process.env.FOOTBALL_UPDATE_FREQUENCY) || 30
       },
       baseball: {
-        leagues: ['MLB'],
-        seasons: ['2024', '2025'],
-        updateFrequency: 60 // minutes
+        leagues: process.env.BASEBALL_LEAGUES?.split(',') || ['MLB'],
+        seasons: [currentYear.toString()],
+        updateFrequency: parseInt(process.env.BASEBALL_UPDATE_FREQUENCY) || 60
       },
       hockey: {
-        leagues: ['NHL'],
-        seasons: ['2023-24', '2024-25'],
-        updateFrequency: 30 // minutes
+        leagues: process.env.HOCKEY_LEAGUES?.split(',') || ['NHL'],
+        seasons: [currentSeason],
+        updateFrequency: parseInt(process.env.HOCKEY_UPDATE_FREQUENCY) || 30
       },
       soccer: {
-        leagues: ['Premier League', 'La Liga', 'Bundesliga', 'Serie A', 'Ligue 1'],
-        seasons: ['2023-24', '2024-25'],
-        updateFrequency: 60 // minutes
+        leagues: process.env.SOCCER_LEAGUES?.split(',') || ['Premier League'],
+        seasons: [currentSeason],
+        updateFrequency: parseInt(process.env.SOCCER_UPDATE_FREQUENCY) || 60
       }
     };
   }

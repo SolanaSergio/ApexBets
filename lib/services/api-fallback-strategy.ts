@@ -73,20 +73,23 @@ export class APIFallbackStrategy {
     // 4. Ball Don't Lie (Free, specialized)
     // 5. API-Sports (Limited free, then paid)
     
+    // Load provider configurations from environment or database
+    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+
     const configs: ProviderConfig[] = [
       {
         name: 'thesportsdb',
-        priority: 1, // Highest priority (free + reliable + comprehensive)
-        cost: 0,
-        reliability: 0.95,
+        priority: parseInt(process.env.THESPORTSDB_PRIORITY || '1'),
+        cost: parseFloat(process.env.THESPORTSDB_COST || '0'),
+        reliability: parseFloat(process.env.THESPORTSDB_RELIABILITY || '0.95'),
         coverage: {
-          sports: ['football', 'basketball', 'baseball', 'hockey', 'soccer'],
-          dataTypes: ['games', 'teams', 'players', 'standings', 'stats'],
-          features: ['historical', 'current', 'logos', 'venues']
+          sports: process.env.THESPORTSDB_SPORTS?.split(',') || supportedSports,
+          dataTypes: process.env.THESPORTSDB_DATA_TYPES?.split(',') || ['games', 'teams', 'players', 'standings', 'stats'],
+          features: process.env.THESPORTSDB_FEATURES?.split(',') || ['historical', 'current', 'logos', 'venues']
         },
         limits: {
-          freeRequests: Number.MAX_SAFE_INTEGER,
-          rateLimit: 30 // per minute
+          freeRequests: parseInt(process.env.THESPORTSDB_FREE_REQUESTS || String(Number.MAX_SAFE_INTEGER)),
+          rateLimit: parseInt(process.env.THESPORTSDB_RATE_LIMIT || '30')
         },
         healthStatus: 'healthy',
         lastHealthCheck: new Date().toISOString()

@@ -54,7 +54,7 @@ import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
 type GameData = Game
 type TeamData = Team
-import { SportSelector, SportSelectorCompact } from "@/components/shared/sport-selector"
+import { SportSelector } from "@/components/shared/sport-selector"
 import { GamesList } from "@/components/sports/games-list"
 import { TeamsList } from "@/components/sports/teams-list"
 import { NoSportSelected } from "@/components/shared/no-sport-selected"
@@ -822,20 +822,14 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             </div>
           </div>
 
-          {/* SupportedSport Selector */}
-          <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
-            <div className="flex-1">
-              <SportSelector
-                selectedSport={selectedSupportedSport}
-                onSportChange={setSelectedSupportedSport}
-              />
-            </div>
-            <div className="sm:hidden">
-              <SportSelectorCompact
-                selectedSport={selectedSupportedSport}
-                onSportChange={setSelectedSupportedSport}
-              />
-            </div>
+          {/* Sport Selector - Responsive Design */}
+          <div className="w-full">
+            <SportSelector
+              selectedSport={selectedSupportedSport}
+              onSportChange={setSelectedSupportedSport}
+              variant="responsive"
+              className="w-full"
+            />
           </div>
         </div>
       </FadeIn>

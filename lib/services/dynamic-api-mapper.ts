@@ -52,264 +52,61 @@ export class DynamicApiMapper {
    * Load default mappings as fallback
    */
   private static loadDefaultMappings(): void {
-    const defaultMappings = [
-      // TheSportsDB mappings
-      {
-        sport: 'basketball',
-        provider: 'thesportsdb',
-        endpoint: 'basketball',
-        sportName: 'basketball',
-        dataTypeMapping: {
-          games: 'events',
-          teams: 'teams',
-          players: 'players',
-          standings: 'table'
-        }
-      },
-      {
-        sport: 'football',
-        provider: 'thesportsdb',
-        endpoint: 'americanfootball',
-        sportName: 'americanfootball',
-        dataTypeMapping: {
-          games: 'events',
-          teams: 'teams',
-          players: 'players',
-          standings: 'table'
-        }
-      },
-      {
-        sport: 'baseball',
-        provider: 'thesportsdb',
-        endpoint: 'baseball',
-        sportName: 'baseball',
-        dataTypeMapping: {
-          games: 'events',
-          teams: 'teams',
-          players: 'players',
-          standings: 'table'
-        }
-      },
-      {
-        sport: 'hockey',
-        provider: 'thesportsdb',
-        endpoint: 'icehockey',
-        sportName: 'icehockey',
-        dataTypeMapping: {
-          games: 'events',
-          teams: 'teams',
-          players: 'players',
-          standings: 'table'
-        }
-      },
-      {
-        sport: 'soccer',
-        provider: 'thesportsdb',
-        endpoint: 'soccer',
-        sportName: 'soccer',
-        dataTypeMapping: {
-          games: 'events',
-          teams: 'teams',
-          players: 'players',
-          standings: 'table'
-        }
-      },
-      // ESPN mappings
-      {
-        sport: 'basketball',
-        provider: 'espn',
-        endpoint: 'basketball',
-        sportName: 'mens-college-basketball',
-        dataTypeMapping: {
-          games: 'scoreboard',
-          teams: 'teams',
-          standings: 'standings'
-        }
-      },
-      {
-        sport: 'football',
-        provider: 'espn',
-        endpoint: 'football',
-        sportName: 'nfl',
-        dataTypeMapping: {
-          games: 'scoreboard',
-          teams: 'teams',
-          standings: 'standings'
-        }
-      },
-      // NBA Stats API
-      {
-        sport: 'basketball',
-        provider: 'nba-stats',
-        endpoint: 'basketball',
-        sportName: 'nba',
-        dataTypeMapping: {
-          games: 'scoreboard',
-          teams: 'teams',
-          players: 'players',
-          stats: 'playerstats',
-          standings: 'standings'
-        }
-      },
-      // MLB Stats API
-      {
-        sport: 'baseball',
-        provider: 'mlb-stats',
-        endpoint: 'baseball',
-        sportName: 'mlb',
-        dataTypeMapping: {
-          games: 'schedule',
-          teams: 'teams',
-          players: 'roster',
-          stats: 'stats',
-          standings: 'standings'
-        }
-      },
-      // NHL API
-      {
-        sport: 'hockey',
-        provider: 'nhl',
-        endpoint: 'hockey',
-        sportName: 'nhl',
-        dataTypeMapping: {
-          games: 'schedule',
-          teams: 'teams',
-          players: 'roster',
-          stats: 'stats',
-          standings: 'standings'
-        }
-      },
-      // Ball Don't Lie (basketball only)
-      {
-        sport: 'basketball',
-        provider: 'balldontlie',
-        endpoint: 'basketball',
-        sportName: 'nba',
-        dataTypeMapping: {
-          games: 'games',
-          teams: 'teams',
-          players: 'players',
-          stats: 'stats'
-        }
-      },
-      // API-Sports (RapidAPI)
-      {
-        sport: 'basketball',
-        provider: 'api-sports',
-        endpoint: 'basketball',
-        sportName: 'basketball',
-        dataTypeMapping: {
-          games: 'games',
-          teams: 'teams',
-          standings: 'standings',
-          odds: 'odds'
-        }
-      },
-      {
-        sport: 'football',
-        provider: 'api-sports',
-        endpoint: 'football',
-        sportName: 'football',
-        dataTypeMapping: {
-          games: 'fixtures',
-          teams: 'teams',
-          standings: 'standings',
-          odds: 'odds'
-        }
-      },
-      {
-        sport: 'baseball',
-        provider: 'api-sports',
-        endpoint: 'baseball',
-        sportName: 'baseball',
-        dataTypeMapping: {
-          games: 'games',
-          teams: 'teams',
-          standings: 'standings'
-        }
-      },
-      {
-        sport: 'hockey',
-        provider: 'api-sports',
-        endpoint: 'hockey',
-        sportName: 'hockey',
-        dataTypeMapping: {
-          games: 'games',
-          teams: 'teams',
-          standings: 'standings'
-        }
-      },
-      {
-        sport: 'soccer',
-        provider: 'api-sports',
-        endpoint: 'soccer',
-        sportName: 'football',
-        dataTypeMapping: {
-          games: 'fixtures',
-          teams: 'teams',
-          standings: 'standings',
-          odds: 'odds'
-        }
+    console.warn('Loading fallback API mappings - database unavailable')
+
+    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+    const providers = ['thesportsdb', 'rapidapi', 'espn']
+
+    const defaultMappings = []
+
+    // Generate dynamic mappings from environment variables
+    for (const sport of supportedSports) {
+      for (const provider of providers) {
+        const sportUpper = sport.toUpperCase()
+        const providerUpper = provider.toUpperCase()
+
+        defaultMappings.push({
+          sport: sport.trim(),
+          provider: provider,
+          endpoint: process.env[`${providerUpper}_${sportUpper}_ENDPOINT`] || sport,
+          sportName: process.env[`${providerUpper}_${sportUpper}_NAME`] || sport,
+          dataTypeMapping: {
+            games: process.env[`${providerUpper}_GAMES_MAPPING`] || 'events',
+            teams: process.env[`${providerUpper}_TEAMS_MAPPING`] || 'teams',
+            players: process.env[`${providerUpper}_PLAYERS_MAPPING`] || 'players',
+            standings: process.env[`${providerUpper}_STANDINGS_MAPPING`] || 'table'
+          }
+        })
       }
-    ]
+    }
 
     defaultMappings.forEach(mapping => {
       if (!this.mappings.has(mapping.sport)) {
         this.mappings.set(mapping.sport, new Map())
       }
-      
-      this.mappings.get(mapping.sport)?.set(mapping.provider, {
-        provider: mapping.provider,
-        endpoint: mapping.endpoint,
-        sportName: mapping.sportName,
-        dataTypeMapping: mapping.dataTypeMapping
-      })
+      this.mappings.get(mapping.sport)!.set(mapping.provider, mapping)
     })
   }
 
   /**
-   * Get API mapping for a specific sport and provider
+   * Get mapping for a specific sport and provider
    */
   static getMapping(sport: string, provider: string): ApiMapping | null {
-    return this.mappings.get(sport.toLowerCase())?.get(provider.toLowerCase()) || null
+    return this.mappings.get(sport)?.get(provider) || null
   }
 
   /**
-   * Get sport name for API provider
+   * Get all mappings for a sport
    */
-  static getSportName(sport: string, provider: string): string {
-    const mapping = this.getMapping(sport, provider)
-    return mapping?.sportName || sport
+  static getSportMappings(sport: string): Map<string, ApiMapping> | null {
+    return this.mappings.get(sport) || null
   }
 
   /**
-   * Get endpoint name for API provider
+   * Get all available providers for a sport
    */
-  static getEndpoint(sport: string, provider: string): string {
-    const mapping = this.getMapping(sport, provider)
-    return mapping?.endpoint || sport
-  }
-
-  /**
-   * Get data type mapping for API provider
-   */
-  static getDataTypeMapping(sport: string, provider: string, dataType: string): string {
-    const mapping = this.getMapping(sport, provider)
-    return mapping?.dataTypeMapping[dataType] || dataType
-  }
-
-  /**
-   * Check if provider supports sport
-   */
-  static supportsSpot(sport: string, provider: string): boolean {
-    return this.mappings.get(sport.toLowerCase())?.has(provider.toLowerCase()) || false
-  }
-
-  /**
-   * Get all providers for a sport
-   */
-  static getProvidersForSport(sport: string): string[] {
-    const sportMappings = this.mappings.get(sport.toLowerCase())
+  static getProviders(sport: string): string[] {
+    const sportMappings = this.mappings.get(sport)
     return sportMappings ? Array.from(sportMappings.keys()) : []
   }
 
@@ -318,6 +115,30 @@ export class DynamicApiMapper {
    */
   static getSupportedSports(): string[] {
     return Array.from(this.mappings.keys())
+  }
+
+  /**
+   * Get endpoint for a specific sport and provider
+   */
+  static getEndpoint(sport: string, provider: string): string | null {
+    const mapping = this.getMapping(sport, provider)
+    return mapping?.endpoint || null
+  }
+
+  /**
+   * Get sport name for API calls
+   */
+  static getSportName(sport: string, provider: string): string | null {
+    const mapping = this.getMapping(sport, provider)
+    return mapping?.sportName || null
+  }
+
+  /**
+   * Get data type mapping for a specific sport, provider, and data type
+   */
+  static getDataTypeMapping(sport: string, provider: string, dataType: string): string | null {
+    const mapping = this.getMapping(sport, provider)
+    return mapping?.dataTypeMapping[dataType] || null
   }
 }
 

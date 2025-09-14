@@ -1,13 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
-import { useApiData } from "@/hooks/use-api-data"
 import { useRealTimeData, useLiveGames, useDashboardStats } from "@/components/data/real-time-provider"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, TrendingDown, Activity, Users, Target, BarChart3, Zap, Gamepad2, Trophy } from "lucide-react"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface LiveGameData {
   id: string
@@ -31,47 +29,101 @@ interface DashboardStats {
 }
 
 export function ModernDashboard() {
-  const { selectedSport, setSelectedSport, data, refreshData } = useRealTimeData()
+  const { selectedSport, setSelectedSport } = useRealTimeData()
   const { games: liveGames, loading: gamesLoading, isConnected } = useLiveGames()
   const { stats, loading: statsLoading, lastUpdate } = useDashboardStats()
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
+  const [sportsLoading, setSportsLoading] = useState(true)
+
+  useEffect(() => {
+    loadSupportedSports()
+  }, [])
+
+  const loadSupportedSports = async () => {
+    try {
+      setSportsLoading(true)
+      await SportConfigManager.initialize()
+      const sports = SportConfigManager.getSupportedSports()
+      setSupportedSports(sports)
+    } catch (error) {
+      console.error('Error loading supported sports:', error)
+      SportConfigManager.initializeSync()
+      const sports = SportConfigManager.getSupportedSports()
+      setSupportedSports(sports)
+    } finally {
+      setSportsLoading(false)
+    }
+  }
 
   const dashboardStats: DashboardStats = {
     liveGames: liveGames.length,
-    totalPredictions: stats.totalGames || 342,
-    accuracyRate: stats.accuracy || 87,
-    teamsTracked: stats.teamsTracked || 1247,
-    dataPoints: stats.dataPoints || 125000,
+    totalPredictions: stats.totalGames || 0,
+    accuracyRate: stats.accuracy || 0,
+    teamsTracked: stats.teamsTracked || 0,
+    dataPoints: stats.dataPoints || 0,
     trend: "up"
   }
 
-  const sports = [
-    { id: "basketball", name: "Basketball", icon: Zap, color: "from-cyan-500 to-blue-500" },
-    { id: "football", name: "Football", icon: Activity, color: "from-purple-500 to-indigo-500" },
-    { id: "baseball", name: "Baseball", icon: Target, color: "from-green-500 to-emerald-500" },
-    { id: "hockey", name: "Hockey", icon: Gamepad2, color: "from-blue-500 to-cyan-500" }
-  ]
+  const getSportIcon = (sport: SupportedSport) => {
+    // Map sport types to icons
+    switch (sport) {
+      case 'basketball': return Zap
+      case 'football': return Activity
+      case 'baseball': return Target
+      case 'hockey': return Gamepad2
+      default: return Trophy
+    }
+  }
+
+  const getSportColor = (sport: SupportedSport) => {
+    // Map sport types to gradient colors
+    switch (sport) {
+      case 'basketball': return "from-cyan-500 to-blue-500"
+      case 'football': return "from-purple-500 to-indigo-500"
+      case 'baseball': return "from-green-500 to-emerald-500"
+      case 'hockey': return "from-blue-500 to-cyan-500"
+      default: return "from-gray-500 to-slate-500"
+    }
+  }
+
+  if (sportsLoading) {
+    return (
+      <div className="space-y-8 lg:space-y-12">
+        <div className="flex flex-wrap gap-4 justify-center">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-12 w-32 bg-muted rounded-lg animate-pulse" />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8 lg:space-y-12">
-      {/* Sport Selector */}
+      {/* Dynamic Sport Selector */}
       <div className="flex flex-wrap gap-4 justify-center">
-        {sports.map((sport) => {
-          const SportIcon = sport.icon
+        {supportedSports.map((sport) => {
+          const SportIcon = getSportIcon(sport)
+          const sportColor = getSportColor(sport)
+          const config = SportConfigManager.getSportConfig(sport)
+          const isSelected = selectedSport === sport
+
           return (
             <Button
-              key={sport.id}
-              onClick={() => setSelectedSport(sport.id)}
-              variant={selectedSport === sport.id ? "default" : "outline"}
+              key={sport}
+              onClick={() => setSelectedSport(sport)}
+              variant={isSelected ? "default" : "outline"}
               className={`
-                px-6 py-4 rounded-lg transition-all duration-500 font-bold
-                ${selectedSport === sport.id
-                  ? `bg-gradient-to-r ${sport.color} text-white shadow-xl premium-glow`
+                px-4 sm:px-6 py-3 sm:py-4 rounded-lg transition-all duration-500 font-bold text-sm sm:text-base
+                ${isSelected
+                  ? `bg-gradient-to-r ${sportColor} text-white shadow-xl premium-glow`
                   : 'glass-card hover:bg-white/80 hover:scale-105'
                 }
               `}
             >
-              <SportIcon className="w-5 h-5 mr-2" />
-              {sport.name}
+              <SportIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+              <span className="hidden sm:inline">{config?.name || sport}</span>
+              <span className="sm:hidden">{config?.name?.slice(0, 3) || sport.slice(0, 3)}</span>
             </Button>
           )
         })}
@@ -165,7 +217,7 @@ export function ModernDashboard() {
 interface StatCardProps {
   title: string
   value: string | number
-  icon: React.ComponentType<{ className?: string }>
+  icon: React.ComponentType<any>
   color: string
   trend: "up" | "down" | "neutral"
   loading?: boolean

@@ -63,6 +63,7 @@ export function DynamicBackground({
       window.addEventListener('mousemove', handleMouseMove)
       return () => window.removeEventListener('mousemove', handleMouseMove)
     }
+    return () => {} // Return empty cleanup function when interactive is false
   }, [interactive])
 
   useEffect(() => {

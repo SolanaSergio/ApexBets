@@ -77,109 +77,36 @@ export class DynamicSportConfigService {
       // For now, we'll use a fallback configuration
       this.configs.clear()
       
-      // Default configurations for supported sports
-      const defaultConfigs: DynamicSportConfig[] = [
-        {
-          id: 'basketball',
-          name: 'basketball',
-          displayName: 'Basketball',
-          icon: 'activity',
-          color: 'text-cyan-500',
-          isActive: true,
-          dataSource: 'sportsdb',
-          playerStatsTable: 'player_stats',
-          positions: ['PG', 'SG', 'SF', 'PF', 'C'],
-          scoringFields: { primary: 'points', for: 'points', against: 'points' },
+      // Generate dynamic configurations from environment or minimal defaults
+      const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'football', 'baseball', 'hockey', 'soccer']
+
+      const defaultConfigs: DynamicSportConfig[] = supportedSports.map(sport => {
+        const sportUpper = sport.toUpperCase()
+        return {
+          id: sport,
+          name: sport,
+          displayName: process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
+          icon: process.env[`${sportUpper}_ICON`] || 'activity',
+          color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
+          isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
+          dataSource: process.env[`${sportUpper}_DATA_SOURCE`] || 'sportsdb',
+          playerStatsTable: process.env[`${sportUpper}_STATS_TABLE`] || 'player_stats',
+          positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
+          scoringFields: {
+            primary: process.env[`${sportUpper}_PRIMARY_SCORE`] || 'points',
+            for: process.env[`${sportUpper}_SCORE_FOR`] || 'points',
+            against: process.env[`${sportUpper}_SCORE_AGAINST`] || 'points'
+          },
           bettingMarkets: [
             { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss' },
-            { id: 'spread', name: 'Point Spread', description: 'Point difference' },
-            { id: 'total', name: 'Total Points', description: 'Over/Under points' }
+            { id: 'spread', name: 'Spread', description: 'Point/Goal difference' },
+            { id: 'total', name: 'Total', description: 'Over/Under total score' }
           ],
           seasonConfig: { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
-        },
-        {
-          id: 'football',
-          name: 'football',
-          displayName: 'American Football',
-          icon: 'zap',
-          color: 'text-purple-600',
-          isActive: true,
-          dataSource: 'sportsdb',
-          playerStatsTable: 'football_player_stats',
-          positions: ['QB', 'RB', 'WR', 'TE', 'OL', 'DL', 'LB', 'CB', 'S', 'K', 'P'],
-          scoringFields: { primary: 'points', for: 'points', against: 'points' },
-          bettingMarkets: [
-            { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss' },
-            { id: 'spread', name: 'Point Spread', description: 'Point difference' },
-            { id: 'total', name: 'Total Points', description: 'Over/Under points' }
-          ],
-          seasonConfig: { startMonth: 8, endMonth: 1, seasonYearOffset: 0 },
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
-        },
-        {
-          id: 'baseball',
-          name: 'baseball',
-          displayName: 'Baseball',
-          icon: 'target',
-          color: 'text-green-600',
-          isActive: true,
-          dataSource: 'sportsdb',
-          playerStatsTable: 'baseball_player_stats',
-          positions: ['C', '1B', '2B', '3B', 'SS', 'LF', 'CF', 'RF', 'P', 'DH'],
-          scoringFields: { primary: 'runs', for: 'runs', against: 'runs' },
-          bettingMarkets: [
-            { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss' },
-            { id: 'runline', name: 'Run Line', description: 'Run difference' },
-            { id: 'total', name: 'Total Runs', description: 'Over/Under runs' }
-          ],
-          seasonConfig: { startMonth: 2, endMonth: 10, seasonYearOffset: 0 },
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
-        },
-        {
-          id: 'hockey',
-          name: 'hockey',
-          displayName: 'Ice Hockey',
-          icon: 'gamepad-2',
-          color: 'text-blue-500',
-          isActive: true,
-          dataSource: 'sportsdb',
-          playerStatsTable: 'hockey_player_stats',
-          positions: ['C', 'LW', 'RW', 'D', 'G'],
-          scoringFields: { primary: 'goals', for: 'goals', against: 'goals' },
-          bettingMarkets: [
-            { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss' },
-            { id: 'puckline', name: 'Puck Line', description: 'Goal difference' },
-            { id: 'total', name: 'Total Goals', description: 'Over/Under goals' }
-          ],
-          seasonConfig: { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
-        },
-        {
-          id: 'soccer',
-          name: 'soccer',
-          displayName: 'Soccer',
-          icon: 'trophy',
-          color: 'text-emerald-500',
-          isActive: true,
-          dataSource: 'sportsdb',
-          playerStatsTable: 'soccer_player_stats',
-          positions: ['GK', 'CB', 'LB', 'RB', 'CDM', 'CM', 'CAM', 'LW', 'RW', 'ST'],
-          scoringFields: { primary: 'goals', for: 'goals', against: 'goals' },
-          bettingMarkets: [
-            { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss/Draw' },
-            { id: 'spread', name: 'Asian Handicap', description: 'Goal difference' },
-            { id: 'total', name: 'Total Goals', description: 'Over/Under goals' }
-          ],
-          seasonConfig: { startMonth: 7, endMonth: 5, seasonYearOffset: 0 },
           rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
           updateFrequency: 30
         }
-      ]
+      })
 
       for (const config of defaultConfigs) {
         this.configs.set(config.name, config)

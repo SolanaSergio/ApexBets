@@ -13,11 +13,52 @@ export const metadata: Metadata = {
   description: "Advanced sports analytics and prediction platform for NBA, NFL, and other major sports leagues",
   keywords: ["sports analytics", "predictions", "NBA", "betting odds", "machine learning"],
   authors: [{ name: "Project Apex Team" }],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+    viewportFit: "cover"
+  },
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#06b6d4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0891b2" }
+  ],
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Project Apex"
+  },
+  formatDetection: {
+    telephone: false,
+    date: false,
+    address: false,
+    email: false,
+    url: false
+  },
   openGraph: {
     title: "Project Apex - Sports Analytics Platform",
     description: "Advanced sports analytics and prediction platform for NBA, NFL, and other major sports leagues",
     type: "website",
+    siteName: "Project Apex",
+    locale: "en_US"
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Project Apex - Sports Analytics Platform",
+    description: "Advanced sports analytics and prediction platform for NBA, NFL, and other major sports leagues"
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1
+    }
+  }
 }
 
 const inter = Inter({

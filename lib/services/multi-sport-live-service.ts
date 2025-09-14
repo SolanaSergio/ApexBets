@@ -331,7 +331,7 @@ export class MultiSportLiveService {
       this.activeConnections.get(sport)?.delete(connectionId)
     } else {
       // Remove from all sports
-      for (const [sportName, connections] of this.activeConnections) {
+      for (const [_sportName, connections] of this.activeConnections) {
         connections.delete(connectionId)
       }
     }

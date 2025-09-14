@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, TrendingDown, Activity, BarChart3 } from "lucide-react"
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts"
@@ -43,7 +43,7 @@ export function ModernChart({
     if (realTime) {
       const interval = setInterval(() => {
         setIsUpdating(true)
-        setChartData(prevData => 
+        setChartData(prevData =>
           prevData.map(point => ({
             ...point,
             value: point.value + (Math.random() - 0.5) * 10,
@@ -54,6 +54,7 @@ export function ModernChart({
       }, 5000)
       return () => clearInterval(interval)
     }
+    return () => {} // Return empty cleanup function when realTime is false
   }, [realTime])
 
   const colors = [

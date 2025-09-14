@@ -7,7 +7,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const useRealData = searchParams.get("real") === "true"
-    const includeInactive = searchParams.get("include_inactive") === "true"
+    // const includeInactive = searchParams.get("include_inactive") === "true"
 
     const supabase = await createClient()
     
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
 /**
  * Get live data for a specific sport
  */
-async function getSportLiveData(supabase: any, sport: string, useRealData: boolean) {
+async function getSportLiveData(supabase: any, sport: string, _useRealData: boolean) {
   // Get live games from database
   const { data: liveGames, error: liveGamesError } = await supabase
     .from('games')

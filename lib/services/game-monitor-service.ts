@@ -5,7 +5,7 @@
  */
 
 import { createClient } from '@/lib/supabase/server'
-import { dataSyncService } from './data-sync-service'
+// import { dataSyncService } from './data-sync-service'
 
 export interface GameMonitorConfig {
   enabled: boolean

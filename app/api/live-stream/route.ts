@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData, normalizeTeamData, deduplicateGames } from "@/lib/utils/data-utils"
-import { multiSportLiveService } from "@/lib/services/multi-sport-live-service"
+
 
 // Map to store active connections
 const connections = new Map<string, {
