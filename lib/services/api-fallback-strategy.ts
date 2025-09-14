@@ -436,10 +436,10 @@ export class APIFallbackStrategy {
       case 'teams':
         return await nhlClient.getTeams() as T
       case 'players':
-        if (params.teamAbbrev) {
-          return await nhlClient.getTeamRoster(params.teamAbbrev, params.season) as T
+        if (params.teamId) {
+          return await nhlClient.getTeamRoster(params.teamId, params.season) as T
         }
-        throw new Error('Team abbreviation required for players')
+        throw new Error('Team ID required for players')
       case 'standings':
         return await nhlClient.getCurrentStandings() as T
       case 'stats':

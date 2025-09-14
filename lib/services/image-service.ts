@@ -38,12 +38,12 @@ export interface PlayerPhotoConfig {
 // ============================================================================
 
 // Dynamic team logo sources - loaded from database
-let TEAM_LOGOS: Record<string, any> = {}
+const TEAM_LOGOS: Record<string, any> = {}
 
 // Initialize team logos from database - removed unused function
 
 // Dynamic sports images - loaded from database
-let SPORTS_IMAGES: Record<string, string> = {}
+const SPORTS_IMAGES: Record<string, string> = {}
 
 // Initialize sports images from database - removed unused function
 
@@ -58,6 +58,8 @@ let SPORTS_IMAGES: Record<string, string> = {}
 function getLeagueConfig(league: string): any {
   // This function is deprecated - use dynamic team service instead
   // All league configurations should be loaded from database
+  // Suppress unused parameter warning since this is deprecated
+  void league;
   return null;
 }
 

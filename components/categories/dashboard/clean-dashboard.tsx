@@ -3,17 +3,32 @@
 /**
  * CLEAN DASHBOARD COMPONENT
  * 
- * IMPORTANT: This component contains ONE hardcoded sport value ('baseball') as a fallback
- * to ensure the dashboard loads when no sport configuration is available. This is the ONLY
- * hardcoded sport value in the entire application. All data loading remains completely
- * dynamic and sport-agnostic based on user selection and API responses.
+ * ================================================================================
+ * CRITICAL: HARDCODED DEFAULT SPORT FOR INITIAL DASHBOARD LOAD
+ * ================================================================================
  * 
- * The hardcoded value is used ONLY for:
- * 1. Initial component state when no defaultSport is provided
+ * This component contains ONE hardcoded sport value ('baseball') as a fallback
+ * to ensure the dashboard loads when no sport configuration is available. This is 
+ * the ONLY hardcoded sport value in the entire application.
+ * 
+ * PURPOSE: The hardcoded value is used ONLY for:
+ * 1. Initial component state when no defaultSport prop is provided
  * 2. Fallback when SportConfigManager fails to load supported sports
+ * 3. Emergency fallback when database/configuration is completely unavailable
  * 
- * This does NOT affect the dynamic nature of the application - all data is still loaded
- * dynamically based on the selected sport and API responses.
+ * DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
+ * - Dynamic sport loading from SportConfigManager
+ * - User sport selection changes (users can select any sport)
+ * - API data fetching (all data is loaded dynamically based on selected sport)
+ * - Real-time updates (all updates are sport-agnostic)
+ * - Multi-sport support (dashboard supports all configured sports)
+ * - Data normalization (all data is processed dynamically)
+ * - Error handling (all errors are handled dynamically)
+ * 
+ * FALLBACK CHAIN: defaultSport prop → SportConfigManager → hardcoded 'baseball'
+ * 
+ * All subsequent behavior after initialization is completely dynamic and sport-agnostic.
+ * ================================================================================
  */
 
 import { useState, useEffect, useCallback } from "react"
@@ -54,8 +69,26 @@ interface CleanDashboardProps {
 
 export function CleanDashboard({ className = "", defaultSport = null }: CleanDashboardProps) {
   const [mounted, setMounted] = useState(false)
-  // CRITICAL: Initialize with hardcoded fallback to ensure dashboard always loads
-  // This is the ONLY hardcoded sport value - all data loading remains dynamic
+  
+  // ============================================================================
+  // CRITICAL: HARDCODED DEFAULT SPORT FOR INITIAL DASHBOARD LOAD
+  // ============================================================================
+  // This is the ONLY hardcoded sport value in the entire application.
+  // 
+  // PURPOSE: Ensures the dashboard always loads with a valid sport when:
+  // 1. No defaultSport prop is provided
+  // 2. SportConfigManager fails to load supported sports
+  // 3. Database/configuration is unavailable
+  //
+  // DYNAMIC BEHAVIOR: This hardcoded value does NOT affect:
+  // - Dynamic sport loading from SportConfigManager
+  // - User sport selection changes
+  // - API data fetching (all data is loaded dynamically based on selected sport)
+  // - Real-time updates (all updates are sport-agnostic)
+  // - Multi-sport support (dashboard supports all configured sports)
+  //
+  // FALLBACK CHAIN: defaultSport prop → SportConfigManager → hardcoded 'baseball'
+  // ============================================================================
   const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(defaultSport || 'baseball')
   const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
@@ -131,8 +164,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         teams = await simpleApiClient.getTeams({ sport, external: true })
         console.log(`External API: Loaded ${teams.length} teams for ${sport}`)
         
-        // Normalize team data to ensure consistency
-        teams = teams.map(team => normalizeTeamData(team, sport))
+        // Normalize team data to ensure consistency with error handling
+        teams = teams
+          .filter(team => team && typeof team === 'object') // Filter out invalid teams
+          .map(team => {
+            try {
+              return normalizeTeamData(team, sport)
+            } catch (error) {
+              console.warn('Error normalizing team data:', error, team)
+              return null
+            }
+          })
+          .filter(team => team !== null) // Remove failed normalizations
         
         // Deduplicate teams
         teams = deduplicateTeams(teams)
@@ -141,7 +184,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         if (teams.length === 0) {
           try {
             teams = await simpleApiClient.getTeams({ sport, external: false })
-            teams = teams.map(team => normalizeTeamData(team, sport))
+            teams = teams
+              .filter(team => team && typeof team === 'object') // Filter out invalid teams
+              .map(team => {
+                try {
+                  return normalizeTeamData(team, sport)
+                } catch (error) {
+                  console.warn('Error normalizing team data (DB fallback):', error, team)
+                  return null
+                }
+              })
+              .filter(team => team !== null) // Remove failed normalizations
             teams = deduplicateTeams(teams)
             console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
           } catch (dbError) {
@@ -154,7 +207,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         // Fallback to database data
         try {
           teams = await simpleApiClient.getTeams({ sport, external: false })
-          teams = teams.map(team => normalizeTeamData(team, sport))
+          teams = teams
+            .filter(team => team && typeof team === 'object') // Filter out invalid teams
+            .map(team => {
+              try {
+                return normalizeTeamData(team, sport)
+              } catch (error) {
+                console.warn('Error normalizing team data (catch fallback):', error, team)
+                return null
+              }
+            })
+            .filter(team => team !== null) // Remove failed normalizations
           teams = deduplicateTeams(teams)
           console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
         } catch (dbError) {
@@ -176,11 +239,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const loadUpcomingGamesForSport = useCallback(async (sport: SupportedSport) => {
     try {
       const today = new Date().toISOString().split('T')[0]
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]
       console.log(`Loading upcoming games for ${sport} on ${today}...`)
       
       // Use external API first for real-time data
       let games: GameData[] = []
       try {
+        // Try today first, then tomorrow if no games today
         games = await simpleApiClient.getGames({
           sport,
           dateFrom: today,
@@ -188,16 +253,50 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           limit: 20,
           external: true
         })
-        console.log(`External API: Loaded ${games.length} upcoming games for ${sport}`)
+        console.log(`External API: Loaded ${games.length} upcoming games for ${sport} on ${today}`)
+        
+        // If no games today, try tomorrow
+        if (games.length === 0) {
+          console.log(`No games today, trying tomorrow (${tomorrow})...`)
+          games = await simpleApiClient.getGames({
+            sport,
+            dateFrom: tomorrow,
+            status: 'scheduled',
+            limit: 20,
+            external: true
+          })
+          console.log(`External API: Loaded ${games.length} upcoming games for ${sport} on ${tomorrow}`)
+        }
         
         // Debug: Log the actual sports of the returned games
         if (games.length > 0) {
           const gameSports = games.map(g => g.sport).filter(Boolean)
           console.log(`Upcoming games returned for ${sport}:`, gameSports.slice(0, 5))
+          console.log(`Sample game data:`, games[0])
         }
         
-        // Normalize game data
-        games = games.map(game => normalizeGameData(game, sport))
+        // Normalize game data with error handling
+        console.log(`Before normalization: ${games.length} games`)
+        games = games
+          .filter(game => game && typeof game === 'object') // Filter out invalid games
+          .map(game => {
+            try {
+              const normalized = normalizeGameData(game, sport)
+              console.log(`Normalized game:`, {
+                id: normalized.id,
+                status: normalized.status,
+                homeTeam: normalized.home_team?.name,
+                awayTeam: normalized.away_team?.name,
+                sport: normalized.sport
+              })
+              return normalized
+            } catch (error) {
+              console.warn('Error normalizing upcoming game data:', error, game)
+              return null
+            }
+          })
+          .filter(game => game !== null) // Remove failed normalizations
+        console.log(`After normalization: ${games.length} games`)
         
         // Deduplicate games
         games = deduplicateGames(games)
@@ -212,7 +311,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             external: true
           })
           console.log(`External API (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
-          games = allScheduledGames.map(game => normalizeGameData(game, sport))
+          games = allScheduledGames
+            .filter(game => game && typeof game === 'object') // Filter out invalid games
+            .map(game => {
+              try {
+                return normalizeGameData(game, sport)
+              } catch (error) {
+                console.warn('Error normalizing scheduled game data:', error, game)
+                return null
+              }
+            })
+            .filter(game => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
         }
         
@@ -226,7 +335,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               limit: 20,
               external: false
             })
-            games = games.map(game => normalizeGameData(game, sport))
+            games = games
+              .filter(game => game && typeof game === 'object') // Filter out invalid games
+              .map(game => {
+                try {
+                  return normalizeGameData(game, sport)
+                } catch (error) {
+                  console.warn('Error normalizing upcoming game data (DB fallback):', error, game)
+                  return null
+                }
+              })
+              .filter(game => game !== null) // Remove failed normalizations
             games = deduplicateGames(games)
             console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
           } catch (dbError) {
@@ -244,7 +363,17 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             limit: 20,
             external: false
           })
-          games = games.map(game => normalizeGameData(game, sport))
+          games = games
+            .filter(game => game && typeof game === 'object') // Filter out invalid games
+            .map(game => {
+              try {
+                return normalizeGameData(game, sport)
+              } catch (error) {
+                console.warn('Error normalizing upcoming game data (catch fallback):', error, game)
+                return null
+              }
+            })
+            .filter(game => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
           console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
         } catch (dbError) {
@@ -270,6 +399,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       // Use external API first for real-time data
       let games: GameData[] = []
       try {
+        // Try to get live games (status: 'in_progress' or 'live')
         games = await simpleApiClient.getGames({ 
           sport, 
           status: 'in_progress',
@@ -277,18 +407,59 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         })
         console.log(`External API: Loaded ${games.length} live games for ${sport}`)
         
+        // If no live games, try to get any games with 'live' status
+        if (games.length === 0) {
+          console.log(`No in_progress games, trying live status...`)
+          games = await simpleApiClient.getGames({ 
+            sport, 
+            status: 'live',
+            external: true 
+          })
+          console.log(`External API: Loaded ${games.length} live games for ${sport} with live status`)
+        }
+        
         // Debug: Log the actual sports of the returned games
         if (games.length > 0) {
           const gameSports = games.map(g => g.sport).filter(Boolean)
           console.log(`Games returned for ${sport}:`, gameSports.slice(0, 5))
         }
         
-        // Normalize and filter games
-        games = games.map(game => normalizeGameData(game, sport))
+        // Normalize and filter games with error handling
+        games = games
+          .filter(game => game && typeof game === 'object') // Filter out invalid games
+          .map(game => {
+            try {
+              return normalizeGameData(game, sport)
+            } catch (error) {
+              console.warn('Error normalizing game data:', error, game)
+              return null
+            }
+          })
+          .filter(game => game !== null) // Remove failed normalizations
         games = deduplicateGames(games)
         
         // Filter to only show truly live games (with real scores or live indicators)
-        games = games.filter(game => isGameActuallyLive(game))
+        console.log(`Before live filtering: ${games.length} games`)
+        games = games.filter(game => {
+          try {
+            const isLive = isGameActuallyLive(game)
+            if (!isLive) {
+              console.log(`Game filtered out (not live):`, {
+                id: game.id,
+                status: game.status,
+                homeScore: game.home_score,
+                awayScore: game.away_score,
+                homeTeam: game.home_team?.name,
+                awayTeam: game.away_team?.name
+              })
+            }
+            return isLive
+          } catch (error) {
+            console.warn('Error checking if game is live:', error, game)
+            return false
+          }
+        })
+        console.log(`After live filtering: ${games.length} games`)
         
         // Fallback to database if external API fails
         if (games.length === 0) {
@@ -298,11 +469,28 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               status: 'in_progress',
               external: false 
             })
-            games = games.map(game => normalizeGameData(game, sport))
+            games = games
+              .filter(game => game && typeof game === 'object') // Filter out invalid games
+              .map(game => {
+                try {
+                  return normalizeGameData(game, sport)
+                } catch (error) {
+                  console.warn('Error normalizing game data (DB fallback):', error, game)
+                  return null
+                }
+              })
+              .filter(game => game !== null) // Remove failed normalizations
             games = deduplicateGames(games)
             
             // Filter to only show truly live games (with real scores or live indicators)
-            games = games.filter(game => isGameActuallyLive(game))
+            games = games.filter(game => {
+              try {
+                return isGameActuallyLive(game)
+              } catch (error) {
+                console.warn('Error checking if game is live (DB fallback):', error, game)
+                return false
+              }
+            })
             console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
           } catch (dbError) {
             console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -317,11 +505,28 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             status: 'in_progress',
             external: false 
           })
-          games = games.map(game => normalizeGameData(game, sport))
+          games = games
+            .filter(game => game && typeof game === 'object') // Filter out invalid games
+            .map(game => {
+              try {
+                return normalizeGameData(game, sport)
+              } catch (error) {
+                console.warn('Error normalizing game data (catch fallback):', error, game)
+                return null
+              }
+            })
+            .filter(game => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
           
           // Filter to only show truly live games (with real scores or live indicators)
-          games = games.filter(game => isGameActuallyLive(game))
+          games = games.filter(game => {
+            try {
+              return isGameActuallyLive(game)
+            } catch (error) {
+              console.warn('Error checking if game is live (catch fallback):', error, game)
+              return false
+            }
+          })
           console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
         } catch (dbError) {
           console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -351,10 +556,22 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
         } else {
-          // CRITICAL FALLBACK: Hardcoded default sport for dashboard initialization
-          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads
-          // This does NOT affect dynamic data loading - all data is still loaded dynamically based on user selection
-          // The hardcoded value is only used when no supported sports are available from configuration
+          // ========================================================================
+          // CRITICAL FALLBACK: HARDCODED DEFAULT SPORT FOR DASHBOARD INITIALIZATION
+          // ========================================================================
+          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads.
+          // 
+          // WHEN THIS OCCURS: Only when SportConfigManager fails to load any supported sports
+          // 
+          // DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
+          // - Dynamic data loading (all data is loaded dynamically based on selected sport)
+          // - User sport selection changes (users can still select any sport)
+          // - API data fetching (all APIs are called with the selected sport parameter)
+          // - Real-time updates (all updates are sport-agnostic)
+          // - Multi-sport support (dashboard supports all configured sports)
+          //
+          // This is purely for initial component state - all subsequent behavior is dynamic.
+          // ========================================================================
           console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
           setSelectedSupportedSport('baseball' as SupportedSport)
         }
@@ -371,10 +588,22 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
         } else {
-          // CRITICAL FALLBACK: Hardcoded default sport for dashboard initialization
-          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads
-          // This does NOT affect dynamic data loading - all data is still loaded dynamically based on user selection
-          // The hardcoded value is only used when no supported sports are available from configuration
+          // ========================================================================
+          // CRITICAL FALLBACK: HARDCODED DEFAULT SPORT FOR DASHBOARD INITIALIZATION
+          // ========================================================================
+          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads.
+          // 
+          // WHEN THIS OCCURS: Only when SportConfigManager fails to load any supported sports
+          // 
+          // DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
+          // - Dynamic data loading (all data is loaded dynamically based on selected sport)
+          // - User sport selection changes (users can still select any sport)
+          // - API data fetching (all APIs are called with the selected sport parameter)
+          // - Real-time updates (all updates are sport-agnostic)
+          // - Multi-sport support (dashboard supports all configured sports)
+          //
+          // This is purely for initial component state - all subsequent behavior is dynamic.
+          // ========================================================================
           console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
           setSelectedSupportedSport('baseball' as SupportedSport)
         }

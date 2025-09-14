@@ -516,23 +516,32 @@ export class HockeyService extends SportSpecificService {
   // NHL API data mapping methods
   private mapNHLGameData(game: any): GameData {
     return {
-      id: game.id?.toString() || '',
+      id: game.gamePk?.toString() || '',
       sport: this.sport,
       league: 'NHL',
-      homeTeam: game.homeTeam?.name?.default || '',
-      awayTeam: game.awayTeam?.name?.default || '',
+      homeTeam: game.teams?.home?.team?.name || '',
+      awayTeam: game.teams?.away?.team?.name || '',
       date: game.gameDate || new Date().toISOString(),
-      status: this.mapNHLStatus(game.gameState),
-      homeScore: game.homeTeam?.score || null,
-      awayScore: game.awayTeam?.score || null,
-      venue: game.venue?.default || 'TBD',
+      status: this.mapNHLStatus(game.status?.detailedState),
+      homeScore: game.teams?.home?.score || null,
+      awayScore: game.teams?.away?.score || null,
+      venue: game.venue?.name || 'TBD',
       lastUpdated: new Date().toISOString()
     }
   }
 
   private mapNHLStatus(gameState: string | number): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
-    // NHL game states: 1=scheduled, 2=live, 3=final, 4=final_ot, 5=final_so, 6=postponed, 7=cancelled
+    if (typeof gameState === 'string') {
+      const state = gameState.toLowerCase()
+      if (state === 'final' || state === 'game over') return 'finished'
+      if (state === 'in progress' || state === 'live') return 'live'
+      if (state === 'postponed') return 'postponed'
+      if (state === 'cancelled') return 'cancelled'
+      if (state === 'scheduled' || state === 'preview') return 'scheduled'
+    }
+    
     if (typeof gameState === 'number') {
+      // Legacy numeric states
       switch (gameState) {
         case 1: return 'scheduled'
         case 2: return 'live'
@@ -543,14 +552,6 @@ export class HockeyService extends SportSpecificService {
         case 7: return 'cancelled'
         default: return 'scheduled'
       }
-    }
-    
-    if (typeof gameState === 'string') {
-      const state = gameState.toLowerCase()
-      if (state.includes('final')) return 'finished'
-      if (state.includes('live') || state.includes('progress')) return 'live'
-      if (state.includes('postponed')) return 'postponed'
-      if (state.includes('cancelled')) return 'cancelled'
     }
     
     return 'scheduled'

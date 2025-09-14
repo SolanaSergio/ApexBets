@@ -106,7 +106,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
   // Normalize status with more comprehensive mapping
   let status = game.status || 'scheduled';
   // Ensure status is a string before calling toLowerCase
-  const statusLower = typeof status === 'string' ? status.toLowerCase() : String(status).toLowerCase();
+  const statusLower = typeof status === 'string' ? status.toLowerCase() : String(status || '').toLowerCase();
   
   if (statusLower.includes('live') || statusLower.includes('in progress') || statusLower.includes('in_progress')) {
     status = 'in_progress';
@@ -160,33 +160,66 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
  * Only returns true for games that are truly in progress with real activity
  */
 export function isGameActuallyLive(game: any): boolean {
-  const status = (game.status || '').toLowerCase();
+  // Validate input
+  if (!game || typeof game !== 'object') {
+    return false;
+  }
+  
+  // CRITICAL FIX: Ensure status is always a string before calling toLowerCase
+  let status = '';
+  let statusLower = '';
+  
+  try {
+    if (game.status === null || game.status === undefined) {
+      status = '';
+    } else if (typeof game.status === 'string') {
+      status = game.status;
+    } else {
+      // Handle non-string status values (objects, numbers, etc.)
+      console.warn('Non-string status detected:', { 
+        status: game.status, 
+        type: typeof game.status,
+        gameId: game.id 
+      });
+      status = String(game.status);
+    }
+    
+    // Now safely call toLowerCase
+    statusLower = status.toLowerCase();
+  } catch (error) {
+    console.error('Error processing game status:', error, { 
+      game, 
+      status: game.status, 
+      statusType: typeof game.status 
+    });
+    return false;
+  }
   
   // Must have live status
-  const hasLiveStatus = status.includes('live') || 
-                       status.includes('progress') || 
-                       status.includes('in_progress') ||
-                       status.includes('in progress') ||
-                       status === 'live';
+  const hasLiveStatus = statusLower.includes('live') || 
+                       statusLower.includes('progress') || 
+                       statusLower.includes('in_progress') ||
+                       statusLower.includes('in progress') ||
+                       statusLower === 'live';
   
   if (!hasLiveStatus) {
     return false;
   }
   
   // Must have actual scores (not just 0-0 or null)
-  const homeScore = game.home_score !== null && game.home_score !== undefined ? game.home_score : 0;
-  const awayScore = game.away_score !== null && game.away_score !== undefined ? game.away_score : 0;
+  const homeScore = game.home_score !== null && game.home_score !== undefined ? Number(game.home_score) : 0;
+  const awayScore = game.away_score !== null && game.away_score !== undefined ? Number(game.away_score) : 0;
   const hasRealScores = homeScore > 0 || awayScore > 0;
   
   // Additional checks for various live indicators
-  const hasLiveIndicators = status.includes('quarter') ||
-                           status.includes('period') ||
-                           status.includes('inning') ||
-                           status.includes('half') ||
-                           status.includes('overtime') ||
-                           status.includes('extra') ||
-                           status.includes('q') ||
-                           status.includes('p');
+  const hasLiveIndicators = statusLower.includes('quarter') ||
+                           statusLower.includes('period') ||
+                           statusLower.includes('inning') ||
+                           statusLower.includes('half') ||
+                           statusLower.includes('overtime') ||
+                           statusLower.includes('extra') ||
+                           statusLower.includes('q') ||
+                           statusLower.includes('p');
   
   // Game must have live status AND either real scores or live indicators
   return hasLiveStatus && (hasRealScores || hasLiveIndicators);

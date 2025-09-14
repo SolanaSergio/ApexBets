@@ -59,9 +59,14 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
 
       // Normalize and filter out games that don't meet live criteria
       const normalizedLiveGames = liveGames.map(game => normalizeGameData(game, sport))
-      const trulyLiveGames = normalizedLiveGames.filter(game => 
-        isGameActuallyLive(game)
-      )
+      const trulyLiveGames = normalizedLiveGames.filter(game => {
+        try {
+          return isGameActuallyLive(game)
+        } catch (error) {
+          console.warn('Error checking if game is live:', error, game)
+          return false
+        }
+      })
 
       // Normalize other games
       const normalizedScheduledGames = scheduledGames.map(game => normalizeGameData(game, sport))
@@ -305,7 +310,14 @@ interface GameCardProps {
 
 function GameCard({ game, sport }: GameCardProps) {
   const sportConfig = SportConfigManager.getSportConfig(sport)
-  const isLive = isGameActuallyLive(game)
+  const isLive = (() => {
+    try {
+      return isGameActuallyLive(game)
+    } catch (error) {
+      console.warn('Error checking if game is live in GameCard:', error, game)
+      return false
+    }
+  })()
   const isFinished = game.status === 'completed' || game.status === 'finished' || game.status === 'final'
 
   const getStatusBadge = () => {
