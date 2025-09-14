@@ -174,13 +174,21 @@ export function isGameActuallyLive(game: any): boolean {
       status = '';
     } else if (typeof game.status === 'string') {
       status = game.status;
-    } else {
-      // Handle non-string status values (objects, numbers, etc.)
-      console.warn('Non-string status detected:', { 
+    } else if (typeof game.status === 'object' && game.status !== null) {
+      // Handle status objects - extract the actual status value
+      const statusObj = game.status;
+      status = statusObj.status || statusObj.state || statusObj.detailedState || 
+               statusObj.abstractGameState || statusObj.codedGameState || 
+               String(statusObj);
+      
+      // Log the status object for debugging
+      console.log('Status object detected:', { 
         status: game.status, 
-        type: typeof game.status,
+        extractedStatus: status,
         gameId: game.id 
       });
+    } else {
+      // Handle other non-string status values (numbers, etc.)
       status = String(game.status);
     }
     

@@ -9,8 +9,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Badge } from "@/components/ui/badge"
 import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
-import { SportSelector, SportSelectorCompact } from "./sport-selector"
-import { SupportedSport } from "@/lib/services/core/sport-config"
 import { UserProfileDropdown } from "@/components/auth/user-profile"
 import { useAuth } from "@/lib/auth/auth-context"
 
@@ -77,7 +75,6 @@ export function Navigation() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
 
@@ -89,27 +86,6 @@ export function Navigation() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
-
-  // Initialize sport selection
-  useEffect(() => {
-    const initializeSport = async () => {
-      try {
-        // Initialize sport configuration
-        const { SportConfigManager } = await import('@/lib/services/core/sport-config')
-        await SportConfigManager.initialize()
-        
-        // Get the first available sport
-        const supportedSports = SportConfigManager.getSupportedSports()
-        if (supportedSports.length > 0 && !selectedSport) {
-          setSelectedSport(supportedSports[0])
-        }
-      } catch (error) {
-        console.error('Error initializing sport selection:', error)
-      }
-    }
-
-    initializeSport()
-  }, [selectedSport])
 
   return (
     <header className={cn(
@@ -133,20 +109,6 @@ export function Navigation() {
               </div>
             </Link>
 
-          {/* Sport Selector */}
-          <div className="hidden lg:block flex-shrink-0">
-            {selectedSport ? (
-              <SportSelector
-                selectedSport={selectedSport}
-                onSportChange={setSelectedSport}
-                className="w-64"
-              />
-            ) : (
-              <div className="w-64 h-12 flex items-center justify-center text-muted-foreground">
-                Loading sports...
-              </div>
-            )}
-          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-1 flex-shrink-0">
@@ -230,19 +192,6 @@ export function Navigation() {
                     </Button>
                   </div>
 
-                  {/* Mobile Sport Selector */}
-                  <div className="px-4 py-4 border-b border-border/50">
-                    {selectedSport ? (
-                      <SportSelectorCompact 
-                        selectedSport={selectedSport}
-                        onSportChange={setSelectedSport}
-                      />
-                    ) : (
-                      <div className="h-10 flex items-center justify-center text-muted-foreground">
-                        Loading sports...
-                      </div>
-                    )}
-                  </div>
 
                   {/* Mobile Navigation */}
                   <nav className="flex-1 py-6 space-y-2">

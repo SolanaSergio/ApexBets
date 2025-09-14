@@ -399,23 +399,23 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       // Use external API first for real-time data
       let games: GameData[] = []
       try {
-        // Try to get live games (status: 'in_progress' or 'live')
+        // Try to get live games (status: 'live')
         games = await simpleApiClient.getGames({ 
           sport, 
-          status: 'in_progress',
+          status: 'live',
           external: true 
         })
         console.log(`External API: Loaded ${games.length} live games for ${sport}`)
         
-        // If no live games, try to get any games with 'live' status
+        // If no live games, try to get any games with 'in_progress' status
         if (games.length === 0) {
-          console.log(`No in_progress games, trying live status...`)
+          console.log(`No live games, trying in_progress status...`)
           games = await simpleApiClient.getGames({ 
             sport, 
-            status: 'live',
+            status: 'in_progress',
             external: true 
           })
-          console.log(`External API: Loaded ${games.length} live games for ${sport} with live status`)
+          console.log(`External API: Loaded ${games.length} in_progress games for ${sport}`)
         }
         
         // Debug: Log the actual sports of the returned games
