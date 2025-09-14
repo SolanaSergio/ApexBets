@@ -114,7 +114,7 @@ export function ForgotPasswordForm() {
 
       <Button
         type="submit"
-        className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+        className="w-full h-11 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium"
         disabled={loading}
       >
         {loading ? (

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { apiFallbackStrategy } from "@/lib/services/api-fallback-strategy"
+import { gameStatusValidator } from "@/lib/services/game-status-validator"
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Sport parameter is required" }, { status: 400 })
       }
       
-      const status = searchParams.get("status") as "scheduled" | "live" | "finished" | undefined
+      const status = searchParams.get("status") as "scheduled" | "live" | "finished" | "in_progress" | "in progress" | undefined
       const date = searchParams.get("date") || new Date().toISOString().split('T')[0]
       
       try {
@@ -164,20 +165,41 @@ export async function GET(request: NextRequest) {
             array.findIndex(g => g.id === game.id) === index
           )
           
+          // If requesting live games, filter to only show actually live ones
+          let finalGames = deduplicatedGames
+          if (status === 'live' || status === 'in_progress' || status === 'in progress') {
+            const liveGames = await gameStatusValidator.filterLiveGames(
+              deduplicatedGames.map(game => ({
+                id: game.id,
+                game_date: game.game_date,
+                status: game.status,
+                sport: sport,
+                home_score: game.home_score,
+                away_score: game.away_score
+              }))
+            )
+            
+            // Map back to original format
+            finalGames = deduplicatedGames.filter(game => 
+              liveGames.some(liveGame => liveGame.id === game.id)
+            )
+          }
+          
           // If we have no valid games from external API, log this for debugging
-          if (deduplicatedGames.length === 0) {
-            console.warn(`No valid games found from external API for sport: ${sport}. All games had missing team names.`)
+          if (finalGames.length === 0) {
+            console.warn(`No valid games found from external API for sport: ${sport}. All games had missing team names or were filtered out.`)
           }
           
           return NextResponse.json({
-            data: deduplicatedGames,
+            data: finalGames,
             meta: {
               fromCache: fallbackResult.cached,
               responseTime: fallbackResult.responseTime,
               source: `api_fallback_${fallbackResult.provider}`,
               fallbacksUsed: fallbackResult.fallbacksUsed,
               originalCount: normalizedGames.length,
-              deduplicatedCount: deduplicatedGames.length
+              deduplicatedCount: deduplicatedGames.length,
+              liveFilteredCount: finalGames.length
             }
           })
         } else {
@@ -210,7 +232,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const dateFrom = searchParams.get("date_from")
     const dateTo = searchParams.get("date_to")
-    const status = searchParams.get("status")
+    const status = searchParams.get("status") as "scheduled" | "live" | "finished" | "in_progress" | "in progress" | undefined
     const teamId = searchParams.get("team_id")
     const search = searchParams.get("search")
     const sport = searchParams.get("sport")
@@ -256,6 +278,25 @@ export async function GET(request: NextRequest) {
         game.away_team?.name?.toLowerCase().includes(searchLower) ||
         game.home_team?.abbreviation?.toLowerCase().includes(searchLower) ||
         game.away_team?.abbreviation?.toLowerCase().includes(searchLower)
+      )
+    }
+
+    // If requesting live games, filter to only show actually live ones
+    if (status === 'live' || status === 'in_progress' || status === 'in progress') {
+      const liveGames = await gameStatusValidator.filterLiveGames(
+        filteredGames.map(game => ({
+          id: game.id,
+          game_date: game.game_date,
+          status: game.status,
+          sport: game.sport,
+          home_score: game.home_score,
+          away_score: game.away_score
+        }))
+      )
+      
+      // Map back to original format
+      filteredGames = filteredGames.filter(game => 
+        liveGames.some(liveGame => liveGame.id === game.id)
       )
     }
 

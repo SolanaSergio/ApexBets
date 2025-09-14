@@ -35,6 +35,11 @@ export class SportOddsService extends BaseService {
   private league: string
 
   constructor(sport: SupportedSport, league?: string) {
+    // Handle "all" sport - this should not be called for "all"
+    if (sport === 'all') {
+      throw new Error('Cannot create SportOddsService for "all" sport. Use individual sport services.')
+    }
+
     const config: ServiceConfig = {
       name: `odds-${sport}`,
       cacheTTL: 5 * 60 * 1000, // 5 minutes

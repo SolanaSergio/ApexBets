@@ -24,7 +24,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8">
             <div className="text-center space-y-4">
@@ -50,7 +50,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
@@ -64,7 +64,7 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
           <CardContent className="space-y-4">
             <Button 
               onClick={() => router.push('/login')}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
             >
               Sign In
             </Button>

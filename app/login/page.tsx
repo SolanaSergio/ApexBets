@@ -25,8 +25,11 @@ export default function LoginPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-white via-cyan-50/30 to-purple-50/30">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-emerald-200 border-t-emerald-500"></div>
+          <p className="text-gray-600 font-medium">Loading Project Apex...</p>
+        </div>
       </div>
     )
   }
@@ -36,73 +39,81 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Left Side - Branding & Image */}
-      <div className="lg:w-1/2 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"></div>
-        <div className="absolute inset-0 bg-emerald-500/10"></div>
-        
-        {/* Animated Background Elements */}
+    <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden bg-gradient-to-br from-white via-cyan-50/30 to-purple-50/30 bright-pattern">
+      {/* Left Side - Bright & Welcoming Branding */}
+      <div className="lg:w-1/2 relative overflow-hidden min-h-[40vh] lg:min-h-screen">
+        <div className="absolute inset-0 bg-gradient-to-br from-cyan-100/80 via-white to-purple-100/80"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-cyan-200/40 via-transparent to-purple-200/40"></div>
+
+        {/* Bright Animated Background Elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl animate-pulse delay-1000"></div>
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-600/10 rounded-full blur-3xl animate-pulse delay-500"></div>
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-cyan-300/40 to-blue-400/30 rounded-lg blur-3xl bright-float"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-purple-300/40 to-indigo-400/30 rounded-lg blur-3xl bright-float-delay-1"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-cyan-200/30 to-purple-200/30 rounded-lg blur-3xl bright-float-delay-2"></div>
+          <div className="absolute top-20 left-20 w-32 h-32 bg-cyan-300/30 rounded-lg blur-2xl animate-pulse"></div>
+          <div className="absolute bottom-20 right-20 w-24 h-24 bg-purple-300/30 rounded-lg blur-xl animate-pulse delay-700"></div>
+          <div className="absolute top-1/3 right-1/4 w-16 h-16 bg-blue-400/20 rounded-lg blur-lg animate-pulse delay-300"></div>
+          <div className="absolute bottom-1/3 left-1/4 w-20 h-20 bg-indigo-400/20 rounded-lg blur-lg animate-pulse delay-900"></div>
         </div>
 
-        <div className="relative z-10 flex flex-col justify-center items-center h-full p-8 text-white">
-          <div className="text-center space-y-6 max-w-md">
-            <div className="flex justify-center">
-              <div className="p-4 bg-white/10 backdrop-blur-sm rounded-2xl">
-                <SportsImage 
+        <div className="relative z-10 flex flex-col justify-center items-center h-full p-4 lg:p-8">
+          <div className="text-center space-y-6 lg:space-y-8 max-w-lg">
+            <div className="flex justify-center animate-scale-in">
+              <div className="p-6 lg:p-8 bg-white/90 backdrop-blur-sm rounded-lg border-2 border-cyan-200/50 shadow-2xl shadow-cyan-500/10 bright-glow">
+                <SportsImage
                   src="https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop"
                   alt="Basketball sports icon"
-                  width={64}
-                  height={64}
-                  className="w-16 h-16 text-white"
+                  width={80}
+                  height={80}
+                  className="w-20 h-20 lg:w-24 lg:h-24 text-cyan-500"
                   fallbackType="sports"
                 />
               </div>
             </div>
-            
-            <div>
-              <h1 className="text-4xl lg:text-5xl font-bold mb-4 bg-gradient-to-r from-white to-emerald-200 bg-clip-text text-transparent">
-                ApexBets
+
+            <div className="space-y-4 lg:space-y-6 animate-slide-in-up">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold bright-gradient-text">
+                Project Apex
               </h1>
-              <p className="text-xl text-slate-200 mb-8">
+              <p className="text-xl sm:text-2xl lg:text-3xl text-gray-700 font-semibold">
                 The Ultimate Sports Analytics Platform
+              </p>
+              <p className="text-base text-gray-600 max-w-md mx-auto px-2 leading-relaxed">
+                Powered by advanced AI and real-time data to give you the edge in sports analytics
               </p>
             </div>
 
-            <div className="space-y-4 text-left">
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                <span className="text-slate-200">Real-time sports data & analytics</span>
+            <div className="space-y-4 text-left animate-slide-in-up">
+              <div className="flex items-center space-x-4 group bright-feature-card p-3 rounded-xl">
+                <div className="w-4 h-4 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-sm group-hover:scale-125 transition-transform shadow-lg"></div>
+                <span className="text-gray-700 font-semibold">Real-time sports data & analytics</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                <span className="text-slate-200">Advanced predictions & insights</span>
+              <div className="flex items-center space-x-4 group bright-feature-card p-3 rounded-xl">
+                <div className="w-4 h-4 bg-gradient-to-r from-purple-500 to-indigo-600 rounded-sm group-hover:scale-125 transition-transform shadow-lg"></div>
+                <span className="text-gray-700 font-semibold">Advanced AI predictions & insights</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                <span className="text-slate-200">Multi-sport coverage & live updates</span>
+              <div className="flex items-center space-x-4 group bright-feature-card p-3 rounded-xl">
+                <div className="w-4 h-4 bg-gradient-to-r from-green-500 to-emerald-600 rounded-sm group-hover:scale-125 transition-transform shadow-lg"></div>
+                <span className="text-gray-700 font-semibold">Multi-sport coverage & live updates</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                <span className="text-slate-200">Professional-grade tools</span>
+              <div className="flex items-center space-x-4 group bright-feature-card p-3 rounded-xl">
+                <div className="w-4 h-4 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-sm group-hover:scale-125 transition-transform shadow-lg"></div>
+                <span className="text-gray-700 font-semibold">Professional-grade analytics tools</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Right Side - Auth Forms */}
-      <div className="lg:w-1/2 flex items-center justify-center p-8 bg-slate-50">
-        <div className="w-full max-w-md space-y-6">
+      {/* Right Side - Bright & Modern Auth Forms */}
+      <div className="lg:w-1/2 flex items-center justify-center p-4 lg:p-8 bg-gradient-to-bl from-white via-cyan-50/20 to-purple-50/20 relative min-h-[60vh] lg:min-h-screen">
+        <div className="absolute inset-0 bg-gradient-to-bl from-cyan-100/30 via-white/50 to-purple-100/30"></div>
+        <div className="w-full max-w-lg space-y-4 lg:space-y-6 relative z-10">
           {/* Back to Home Button */}
           <Button
             variant="ghost"
             onClick={() => router.push('/')}
-            className="mb-4 text-slate-600 hover:text-slate-900"
+            className="mb-6 text-gray-600 hover:text-gray-800 hover:bg-white/60 hover:scale-105 transition-all duration-200 backdrop-blur-sm"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Home
@@ -110,35 +121,35 @@ export default function LoginPage() {
 
           {/* Auth Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-slate-100 p-1 rounded-lg">
-              <TabsTrigger 
-                value="login" 
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+            <TabsList className="grid w-full grid-cols-3 bg-white/80 backdrop-blur-sm p-1 rounded-xl border border-cyan-200/30 shadow-lg">
+              <TabsTrigger
+                value="login"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-cyan-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-gray-700 font-medium"
               >
                 Login
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="signup"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-gray-700 font-medium"
               >
                 Sign Up
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="forgot"
-                className="data-[state=active]:bg-white data-[state=active]:shadow-sm transition-all duration-200"
+                className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600 data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300 text-gray-700 font-medium"
               >
                 Forgot
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="login" className="mt-6 animate-fade-in">
-              <Card className="border-0 shadow-xl transition-all duration-300 hover:shadow-2xl">
-                <CardHeader className="space-y-1 pb-4">
-                  <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            <TabsContent value="login" className="mt-8 animate-scale-in">
+              <Card className="bright-card bright-glow transition-all duration-300 hover:shadow-3xl hover:border-cyan-300/60">
+                <CardHeader className="space-y-3 pb-6">
+                  <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-cyan-600 to-blue-500 bg-clip-text text-transparent">
                     Welcome back
                   </CardTitle>
-                  <CardDescription className="text-center text-slate-600">
-                    Sign in to your ApexBets account
+                  <CardDescription className="text-center text-gray-600 text-lg font-medium">
+                    Sign in to your Project Apex account
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -147,14 +158,14 @@ export default function LoginPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="signup" className="mt-6 animate-fade-in">
-              <Card className="border-0 shadow-xl transition-all duration-300 hover:shadow-2xl">
-                <CardHeader className="space-y-1 pb-4">
-                  <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-emerald-600 to-emerald-700 bg-clip-text text-transparent">
+            <TabsContent value="signup" className="mt-8 animate-scale-in">
+              <Card className="bright-card bright-glow-cyan transition-all duration-300 hover:shadow-3xl hover:border-cyan-300/60">
+                <CardHeader className="space-y-3 pb-6">
+                  <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-cyan-600 to-cyan-500 bg-clip-text text-transparent">
                     Create account
                   </CardTitle>
-                  <CardDescription className="text-center text-slate-600">
-                    Join ApexBets and start your analytics journey
+                  <CardDescription className="text-center text-gray-600 text-lg font-medium">
+                    Join Project Apex and start your analytics journey
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -163,13 +174,13 @@ export default function LoginPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="forgot" className="mt-6 animate-fade-in">
-              <Card className="border-0 shadow-xl transition-all duration-300 hover:shadow-2xl">
-                <CardHeader className="space-y-1 pb-4">
-                  <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            <TabsContent value="forgot" className="mt-8 animate-scale-in">
+              <Card className="bright-card shadow-2xl transition-all duration-300 hover:shadow-3xl hover:border-gray-300/60">
+                <CardHeader className="space-y-3 pb-6">
+                  <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-gray-700 to-gray-600 bg-clip-text text-transparent">
                     Reset password
                   </CardTitle>
-                  <CardDescription className="text-center text-slate-600">
+                  <CardDescription className="text-center text-gray-600 text-lg font-medium">
                     Enter your email to receive reset instructions
                   </CardDescription>
                 </CardHeader>
@@ -181,14 +192,14 @@ export default function LoginPage() {
           </Tabs>
 
           {/* Footer */}
-          <div className="text-center text-sm text-slate-500">
+          <div className="text-center text-sm text-gray-600 bg-white/60 backdrop-blur-sm rounded-xl p-4 border border-gray-200/30">
             <p>
               By continuing, you agree to our{' '}
-              <a href="/terms" className="text-emerald-600 hover:underline">
+              <a href="/terms" className="text-cyan-600 hover:text-cyan-700 hover:underline font-medium transition-colors">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="/privacy" className="text-emerald-600 hover:underline">
+              <a href="/privacy" className="text-cyan-600 hover:text-cyan-700 hover:underline font-medium transition-colors">
                 Privacy Policy
               </a>
             </p>

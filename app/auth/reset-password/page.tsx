@@ -77,7 +77,7 @@ function ResetPasswordForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 p-4">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8">
             <div className="text-center space-y-4">
@@ -92,7 +92,7 @@ function ResetPasswordForm() {
               </div>
               <Button
                 onClick={() => router.push('/login')}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
               >
                 Continue to login
               </Button>
@@ -181,7 +181,7 @@ function ResetPasswordForm() {
 
             <Button
               type="submit"
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white font-medium"
               disabled={loading}
             >
               {loading ? (
@@ -215,7 +215,7 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-900 p-4">
         <Card className="w-full max-w-md border-0 shadow-2xl">
           <CardContent className="p-8">
             <div className="text-center space-y-4">

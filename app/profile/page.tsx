@@ -134,7 +134,7 @@ export default function ProfilePage() {
                   <li>• Custom dashboards</li>
                   <li>• Priority support</li>
                 </ul>
-                <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                <Button className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800">
                   Upgrade Now
                 </Button>
               </CardContent>

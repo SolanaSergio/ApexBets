@@ -17,7 +17,54 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '5');
     const minValue = parseFloat(searchParams.get('minValue') || '0.1');
     
-    // Validate sport
+    // Handle "all" sport parameter - get predictions for all supported sports
+    if (sport === 'all') {
+      const supportedSports = await serviceFactory.getSupportedSports();
+      const allPredictions: any[] = [];
+      const allValueBets: any[] = [];
+      const allModelPerformance: any[] = [];
+      
+      for (const supportedSport of supportedSports) {
+        try {
+          const predictionService = new SportPredictionService(supportedSport, league);
+          const [predictions, valueBets, modelPerformance] = await Promise.all([
+            predictionService.getPredictions({ limit: Math.ceil(limit / supportedSports.length) }),
+            predictionService.getValueBettingOpportunities({ minValue, limit: Math.ceil(5 / supportedSports.length) }),
+            predictionService.getModelPerformance()
+          ]);
+          
+          allPredictions.push(...predictions);
+          allValueBets.push(...valueBets);
+          allModelPerformance.push(modelPerformance);
+        } catch (error) {
+          console.warn(`Failed to get predictions for ${supportedSport}:`, error);
+        }
+      }
+      
+      return NextResponse.json({
+        success: true,
+        sport: 'all',
+        league: 'all',
+        predictions: {
+          count: allPredictions.length,
+          data: allPredictions
+        },
+        valueBets: {
+          count: allValueBets.length,
+          data: allValueBets
+        },
+        modelPerformance: allModelPerformance,
+        meta: {
+          timestamp: new Date().toISOString(),
+          dataSource: 'real_ml_models',
+          sportSupported: true,
+          leagueSupported: true,
+          sportsIncluded: supportedSports
+        }
+      });
+    }
+    
+    // Validate sport for individual sport requests
     if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
       return NextResponse.json({
         success: false,

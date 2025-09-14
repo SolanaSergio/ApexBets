@@ -95,26 +95,34 @@ export default function GamesPage() {
       <Navigation />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Games & Matches
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Track live games, upcoming matches, and historical results across all major sports leagues
-          </p>
+        {/* Enhanced Header */}
+        <div className="text-center space-y-6 relative">
+          <div className="absolute inset-0 gradient-bg-soft opacity-20 rounded-3xl blur-3xl"></div>
+          <div className="relative z-10 space-y-4">
+            <h1 className="text-4xl lg:text-5xl font-bold premium-text-gradient animate-slide-in-down">
+              Games & Matches
+            </h1>
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in px-2">
+              Track live games, upcoming matches, and historical results across all major sports leagues
+            </p>
+            <div className="flex justify-center animate-scale-in">
+              <div className="glass px-4 py-2 rounded-full border border-primary/20">
+                <span className="text-sm font-medium text-muted-foreground">Real-time updates • Live scores</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Filters */}
-        <Card className="border-2">
+        {/* Enhanced Filters */}
+        <Card className="glass-premium border-primary/20 shadow-xl">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 premium-text-gradient">
               <Filter className="h-5 w-5" />
               Filters & Search
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -192,20 +200,23 @@ export default function GamesPage() {
           </CardContent>
         </Card>
 
-        {/* Games Tabs */}
+        {/* Enhanced Games Tabs */}
         <Tabs defaultValue="live" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
-            <TabsTrigger value="live" className="gap-2">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 glass-premium border border-primary/20">
+            <TabsTrigger value="live" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              Live Games
+              <span className="hidden sm:inline">Live Games</span>
+              <span className="sm:hidden">Live</span>
             </TabsTrigger>
-            <TabsTrigger value="upcoming" className="gap-2">
+            <TabsTrigger value="upcoming" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:to-accent">
               <Clock className="h-4 w-4" />
-              Upcoming
+              <span className="hidden sm:inline">Upcoming</span>
+              <span className="sm:hidden">Next</span>
             </TabsTrigger>
-            <TabsTrigger value="completed" className="gap-2">
+            <TabsTrigger value="completed" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-accent data-[state=active]:to-primary">
               <Trophy className="h-4 w-4" />
-              Results
+              <span className="hidden sm:inline">Results</span>
+              <span className="sm:hidden">Done</span>
             </TabsTrigger>
           </TabsList>
 
@@ -327,31 +338,34 @@ function LiveGamesSection({
       ) : (
         <div className="grid gap-4">
           {liveGames.map((game) => (
-            <Card key={game.id} className="border-2 border-red-200 bg-red-50 dark:bg-red-950/20 hover:shadow-lg transition-all duration-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-6">
+            <Card key={game.id} className="glass-premium border-red-300/50 bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/30 hover:shadow-xl transition-all duration-300 premium-hover data-card">
+              <CardContent className="p-4 lg:p-6">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                  <div className="flex items-center justify-center lg:justify-start space-x-4 lg:space-x-6">
                     <div className="text-center">
                       <TeamLogo teamName={game.away_team?.name || ''} alt={game.away_team?.abbreviation || 'Away'} width={32} height={32} className="mx-auto mb-2" />
-                      <div className="text-sm text-muted-foreground mb-1">{game.away_team?.abbreviation || 'Away'}</div>
-                      <div className="text-2xl font-bold">{game.away_score || 0}</div>
+                      <div className="text-xs lg:text-sm text-muted-foreground mb-1">{game.away_team?.abbreviation || 'Away'}</div>
+                      <div className="text-xl lg:text-2xl font-bold stats-highlight">{game.away_score || 0}</div>
                     </div>
 
                     <div className="text-center">
                       <div className="text-xs text-muted-foreground mb-1">VS</div>
-                      <div className="text-sm font-medium text-red-600">Live</div>
+                      <div className="flex items-center justify-center gap-1 mb-1">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-sm font-medium text-red-600">LIVE</span>
+                      </div>
                       <div className="text-xs text-muted-foreground">In Progress</div>
                     </div>
 
                     <div className="text-center">
                       <TeamLogo teamName={game.home_team?.name || ''} alt={game.home_team?.abbreviation || 'Home'} width={32} height={32} className="mx-auto mb-2" />
-                      <div className="text-sm text-muted-foreground mb-1">{game.home_team?.abbreviation || 'Home'}</div>
-                      <div className="text-2xl font-bold">{game.home_score || 0}</div>
+                      <div className="text-xs lg:text-sm text-muted-foreground mb-1">{game.home_team?.abbreviation || 'Home'}</div>
+                      <div className="text-xl lg:text-2xl font-bold stats-highlight">{game.home_score || 0}</div>
                     </div>
                   </div>
 
-                  <div className="text-right">
-                    <div className="flex items-center gap-2 mb-2">
+                  <div className="text-center lg:text-right">
+                    <div className="flex items-center justify-center lg:justify-end gap-2 mb-2">
                       <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                       <span className="text-sm font-medium text-red-600">LIVE</span>
                     </div>

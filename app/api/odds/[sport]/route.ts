@@ -25,7 +25,85 @@ export async function GET(
 
     const sport = resolvedParams.sport as SupportedSport
 
-    // Validate sport
+    // Handle "all" sport parameter - get odds for all supported sports
+    if (sport === 'all') {
+      const supportedSports = await serviceFactory.getSupportedSports();
+      const allOdds: any[] = [];
+      const allLiveOdds: any[] = [];
+      const allMarkets: any[] = [];
+      const allValueAnalysis: any[] = [];
+      
+      for (const supportedSport of supportedSports) {
+        try {
+          const oddsService = new SportOddsService(supportedSport, league);
+          
+          switch (action) {
+            case 'odds':
+              const odds = await oddsService.getOdds({ 
+                ...(gameId && { gameId }), 
+                ...(date && { date }), 
+                ...(markets && { markets }), 
+                limit: Math.ceil(limit / supportedSports.length)
+              });
+              allOdds.push(...odds);
+              break;
+            case 'live-odds':
+              const liveOdds = await oddsService.getLiveOdds();
+              allLiveOdds.push(...liveOdds);
+              break;
+            case 'markets':
+              const sportMarkets = await oddsService.getBettingMarkets();
+              allMarkets.push(...sportMarkets);
+              break;
+            case 'value-analysis':
+              const valueAnalysis = await oddsService.getValueBettingAnalysis({ 
+                minValue, 
+                limit: Math.ceil(limit / supportedSports.length) 
+              });
+              allValueAnalysis.push(...valueAnalysis);
+              break;
+          }
+        } catch (error) {
+          console.warn(`Failed to get odds for ${supportedSport}:`, error);
+        }
+      }
+      
+      let data: any = null;
+      switch (action) {
+        case 'odds':
+          data = allOdds;
+          break;
+        case 'live-odds':
+          data = allLiveOdds;
+          break;
+        case 'markets':
+          data = allMarkets;
+          break;
+        case 'value-analysis':
+          data = allValueAnalysis;
+          break;
+        default:
+          return NextResponse.json(
+            { error: `Invalid action: ${action}. Supported actions: odds, live-odds, markets, value-analysis, comparison, health` },
+            { status: 400 }
+          );
+      }
+      
+      return NextResponse.json({
+        success: true,
+        data,
+        meta: {
+          timestamp: new Date().toISOString(),
+          sport: 'all',
+          league: 'all',
+          action,
+          count: data.length,
+          sportsIncluded: supportedSports
+        }
+      });
+    }
+
+    // Validate sport for individual sport requests
     if (!serviceFactory.isSportSupported(sport)) {
       return NextResponse.json(
         { error: `Unsupported sport: ${sport}` },

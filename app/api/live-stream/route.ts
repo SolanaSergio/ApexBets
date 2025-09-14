@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData, normalizeTeamData, deduplicateGames } from "@/lib/utils/data-utils"
+import { multiSportLiveService } from "@/lib/services/multi-sport-live-service"
 
 // Map to store active connections
 const connections = new Map<string, {
@@ -22,7 +23,7 @@ setInterval(() => {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const sport = searchParams.get("sport") || "basketball"
+  const sport = searchParams.get("sport") || "all"
   const connectionId = Math.random().toString(36).substring(2, 15)
 
   // Create a readable stream

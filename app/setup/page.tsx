@@ -136,7 +136,7 @@ export default function SetupPage() {
               <div className="text-sm text-gray-600">Services</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-emerald-600">
                 {Math.round(healthStatus.cache.hitRate * 100)}%
               </div>
               <div className="text-sm text-gray-600">Cache Hit Rate</div>
@@ -301,7 +301,7 @@ export default function SetupPage() {
               <div className="text-sm text-gray-600">Hit Rate</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-emerald-600">
                 {healthStatus.cache.sizeInfo?.sizeFormatted || '0 B'}
               </div>
               <div className="text-sm text-gray-600">Cache Size</div>

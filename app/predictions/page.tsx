@@ -18,15 +18,26 @@ export default function PredictionsPage() {
     <div className="min-h-screen bg-background">
       <Navigation />
 
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            AI Predictions
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Advanced machine learning predictions for games, spreads, and totals with confidence scores
-          </p>
+      <main className="container mx-auto px-4 py-6 lg:py-8 space-y-6 lg:space-y-8">
+        {/* Enhanced Header */}
+        <div className="text-center space-y-6 relative">
+          <div className="absolute inset-0 gradient-bg-soft opacity-20 rounded-3xl blur-3xl"></div>
+          <div className="relative z-10 space-y-4">
+            <h1 className="text-4xl lg:text-5xl font-bold premium-text-gradient animate-slide-in-down">
+              AI Predictions
+            </h1>
+            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in px-2">
+              Advanced machine learning predictions for games, spreads, and totals with confidence scores
+            </p>
+            <div className="flex justify-center animate-scale-in">
+              <div className="glass-premium px-4 py-2 rounded-full border border-accent/30">
+                <div className="flex items-center gap-2">
+                  <Brain className="h-4 w-4 text-accent" />
+                  <span className="text-sm font-medium text-muted-foreground">AI-Powered Analytics</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Stats */}

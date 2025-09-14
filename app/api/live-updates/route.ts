@@ -8,8 +8,8 @@ import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "basketball"
-    const league = searchParams.get("league") || "NBA"
+    const sport = searchParams.get("sport") || "all"
+    const league = searchParams.get("league") || "all"
     const useRealData = searchParams.get("real") === "true"
 
     // If requesting real data, prioritize live APIs
@@ -36,19 +36,25 @@ export async function GET(request: NextRequest) {
     }
     
     // Get live games from database with strict live status filtering - ONLY truly live games
-    const { data: liveGames, error: liveGamesError } = await supabase
+    let liveGamesQuery = supabase
       .from('games')
       .select(`
         *,
         home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
         away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
       `)
-      .eq('sport', sport)
       .in('status', ['live', 'in_progress', 'in progress'])
       .not('home_score', 'is', null)
       .not('away_score', 'is', null)
       .or('home_score.gt.0,away_score.gt.0') // At least one team must have scored
       .order('game_date', { ascending: true })
+
+    // Add sport filter only if not "all"
+    if (sport !== "all") {
+      liveGamesQuery = liveGamesQuery.eq('sport', sport)
+    }
+
+    const { data: liveGames, error: liveGamesError } = await liveGamesQuery
 
     if (liveGamesError) {
       console.error('Live games error:', liveGamesError)
@@ -70,18 +76,24 @@ export async function GET(request: NextRequest) {
 
     // Get recent finished games for context (last 24 hours)
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    const { data: recentGames, error: recentGamesError } = await supabase
+    let recentGamesQuery = supabase
       .from('games')
       .select(`
         *,
         home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
         away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
       `)
-      .eq('sport', sport)
       .in('status', ['finished', 'completed', 'final'])
       .gte('game_date', oneDayAgo)
       .order('game_date', { ascending: false })
       .limit(10)
+
+    // Add sport filter only if not "all"
+    if (sport !== "all") {
+      recentGamesQuery = recentGamesQuery.eq('sport', sport)
+    }
+
+    const { data: recentGames, error: recentGamesError } = await recentGamesQuery
 
     if (recentGamesError) {
       console.error('Recent games error:', recentGamesError)
@@ -91,19 +103,25 @@ export async function GET(request: NextRequest) {
     // Get upcoming games (next 7 days)
     const now = new Date().toISOString()
     const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-    const { data: upcomingGames, error: upcomingGamesError } = await supabase
+    let upcomingGamesQuery = supabase
       .from('games')
       .select(`
         *,
         home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
         away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
       `)
-      .eq('sport', sport)
       .in('status', ['scheduled', 'not_started', 'upcoming'])
       .gte('game_date', now)
       .lte('game_date', nextWeek)
       .order('game_date', { ascending: true })
       .limit(10)
+
+    // Add sport filter only if not "all"
+    if (sport !== "all") {
+      upcomingGamesQuery = upcomingGamesQuery.eq('sport', sport)
+    }
+
+    const { data: upcomingGames, error: upcomingGamesError } = await upcomingGamesQuery
 
     if (upcomingGamesError) {
       console.error('Upcoming games error:', upcomingGamesError)
@@ -308,204 +326,25 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
     const recentGames: any[] = []
     const upcomingGames: any[] = []
 
-    // Try to get live data from multiple sources
-    if (sport === "basketball") {
+    // Get all active sports from database
+    const supabase = await createClient()
+    const { data: activeSports } = await supabase
+      .from('sports')
+      .select('name, display_name, data_source, update_frequency')
+      .eq('is_active', true)
+      .order('name')
+
+    const sportsToCheck = sport === "all" ? activeSports?.map(s => s.name) || [] : [sport]
+
+    // Try to get live data from multiple sources for each sport
+    for (const currentSport of sportsToCheck) {
+      const sportConfig = activeSports?.find(s => s.name === currentSport)
+      if (!sportConfig) continue
+
       try {
-        // Try ESPN first for NBA
-        const espnGames = await espnClient.getNBAScoreboard()
-        if (espnGames && espnGames.length > 0) {
-          espnGames.forEach(game => {
-            const homeTeamData = game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.team || {}
-            const awayTeamData = game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team || {}
-            
-            const homeTeam = {
-              name: (homeTeamData as any).displayName || 'Home Team',
-              logo_url: (homeTeamData as any).logo,
-              abbreviation: (homeTeamData as any).abbreviation
-            }
-            
-            const awayTeam = {
-              name: (awayTeamData as any).displayName || 'Away Team',
-              logo_url: (awayTeamData as any).logo,
-              abbreviation: (awayTeamData as any).abbreviation
-            }
-            
-            const formattedGame = {
-              id: game.id,
-              home_team_id: `espn_home_${game.id}`,
-              away_team_id: `espn_away_${game.id}`,
-              game_date: game.date,
-              season: new Date().getFullYear().toString(),
-              home_score: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.score || '0'),
-              away_score: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.score || '0'),
-              status: game.status.type.state === 'in' ? 'live' : 
-                     game.status.type.completed ? 'finished' : 'scheduled',
-              period: game.status.period ? `${game.status.period}Q` : null,
-              time_remaining: game.status.displayClock || null,
-              league: "NBA",
-              venue: game.competitions[0]?.venue?.fullName,
-              sport: "basketball",
-              home_team: homeTeam,
-              away_team: awayTeam
-            }
-
-            // Normalize the game data
-            const normalizedGame = normalizeGameData(formattedGame, "basketball", "NBA")
-
-            // Only add to appropriate arrays based on ACTUAL status and scores
-            if (normalizedGame.status === 'live' && game.status.type.state === 'in' && 
-               (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
-              liveGames.push(normalizedGame)
-            } else if (normalizedGame.status === 'finished' && game.status.type.completed) {
-              recentGames.push(normalizedGame)
-            } else if (normalizedGame.status === 'scheduled' && !game.status.type.completed && game.status.type.state !== 'in') {
-              upcomingGames.push(normalizedGame)
-            }
-          })
-        }
+        await getLiveDataForSport(currentSport, sportConfig, liveGames, recentGames, upcomingGames)
       } catch (error) {
-        console.warn('ESPN NBA data fetch failed:', error)
-      }
-
-      // Try Ball Don't Lie as fallback for NBA
-      if (liveGames.length === 0 && ballDontLieClient.isConfigured()) {
-        try {
-          const todaysGames = await ballDontLieClient.getTodaysGames()
-          todaysGames.forEach(game => {
-            const homeTeam = {
-              name: game.home_team.full_name,
-              logo_url: null,
-              abbreviation: game.home_team.abbreviation
-            }
-            
-            const awayTeam = {
-              name: game.visitor_team.full_name,
-              logo_url: null,
-              abbreviation: game.visitor_team.abbreviation
-            }
-            
-            const formattedGame = {
-              id: `bdl_${game.id}`,
-              home_team_id: `bdl_home_${game.id}`,
-              away_team_id: `bdl_away_${game.id}`,
-              game_date: game.date,
-              season: new Date().getFullYear().toString(),
-              home_score: game.home_team_score,
-              away_score: game.visitor_team_score,
-              status: game.status === 'Final' ? 'finished' : 
-                     game.status.includes('Q') && (game.home_team_score > 0 || game.visitor_team_score > 0) ? 'live' : 'scheduled',
-              period: game.period ? `${game.period}Q` : null,
-              time_remaining: game.time || null,
-              league: "NBA",
-              sport: "basketball",
-              home_team: homeTeam,
-              away_team: awayTeam
-            }
-
-            // Normalize the game data
-            const normalizedGame = normalizeGameData(formattedGame, "basketball", "NBA")
-
-            // Only add truly live games (with actual scores)
-            if (normalizedGame.status === 'live' && (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
-              liveGames.push(normalizedGame)
-            } else if (normalizedGame.status === 'finished') {
-              recentGames.push(normalizedGame)
-            } else {
-              upcomingGames.push(normalizedGame)
-            }
-          })
-        } catch (error) {
-          console.warn('Ball Don\'t Lie data fetch failed:', error)
-        }
-      }
-    }
-
-    // Try other sports with ESPN
-    if (sport === "football" && league === "NFL") {
-      try {
-        const espnGames = await espnClient.getNFLScoreboard()
-        if (espnGames && espnGames.length > 0) {
-          espnGames.forEach(game => {
-            const formattedGame = {
-              id: game.id,
-              homeTeam: game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.team?.displayName || 'TBD',
-              awayTeam: game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.team?.displayName || 'TBD',
-              homeScore: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'home')?.score || '0'),
-              awayScore: parseInt(game.competitions[0]?.competitors.find(c => c.homeAway === 'away')?.score || '0'),
-              status: game.status.type.state === 'in' ? 'live' : 
-                     game.status.type.completed ? 'finished' : 'scheduled',
-              period: game.status.period ? `${game.status.period}Q` : null,
-              timeRemaining: game.status.displayClock || null,
-              date: game.date,
-              league: "NFL",
-              venue: game.competitions[0]?.venue?.fullName,
-              dataSource: "ESPN"
-            }
-
-            if (formattedGame.status === 'live') {
-              liveGames.push(formattedGame)
-            } else if (formattedGame.status === 'finished') {
-              recentGames.push(formattedGame)
-            } else {
-              upcomingGames.push(formattedGame)
-            }
-          })
-        }
-      } catch (error) {
-        console.warn('ESPN NFL data fetch failed:', error)
-      }
-    }
-
-    // Try TheSportsDB as universal fallback
-    if (liveGames.length === 0 && recentGames.length === 0) {
-      try {
-        const today = new Date().toISOString().split('T')[0]
-        const events = await sportsDBClient.getEventsByDate(today, sport)
-        
-        events.forEach(event => {
-          const homeTeam = {
-            name: event.strHomeTeam,
-            logo_url: null,
-            abbreviation: null
-          }
-          
-          const awayTeam = {
-            name: event.strAwayTeam,
-            logo_url: null,
-            abbreviation: null
-          }
-          
-          const formattedGame = {
-            id: `tsdb_${event.idEvent}`,
-            home_team_id: `tsdb_home_${event.idEvent}`,
-            away_team_id: `tsdb_away_${event.idEvent}`,
-            game_date: event.dateEvent,
-            season: new Date().getFullYear().toString(),
-            home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
-            away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
-            status: event.strStatus?.toLowerCase().includes('live') ? 'live' : 
-                   event.strStatus?.toLowerCase().includes('finished') ? 'finished' : 'scheduled',
-            period: null,
-            time_remaining: event.strTime,
-            league: event.strLeague,
-            sport: sport,
-            home_team: homeTeam,
-            away_team: awayTeam
-          }
-
-          // Normalize the game data
-          const normalizedGame = normalizeGameData(formattedGame, sport, event.strLeague)
-
-          if (normalizedGame.status === 'live') {
-            liveGames.push(normalizedGame)
-          } else if (normalizedGame.status === 'finished') {
-            recentGames.push(normalizedGame)
-          } else {
-            upcomingGames.push(normalizedGame)
-          }
-        })
-      } catch (error) {
-        console.warn('TheSportsDB data fetch failed:', error)
+        console.warn(`Failed to get live data for ${currentSport}:`, error)
       }
     }
 
@@ -518,7 +357,8 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         totalRecent: recentGames.length,
         totalUpcoming: upcomingGames.length,
         lastUpdated: new Date().toISOString(),
-        dataSource: "live_apis"
+        dataSource: "live_apis",
+        sportsChecked: sportsToCheck
       },
       sport,
       league
@@ -539,4 +379,273 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
       }
     }, { status: 500 })
   }
+}
+
+/**
+ * Get live data for a specific sport - FULLY DYNAMIC
+ */
+async function getLiveDataForSport(sport: string, sportConfig: any, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  const dataSource = sportConfig.data_source || 'sportsdb'
+  
+  try {
+    // Try primary data source first
+    await tryDataSource(sport, dataSource, liveGames, recentGames, upcomingGames)
+    
+    // If no live games found, try fallback sources
+    if (liveGames.length === 0) {
+      await tryFallbackSources(sport, liveGames, recentGames, upcomingGames)
+    }
+  } catch (error) {
+    console.warn(`Failed to get live data for ${sport} from ${dataSource}:`, error)
+  }
+}
+
+/**
+ * Try a specific data source for live data
+ */
+async function tryDataSource(sport: string, dataSource: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  switch (dataSource) {
+    case 'espn':
+      await tryESPN(sport, liveGames, recentGames, upcomingGames)
+      break
+    case 'sportsdb':
+      await trySportsDB(sport, liveGames, recentGames, upcomingGames)
+      break
+    case 'balldontlie':
+      if (sport === 'basketball') {
+        await tryBallDontLie(sport, liveGames, recentGames, upcomingGames)
+      }
+      break
+    default:
+      // Try SportsDB as universal fallback
+      await trySportsDB(sport, liveGames, recentGames, upcomingGames)
+  }
+}
+
+/**
+ * Try ESPN API for live data
+ */
+async function tryESPN(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  try {
+    let espnGames: any[] = []
+    
+    // Dynamically call the appropriate ESPN method based on sport
+    switch (sport) {
+      case 'basketball':
+        espnGames = await espnClient.getNBAScoreboard()
+        break
+      case 'football':
+        espnGames = await espnClient.getNFLScoreboard()
+        break
+      // Add more sports as needed
+      default:
+        return // ESPN doesn't support this sport
+    }
+    
+    if (espnGames && espnGames.length > 0) {
+      espnGames.forEach(game => {
+        const formattedGame = formatESPNGame(game, sport)
+        const normalizedGame = normalizeGameData(formattedGame, sport, formattedGame.league)
+        
+        // Categorize games based on status
+        if (normalizedGame.status === 'live' && (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
+          liveGames.push(normalizedGame)
+        } else if (normalizedGame.status === 'finished') {
+          recentGames.push(normalizedGame)
+        } else if (normalizedGame.status === 'scheduled') {
+          upcomingGames.push(normalizedGame)
+        }
+      })
+    }
+  } catch (error) {
+    console.warn(`ESPN ${sport} data fetch failed:`, error)
+  }
+}
+
+/**
+ * Try SportsDB API for live data
+ */
+async function trySportsDB(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  try {
+    const today = new Date().toISOString().split('T')[0]
+    const events = await sportsDBClient.getEventsByDate(today, sport)
+    
+    events.forEach(event => {
+      const formattedGame = formatSportsDBGame(event, sport)
+      const normalizedGame = normalizeGameData(formattedGame, sport, event.strLeague)
+      
+      if (normalizedGame.status === 'live') {
+        liveGames.push(normalizedGame)
+      } else if (normalizedGame.status === 'finished') {
+        recentGames.push(normalizedGame)
+      } else {
+        upcomingGames.push(normalizedGame)
+      }
+    })
+  } catch (error) {
+    console.warn(`SportsDB ${sport} data fetch failed:`, error)
+  }
+}
+
+/**
+ * Try Ball Don't Lie API (basketball only)
+ */
+async function tryBallDontLie(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  if (sport !== 'basketball' || !ballDontLieClient.isConfigured()) return
+  
+  try {
+    const todaysGames = await ballDontLieClient.getTodaysGames()
+    todaysGames.forEach(game => {
+      const formattedGame = formatBallDontLieGame(game, sport)
+      const normalizedGame = normalizeGameData(formattedGame, sport, 'NBA')
+      
+      if (normalizedGame.status === 'live' && (normalizedGame.home_score > 0 || normalizedGame.away_score > 0)) {
+        liveGames.push(normalizedGame)
+      } else if (normalizedGame.status === 'finished') {
+        recentGames.push(normalizedGame)
+      } else {
+        upcomingGames.push(normalizedGame)
+      }
+    })
+  } catch (error) {
+    console.warn(`Ball Don't Lie data fetch failed:`, error)
+  }
+}
+
+/**
+ * Try fallback sources when primary fails
+ */
+async function tryFallbackSources(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  // Try SportsDB as universal fallback
+  if (liveGames.length === 0) {
+    await trySportsDB(sport, liveGames, recentGames, upcomingGames)
+  }
+}
+
+/**
+ * Format ESPN game data
+ */
+function formatESPNGame(game: any, sport: string) {
+  const homeTeamData = game.competitions[0]?.competitors.find((c: any) => c.homeAway === 'home')?.team || {}
+  const awayTeamData = game.competitions[0]?.competitors.find((c: any) => c.homeAway === 'away')?.team || {}
+  
+  const homeTeam = {
+    name: homeTeamData.displayName || 'Home Team',
+    logo_url: homeTeamData.logo,
+    abbreviation: homeTeamData.abbreviation
+  }
+  
+  const awayTeam = {
+    name: awayTeamData.displayName || 'Away Team',
+    logo_url: awayTeamData.logo,
+    abbreviation: awayTeamData.abbreviation
+  }
+  
+  // Determine league dynamically based on sport
+  const league = getLeagueForSport(sport)
+  
+  return {
+    id: game.id,
+    home_team_id: `espn_home_${game.id}`,
+    away_team_id: `espn_away_${game.id}`,
+    game_date: game.date,
+    season: new Date().getFullYear().toString(),
+    home_score: parseInt(game.competitions[0]?.competitors.find((c: any) => c.homeAway === 'home')?.score || '0'),
+    away_score: parseInt(game.competitions[0]?.competitors.find((c: any) => c.homeAway === 'away')?.score || '0'),
+    status: game.status.type.state === 'in' ? 'live' : 
+           game.status.type.completed ? 'finished' : 'scheduled',
+    period: game.status.period ? `${game.status.period}Q` : null,
+    time_remaining: game.status.displayClock || null,
+    league: league,
+    venue: game.competitions[0]?.venue?.fullName,
+    sport: sport,
+    home_team: homeTeam,
+    away_team: awayTeam
+  }
+}
+
+/**
+ * Format SportsDB game data
+ */
+function formatSportsDBGame(event: any, sport: string) {
+  const homeTeam = {
+    name: event.strHomeTeam,
+    logo_url: null,
+    abbreviation: null
+  }
+  
+  const awayTeam = {
+    name: event.strAwayTeam,
+    logo_url: null,
+    abbreviation: null
+  }
+  
+  return {
+    id: `tsdb_${event.idEvent}`,
+    home_team_id: `tsdb_home_${event.idEvent}`,
+    away_team_id: `tsdb_away_${event.idEvent}`,
+    game_date: event.dateEvent,
+    season: new Date().getFullYear().toString(),
+    home_score: event.intHomeScore ? parseInt(event.intHomeScore) : null,
+    away_score: event.intAwayScore ? parseInt(event.intAwayScore) : null,
+    status: event.strStatus?.toLowerCase().includes('live') ? 'live' : 
+           event.strStatus?.toLowerCase().includes('finished') ? 'finished' : 'scheduled',
+    period: null,
+    time_remaining: event.strTime,
+    league: event.strLeague,
+    sport: sport,
+    home_team: homeTeam,
+    away_team: awayTeam
+  }
+}
+
+/**
+ * Format Ball Don't Lie game data
+ */
+function formatBallDontLieGame(game: any, sport: string) {
+  const homeTeam = {
+    name: game.home_team.full_name,
+    logo_url: null,
+    abbreviation: game.home_team.abbreviation
+  }
+  
+  const awayTeam = {
+    name: game.visitor_team.full_name,
+    logo_url: null,
+    abbreviation: game.visitor_team.abbreviation
+  }
+  
+  return {
+    id: `bdl_${game.id}`,
+    home_team_id: `bdl_home_${game.id}`,
+    away_team_id: `bdl_away_${game.id}`,
+    game_date: game.date,
+    season: new Date().getFullYear().toString(),
+    home_score: game.home_team_score,
+    away_score: game.visitor_team_score,
+    status: game.status === 'Final' ? 'finished' : 
+           game.status.includes('Q') && (game.home_team_score > 0 || game.visitor_team_score > 0) ? 'live' : 'scheduled',
+    period: game.period ? `${game.period}Q` : null,
+    time_remaining: game.time || null,
+    league: 'NBA',
+    sport: sport,
+    home_team: homeTeam,
+    away_team: awayTeam
+  }
+}
+
+/**
+ * Get league for sport dynamically
+ */
+function getLeagueForSport(sport: string): string {
+  const leagueMap: Record<string, string> = {
+    'basketball': 'NBA',
+    'football': 'NFL',
+    'baseball': 'MLB',
+    'hockey': 'NHL',
+    'soccer': 'MLS',
+    'tennis': 'ATP',
+    'golf': 'PGA'
+  }
+  return leagueMap[sport] || sport.toUpperCase()
 }

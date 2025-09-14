@@ -456,7 +456,7 @@ class ApexDataManager {
 
   // Historical data population
   async populateHistoricalData(sport, config) {
-    console.log(`   📚 Fetching historical data for ${sport}...`);
+    console.log(`   [INFO] Fetching historical data for ${sport}...`);
     
     try {
       const historicalDays = config.historicalDays || 30;

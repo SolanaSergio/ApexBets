@@ -39,6 +39,11 @@ export class ServiceFactory {
    * Get a sport-specific service
    */
   async getService(sport: SupportedSport, league?: string): Promise<SportSpecificService> {
+    // Handle "all" sport - return a special service that aggregates all sports
+    if (sport === 'all') {
+      throw new Error('Cannot get individual service for "all" sport. Use getSupportedSports() to get individual sports.')
+    }
+
     // Ensure service registry is initialized
     if (!ServiceRegistry.isInitialized()) {
       await ServiceRegistry.initialize()
@@ -87,6 +92,10 @@ export class ServiceFactory {
    * Check if a sport is supported
    */
   async isSportSupported(sport: string): Promise<boolean> {
+    // "all" is a special case that aggregates all sports
+    if (sport === 'all') {
+      return true
+    }
     return await SportConfigManager.isSportSupported(sport)
   }
 
@@ -150,6 +159,11 @@ export class ServiceFactory {
    * Create a new service instance
    */
   private async createService(sport: SupportedSport, league: string): Promise<SportSpecificService> {
+    // Handle "all" sport - this should not be called for "all"
+    if (sport === 'all') {
+      throw new Error('Cannot create individual service for "all" sport. Use getSupportedSports() to get individual sports.')
+    }
+
     const ServiceClass = this.serviceRegistry.get(sport)
     
     if (!ServiceClass) {

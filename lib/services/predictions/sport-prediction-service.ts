@@ -29,6 +29,11 @@ export class SportPredictionService {
 
   async getPredictions(params: { gameId?: string; date?: string; limit?: number } = {}): Promise<PredictionResult[]> {
     try {
+      // Handle "all" sport - this should not be called for "all"
+      if (this.sport === 'all') {
+        throw new Error('Cannot get predictions for "all" sport. Use individual sport services.')
+      }
+
       // Get sport configuration
       const sportConfig = await SportConfigManager.getSportConfigAsync(this.sport)
       if (!sportConfig) {

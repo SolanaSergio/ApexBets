@@ -4,6 +4,8 @@
  * Base URL: https://stats.nba.com/stats
  */
 
+import { apiErrorHandler } from '../services/api-error-handler'
+
 export interface NBAStatsPlayer {
   PERSON_ID: number
   DISPLAY_LAST_COMMA_FIRST: string
@@ -79,9 +81,9 @@ export interface NBAStatsResponse {
 
 export class NBAStatsClient {
   private baseUrl = 'https://stats.nba.com/stats'
-  private rateLimitDelay = 1000 // 1 second between requests to be respectful
+  private rateLimitDelay = 2000 // 2 seconds between requests to be more respectful
   private lastRequestTime = 0
-  private userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+  private readonly providerName = 'nba-stats'
 
   private async rateLimit(): Promise<void> {
     const now = Date.now()
@@ -114,32 +116,35 @@ export class NBAStatsClient {
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': this.userAgent,
+          'User-Agent': apiErrorHandler.getCurrentUserAgent(),
           'Referer': 'https://www.nba.com/',
-          'Origin': 'https://www.nba.com'
+          'Origin': 'https://www.nba.com',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept-Encoding': 'gzip, deflate, br',
+          'Connection': 'keep-alive',
+          'Sec-Fetch-Dest': 'empty',
+          'Sec-Fetch-Mode': 'cors',
+          'Sec-Fetch-Site': 'same-site'
         },
         // Add timeout
-        signal: AbortSignal.timeout(15000) // 15 second timeout
+        signal: AbortSignal.timeout(20000) // 20 second timeout
       })
       
       if (!response.ok) {
-        if (response.status === 429) {
-          throw new Error('NBA Stats API: Rate limit exceeded')
-        }
-        if (response.status === 403) {
-          throw new Error('NBA Stats API: Access forbidden - may need to rotate user agent')
-        }
-        throw new Error(`NBA Stats API Error: ${response.status} ${response.statusText}`)
+        // Use generic error handler
+        const errorResult = apiErrorHandler.handleError(this.providerName, new Error(`HTTP ${response.status}`), response)
+        throw new Error(errorResult.error)
       }
+
+      // Reset failure count on successful response
+      apiErrorHandler.resetFailureCount(this.providerName)
 
       const data = await response.json()
       return data
     } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('NBA Stats API: Request timeout')
-      }
-      console.error('NBA Stats API request failed:', error)
-      throw error
+      // Use generic error handler for all errors
+      const errorResult = apiErrorHandler.handleError(this.providerName, error as Error)
+      throw new Error(errorResult.error)
     }
   }
 

@@ -251,6 +251,10 @@ export class SportConfigManager {
 
   static async isSportSupported(sport: string): Promise<boolean> {
     await this.initialize()
+    // "all" is a special case that aggregates all sports
+    if (sport === 'all') {
+      return true
+    }
     return sport in this.configs
   }
 

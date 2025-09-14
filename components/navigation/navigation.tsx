@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, User } from "lucide-react"
 import { NotificationSystem } from "@/components/notifications/notification-system"
 import { UserProfileDropdown } from "@/components/auth/user-profile"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
 
 const navigationItems = [
@@ -89,29 +90,29 @@ export function Navigation() {
 
   return (
     <header className={cn(
-      "sticky top-0 z-50 w-full transition-all duration-200",
-      mounted && scrolled 
-        ? "bg-background/95 backdrop-blur-md border-b border-border/50 shadow-sm" 
-        : "bg-background/80 backdrop-blur-sm border-b border-border/30"
+      "sticky top-0 z-50 w-full transition-all duration-500",
+      mounted && scrolled
+        ? "glass-card shadow-2xl border-b border-white/30"
+        : "glass border-b border-white/20"
     )}>
         <div className="container mx-auto px-4">
-          <div className="flex h-16 items-center justify-between gap-4">
-            {/* Logo */}
-            <Link href="/" className="flex items-center space-x-3 group flex-shrink-0">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-lg group-hover:shadow-xl transition-all duration-200 group-hover:scale-105">
-                <Target className="h-5 w-5" />
+          <div className="flex h-20 items-center justify-between gap-4">
+            {/* Modern Logo */}
+            <Link href="/" className="flex items-center space-x-4 group flex-shrink-0">
+              <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 premium-glow">
+                <Target className="h-8 w-8" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <span className="text-2xl font-black text-gradient">
                   Project Apex
                 </span>
-                <span className="text-xs text-muted-foreground -mt-1">Sports Analytics</span>
+                <span className="text-sm text-slate-600 -mt-1 font-bold">Sports Analytics</span>
               </div>
             </Link>
 
 
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-1 flex-shrink-0">
+          <nav className="hidden lg:flex items-center space-x-2 flex-shrink-0">
             {navigationItems.map((item) => {
               const Icon = item.icon
               const isActive = pathname === item.href
@@ -122,24 +123,24 @@ export function Navigation() {
                     variant={isActive ? "default" : "ghost"}
                     size="sm"
                     className={cn(
-                      "flex items-center space-x-2 relative group transition-all duration-200",
-                      isActive 
-                        ? "bg-primary text-primary-foreground shadow-md" 
-                        : "hover:bg-muted/50 hover:text-foreground"
+                      "flex items-center space-x-3 relative group transition-all duration-500 px-6 py-3 rounded-lg",
+                      isActive
+                        ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-xl premium-glow"
+                        : "glass-card hover:bg-white/80 hover:text-slate-800 hover:scale-105 hover:shadow-lg"
                     )}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.title}</span>
+                    <Icon className="h-5 w-5" />
+                    <span className="font-bold">{item.title}</span>
                     {item.badge && (
-                      <Badge 
-                        variant={item.badge === "Live" ? "destructive" : "secondary"} 
-                        className="ml-1 text-xs px-1.5 py-0.5"
+                      <Badge
+                        variant={item.badge === "Live" ? "destructive" : "secondary"}
+                        className="ml-2 text-xs px-2 py-1 rounded-md font-bold"
                       >
                         {item.badge}
                       </Badge>
                     )}
                     {isActive && (
-                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-1 h-1 bg-primary-foreground rounded-full" />
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-white rounded-sm premium-glow" />
                     )}
                   </Button>
                 </Link>
@@ -149,6 +150,7 @@ export function Navigation() {
 
           {/* Desktop Actions */}
           <div className="hidden lg:flex items-center space-x-3">
+            <ThemeToggle />
             <NotificationSystem />
             {user ? (
               <UserProfileDropdown />
@@ -161,6 +163,7 @@ export function Navigation() {
 
           {/* Mobile Navigation */}
           <div className="flex items-center space-x-2 lg:hidden">
+            <ThemeToggle />
             <NotificationSystem />
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -237,7 +240,7 @@ export function Navigation() {
                   <div className="pt-6 border-t space-y-4">
                     {user ? (
                       <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-medium">
                           {user.user_metadata?.full_name?.[0] || user.email?.[0] || 'U'}
                         </div>
                         <div className="flex-1 min-w-0">

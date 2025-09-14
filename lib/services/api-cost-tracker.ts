@@ -126,6 +126,28 @@ export class APICostTracker {
           requestsPerMonth: 216000 // 7200 * 30 days
         },
         isActive: true
+      },
+      {
+        name: 'nba-stats',
+        costPerRequest: 0,
+        freeRequests: Number.MAX_SAFE_INTEGER,
+        rateLimit: {
+          requestsPerMinute: 60,
+          requestsPerDay: 10000,
+          requestsPerMonth: 300000
+        },
+        isActive: true
+      },
+      {
+        name: 'mlb-stats',
+        costPerRequest: 0,
+        freeRequests: Number.MAX_SAFE_INTEGER,
+        rateLimit: {
+          requestsPerMinute: 60,
+          requestsPerDay: 10000,
+          requestsPerMonth: 300000
+        },
+        isActive: true
       }
     ]
 

@@ -34,30 +34,33 @@ export default function TeamsPage() {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
-        <main className="container mx-auto px-4 py-8 space-y-8">
-          <div className="text-center space-y-4">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              Teams & Rosters
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Select a sport to explore team statistics, player rosters, and performance analytics
-            </p>
-            <div className="mt-8">
-              <select 
-                value={selectedSport || ""} 
-                onChange={(e) => setSelectedSport(e.target.value as SupportedSport || null)}
-                className="px-4 py-2 border rounded-lg bg-background"
-              >
-                <option value="">Select a Sport</option>
-                {supportedSports.map((sport) => {
-                  const config = SportConfigManager.getSportConfig(sport)
-                  return (
-                    <option key={sport} value={sport}>
-                      {config?.name || sport}
-                    </option>
-                  )
-                })}
-              </select>
+        <main className="container mx-auto px-4 py-6 lg:py-8 space-y-6 lg:space-y-8">
+          <div className="text-center space-y-6 relative">
+            <div className="absolute inset-0 gradient-bg-soft opacity-20 rounded-3xl blur-3xl"></div>
+            <div className="relative z-10 space-y-4">
+              <h1 className="text-4xl lg:text-5xl font-bold premium-text-gradient animate-slide-in-down">
+                Teams & Rosters
+              </h1>
+              <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in px-2">
+                Select a sport to explore team statistics, player rosters, and performance analytics
+              </p>
+              <div className="mt-6 animate-scale-in">
+                <Select value={selectedSport || ""} onValueChange={(value) => setSelectedSport(value as SupportedSport || null)}>
+                  <SelectTrigger className="w-full max-w-xs mx-auto glass-premium border-primary/20">
+                    <SelectValue placeholder="Choose a sport to get started" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {supportedSports.map((sport) => {
+                      const config = SportConfigManager.getSportConfig(sport)
+                      return (
+                        <SelectItem key={sport} value={sport}>
+                          {config?.name || sport}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </main>
@@ -211,24 +214,24 @@ function StandingsSection({ selectedSport }: { selectedSport: SupportedSport }) 
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchStandings()
-  }, [selectedSport, fetchStandings])
-
-  async function fetchStandings() {
-    if (!selectedSport) return
-    try {
-      setLoading(true)
-      const standingsData = await apiClient.getStandings({
-        sport: selectedSport
-      })
-      setStandings(standingsData)
-    } catch (error) {
-      console.error("Error fetching standings:", error)
-      setStandings([])
-    } finally {
-      setLoading(false)
+    async function fetchStandings() {
+      if (!selectedSport) return
+      try {
+        setLoading(true)
+        const standingsData = await apiClient.getStandings({
+          sport: selectedSport
+        })
+        setStandings(standingsData)
+      } catch (error) {
+        console.error("Error fetching standings:", error)
+        setStandings([])
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    
+    fetchStandings()
+  }, [selectedSport])
 
   if (loading) {
     return <StandingsSkeleton />
@@ -317,24 +320,24 @@ function StatsSection({ selectedSport }: { selectedSport: SupportedSport }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchTeamStats()
-  }, [selectedSport, fetchTeamStats])
-
-  async function fetchTeamStats() {
-    if (!selectedSport) return
-    try {
-      setLoading(true)
-      const statsData = await apiClient.getTeamStats({
-        sport: selectedSport
-      })
-      setTeamStats(statsData)
-    } catch (error) {
-      console.error("Error fetching team stats:", error)
-      setTeamStats([])
-    } finally {
-      setLoading(false)
+    async function fetchTeamStats() {
+      if (!selectedSport) return
+      try {
+        setLoading(true)
+        const statsData = await apiClient.getTeamStats({
+          sport: selectedSport
+        })
+        setTeamStats(statsData)
+      } catch (error) {
+        console.error("Error fetching team stats:", error)
+        setTeamStats([])
+      } finally {
+        setLoading(false)
+      }
     }
-  }
+    
+    fetchTeamStats()
+  }, [selectedSport])
 
   if (loading) {
     return <StatsSkeleton />
