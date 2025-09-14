@@ -77,7 +77,7 @@ export function Navigation() {
   const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
-  const [selectedSport, setSelectedSport] = useState<SupportedSport>("basketball")
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [mounted, setMounted] = useState(false)
   const { user } = useAuth()
 
@@ -89,6 +89,27 @@ export function Navigation() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Initialize sport selection
+  useEffect(() => {
+    const initializeSport = async () => {
+      try {
+        // Initialize sport configuration
+        const { SportConfigManager } = await import('@/lib/services/core/sport-config')
+        await SportConfigManager.initialize()
+        
+        // Get the first available sport
+        const supportedSports = SportConfigManager.getSupportedSports()
+        if (supportedSports.length > 0 && !selectedSport) {
+          setSelectedSport(supportedSports[0])
+        }
+      } catch (error) {
+        console.error('Error initializing sport selection:', error)
+      }
+    }
+
+    initializeSport()
+  }, [selectedSport])
 
   return (
     <header className={cn(
@@ -114,11 +135,17 @@ export function Navigation() {
 
           {/* Sport Selector */}
           <div className="hidden lg:block flex-shrink-0">
-            <SportSelector
-              selectedSport={selectedSport}
-              onSportChange={setSelectedSport}
-              className="w-64"
-            />
+            {selectedSport ? (
+              <SportSelector
+                selectedSport={selectedSport}
+                onSportChange={setSelectedSport}
+                className="w-64"
+              />
+            ) : (
+              <div className="w-64 h-12 flex items-center justify-center text-muted-foreground">
+                Loading sports...
+              </div>
+            )}
           </div>
 
           {/* Desktop Navigation */}
@@ -205,10 +232,16 @@ export function Navigation() {
 
                   {/* Mobile Sport Selector */}
                   <div className="px-4 py-4 border-b border-border/50">
-                    <SportSelectorCompact 
-                      selectedSport={selectedSport}
-                      onSportChange={setSelectedSport}
-                    />
+                    {selectedSport ? (
+                      <SportSelectorCompact 
+                        selectedSport={selectedSport}
+                        onSportChange={setSelectedSport}
+                      />
+                    ) : (
+                      <div className="h-10 flex items-center justify-center text-muted-foreground">
+                        Loading sports...
+                      </div>
+                    )}
                   </div>
 
                   {/* Mobile Navigation */}

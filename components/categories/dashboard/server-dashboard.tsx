@@ -26,7 +26,9 @@ export async function ServerDashboard({ className = "" }: ServerDashboardProps) 
     )
   } catch (error) {
     console.error('Error initializing server dashboard:', error)
-    // Fallback to client-side initialization
+    // Fallback to client-side initialization with hardcoded sport fallback
+    // The CleanDashboard component will use its hardcoded 'baseball' fallback
+    // when defaultSport is null and no supported sports are available
     return (
       <Suspense fallback={<DashboardSkeleton />}>
         <CleanDashboard 

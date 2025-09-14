@@ -374,12 +374,14 @@ class SimpleApiClient {
 
   // Odds
   async getOdds(params?: {
+    sport?: string
     game_id?: string
     source?: string
     limit?: number
   }): Promise<any[]> {
     const searchParams = new URLSearchParams()
-    if (params?.game_id) searchParams.set("game_id", params.game_id)
+    if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.game_id) searchParams.set("gameId", params.game_id)
     if (params?.source) searchParams.set("source", params.source)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
 
@@ -422,8 +424,9 @@ class SimpleApiClient {
   }
 
   // Upcoming Predictions
-  async getUpcomingPredictions(params?: { limit?: number; days?: number }): Promise<any[]> {
+  async getUpcomingPredictions(params?: { sport?: string; limit?: number; days?: number }): Promise<any[]> {
     const searchParams = new URLSearchParams()
+    if (params?.sport) searchParams.set("sport", params.sport)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
     if (params?.days) searchParams.set("days", params.days.toString())
 

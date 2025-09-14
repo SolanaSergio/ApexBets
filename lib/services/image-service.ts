@@ -52,21 +52,13 @@ let SPORTS_IMAGES: Record<string, string> = {}
 // ============================================================================
 
 /**
- * Get league configuration dynamically
+ * Get league configuration dynamically from database
+ * @deprecated Use dynamic team service for database-driven approach
  */
 function getLeagueConfig(league: string): any {
-  // Map league names to their configurations
-  const leagueMap: Record<string, any> = {
-    'NBA': TEAM_LOGOS.NBA,
-    'NFL': TEAM_LOGOS.NFL,
-    'Premier League': TEAM_LOGOS.SOCCER,
-    'La Liga': TEAM_LOGOS.SOCCER,
-    'Serie A': TEAM_LOGOS.SOCCER,
-    'Bundesliga': TEAM_LOGOS.SOCCER,
-    'Ligue 1': TEAM_LOGOS.SOCCER
-  };
-  
-  return leagueMap[league] || null;
+  // This function is deprecated - use dynamic team service instead
+  // All league configurations should be loaded from database
+  return null;
 }
 
 /**

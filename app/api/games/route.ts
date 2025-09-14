@@ -33,8 +33,71 @@ export async function GET(request: NextRequest) {
             Array.isArray(fallbackResult.data) 
             ? fallbackResult.data.map(async (game: any) => {
                 // Extract real team names from API response - no hardcoded fallbacks
-                const homeTeamName = game.home_team?.name || game.strHomeTeam || game.homeTeam?.name || game.homeTeam;
-                const awayTeamName = game.away_team?.name || game.strAwayTeam || game.awayTeam?.name || game.awayTeam;
+                // Handle different API response structures including nested teams object
+                let homeTeamName, awayTeamName;
+                
+                // Check if teams data is in a nested object structure
+                if (game.teams && typeof game.teams === 'object') {
+                  // Handle teams object with home/away properties
+                  if (game.teams.home && game.teams.away) {
+                    homeTeamName = game.teams.home.name || 
+                                 game.teams.home.team?.name || 
+                                 game.teams.home.teamName ||
+                                 game.teams.home.displayName ||
+                                 game.teams.home.full_name;
+                    awayTeamName = game.teams.away.name || 
+                                 game.teams.away.team?.name || 
+                                 game.teams.away.teamName ||
+                                 game.teams.away.displayName ||
+                                 game.teams.away.full_name;
+                  }
+                  // Handle teams array structure
+                  else if (Array.isArray(game.teams) && game.teams.length >= 2) {
+                    homeTeamName = game.teams[0]?.name || 
+                                 game.teams[0]?.team?.name || 
+                                 game.teams[0]?.teamName ||
+                                 game.teams[0]?.displayName ||
+                                 game.teams[0]?.full_name;
+                    awayTeamName = game.teams[1]?.name || 
+                                 game.teams[1]?.team?.name || 
+                                 game.teams[1]?.teamName ||
+                                 game.teams[1]?.displayName ||
+                                 game.teams[1]?.full_name;
+                  }
+                }
+                
+                // Fallback to direct field access if teams object didn't work
+                if (!homeTeamName || !awayTeamName) {
+                  homeTeamName = game.home_team?.name || 
+                               game.strHomeTeam || 
+                               game.homeTeam?.name || 
+                               game.homeTeam || 
+                               game.homeTeamName ||
+                               game.home_team?.displayName ||
+                               game.home_team?.full_name ||
+                               game.home_team?.teamName;
+                                
+                  awayTeamName = game.away_team?.name || 
+                               game.strAwayTeam || 
+                               game.awayTeam?.name || 
+                               game.awayTeam || 
+                               game.awayTeamName ||
+                               game.away_team?.displayName ||
+                               game.away_team?.full_name ||
+                               game.away_team?.teamName;
+                }
+                
+                // If we still don't have team names, log the structure and return null
+                if (!homeTeamName || !awayTeamName) {
+                  console.warn('Missing team names in API response:', { 
+                    homeTeamName, 
+                    awayTeamName, 
+                    availableFields: Object.keys(game),
+                    homeTeamFields: game.home_team ? Object.keys(game.home_team) : 'no home_team',
+                    awayTeamFields: game.away_team ? Object.keys(game.away_team) : 'no away_team'
+                  });
+                  return null; // Skip this game if team names are missing
+                }
                 
                 // Use dynamic abbreviation generation
                 const generateAbbreviation = (teamName: string): string => {
@@ -95,10 +158,16 @@ export async function GET(request: NextRequest) {
             : []
           )
           
-          // Remove duplicates by ID (in case APIs return the same game multiple times)
-          const deduplicatedGames = normalizedGames.filter((game, index, array) => 
+          // Filter out null games (games with missing team names) and remove duplicates
+          const validGames = normalizedGames.filter(game => game !== null)
+          const deduplicatedGames = validGames.filter((game, index, array) => 
             array.findIndex(g => g.id === game.id) === index
           )
+          
+          // If we have no valid games from external API, log this for debugging
+          if (deduplicatedGames.length === 0) {
+            console.warn(`No valid games found from external API for sport: ${sport}. All games had missing team names.`)
+          }
           
           return NextResponse.json({
             data: deduplicatedGames,

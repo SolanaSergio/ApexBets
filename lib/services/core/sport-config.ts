@@ -149,7 +149,7 @@ export class SportConfigManager {
 
     try {
       // Load basic configs synchronously from environment as fallback
-      const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
       
       for (const sport of sports) {
         const sportUpper = sport.toUpperCase()

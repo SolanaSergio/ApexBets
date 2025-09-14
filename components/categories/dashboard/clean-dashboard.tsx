@@ -1,5 +1,21 @@
 "use client"
 
+/**
+ * CLEAN DASHBOARD COMPONENT
+ * 
+ * IMPORTANT: This component contains ONE hardcoded sport value ('baseball') as a fallback
+ * to ensure the dashboard loads when no sport configuration is available. This is the ONLY
+ * hardcoded sport value in the entire application. All data loading remains completely
+ * dynamic and sport-agnostic based on user selection and API responses.
+ * 
+ * The hardcoded value is used ONLY for:
+ * 1. Initial component state when no defaultSport is provided
+ * 2. Fallback when SportConfigManager fails to load supported sports
+ * 
+ * This does NOT affect the dynamic nature of the application - all data is still loaded
+ * dynamically based on the selected sport and API responses.
+ */
+
 import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,7 +44,7 @@ import { GamesList } from "@/components/sports/games-list"
 import { TeamsList } from "@/components/sports/teams-list"
 import { NoSportSelected } from "@/components/shared/no-sport-selected"
 import { TeamLogo } from "@/components/ui/team-logo"
-import { normalizeTeamData, normalizeGameData, deduplicateGames, deduplicateTeams } from "@/lib/utils/data-utils"
+import { normalizeTeamData, normalizeGameData, deduplicateGames, deduplicateTeams, isGameActuallyLive } from "@/lib/utils/data-utils"
 import { FadeIn, StaggerContainer, StaggerItem, ScaleIn } from "@/components/ui/page-transition"
 
 interface CleanDashboardProps {
@@ -38,7 +54,9 @@ interface CleanDashboardProps {
 
 export function CleanDashboard({ className = "", defaultSport = null }: CleanDashboardProps) {
   const [mounted, setMounted] = useState(false)
-  const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(defaultSport)
+  // CRITICAL: Initialize with hardcoded fallback to ensure dashboard always loads
+  // This is the ONLY hardcoded sport value - all data loading remains dynamic
+  const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(defaultSport || 'baseball')
   const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -55,8 +73,14 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     totalSupportedSports: 0
   })
   
+  // Additional dashboard data
+  const [standings, setStandings] = useState<any[]>([])
+  const [upcomingPredictions, setUpcomingPredictions] = useState<any[]>([])
+  const [valueBets, setValueBets] = useState<any[]>([])
+  const [liveOdds, setLiveOdds] = useState<any[]>([])
+  
   // Use real-time updates hook
-  const { gameUpdates: liveGameUpdates, isConnected } = useRealTimeUpdates(selectedSupportedSport || "basketball")
+  const { gameUpdates: liveGameUpdates, isConnected } = useRealTimeUpdates(selectedSupportedSport || undefined)
 
   // All function definitions moved to top to prevent reference errors
   const loadServiceHealth = useCallback(async () => {
@@ -166,6 +190,12 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         })
         console.log(`External API: Loaded ${games.length} upcoming games for ${sport}`)
         
+        // Debug: Log the actual sports of the returned games
+        if (games.length > 0) {
+          const gameSports = games.map(g => g.sport).filter(Boolean)
+          console.log(`Upcoming games returned for ${sport}:`, gameSports.slice(0, 5))
+        }
+        
         // Normalize game data
         games = games.map(game => normalizeGameData(game, sport))
         
@@ -247,9 +277,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         })
         console.log(`External API: Loaded ${games.length} live games for ${sport}`)
         
+        // Debug: Log the actual sports of the returned games
+        if (games.length > 0) {
+          const gameSports = games.map(g => g.sport).filter(Boolean)
+          console.log(`Games returned for ${sport}:`, gameSports.slice(0, 5))
+        }
+        
         // Normalize and filter games
         games = games.map(game => normalizeGameData(game, sport))
         games = deduplicateGames(games)
+        
+        // Filter to only show truly live games (with real scores or live indicators)
+        games = games.filter(game => isGameActuallyLive(game))
         
         // Fallback to database if external API fails
         if (games.length === 0) {
@@ -261,6 +300,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
             })
             games = games.map(game => normalizeGameData(game, sport))
             games = deduplicateGames(games)
+            
+            // Filter to only show truly live games (with real scores or live indicators)
+            games = games.filter(game => isGameActuallyLive(game))
             console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
           } catch (dbError) {
             console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -277,6 +319,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           })
           games = games.map(game => normalizeGameData(game, sport))
           games = deduplicateGames(games)
+          
+          // Filter to only show truly live games (with real scores or live indicators)
+          games = games.filter(game => isGameActuallyLive(game))
           console.log(`Database fallback: Loaded ${games.length} live games for ${sport}`)
         } catch (dbError) {
           console.warn(`Database fallback failed for live games ${sport}:`, dbError)
@@ -305,6 +350,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
+        } else {
+          // CRITICAL FALLBACK: Hardcoded default sport for dashboard initialization
+          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads
+          // This does NOT affect dynamic data loading - all data is still loaded dynamically based on user selection
+          // The hardcoded value is only used when no supported sports are available from configuration
+          console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
+          setSelectedSupportedSport('baseball' as SupportedSport)
         }
       }
     } catch (error) {
@@ -318,10 +370,71 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
+        } else {
+          // CRITICAL FALLBACK: Hardcoded default sport for dashboard initialization
+          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads
+          // This does NOT affect dynamic data loading - all data is still loaded dynamically based on user selection
+          // The hardcoded value is only used when no supported sports are available from configuration
+          console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
+          setSelectedSupportedSport('baseball' as SupportedSport)
         }
       }
     }
   }, [selectedSupportedSport, defaultSport])
+
+  // Load standings data
+  const loadStandings = useCallback(async (sport: SupportedSport) => {
+    try {
+      const response = await simpleApiClient.getStandings({ sport })
+      // Handle both wrapped and direct array responses
+      const standingsData = Array.isArray(response) ? response : (response as any)?.data || []
+      setStandings(standingsData)
+      console.log(`Loaded ${standingsData.length} standings entries for ${sport}`)
+    } catch (error) {
+      console.warn(`Failed to load standings for ${sport}:`, error)
+      setStandings([])
+    }
+  }, [])
+
+  // Load upcoming predictions
+  const loadUpcomingPredictions = useCallback(async (sport: SupportedSport) => {
+    try {
+      const predictions = await simpleApiClient.getUpcomingPredictions({ sport, limit: 5 })
+      setUpcomingPredictions(predictions)
+      console.log(`Loaded ${predictions.length} upcoming predictions for ${sport}`)
+    } catch (error) {
+      console.warn(`Failed to load upcoming predictions for ${sport}:`, error)
+      setUpcomingPredictions([])
+    }
+  }, [])
+
+  // Load value betting opportunities
+  const loadValueBets = useCallback(async (sport: SupportedSport) => {
+    try {
+      const response = await fetch(`/api/value-bets?sport=${sport}&min_value=0.1&limit=5`)
+      const data = await response.json()
+      const valueBetsData = data.opportunities || []
+      setValueBets(valueBetsData)
+      console.log(`Loaded ${valueBetsData.length} value betting opportunities for ${sport}`)
+    } catch (error) {
+      console.warn(`Failed to load value bets for ${sport}:`, error)
+      setValueBets([])
+    }
+  }, [])
+
+  // Load live odds
+  const loadLiveOdds = useCallback(async (sport: SupportedSport) => {
+    try {
+      const odds = await simpleApiClient.getOdds({ sport, limit: 10 })
+      // Ensure odds is an array and filter out any invalid entries
+      const validOdds = Array.isArray(odds) ? odds.filter(odd => odd && odd.home_team && odd.away_team) : []
+      setLiveOdds(validOdds)
+      console.log(`Loaded ${validOdds.length} live odds for ${sport}`)
+    } catch (error) {
+      console.warn(`Failed to load live odds for ${sport}:`, error)
+      setLiveOdds([])
+    }
+  }, [])
 
   const loadDataForSport = useCallback(async (sport: SupportedSport, retryCount = 0) => {
     try {
@@ -339,6 +452,14 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         loadUpcomingGamesForSport(sport)
       ])
       
+      // Load additional dashboard data in parallel
+      await Promise.all([
+        loadStandings(sport),
+        loadUpcomingPredictions(sport),
+        loadValueBets(sport),
+        loadLiveOdds(sport)
+      ])
+      
       console.log(`Successfully loaded data for ${sport}`)
     } catch (error) {
       console.error(`Error loading data for sport ${sport} (attempt ${retryCount + 1}):`, error)
@@ -353,7 +474,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } finally {
       setLoading(false)
     }
-  }, [loadServiceHealth, loadTeamsForSport, loadLiveGamesForSport, loadUpcomingGamesForSport])
+  }, [loadServiceHealth, loadTeamsForSport, loadLiveGamesForSport, loadUpcomingGamesForSport, loadStandings, loadUpcomingPredictions, loadValueBets, loadLiveOdds])
 
 
   const handleRefresh = useCallback(async () => {
@@ -491,7 +612,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       </FadeIn>
 
       {/* Stats Overview */}
-      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <StaggerContainer className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <StaggerItem index={0} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
           <Card className="h-full">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -540,18 +661,84 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         <StaggerItem index={3} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
           <Card className="h-full">
             <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">SupportedSports</CardTitle>
+              <CardTitle className="text-sm font-medium">Standings</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalSupportedSports}</div>
+              <div className="text-2xl font-bold">{standings.length}</div>
               <p className="text-xs text-muted-foreground">
-                Supported sports
+                League standings
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        <StaggerItem index={4} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Predictions</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-blue-600">{upcomingPredictions.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Upcoming predictions
+              </p>
+            </CardContent>
+          </Card>
+        </StaggerItem>
+
+        <StaggerItem index={5} className="transition-all duration-300 hover:scale-105 hover:shadow-lg">
+          <Card className="h-full">
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Value Bets</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">{valueBets.length}</div>
+              <p className="text-xs text-muted-foreground">
+                Opportunities
               </p>
             </CardContent>
           </Card>
         </StaggerItem>
       </StaggerContainer>
+
+      {/* Live Odds Section */}
+      {liveOdds.length > 0 && (
+        <FadeIn delay={0.2}>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5" />
+                Live Odds
+              </CardTitle>
+              <CardDescription>
+                Current betting odds for {selectedSupportedSport} games
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-2">
+                {liveOdds.slice(0, 5).map((odd, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
+                    <div className="text-sm font-medium">
+                      {odd.home_team} vs {odd.away_team}
+                    </div>
+                    <div className="flex gap-2 text-sm">
+                      <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                        H: {odd.home_odds || 'N/A'}
+                      </span>
+                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded">
+                        A: {odd.away_odds || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </FadeIn>
+      )}
 
       {/* Main Content Tabs */}
       <FadeIn delay={0.3}>

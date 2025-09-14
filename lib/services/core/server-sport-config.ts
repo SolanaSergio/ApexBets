@@ -72,53 +72,15 @@ export class ServerSportConfigManager {
           }
         }
       } else {
-        // Fallback to basic sports if no database data
-        this.configs = {
-          basketball: {
-            name: 'Basketball',
-            leagues: ['NBA'],
-            defaultLeague: 'NBA',
-            icon: '🏀',
-            color: 'text-orange-500',
-            apiKey: '',
-            dataSource: 'sportsdb',
-            positions: ['PG', 'SG', 'SF', 'PF', 'C'],
-            rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-            updateFrequency: 30
-          },
-          soccer: {
-            name: 'Soccer',
-            leagues: ['Premier League', 'La Liga', 'Bundesliga'],
-            defaultLeague: 'Premier League',
-            icon: '⚽',
-            color: 'text-green-500',
-            apiKey: '',
-            dataSource: 'sportsdb',
-            positions: ['GK', 'DEF', 'MID', 'FWD'],
-            rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-            updateFrequency: 30
-          }
-        }
+        // Fallback to empty config if no database data
+        this.configs = {}
       }
       
       this.initialized = true
     } catch (error) {
       console.error('Failed to initialize server sport configurations:', error)
-      // Fallback to basic sports
-      this.configs = {
-        basketball: {
-          name: 'Basketball',
-          leagues: ['NBA'],
-          defaultLeague: 'NBA',
-          icon: '🏀',
-          color: 'text-orange-500',
-          apiKey: '',
-          dataSource: 'sportsdb',
-          positions: ['PG', 'SG', 'SF', 'PF', 'C'],
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
-        }
-      }
+      // Fallback to empty config
+      this.configs = {}
       this.initialized = true
     }
   }

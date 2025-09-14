@@ -105,7 +105,8 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
   
   // Normalize status with more comprehensive mapping
   let status = game.status || 'scheduled';
-  const statusLower = status.toLowerCase();
+  // Ensure status is a string before calling toLowerCase
+  const statusLower = typeof status === 'string' ? status.toLowerCase() : String(status).toLowerCase();
   
   if (statusLower.includes('live') || statusLower.includes('in progress') || statusLower.includes('in_progress')) {
     status = 'in_progress';
@@ -156,23 +157,38 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
 
 /**
  * Check if a game is actually live (not just marked as live)
+ * Only returns true for games that are truly in progress with real activity
  */
 export function isGameActuallyLive(game: any): boolean {
   const status = (game.status || '').toLowerCase();
   
-  // Must have live status AND actual scores (not just 0-0)
-  const hasLiveStatus = status.includes('live') || status.includes('progress') || status.includes('in');
-  const hasRealScores = (game.home_score !== null && (game.home_score > 0 || game.away_score > 0)) || 
-                       (game.away_score !== null && (game.away_score > 0 || game.home_score > 0));
+  // Must have live status
+  const hasLiveStatus = status.includes('live') || 
+                       status.includes('progress') || 
+                       status.includes('in_progress') ||
+                       status.includes('in progress') ||
+                       status === 'live';
   
-  // Additional checks for various live statuses
+  if (!hasLiveStatus) {
+    return false;
+  }
+  
+  // Must have actual scores (not just 0-0 or null)
+  const homeScore = game.home_score !== null && game.home_score !== undefined ? game.home_score : 0;
+  const awayScore = game.away_score !== null && game.away_score !== undefined ? game.away_score : 0;
+  const hasRealScores = homeScore > 0 || awayScore > 0;
+  
+  // Additional checks for various live indicators
   const hasLiveIndicators = status.includes('quarter') ||
                            status.includes('period') ||
                            status.includes('inning') ||
                            status.includes('half') ||
                            status.includes('overtime') ||
-                           status.includes('extra');
+                           status.includes('extra') ||
+                           status.includes('q') ||
+                           status.includes('p');
   
+  // Game must have live status AND either real scores or live indicators
   return hasLiveStatus && (hasRealScores || hasLiveIndicators);
 }
 
