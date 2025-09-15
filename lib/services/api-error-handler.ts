@@ -26,9 +26,9 @@ export class APIErrorHandler {
 
   constructor(config: Partial<APIErrorHandlerConfig> = {}) {
     this.config = {
-      maxRetries: 3,
+      maxRetries: 5, // Increased from 3 to 5
       retryDelay: 2000,
-      cooldownPeriod: 5 * 60 * 1000, // 5 minutes
+      cooldownPeriod: 2 * 60 * 1000, // Reduced from 5 minutes to 2 minutes
       userAgents: [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -157,10 +157,28 @@ export class APIErrorHandler {
     const currentFailures = this.failureCounts.get(provider) || 0
     this.failureCounts.set(provider, currentFailures + 1)
     this.lastFailureTimes.set(provider, Date.now())
-    
+
     if (currentFailures + 1 >= this.config.maxRetries) {
-      console.warn(`${provider}: ${currentFailures + 1} consecutive failures, entering cooldown period`)
+      console.warn(`${provider}: ${currentFailures + 1} consecutive failures, entering ${this.config.cooldownPeriod / 1000}s cooldown period`)
     }
+  }
+
+  /**
+   * Check if enough time has passed to allow retry
+   */
+  canRetryAfterCooldown(provider: string): boolean {
+    const lastFailure = this.lastFailureTimes.get(provider) || 0
+    const timeSinceFailure = Date.now() - lastFailure
+    return timeSinceFailure > this.config.cooldownPeriod
+  }
+
+  /**
+   * Force reset cooldown for a provider (use sparingly)
+   */
+  forceResetCooldown(provider: string): void {
+    this.failureCounts.set(provider, 0)
+    this.lastFailureTimes.set(provider, 0)
+    console.log(`${provider}: Cooldown forcefully reset`)
   }
 
   /**

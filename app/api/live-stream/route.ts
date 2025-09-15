@@ -64,11 +64,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Function to fetch and send live data
+  // Function to fetch and send live data with enhanced error handling
   const sendLiveData = async () => {
     try {
       const supabase = await createClient()
-      
+
       if (!supabase) {
         sendData({
           type: "error",
@@ -77,8 +77,18 @@ export async function GET(request: NextRequest) {
         })
         return
       }
-      
-      // Get live games from database with enhanced filtering
+
+      // Skip if sport is "all" to prevent excessive queries
+      if (sport === "all") {
+        sendData({
+          type: "game_update",
+          data: [],
+          timestamp: new Date().toISOString()
+        })
+        return
+      }
+
+      // Get live games from database with enhanced filtering and error handling
       const { data: liveGames, error: liveGamesError } = await supabase
         .from('games')
         .select(`
@@ -89,12 +99,14 @@ export async function GET(request: NextRequest) {
         .eq('sport', sport)
         .in('status', ['live', 'in_progress', 'in progress'])
         .order('game_date', { ascending: true })
+        .limit(50) // Limit results to prevent excessive data
 
       if (liveGamesError) {
         console.error('Live games error:', liveGamesError)
+        // Send empty data instead of error to prevent client-side failures
         sendData({
-          type: "error",
-          data: { message: "Failed to fetch live games", details: liveGamesError.message },
+          type: "game_update",
+          data: [],
           timestamp: new Date().toISOString()
         })
         return
@@ -165,9 +177,10 @@ export async function GET(request: NextRequest) {
       })
     } catch (error) {
       console.error("Live stream error:", error)
+      // Send empty data instead of error to prevent client disconnection
       sendData({
-        type: "error",
-        data: { message: "Internal server error", error: error instanceof Error ? error.message : String(error) },
+        type: "game_update",
+        data: [],
         timestamp: new Date().toISOString()
       })
     }
@@ -176,8 +189,8 @@ export async function GET(request: NextRequest) {
   // Send initial data
   await sendLiveData()
 
-  // Set up periodic updates (every 30 seconds)
-  const intervalId = setInterval(sendLiveData, 30000)
+  // Set up periodic updates (every 60 seconds to reduce API spam)
+  const intervalId = setInterval(sendLiveData, 60000)
 
   // Handle client disconnect
   request.signal.addEventListener('abort', () => {

@@ -12,6 +12,7 @@ import { SoccerService } from '../sports/soccer/soccer-service'
 import { FootballService } from '../sports/football/football-service'
 import { BaseballService } from '../sports/baseball/baseball-service'
 import { HockeyService } from '../sports/hockey/hockey-service'
+import { GenericSportService } from '../sports/generic/generic-sport-service'
 
 export class ServiceRegistry {
   private static initialized = false
@@ -74,33 +75,27 @@ export class ServiceRegistry {
    */
   private static registerSportServices(): void {
     // Get supported sports from environment or use defaults
-    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || 
+    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') ||
       ['basketball', 'soccer', 'football', 'baseball', 'hockey']
 
-    // Register basketball service
-    if (supportedSports.includes('basketball')) {
-      this.serviceMap.set('basketball', BasketballService)
-    }
+    // Register core sport services
+    this.serviceMap.set('basketball', BasketballService)
+    this.serviceMap.set('soccer', SoccerService)
+    this.serviceMap.set('football', FootballService)
+    this.serviceMap.set('baseball', BaseballService)
+    this.serviceMap.set('hockey', HockeyService)
 
-    // Register soccer service
-    if (supportedSports.includes('soccer')) {
-      this.serviceMap.set('soccer', SoccerService)
-    }
+    // Register additional sports that may be requested
+    const additionalSports = [
+      'golf', 'tennis', 'mma', 'boxing', 'cricket', 'rugby',
+      'volleyball', 'motorsport', 'cycling', 'swimming', 'athletics'
+    ]
 
-    // Register football service
-    if (supportedSports.includes('football')) {
-      this.serviceMap.set('football', FootballService)
-    }
-
-    // Register baseball service
-    if (supportedSports.includes('baseball')) {
-      this.serviceMap.set('baseball', BaseballService)
-    }
-
-    // Register hockey service
-    if (supportedSports.includes('hockey')) {
-      this.serviceMap.set('hockey', HockeyService)
-    }
+    additionalSports.forEach(sport => {
+      if (!this.serviceMap.has(sport)) {
+        this.serviceMap.set(sport, GenericSportService)
+      }
+    })
   }
 
   /**
@@ -139,6 +134,27 @@ export class ServiceRegistry {
   static registerCustomService(sport: string, serviceClass: new (league: string) => any): void {
     this.serviceMap.set(sport, serviceClass)
     serviceFactory.registerService(sport, serviceClass)
+  }
+
+  /**
+   * Get or create a service for any sport (including unknown ones)
+   */
+  static getOrCreateServiceClass(sport: string): (new (league: string) => any) {
+    if (!this.initialized) {
+      this.initializeSync()
+    }
+
+    // Return existing service if available
+    if (this.serviceMap.has(sport)) {
+      return this.serviceMap.get(sport)!
+    }
+
+    // For unknown sports, register and return GenericSportService
+    console.log(`Registering generic service for unknown sport: ${sport}`)
+    this.serviceMap.set(sport, GenericSportService)
+    serviceFactory.registerService(sport, GenericSportService)
+
+    return GenericSportService
   }
 
   /**

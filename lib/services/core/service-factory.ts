@@ -164,10 +164,19 @@ export class ServiceFactory {
       throw new Error('Cannot create individual service for "all" sport. Use getSupportedSports() to get individual sports.')
     }
 
-    const ServiceClass = this.serviceRegistry.get(sport)
-    
+    let ServiceClass = this.serviceRegistry.get(sport)
+
     if (!ServiceClass) {
-      throw new Error(`No service registered for sport: ${sport}`)
+      // Try to get or create a service class for unknown sports
+      const { ServiceRegistry } = await import('./service-registry')
+      ServiceClass = ServiceRegistry.getOrCreateServiceClass(sport)
+
+      if (!ServiceClass) {
+        throw new Error(`No service available for sport: ${sport}`)
+      }
+
+      // Register the service class for future use
+      this.serviceRegistry.set(sport, ServiceClass)
     }
 
     return new ServiceClass(league)

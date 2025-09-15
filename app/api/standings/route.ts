@@ -1,18 +1,40 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+// Enhanced multi-layer cache for standings
+const standingsCache = new Map<string, { data: any, timestamp: number }>()
+const CACHE_TTL = 10 * 60 * 1000 // 10 minutes (increased for better API conservation)
+const MAX_CACHE_ENTRIES = 100 // Prevent memory bloat
+
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
-    }
     const { searchParams } = new URL(request.url)
 
     const sport = searchParams.get("sport")
     const league = searchParams.get("league")
     const season = searchParams.get("season") || "2024-25"
     const limit = Number.parseInt(searchParams.get("limit") || "50")
+
+    // Create cache key
+    const cacheKey = `${sport}-${league}-${season}-${limit}`
+
+    // Check cache first
+    const cached = standingsCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return NextResponse.json({
+        ...cached.data,
+        meta: {
+          ...cached.data.meta,
+          fromCache: true,
+          cacheAge: Date.now() - cached.timestamp
+        }
+      })
+    }
+
+    const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+    }
 
     // Get teams with their game statistics
     let query = supabase
@@ -127,7 +149,7 @@ export async function GET(request: NextRequest) {
       team.rank = index + 1
     })
 
-    return NextResponse.json({
+    const responseData = {
       data: standings,
       meta: {
         fromCache: false,
@@ -138,7 +160,25 @@ export async function GET(request: NextRequest) {
         sport: sport || 'all',
         league: league || 'all'
       }
+    }
+
+    // Cache the response
+    standingsCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
     })
+
+    // Clean up old cache entries (keep only last MAX_CACHE_ENTRIES)
+    if (standingsCache.size > MAX_CACHE_ENTRIES) {
+      const entries = Array.from(standingsCache.entries())
+      entries.sort((a, b) => a[1].timestamp - b[1].timestamp)
+      const toDelete = entries.slice(0, entries.length - MAX_CACHE_ENTRIES)
+      toDelete.forEach(([key]) => standingsCache.delete(key))
+
+      console.log(`Standings cache: Cleaned up ${toDelete.length} old entries`)
+    }
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

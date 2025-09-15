@@ -4,7 +4,7 @@
  * Base URL: https://stats.nba.com/stats
  */
 
-import { apiErrorHandler } from '../services/api-error-handler'
+import { apiSpecificErrorHandler } from '../services/api-specific-error-handlers'
 
 export interface NBAStatsPlayer {
   PERSON_ID: number
@@ -96,14 +96,16 @@ export class NBAStatsClient {
 
   private async request(endpoint: string, params: Record<string, any> = {}): Promise<NBAStatsResponse> {
     await this.rateLimit()
-    
+
+    let response: Response | undefined
+
     try {
       const searchParams = new URLSearchParams()
-      
+
       // Add default parameters
       searchParams.set('Season', params.Season || '2024-25')
       searchParams.set('SeasonType', params.SeasonType || 'Regular Season')
-      
+
       // Add custom parameters
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -112,11 +114,11 @@ export class NBAStatsClient {
       })
 
       const url = `${this.baseUrl}${endpoint}?${searchParams.toString()}`
-      
-      const response = await fetch(url, {
+
+      response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': apiErrorHandler.getCurrentUserAgent(),
+          'User-Agent': 'ProjectApex/1.0.0',
           'Referer': 'https://www.nba.com/',
           'Origin': 'https://www.nba.com',
           'Accept-Language': 'en-US,en;q=0.9',
@@ -129,21 +131,36 @@ export class NBAStatsClient {
         // Add timeout
         signal: AbortSignal.timeout(20000) // 20 second timeout
       })
-      
+
       if (!response.ok) {
-        // Use generic error handler
-        const errorResult = apiErrorHandler.handleError(this.providerName, new Error(`HTTP ${response.status}`), response)
+        // Use API-specific error handler
+        const errorResult = apiSpecificErrorHandler.handleError(
+          this.providerName,
+          new Error(`HTTP ${response.status}`),
+          response.status
+        )
         throw new Error(errorResult.error)
       }
 
       // Reset failure count on successful response
-      apiErrorHandler.resetFailureCount(this.providerName)
+      apiSpecificErrorHandler.resetFailures(this.providerName)
 
       const data = await response.json()
       return data
     } catch (error) {
-      // Use generic error handler for all errors
-      const errorResult = apiErrorHandler.handleError(this.providerName, error as Error)
+      // Use API-specific error handler
+      const errorResult = apiSpecificErrorHandler.handleError(
+        this.providerName,
+        error as Error,
+        response?.status
+      )
+
+      if (errorResult.shouldRetry && errorResult.retryAfterMs) {
+        console.warn(`${this.providerName}: ${errorResult.error}, retrying after ${errorResult.retryAfterMs}ms`)
+        await new Promise(resolve => setTimeout(resolve, errorResult.retryAfterMs!))
+        // Could implement retry logic here, but for now just throw
+      }
+
       throw new Error(errorResult.error)
     }
   }

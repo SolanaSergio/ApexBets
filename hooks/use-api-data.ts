@@ -43,7 +43,19 @@ export function useApiData<T>(
       setLoading(true)
       setError(null)
       const result = await fetchFn()
-      setData(result)
+
+      // Only update state if data has actually changed
+      setData(prevData => {
+        const prevDataStr = JSON.stringify(prevData)
+        const newDataStr = JSON.stringify(result)
+
+        if (prevDataStr === newDataStr) {
+          return prevData // No change, prevent unnecessary re-render
+        }
+
+        return result
+      })
+
       onSuccess?.(result)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred')

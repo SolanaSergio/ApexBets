@@ -1,10 +1,8 @@
 /**
  * DYNAMIC SPORT CONFIGURATION SERVICE
  * Replaces all hardcoded sport-specific logic with dynamic database-driven configuration
+ * Handles any sport without hardcoding team names, dates, or leagues
  */
-
-// Note: This will be replaced with actual Supabase MCP integration
-// For now, we'll use a placeholder that will be implemented with the actual MCP tools
 
 export interface DynamicSportConfig {
   id: string

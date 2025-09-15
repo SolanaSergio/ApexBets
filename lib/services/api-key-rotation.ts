@@ -44,17 +44,21 @@ export class ApiKeyRotationService {
     this.startPeriodicValidation()
   }
 
-  // Load API key configurations from environment
+  // Load API key configurations from environment with enhanced multi-key support
   private loadKeyConfigurations(): void {
-    // API-Sports keys
-    const apiSportsKeys = this.parseApiKeys(process.env.RAPIDAPI_KEY || '')
-    if (apiSportsKeys.length > 0) {
+    // API-Sports keys - support multiple keys separated by commas
+    const apiSportsKeys = this.parseApiKeys(
+      process.env.RAPIDAPI_KEY ||
+      process.env.NEXT_PUBLIC_RAPIDAPI_KEY ||
+      ''
+    )
+    if (apiSportsKeys.length > 0 && !apiSportsKeys.includes('your_rapidapi_key_here')) {
       this.keyConfigs.set('api-sports', apiSportsKeys.map((key, index) => ({
         provider: 'api-sports',
         primaryKey: key,
         backupKeys: [],
-        maxRequestsPerHour: 100,
-        maxRequestsPerDay: 500,
+        maxRequestsPerHour: 100, // RapidAPI free tier limit
+        maxRequestsPerDay: 500,  // Conservative daily limit
         currentUsage: {
           hourly: 0,
           daily: 0,
@@ -68,17 +72,23 @@ export class ApiKeyRotationService {
         priority: index
       })))
       this.currentKeyIndex.set('api-sports', 0)
+
+      console.log(`API-Sports: Loaded ${apiSportsKeys.length} API key(s) for rotation`)
     }
 
-    // Odds API keys
-    const oddsApiKeys = this.parseApiKeys(process.env.ODDS_API_KEY || '')
-    if (oddsApiKeys.length > 0) {
+    // Odds API keys - support multiple keys for better rate limit management
+    const oddsApiKeys = this.parseApiKeys(
+      process.env.ODDS_API_KEY ||
+      process.env.NEXT_PUBLIC_ODDS_API_KEY ||
+      ''
+    )
+    if (oddsApiKeys.length > 0 && !oddsApiKeys.includes('your_odds_api_key_here')) {
       this.keyConfigs.set('odds-api', oddsApiKeys.map((key, index) => ({
         provider: 'odds-api',
         primaryKey: key,
         backupKeys: [],
-        maxRequestsPerHour: 500,
-        maxRequestsPerDay: 1000,
+        maxRequestsPerHour: 500,  // The Odds API free tier
+        maxRequestsPerDay: 1000,  // Conservative daily limit
         currentUsage: {
           hourly: 0,
           daily: 0,
@@ -92,9 +102,67 @@ export class ApiKeyRotationService {
         priority: index
       })))
       this.currentKeyIndex.set('odds-api', 0)
+
+      console.log(`Odds API: Loaded ${oddsApiKeys.length} API key(s) for rotation`)
     }
 
-    // Additional providers can be added here
+    // SportsDB API keys
+    const sportsDbKeys = this.parseApiKeys(
+      process.env.SPORTSDB_API_KEY ||
+      process.env.NEXT_PUBLIC_SPORTSDB_API_KEY ||
+      '123'
+    )
+    if (sportsDbKeys.length > 0) {
+      this.keyConfigs.set('sportsdb', sportsDbKeys.map((key, index) => ({
+        provider: 'sportsdb',
+        primaryKey: key,
+        backupKeys: [],
+        maxRequestsPerHour: 60,
+        maxRequestsPerDay: 1000,
+        currentUsage: {
+          hourly: 0,
+          daily: 0,
+          lastReset: {
+            hour: Date.now(),
+            day: Date.now()
+          }
+        },
+        status: 'active' as const,
+        lastValidated: Date.now(),
+        priority: index
+      })))
+      this.currentKeyIndex.set('sportsdb', 0)
+    }
+
+    // BallDontLie API keys
+    const ballDontLieKeys = this.parseApiKeys(
+      process.env.BALLDONTLIE_API_KEY ||
+      process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY ||
+      ''
+    )
+    if (ballDontLieKeys.length > 0 && !ballDontLieKeys.includes('your_balldontlie_api_key_here')) {
+      this.keyConfigs.set('balldontlie', ballDontLieKeys.map((key, index) => ({
+        provider: 'balldontlie',
+        primaryKey: key,
+        backupKeys: [],
+        maxRequestsPerHour: 5,   // 5 requests per minute = very strict rate limit
+        maxRequestsPerDay: 100,  // Conservative daily limit due to strict rate limiting
+        currentUsage: {
+          hourly: 0,
+          daily: 0,
+          lastReset: {
+            hour: Date.now(),
+            day: Date.now()
+          }
+        },
+        status: 'active' as const,
+        lastValidated: Date.now(),
+        priority: index
+      })))
+      this.currentKeyIndex.set('balldontlie', 0)
+    }
+
+    // Log the configuration results
     logger.logBusinessEvent('api_key_rotation:key_configs_loaded', {
       providers: Array.from(this.keyConfigs.keys()),
       totalKeys: Array.from(this.keyConfigs.values()).reduce((sum, keys) => sum + keys.length, 0)
@@ -140,23 +208,39 @@ export class ApiKeyRotationService {
     if (now - config.currentUsage.lastReset.hour > oneHour) {
       config.currentUsage.hourly = 0
       config.currentUsage.lastReset.hour = now
+      // Reset status if it was rate limited
+      if (config.status === 'rate_limited') {
+        config.status = 'active'
+      }
     }
 
     // Reset daily counter if a day has passed
     if (now - config.currentUsage.lastReset.day > oneDay) {
       config.currentUsage.daily = 0
       config.currentUsage.lastReset.day = now
+      // Reset status if it was rate limited
+      if (config.status === 'rate_limited') {
+        config.status = 'active'
+      }
     }
 
     // Increment usage counters
     config.currentUsage.hourly++
     config.currentUsage.daily++
 
-    // Check rate limits
-    if (config.currentUsage.hourly >= config.maxRequestsPerHour ||
-        config.currentUsage.daily >= config.maxRequestsPerDay) {
+    // Check rate limits - be more lenient, allow 90% of limit before rotating
+    const hourlyThreshold = Math.floor(config.maxRequestsPerHour * 0.9)
+    const dailyThreshold = Math.floor(config.maxRequestsPerDay * 0.9)
+
+    if (config.currentUsage.hourly >= hourlyThreshold ||
+        config.currentUsage.daily >= dailyThreshold) {
       config.status = 'rate_limited'
-      this.rotateToNextKey(provider, 'rate_limit')
+
+      // Only rotate if there are multiple keys
+      const configs = this.keyConfigs.get(provider)
+      if (configs && configs.length > 1) {
+        this.rotateToNextKey(provider, 'rate_limit')
+      }
     }
   }
 
@@ -170,20 +254,50 @@ export class ApiKeyRotationService {
     const currentIndex = this.currentKeyIndex.get(provider) || 0
     const currentKey = configs[currentIndex]?.primaryKey || 'unknown'
 
+    // If there's only one key, don't rotate but reset its usage if it's rate limited
+    if (configs.length === 1) {
+      const currentConfig = configs[0]
+      if (reason === 'rate_limit') {
+        // Reset usage counters for the single key to allow continued use
+        currentConfig.currentUsage.hourly = 0
+        currentConfig.currentUsage.daily = 0
+        currentConfig.currentUsage.lastReset.hour = Date.now()
+        currentConfig.currentUsage.lastReset.day = Date.now()
+        currentConfig.status = 'active'
+
+        logger.logBusinessEvent('api_key_rotation:single_key_reset', {
+          provider,
+          reason,
+          key: this.maskKey(currentKey)
+        })
+
+        return currentKey
+      }
+
+      // For other reasons, mark as unavailable
+      logger.logBusinessEvent('api_key_rotation:single_key_unavailable', {
+        provider,
+        reason,
+        key: this.maskKey(currentKey)
+      })
+
+      return null
+    }
+
     // Find next available key
     let nextIndex = (currentIndex + 1) % configs.length
     let attempts = 0
-    
+
     while (attempts < configs.length) {
       const nextConfig = configs[nextIndex]
-      
-      if (nextConfig.status === 'active' && 
+
+      if (nextConfig.status === 'active' &&
           nextConfig.currentUsage.hourly < nextConfig.maxRequestsPerHour &&
           nextConfig.currentUsage.daily < nextConfig.maxRequestsPerDay) {
-        
+
         // Update current key index
         this.currentKeyIndex.set(provider, nextIndex)
-        
+
         // Log rotation event
         this.logRotationEvent({
           timestamp: new Date().toISOString(),
@@ -203,7 +317,7 @@ export class ApiKeyRotationService {
 
         return nextConfig.primaryKey
       }
-      
+
       nextIndex = (nextIndex + 1) % configs.length
       attempts++
     }

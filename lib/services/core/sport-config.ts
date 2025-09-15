@@ -73,31 +73,32 @@ export class SportConfigManager {
         
         if (result.data && result.data.length > 0) {
           for (const sport of result.data) {
+            // Enhanced dynamic configuration mapping
             this.configs[sport.name] = {
-              name: sport.display_name || sport.name,
-              leagues: [], // Will be loaded separately
-              defaultLeague: '', // Will be set from leagues
-              icon: sport.icon || '🏆',
-              color: sport.color || 'text-gray-500',
-              apiKey: sport.api_key || '',
+              name: sport.display_name || sport.name.charAt(0).toUpperCase() + sport.name.slice(1),
+              leagues: sport.leagues || [], // Load from database
+              defaultLeague: sport.default_league || sport.leagues?.[0] || '',
+              icon: this.mapIconName(sport.icon) || 'trophy',
+              color: this.mapColorGradient(sport.color) || 'from-muted to-muted/80',
+              apiKey: sport.api_key || process.env[`${sport.name.toUpperCase()}_API_KEY`] || '',
               dataSource: sport.data_source || 'sportsdb',
-              positions: sport.positions || [],
-              scoringFields: sport.scoring_fields || {},
-              bettingMarkets: sport.betting_markets || [],
-              seasonConfig: sport.season_config || {},
+              positions: Array.isArray(sport.positions) ? sport.positions : (sport.positions ? sport.positions.split(',') : []),
+              scoringFields: sport.scoring_fields || this.getDefaultScoringFields(sport.name),
+              bettingMarkets: sport.betting_markets || this.getDefaultBettingMarkets(sport.name),
+              seasonConfig: sport.season_config || this.getDefaultSeasonConfig(sport.name),
               rateLimits: sport.rate_limits || {
-                requestsPerMinute: 30,
-                requestsPerHour: 500,
-                requestsPerDay: 5000,
-                burstLimit: 5
+                requestsPerMinute: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_MINUTE`] || '30'),
+                requestsPerHour: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_HOUR`] || '500'),
+                requestsPerDay: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_DAY`] || '5000'),
+                burstLimit: parseInt(process.env[`${sport.name.toUpperCase()}_BURST_LIMIT`] || '5')
               },
-              updateFrequency: sport.update_frequency || 30
+              updateFrequency: sport.update_frequency || parseInt(process.env[`${sport.name.toUpperCase()}_UPDATE_FREQUENCY`] || '30')
             }
           }
         } else {
-          // Fallback to environment variables if no database data
+          // Enhanced fallback to environment variables with dynamic discovery
           console.warn('No sports found in database, falling back to environment variables')
-          const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+          const sports = this.discoverSportsFromEnvironment()
           
           for (const sport of sports) {
             const config = await this.loadSportConfigFromEnvironment(sport)
@@ -361,5 +362,99 @@ export class SportConfigManager {
       markets[sport] = config.bettingMarkets || []
     }
     return markets
+  }
+
+  /**
+   * Dynamic helper methods for enhanced configuration
+   */
+  private static mapIconName(iconName?: string): string {
+    if (!iconName) return 'trophy'
+
+    // Map common icon names to standardized names
+    const iconMap: Record<string, string> = {
+      'basketball': 'zap',
+      'football': 'activity',
+      'soccer': 'target',
+      'baseball': 'target',
+      'hockey': 'gamepad2',
+      'tennis': 'target',
+      'golf': 'target',
+      'mma': 'activity',
+      'boxing': 'activity'
+    }
+
+    return iconMap[iconName.toLowerCase()] || iconName.toLowerCase() || 'trophy'
+  }
+
+  private static mapColorGradient(color?: string): string {
+    if (!color) return 'from-muted to-muted/80'
+
+    // If already a gradient, return as is
+    if (color.includes('gradient') || color.includes('from-')) return color
+
+    // Map color names to gradients
+    const colorMap: Record<string, string> = {
+      'blue': 'from-blue-500 to-blue-600',
+      'red': 'from-red-500 to-red-600',
+      'green': 'from-green-500 to-green-600',
+      'orange': 'from-orange-500 to-orange-600',
+      'purple': 'from-purple-500 to-purple-600',
+      'primary': 'from-primary to-primary/80',
+      'secondary': 'from-secondary to-secondary/80',
+      'accent': 'from-accent to-accent/80'
+    }
+
+    return colorMap[color.toLowerCase()] || `from-${color}-500 to-${color}-600`
+  }
+
+  private static getDefaultScoringFields(sport: string): any {
+    const defaultFields: Record<string, any> = {
+      'basketball': { primary: 'points', for: 'points_for', against: 'points_against' },
+      'football': { primary: 'points', for: 'points_for', against: 'points_against' },
+      'soccer': { primary: 'goals', for: 'goals_for', against: 'goals_against' },
+      'hockey': { primary: 'goals', for: 'goals_for', against: 'goals_against' },
+      'baseball': { primary: 'runs', for: 'runs_for', against: 'runs_against' }
+    }
+    return defaultFields[sport] || { primary: 'points', for: 'points_for', against: 'points_against' }
+  }
+
+  private static getDefaultBettingMarkets(sport: string): any[] {
+    return [
+      { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss bet' },
+      { id: 'spread', name: 'Point Spread', description: 'Handicap betting' },
+      { id: 'total', name: 'Over/Under', description: 'Total points/goals' }
+    ]
+  }
+
+  private static getDefaultSeasonConfig(sport: string): any {
+    const seasonConfigs: Record<string, any> = {
+      'basketball': { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
+      'football': { startMonth: 8, endMonth: 1, seasonYearOffset: 0 },
+      'baseball': { startMonth: 2, endMonth: 10, seasonYearOffset: 0 },
+      'hockey': { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
+      'soccer': { startMonth: 7, endMonth: 4, seasonYearOffset: 0 }
+    }
+    return seasonConfigs[sport] || { startMonth: 0, endMonth: 11, seasonYearOffset: 0 }
+  }
+
+  private static discoverSportsFromEnvironment(): string[] {
+    // Discover sports from environment variables
+    const envVars = Object.keys(process.env)
+    const sportsSet = new Set<string>()
+
+    // Look for patterns like BASKETBALL_API_KEY, FOOTBALL_LEAGUES, etc.
+    envVars.forEach(key => {
+      const match = key.match(/^([A-Z]+)_(API_KEY|LEAGUES|DATA_SOURCE|UPDATE_FREQUENCY)$/)
+      if (match) {
+        sportsSet.add(match[1].toLowerCase())
+      }
+    })
+
+    // Fallback to default sports if none found
+    if (sportsSet.size === 0) {
+      return ['basketball', 'soccer', 'football', 'baseball', 'hockey']
+    }
+
+    return Array.from(sportsSet)
   }
 }

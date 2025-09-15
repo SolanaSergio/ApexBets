@@ -5,6 +5,10 @@ import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
 import { sportsDBClient } from "@/lib/sports-apis/sportsdb-client"
 import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
 
+// Simple in-memory cache to reduce API calls
+const liveDataCache = new Map<string, { data: any, timestamp: number }>()
+const CACHE_TTL = 30000 // 30 seconds cache
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -285,6 +289,7 @@ export async function GET(request: NextRequest) {
     }))
 
     return NextResponse.json({
+      success: true,
       live: liveGamesWithOdds,
       recent: formattedRecentGames,
       upcoming: formattedUpcomingGames,
@@ -301,7 +306,8 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error("Live updates API error:", error)
-    return NextResponse.json({ 
+    return NextResponse.json({
+      success: false,
       error: "Internal server error",
       live: [],
       recent: [],
@@ -322,6 +328,14 @@ export async function GET(request: NextRequest) {
  */
 async function getLiveDataFromAPIs(sport: string, league: string) {
   try {
+    // Check cache first
+    const cacheKey = `live-data-${sport}-${league}`
+    const cached = liveDataCache.get(cacheKey)
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      console.log(`Returning cached data for ${sport}`)
+      return NextResponse.json(cached.data)
+    }
+
     const liveGames: any[] = []
     const recentGames: any[] = []
     const upcomingGames: any[] = []
@@ -348,7 +362,8 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
       }
     }
 
-    return NextResponse.json({
+    const responseData = {
+      success: true,
       live: liveGames,
       recent: recentGames.slice(0, 10),
       upcoming: upcomingGames.slice(0, 10),
@@ -362,10 +377,16 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
       },
       sport,
       league
-    })
+    }
+
+    // Cache the response
+    liveDataCache.set(cacheKey, { data: responseData, timestamp: Date.now() })
+
+    return NextResponse.json(responseData)
   } catch (error) {
     console.error('Live API data fetch failed:', error)
     return NextResponse.json({
+      success: false,
       error: "Failed to fetch live data",
       live: [],
       recent: [],
@@ -467,23 +488,43 @@ async function tryESPN(sport: string, liveGames: any[], recentGames: any[], upco
  */
 async function trySportsDB(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
   try {
+    // Check if SportsDB is available before making request
+    const rateLimitStatus = sportsDBClient.getRateLimitStatus()
+    if (!rateLimitStatus.isAvailable) {
+      console.warn(`SportsDB rate limit exceeded for ${sport}, skipping`)
+      return
+    }
+
     const today = new Date().toISOString().split('T')[0]
     const events = await sportsDBClient.getEventsByDate(today, sport)
-    
-    events.forEach(event => {
-      const formattedGame = formatSportsDBGame(event, sport)
-      const normalizedGame = normalizeGameData(formattedGame, sport, event.strLeague)
-      
-      if (normalizedGame.status === 'live') {
-        liveGames.push(normalizedGame)
-      } else if (normalizedGame.status === 'finished') {
-        recentGames.push(normalizedGame)
-      } else {
-        upcomingGames.push(normalizedGame)
-      }
-    })
+
+    if (events && Array.isArray(events)) {
+      events.forEach(event => {
+        try {
+          const formattedGame = formatSportsDBGame(event, sport)
+          const normalizedGame = normalizeGameData(formattedGame, sport, event.strLeague)
+
+          if (normalizedGame.status === 'live') {
+            liveGames.push(normalizedGame)
+          } else if (normalizedGame.status === 'finished') {
+            recentGames.push(normalizedGame)
+          } else {
+            upcomingGames.push(normalizedGame)
+          }
+        } catch (formatError) {
+          console.warn(`Failed to format SportsDB game for ${sport}:`, formatError)
+        }
+      })
+    }
   } catch (error) {
-    console.warn(`SportsDB ${sport} data fetch failed:`, error)
+    // Handle rate limiting more gracefully
+    if (error instanceof Error && error.message.includes('Rate limit')) {
+      console.warn(`SportsDB ${sport} rate limited, will retry later`)
+    } else if (error instanceof Error && error.message.includes('temporarily unavailable')) {
+      console.warn(`SportsDB ${sport} temporarily unavailable`)
+    } else {
+      console.warn(`SportsDB ${sport} data fetch failed:`, error)
+    }
   }
 }
 
@@ -516,9 +557,14 @@ async function tryBallDontLie(sport: string, liveGames: any[], recentGames: any[
  * Try fallback sources when primary fails
  */
 async function tryFallbackSources(sport: string, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
-  // Try SportsDB as universal fallback
-  if (liveGames.length === 0) {
+  // Check if we already have some data before trying SportsDB
+  const hasData = liveGames.length > 0 || recentGames.length > 0 || upcomingGames.length > 0
+
+  if (!hasData) {
+    // Only try SportsDB if we have no data at all
     await trySportsDB(sport, liveGames, recentGames, upcomingGames)
+  } else {
+    console.log(`Skipping SportsDB fallback for ${sport} - already have data`)
   }
 }
 

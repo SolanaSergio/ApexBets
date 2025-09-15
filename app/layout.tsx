@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/auth/auth-context"
@@ -13,17 +13,6 @@ export const metadata: Metadata = {
   description: "Advanced sports analytics and prediction platform for NBA, NFL, and other major sports leagues",
   keywords: ["sports analytics", "predictions", "NBA", "betting odds", "machine learning"],
   authors: [{ name: "Project Apex Team" }],
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-    viewportFit: "cover"
-  },
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#06b6d4" },
-    { media: "(prefers-color-scheme: dark)", color: "#0891b2" }
-  ],
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -59,6 +48,18 @@ export const metadata: Metadata = {
       "max-snippet": -1
     }
   }
+}
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#06b6d4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0891b2" }
+  ]
 }
 
 const inter = Inter({

@@ -16,10 +16,10 @@ import { useIsMobile, useDeviceType, useIsTouchDevice } from "@/hooks/use-mobile
 
 const navigationItems = [
   {
-    title: "Dashboard",
+    title: "Home",
     href: "/",
     icon: Home,
-    description: "Overview and insights",
+    description: "Sports analytics homepage",
   },
   {
     title: "Games",
@@ -103,14 +103,14 @@ export function Navigation() {
           <div className="flex h-20 items-center justify-between gap-4">
             {/* Enhanced Mobile-First Logo */}
             <Link href="/" className="flex items-center space-x-2 sm:space-x-4 group flex-shrink-0">
-              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 text-white shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 premium-glow">
+              <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-xl group-hover:shadow-2xl transition-all duration-500 group-hover:scale-110">
                 <Target className="h-6 w-6 sm:h-8 sm:w-8" />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-lg sm:text-2xl font-black text-gradient truncate">
                   Project Apex
                 </span>
-                <span className="text-xs sm:text-sm text-slate-600 -mt-1 font-bold truncate">Sports Analytics</span>
+                <span className="text-xs sm:text-sm text-muted-foreground -mt-1 font-bold truncate">Sports Analytics</span>
               </div>
             </Link>
 
@@ -129,8 +129,8 @@ export function Navigation() {
                     className={cn(
                       "flex items-center space-x-2 xl:space-x-3 relative group transition-all duration-500 px-3 xl:px-6 py-2 xl:py-3 rounded-lg min-h-[44px] touch-manipulation",
                       isActive
-                        ? "bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-xl premium-glow"
-                        : "glass-card hover:bg-white/80 hover:text-slate-800 hover:scale-105 hover:shadow-lg",
+                        ? "bg-primary text-primary-foreground shadow-xl"
+                        : "hover:bg-muted hover:text-foreground hover:scale-105 hover:shadow-lg",
                       isTouchDevice && "touch-feedback",
                       deviceType === 'mobile' && "text-sm px-2 py-2",
                       deviceType === 'tablet' && "text-base px-4 py-3"

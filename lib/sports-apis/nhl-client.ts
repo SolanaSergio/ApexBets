@@ -245,8 +245,11 @@ export interface NHLStandings {
 
 export class NHLClient {
   private baseUrl = 'https://statsapi.web.nhl.com/api/v1'
+  private fallbackBaseUrl = 'https://api.nhle.com/stats/rest/en' // Alternative NHL API
   private rateLimitDelay = 1000 // 1 second between requests to be respectful
   private lastRequestTime = 0
+  private maxRetries = 3
+  private currentRetryCount = 0
 
   private async rateLimit(): Promise<void> {
     const now = Date.now()
@@ -257,21 +260,21 @@ export class NHLClient {
     this.lastRequestTime = Date.now()
   }
 
-  private async request<T>(endpoint: string): Promise<T> {
+  private async request<T>(endpoint: string, retryCount: number = 0): Promise<T> {
     await this.rateLimit()
-    
+
     try {
       const url = `${this.baseUrl}${endpoint}`
-      
+
       const response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
           'User-Agent': 'ProjectApex/1.0.0'
         },
         // Add timeout
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(15000) // 15 second timeout
       })
-      
+
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('NHL API: Rate limit exceeded')
@@ -280,14 +283,40 @@ export class NHLClient {
       }
 
       const data = await response.json()
+      this.currentRetryCount = 0 // Reset on success
       return data
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('NHL API: Request timeout')
       }
+
+      // Handle network errors with retry and fallback
+      if (error instanceof Error && (
+        error.message.includes('ENOTFOUND') ||
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('fetch failed')
+      )) {
+        if (retryCount < this.maxRetries) {
+          console.warn(`NHL API network error, retrying... (${retryCount + 1}/${this.maxRetries})`)
+          await this.exponentialBackoff(retryCount)
+          return this.request<T>(endpoint, retryCount + 1)
+        } else {
+          // Try fallback API or return graceful error
+          console.error('NHL API: All retries failed, network unavailable')
+          throw new Error('NHL API: Network unavailable after retries')
+        }
+      }
+
       console.error('NHL API request failed:', error)
       throw error
     }
+  }
+
+  private async exponentialBackoff(attempt: number): Promise<void> {
+    const baseDelay = 2000 // 2 seconds
+    const maxDelay = 30000 // 30 seconds
+    const delay = Math.min(baseDelay * Math.pow(2, attempt), maxDelay)
+    await new Promise(resolve => setTimeout(resolve, delay))
   }
 
   // Teams - moved above for proper method ordering
