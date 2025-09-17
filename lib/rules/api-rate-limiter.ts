@@ -37,73 +37,36 @@ export class ApiRateLimiter {
   }
 
   private getApiConfig(): ApiConfig {
-    return {
-      rapidapi: {
-        // RapidAPI API-SPORTS: 100 requests/minute, 10,000 requests/day (free tier)
-        requestsPerMinute: 100,
-        requestsPerDay: 10000,
-        burstLimit: 10
-      },
-      odds: {
-        // The Odds API: 10 requests/minute, 100 requests/day (free tier)
-        requestsPerMinute: 10,
-        requestsPerDay: 100,
-        burstLimit: 2
-      },
-      sportsdb: {
-        // TheSportsDB: 30 requests/minute, 10,000 requests/day (free tier)
-        requestsPerMinute: 30,
-        requestsPerDay: 10000,
-        burstLimit: 5
-      },
-      balldontlie: {
-        // BALLDONTLIE: 5 requests/minute, 7,200 requests/day (free tier) - official limits
-        requestsPerMinute: 5, // Official free tier limit
-        requestsPerDay: 7200, // 5 req/min * 60 min * 24 hours
-        burstLimit: 1
-      },
-      espn: {
-        // ESPN API: No official rate limits, but conservative approach
-        requestsPerMinute: 60,
-        requestsPerDay: 10000,
-        burstLimit: 10
-      },
-      'player-stats': {
-        // Player stats service: Conservative limits for database queries
-        requestsPerMinute: 30,
-        requestsPerDay: 1000,
-        burstLimit: 5
-      },
-      'team-stats': {
-        // Team stats service: Conservative limits for database queries
-        requestsPerMinute: 30,
-        requestsPerDay: 1000,
-        burstLimit: 5
-      },
-      'predictions': {
-        // Predictions service: Conservative limits for ML processing
-        requestsPerMinute: 20,
-        requestsPerDay: 500,
-        burstLimit: 3
-      },
-      'analytics': {
-        // Analytics service: Conservative limits for data processing
-        requestsPerMinute: 25,
-        requestsPerDay: 800,
-        burstLimit: 4
-      },
-      'tennis': {
-        // Tennis service: Conservative limits for individual sport
-        requestsPerMinute: 15,
-        requestsPerDay: 300,
-        burstLimit: 2
-      },
-      'golf': {
-        // Golf service: Conservative limits for individual sport
-        requestsPerMinute: 15,
-        requestsPerDay: 300,
-        burstLimit: 2
+    const readEnvInt = (name: string): number => {
+      const raw = process.env[name]
+      if (!raw) {
+        throw new Error(`Missing required environment variable: ${name}`)
       }
+      const value = parseInt(raw, 10)
+      if (Number.isNaN(value) || value <= 0) {
+        throw new Error(`Invalid numeric value for environment variable ${name}: ${raw}`)
+      }
+      return value
+    }
+
+    const readRateLimit = (prefix: string): RateLimit => ({
+      requestsPerMinute: readEnvInt(`${prefix}_RPM`),
+      requestsPerDay: readEnvInt(`${prefix}_RPD`),
+      burstLimit: readEnvInt(`${prefix}_BURST`)
+    })
+
+    return {
+      rapidapi: readRateLimit('APEX_RATELIMIT_RAPIDAPI'),
+      odds: readRateLimit('APEX_RATELIMIT_ODDS'),
+      sportsdb: readRateLimit('APEX_RATELIMIT_SPORTSDB'),
+      balldontlie: readRateLimit('APEX_RATELIMIT_BALLDONTLIE'),
+      espn: readRateLimit('APEX_RATELIMIT_ESPN'),
+      'player-stats': readRateLimit('APEX_RATELIMIT_PLAYER_STATS'),
+      'team-stats': readRateLimit('APEX_RATELIMIT_TEAM_STATS'),
+      'predictions': readRateLimit('APEX_RATELIMIT_PREDICTIONS'),
+      'analytics': readRateLimit('APEX_RATELIMIT_ANALYTICS'),
+      'tennis': readRateLimit('APEX_RATELIMIT_TENNIS'),
+      'golf': readRateLimit('APEX_RATELIMIT_GOLF')
     }
   }
 

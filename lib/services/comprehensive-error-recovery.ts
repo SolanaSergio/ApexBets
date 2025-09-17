@@ -3,18 +3,7 @@
  * Implements circuit breakers, fallback strategies, and graceful degradation
  */
 
-import { apiSpecificErrorHandler } from './api-specific-error-handlers'
 import { structuredLogger as logger } from './structured-logger'
-
-interface FallbackStrategy {
-  type: 'cache' | 'alternative_api' | 'mock_data' | 'graceful_degradation'
-  config: {
-    cacheKey?: string
-    alternativeApi?: string
-    mockDataGenerator?: () => any
-    degradedResponse?: any
-  }
-}
 
 interface RecoveryConfig {
   serviceName: string

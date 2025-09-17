@@ -76,11 +76,18 @@ export class EnhancedApiClient {
     }
 
     // Create the request promise
-    const requestPromise = this.executeRequest<T>(endpoint, params, {
+    const requestOptions: {
+      timeout: number
+      retries: number
+      sport?: string
+    } = {
       timeout,
-      retries,
-      sport
-    })
+      retries
+    }
+    if (sport !== undefined) {
+      requestOptions.sport = sport
+    }
+    const requestPromise = this.executeRequest<T>(endpoint, params, requestOptions)
 
     // Store in queue for deduplication
     this.requestQueue.set(cacheKey, requestPromise)
@@ -89,11 +96,18 @@ export class EnhancedApiClient {
       const result = await requestPromise
 
       // Cache the result
-      advancedCache.set(cacheKey, result, {
-        ttl,
-        sport,
-        priority
-      })
+      const cacheOptions: {
+        ttl?: number
+        sport?: string
+        priority?: 'low' | 'medium' | 'high'
+      } = { priority }
+      if (ttl !== undefined) {
+        cacheOptions.ttl = ttl
+      }
+      if (sport !== undefined) {
+        cacheOptions.sport = sport
+      }
+      advancedCache.set(cacheKey, result, cacheOptions)
 
       return result
     } finally {
@@ -116,13 +130,22 @@ export class EnhancedApiClient {
       sport
     } = options
 
-    return this.executeRequest<T>(endpoint, {}, {
+    const requestOptions: {
+      method: string
+      body: string
+      timeout: number
+      retries: number
+      sport?: string
+    } = {
       method: 'POST',
       body: JSON.stringify(data),
       timeout,
-      retries,
-      sport
-    })
+      retries
+    }
+    if (sport !== undefined) {
+      requestOptions.sport = sport
+    }
+    return this.executeRequest<T>(endpoint, {}, requestOptions)
   }
 
   /**
@@ -140,11 +163,20 @@ export class EnhancedApiClient {
     )
 
     return Promise.allSettled(promises).then(results =>
-      results.map(result => 
-        result.status === 'fulfilled' 
-          ? result.value 
-          : { data: null as any, meta: { error: true } }
-      )
+      results.map(result => {
+        if (result.status === 'fulfilled') {
+          return result.value
+        } else {
+          // Return a properly typed ApiResponse for failed requests
+          return {
+            data: null as any,
+            meta: {
+              responseTime: 0,
+              fromCache: false
+            }
+          } as ApiResponse<T>
+        }
+      })
     )
   }
 
@@ -199,16 +231,21 @@ export class EnhancedApiClient {
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), timeout)
 
-        const response = await fetch(url, {
+        const fetchOptions: RequestInit = {
           method,
           headers: {
             'Content-Type': 'application/json',
             'X-Sport': sport || 'all',
             'X-Request-ID': this.generateRequestId()
           },
-          body,
           signal: controller.signal
-        })
+        }
+        
+        if (body !== undefined) {
+          fetchOptions.body = body
+        }
+
+        const response = await fetch(url, fetchOptions)
 
         clearTimeout(timeoutId)
 

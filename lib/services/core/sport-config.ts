@@ -370,8 +370,18 @@ export class SportConfigManager {
   private static mapIconName(iconName?: string): string {
     if (!iconName) return 'trophy'
 
-    // Map common icon names to standardized names
+    // Map emojis and sport names to Lucide icon names
     const iconMap: Record<string, string> = {
+      // Emoji mappings from database
+      '🏀': 'zap',
+      '🏈': 'activity', 
+      '⚽': 'target',
+      '⚾': 'target',
+      '🏒': 'gamepad2',
+      '🎾': 'target',
+      '⛳': 'target',
+      '🏆': 'trophy',
+      // Sport name mappings (fallback)
       'basketball': 'zap',
       'football': 'activity',
       'soccer': 'target',
@@ -380,10 +390,16 @@ export class SportConfigManager {
       'tennis': 'target',
       'golf': 'target',
       'mma': 'activity',
-      'boxing': 'activity'
+      'boxing': 'activity',
+      // Direct Lucide icon names
+      'zap': 'zap',
+      'activity': 'activity',
+      'target': 'target',
+      'gamepad2': 'gamepad2',
+      'trophy': 'trophy'
     }
 
-    return iconMap[iconName.toLowerCase()] || iconName.toLowerCase() || 'trophy'
+    return iconMap[iconName] || iconMap[iconName.toLowerCase()] || 'trophy'
   }
 
   private static mapColorGradient(color?: string): string {
@@ -392,6 +408,15 @@ export class SportConfigManager {
     // If already a gradient, return as is
     if (color.includes('gradient') || color.includes('from-')) return color
 
+    // Extract base color from Tailwind classes like 'text-blue-600'
+    let baseColor = color.toLowerCase()
+    if (color.startsWith('text-')) {
+      const parts = color.split('-')
+      if (parts.length >= 2) {
+        baseColor = parts[1] // Extract 'blue' from 'text-blue-600'
+      }
+    }
+
     // Map color names to gradients
     const colorMap: Record<string, string> = {
       'blue': 'from-blue-500 to-blue-600',
@@ -399,12 +424,18 @@ export class SportConfigManager {
       'green': 'from-green-500 to-green-600',
       'orange': 'from-orange-500 to-orange-600',
       'purple': 'from-purple-500 to-purple-600',
+      'cyan': 'from-cyan-500 to-cyan-600',
+      'yellow': 'from-yellow-500 to-yellow-600',
+      'indigo': 'from-indigo-500 to-indigo-600',
+      'pink': 'from-pink-500 to-pink-600',
+      'gray': 'from-gray-500 to-gray-600',
+      'slate': 'from-slate-500 to-slate-600',
       'primary': 'from-primary to-primary/80',
       'secondary': 'from-secondary to-secondary/80',
       'accent': 'from-accent to-accent/80'
     }
 
-    return colorMap[color.toLowerCase()] || `from-${color}-500 to-${color}-600`
+    return colorMap[baseColor] || `from-${baseColor}-500 to-${baseColor}-600`
   }
 
   private static getDefaultScoringFields(sport: string): any {
@@ -418,7 +449,7 @@ export class SportConfigManager {
     return defaultFields[sport] || { primary: 'points', for: 'points_for', against: 'points_against' }
   }
 
-  private static getDefaultBettingMarkets(sport: string): any[] {
+  private static getDefaultBettingMarkets(_sport: string): any[] {
     return [
       { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss bet' },
       { id: 'spread', name: 'Point Spread', description: 'Handicap betting' },

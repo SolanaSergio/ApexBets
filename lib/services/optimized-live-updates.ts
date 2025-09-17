@@ -4,7 +4,6 @@
  */
 
 import { comprehensiveErrorRecovery } from './comprehensive-error-recovery'
-import { apiSpecificErrorHandler } from './api-specific-error-handlers'
 import { structuredLogger as logger } from './structured-logger'
 
 interface LiveUpdateRequest {
@@ -21,16 +20,10 @@ interface CachedData {
   requestKey: string
 }
 
-interface RequestBatch {
-  requests: LiveUpdateRequest[]
-  timestamp: number
-  timeout: NodeJS.Timeout
-}
 
 export class OptimizedLiveUpdatesService {
   private cache: Map<string, CachedData> = new Map()
   private pendingRequests: Map<string, Promise<any>> = new Map()
-  private requestBatches: Map<string, RequestBatch> = new Map()
   private lastApiCalls: Map<string, number> = new Map()
   
   // Cache TTL configurations based on data type and priority
@@ -273,7 +266,7 @@ export class OptimizedLiveUpdatesService {
     }
   }
 
-  private async fetchFromESPN(sport: string): Promise<any[]> {
+  private async fetchFromESPN(_sport: string): Promise<any[]> {
     // ESPN API calls would go here
     // This is a placeholder
     return []
@@ -285,13 +278,13 @@ export class OptimizedLiveUpdatesService {
     return []
   }
 
-  private async fetchFromSportsDB(sport: string): Promise<any[]> {
+  private async fetchFromSportsDB(_sport: string): Promise<any[]> {
     // SportsDB API calls would go here
     // This is a placeholder
     return []
   }
 
-  private selectOptimalProvider(sport: string, dataType: string): string {
+  private selectOptimalProvider(sport: string, _dataType: string): string {
     // Select the best provider based on:
     // 1. Sport compatibility
     // 2. Current rate limit status

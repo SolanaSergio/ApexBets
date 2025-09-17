@@ -60,7 +60,7 @@ export class AdvancedCacheService {
     }
 
     this.stats.hits++
-    return entry.data
+    return entry.compressed ? this.decompress(entry.data) : entry.data
   }
 
   /**
@@ -93,8 +93,11 @@ export class AdvancedCacheService {
       timestamp: Date.now(),
       ttl,
       compressed: compress,
-      sport,
       priority
+    }
+    
+    if (sport !== undefined) {
+      entry.sport = sport
     }
 
     this.cache.set(key, entry)

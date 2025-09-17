@@ -49,6 +49,24 @@ export function generateTeamId(teamData: {
  */
 export function normalizeTeamData(team: any, sport: string, league?: string) {
   // Handle different data sources and normalize team names
+  // If team is null/undefined, return a default structure
+  if (!team || (typeof team === 'object' && Object.keys(team).length === 0)) {
+    return {
+      id: generateTeamId({ name: 'Unknown Team', sport, league: league || 'Unknown' }),
+      name: 'Unknown Team',
+      city: null,
+      league: league || 'Unknown',
+      sport: sport,
+      abbreviation: null,
+      logo_url: null,
+      founded: null,
+      venue: null,
+      capacity: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+  }
+  
   const teamName = team.name || team.displayName || team.full_name || team.teamName || 'Unknown Team';
   
   // Special handling for common naming inconsistencies
@@ -86,9 +104,9 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
  * Normalize game data to ensure consistency across all sports
  */
 export function normalizeGameData(game: any, sport: string, league?: string) {
-  // Normalize team data first with better error handling
-  const homeTeamData = game.home_team || game.homeTeam || game.home || {};
-  const awayTeamData = game.away_team || game.awayTeam || game.away || {};
+  // Normalize team data first with better error handling - support multiple data structures
+  const homeTeamData = game.home_team_data || game.home_team || game.homeTeam || game.home || {};
+  const awayTeamData = game.away_team_data || game.away_team || game.awayTeam || game.away || {};
   
   const normalizedHomeTeam = normalizeTeamData(homeTeamData, sport, league);
   const normalizedAwayTeam = normalizeTeamData(awayTeamData, sport, league);
@@ -318,66 +336,42 @@ export function deduplicateTeams(teams: any[]): any[] {
 
 /**
  * Cross-sport normalization for consistent data representation
+ * Uses dynamic sport configuration from database instead of hardcoded rules
  */
-export function normalizeSportData(data: any, sport: string): any {
-  // Apply sport-specific normalization rules
-  switch (sport.toLowerCase()) {
-    case 'basketball':
-      return normalizeBasketballData(data);
-    case 'football':
-    case 'soccer':
-      return normalizeFootballData(data);
-    case 'baseball':
-      return normalizeBaseballData(data);
-    case 'hockey':
-      return normalizeHockeyData(data);
-    default:
-      return data; // Return as-is for unknown sports
+export async function normalizeSportData(data: any, sport: string): Promise<any> {
+  try {
+    // Get sport configuration dynamically
+    const { SportConfigManager } = await import('@/lib/services/core/sport-config')
+    const config = SportConfigManager.getSportConfig(sport)
+    
+    if (!config) {
+      console.warn(`No configuration found for sport: ${sport}`)
+      return data // Return as-is for unknown sports
+    }
+
+    // Apply dynamic normalization based on sport configuration
+    const normalized = { ...data }
+    
+    // Apply sport-specific field mappings based on configuration
+    if (config.scoringFields) {
+      // Map scoring fields dynamically
+      if (data.quarter !== undefined || data.period !== undefined) {
+        normalized.period = data.quarter || data.period || null
+      }
+      if (data.time_remaining !== undefined || data.clock !== undefined) {
+        normalized.time_remaining = data.time_remaining || data.clock || null
+      }
+    }
+
+    return normalized
+  } catch (error) {
+    console.error('Error in dynamic sport normalization:', error)
+    return data // Fallback to original data
   }
 }
 
 /**
- * Basketball-specific data normalization
+ * DEPRECATED: Legacy sport-specific functions removed in favor of dynamic configuration
+ * All sport normalization now uses the dynamic normalizeSportData function above
+ * that reads from the sports configuration database table
  */
-function normalizeBasketballData(data: any): any {
-  return {
-    ...data,
-    quarter: data.quarter || data.period || null,
-    time_remaining: data.time_remaining || data.clock || null,
-  };
-}
-
-/**
- * Football/Soccer-specific data normalization
- */
-function normalizeFootballData(data: any): any {
-  return {
-    ...data,
-    half: data.half || data.period || null,
-    time_remaining: data.time_remaining || data.clock || null,
-  };
-}
-
-/**
- * Baseball-specific data normalization
- */
-function normalizeBaseballData(data: any): any {
-  return {
-    ...data,
-    inning: data.inning || data.period || null,
-    outs: data.outs || null,
-    balls: data.balls || null,
-    strikes: data.strikes || null,
-  };
-}
-
-/**
- * Hockey-specific data normalization
- */
-function normalizeHockeyData(data: any): any {
-  return {
-    ...data,
-    period: data.period || data.quarter || null,
-    time_remaining: data.time_remaining || data.clock || null,
-  };
-}

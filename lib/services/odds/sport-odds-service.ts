@@ -71,25 +71,65 @@ export class SportOddsService extends BaseService {
     limit?: number
   } = {}): Promise<OddsData[]> {
     const key = this.getCacheKey('odds', this.sport, this.league, JSON.stringify(params))
-    
+
     return this.getCachedOrFetch(key, async () => {
-      // Get games from the sport service
-      const service = await serviceFactory.getService(this.sport, this.league)
-      
-      let games
+      // DB-first: fetch games from database instead of external providers
+      const { createClient } = await import('@/lib/supabase/server')
+      const supabase = await createClient()
+
+      if (!supabase) {
+        console.warn('Supabase client unavailable; returning empty odds')
+        return []
+      }
+
+      let games: any[] = []
       if (params.gameId) {
-        const game = await service.getGameById(params.gameId)
-        games = game ? [game] : []
+        const { data: gameRes } = await supabase
+          .from('games')
+          .select(`
+            id,
+            sport,
+            league,
+            home_team:teams!games_home_team_id_fkey(name, abbreviation),
+            away_team:teams!games_away_team_id_fkey(name, abbreviation),
+            status,
+            game_date
+          `)
+          .eq('id', params.gameId)
+          .eq('sport', this.sport)
+          .limit(1)
+        games = gameRes && gameRes.length > 0 ? [gameRes[0]] : []
       } else {
-        games = await service.getGames({
-          date: params.date,
-          status: 'scheduled'
-        })
+        let query = supabase
+          .from('games')
+          .select(`
+            id,
+            sport,
+            league,
+            home_team:teams!games_home_team_id_fkey(name, abbreviation),
+            away_team:teams!games_away_team_id_fkey(name, abbreviation),
+            status,
+            game_date
+          `)
+          .eq('sport', this.sport)
+          .eq('status', 'scheduled')
+          .order('game_date', { ascending: true })
+          .limit(params.limit || 10)
+
+        if (this.league) {
+          query = query.eq('league', this.league)
+        }
+
+        if (params.date) {
+          query = query.gte('game_date', new Date(params.date).toISOString().split('T')[0])
+        }
+
+        const { data: gamesData } = await query
+        games = gamesData || []
       }
 
       const odds: OddsData[] = []
-
-      for (const game of games.slice(0, params.limit || 10)) {
+      for (const game of games) {
         const gameOdds = await this.fetchOddsForGame(game)
         if (gameOdds) {
           odds.push(gameOdds)
@@ -97,7 +137,7 @@ export class SportOddsService extends BaseService {
       }
 
       return odds
-    })
+    }, undefined, { dbOnly: true })
   }
 
   /**
@@ -119,7 +159,7 @@ export class SportOddsService extends BaseService {
         .eq('game_id', game.id)
         .eq('sport', this.sport)
         .eq('league', this.league)
-        .order('last_updated', { ascending: false })
+        .order('timestamp', { ascending: false })
         .limit(1)
 
       if (error || !odds || odds.length === 0) {
@@ -154,7 +194,7 @@ export class SportOddsService extends BaseService {
           total?: { over: number; under: number; line: number }
         },
         bookmaker: oddsData.bookmaker || 'Unknown',
-        lastUpdated: oddsData.last_updated || new Date().toISOString()
+        lastUpdated: oddsData.timestamp || new Date().toISOString()
       }
     } catch (error) {
       console.error(`Error fetching odds for game ${game.id}:`, error)

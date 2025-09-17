@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useState, useCallback } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -67,20 +67,7 @@ export default function TrendsPage() {
     scoreChange: 0,
     loading: true
   })
-  useEffect(() => {
-    fetchMarketData()
-    if (selectedSport) {
-      loadTrendsData()
-    }
-  }, [selectedSport, loadTrendsData])
-
-  useEffect(() => {
-    if (selectedSport) {
-      loadTrendsData()
-    }
-  }, [selectedSport, loadTrendsData])
-
-  async function loadTrendsData() {
+  const loadTrendsData = useCallback(async () => {
     if (!selectedSport) return
     
     try {
@@ -103,7 +90,14 @@ export default function TrendsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSport])
+
+  useEffect(() => {
+    fetchMarketData()
+    if (selectedSport) {
+      loadTrendsData()
+    }
+  }, [selectedSport, loadTrendsData])
 
   async function fetchMarketData() {
     try {

@@ -171,7 +171,7 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     const fetchOdds = async () => {
       try {
         oddsController = new AbortController()
-        const response = await fetch(`/api/odds?sport=${selectedSport}&external=true`, {
+        const response = await fetch(`/api/odds?sport=${selectedSport}`, {
           signal: oddsController.signal,
           headers: {
             'Cache-Control': 'max-age=120', // Cache for 2 minutes
@@ -304,7 +304,7 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
       const [gamesRes, predictionsRes, oddsRes, statsRes] = await Promise.all([
         fetch(`/api/live-updates?sport=${selectedSport}&real=true`),
         fetch(`/api/predictions?sport=${selectedSport}&limit=10`),
-        fetch(`/api/odds?sport=${selectedSport}&external=true`),
+        fetch(`/api/odds?sport=${selectedSport}`),
         fetch(`/api/analytics/stats?sport=${selectedSport}`)
       ])
 

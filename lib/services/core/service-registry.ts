@@ -74,10 +74,6 @@ export class ServiceRegistry {
    * Register all sport services
    */
   private static registerSportServices(): void {
-    // Get supported sports from environment or use defaults
-    const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') ||
-      ['basketball', 'soccer', 'football', 'baseball', 'hockey']
-
     // Register core sport services
     this.serviceMap.set('basketball', BasketballService)
     this.serviceMap.set('soccer', SoccerService)

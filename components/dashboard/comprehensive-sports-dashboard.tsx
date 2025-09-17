@@ -20,12 +20,12 @@ import {
   Gamepad2
 } from "lucide-react"
 import { useRealTimeData, useLiveGames, usePredictions, useOdds } from "@/components/data/real-time-provider"
-import { useApiData, useGames, useTeams, usePlayers } from "@/hooks/use-api-data"
+// API data hooks removed - using real-time provider instead
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { LiveTeamsWidget } from "./live-teams-widget"
 import { LiveStandingsWidget } from "./live-standings-widget"
 import { EnhancedErrorBoundary } from "@/components/error/enhanced-error-boundary"
-import { LoadingDashboard, SportLoadingSpinner } from "@/components/loading/enhanced-loading-states"
+// Loading components removed - using built-in loading states
 
 interface LiveGameData {
   id: string
@@ -185,7 +185,7 @@ export function ComprehensiveSportsDashboard() {
   const { data, refreshData, selectedSport, setSelectedSport } = useRealTimeData()
   const { games: liveGames, loading: gamesLoading, isConnected } = useLiveGames()
   const { predictions, loading: predictionsLoading } = usePredictions()
-  const { odds, loading: oddsLoading } = useOdds()
+  useOdds() // Load odds data in background
   
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [sportsLoading, setSportsLoading] = useState(true)

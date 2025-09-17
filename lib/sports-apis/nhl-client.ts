@@ -245,11 +245,9 @@ export interface NHLStandings {
 
 export class NHLClient {
   private baseUrl = 'https://statsapi.web.nhl.com/api/v1'
-  private fallbackBaseUrl = 'https://api.nhle.com/stats/rest/en' // Alternative NHL API
   private rateLimitDelay = 1000 // 1 second between requests to be respectful
   private lastRequestTime = 0
   private maxRetries = 3
-  private currentRetryCount = 0
 
   private async rateLimit(): Promise<void> {
     const now = Date.now()
@@ -283,7 +281,6 @@ export class NHLClient {
       }
 
       const data = await response.json()
-      this.currentRetryCount = 0 // Reset on success
       return data
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

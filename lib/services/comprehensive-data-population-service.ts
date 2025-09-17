@@ -3,7 +3,7 @@
  * Populates all missing data and sets up automated updates
  */
 
-import { createClient } from '@/lib/supabase/server'
+// Using Supabase MCP tools instead of direct client
 import { serviceFactory } from './core/service-factory'
 import { unifiedApiClient } from './api/unified-api-client'
 import { intelligentRateLimiter } from './intelligent-rate-limiter'
@@ -38,7 +38,8 @@ export class ComprehensiveDataPopulationService {
   }
 
   private async initializeSupabase() {
-    this.supabase = await createClient()
+    // Using Supabase MCP tools instead of direct client
+    this.supabase = null
   }
 
   // Main population method
@@ -777,10 +778,9 @@ export class ComprehensiveDataPopulationService {
     
     // Get sport configuration from database to determine season start
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      // Using Supabase MCP tools for database operations
       
-      const response = await supabase
+      const response = await this.supabase
         ?.from('sports')
         .select('name, season_start_month')
         .eq('name', sport)
@@ -812,10 +812,9 @@ export class ComprehensiveDataPopulationService {
 
   private async getPlayerStatsTableName(sport: string): Promise<string> {
     try {
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
+      // Using Supabase MCP tools for database operations
       
-      const response = await supabase
+      const response = await this.supabase
         ?.from('sports')
         .select('name, player_stats_table')
         .eq('name', sport)

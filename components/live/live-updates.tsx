@@ -117,7 +117,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
         console.log(`Fetched ${data.live?.length || 0} live games, filtered to ${trulyLiveGames.length} truly live games`)
         setLiveGames(trulyLiveGames)
       } else if (activeTab === 'odds') {
-        const response = await fetch(`/api/odds?external=true&sport=${sport}`)
+        const response = await fetch(`/api/odds?sport=${sport}`)
         const data = await response.json()
         setLiveOdds(data || [])
       } else if (activeTab === 'value-bets') {

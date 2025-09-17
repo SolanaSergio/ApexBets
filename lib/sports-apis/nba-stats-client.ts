@@ -118,7 +118,7 @@ export class NBAStatsClient {
       response = await fetch(url, {
         headers: {
           'Accept': 'application/json',
-          'User-Agent': 'ProjectApex/1.0.0',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
           'Referer': 'https://www.nba.com/',
           'Origin': 'https://www.nba.com',
           'Accept-Language': 'en-US,en;q=0.9',
@@ -126,13 +126,25 @@ export class NBAStatsClient {
           'Connection': 'keep-alive',
           'Sec-Fetch-Dest': 'empty',
           'Sec-Fetch-Mode': 'cors',
-          'Sec-Fetch-Site': 'same-site'
+          'Sec-Fetch-Site': 'same-site',
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache'
         },
         // Add timeout
-        signal: AbortSignal.timeout(20000) // 20 second timeout
+        signal: AbortSignal.timeout(30000) // 30 second timeout
       })
 
       if (!response.ok) {
+        // Don't count 404s as failures for circuit breaker
+        if (response.status === 404) {
+          console.warn(`${this.providerName}: No data available for ${endpoint}`)
+          return { 
+            resource: endpoint,
+            parameters: params,
+            resultSets: [] 
+          }
+        }
+        
         // Use API-specific error handler
         const errorResult = apiSpecificErrorHandler.handleError(
           this.providerName,
@@ -146,8 +158,25 @@ export class NBAStatsClient {
       apiSpecificErrorHandler.resetFailures(this.providerName)
 
       const data = await response.json()
+      
+      // Check if response has valid data
+      if (!data || !data.resultSets || data.resultSets.length === 0) {
+        console.warn(`${this.providerName}: Empty response for ${endpoint}`)
+        return { 
+          resource: endpoint,
+          parameters: params,
+          resultSets: [] 
+        }
+      }
+      
       return data
     } catch (error) {
+      // Don't count network timeouts as circuit breaker failures
+      if (error instanceof Error && error.name === 'AbortError') {
+        console.warn(`${this.providerName}: Request timeout for ${endpoint}`)
+        throw new Error('Request timeout')
+      }
+      
       // Use API-specific error handler
       const errorResult = apiSpecificErrorHandler.handleError(
         this.providerName,

@@ -65,25 +65,30 @@ export function ModernDashboard() {
   }
 
   const getSportIcon = (sport: SupportedSport) => {
-    // Map sport types to icons
-    switch (sport) {
-      case 'basketball': return Zap
-      case 'football': return Activity
-      case 'baseball': return Target
-      case 'hockey': return Gamepad2
-      default: return Trophy
+    // Dynamic icon mapping based on sport configuration
+    const config = SportConfigManager.getSportConfig(sport)
+    if (config?.icon) {
+      // Map common icon names to Lucide icons
+      const iconMap: Record<string, any> = {
+        'zap': Zap,
+        'activity': Activity,
+        'target': Target,
+        'gamepad2': Gamepad2,
+        'trophy': Trophy
+      }
+      return iconMap[config.icon.toLowerCase()] || Trophy
     }
+    return Trophy
   }
 
   const getSportColor = (sport: SupportedSport) => {
-    // Map sport types to gradient colors
-    switch (sport) {
-      case 'basketball': return "from-cyan-500 to-blue-500"
-      case 'football': return "from-purple-500 to-indigo-500"
-      case 'baseball': return "from-green-500 to-emerald-500"
-      case 'hockey': return "from-blue-500 to-cyan-500"
-      default: return "from-gray-500 to-slate-500"
+    // Dynamic color mapping based on sport configuration
+    const config = SportConfigManager.getSportConfig(sport)
+    if (config?.color) {
+      // Use color from config, fallback to default gradient
+      return config.color.includes('gradient') ? config.color : "from-primary to-primary/80"
     }
+    return "from-muted to-muted/80"
   }
 
   if (sportsLoading) {

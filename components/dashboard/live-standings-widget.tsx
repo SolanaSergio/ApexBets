@@ -1,8 +1,7 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -10,8 +9,6 @@ import {
   TrendingUp,
   TrendingDown,
   Medal,
-  Target,
-  BarChart3,
   RefreshCw
 } from "lucide-react"
 import { useApiData } from "@/hooks/use-api-data"
@@ -309,6 +306,19 @@ export function LiveStandingsWidget() {
             Standings - {sportDisplayName}
           </CardTitle>
           <div className="flex items-center gap-2">
+            {selectedSport !== 'soccer' && (
+              <select
+                value={conference}
+                onChange={(e) => setConference(e.target.value as any)}
+                className="text-xs border rounded px-2 py-1 bg-background"
+              >
+                <option value="all">All</option>
+                <option value="eastern">Eastern</option>
+                <option value="western">Western</option>
+                <option value="american">American</option>
+                <option value="national">National</option>
+              </select>
+            )}
             <Button
               onClick={handleRefresh}
               disabled={refreshing}

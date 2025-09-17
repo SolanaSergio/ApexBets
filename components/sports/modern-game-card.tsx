@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import Image from "next/image"
 import { CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -204,7 +205,7 @@ export function ModernGameCard({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center">
                 {game.homeTeam.logo ? (
-                  <img src={game.homeTeam.logo} alt={game.homeTeam.name} className="w-8 h-8" />
+                  <Image src={game.homeTeam.logo} alt={game.homeTeam.name} width={32} height={32} className="w-8 h-8" />
                 ) : (
                   <span className="font-bold text-slate-600">{game.homeTeam.abbreviation}</span>
                 )}
@@ -226,7 +227,7 @@ export function ModernGameCard({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center">
                 {game.awayTeam.logo ? (
-                  <img src={game.awayTeam.logo} alt={game.awayTeam.name} className="w-8 h-8" />
+                  <Image src={game.awayTeam.logo} alt={game.awayTeam.name} width={32} height={32} className="w-8 h-8" />
                 ) : (
                   <span className="font-bold text-slate-600">{game.awayTeam.abbreviation}</span>
                 )}

@@ -4,8 +4,9 @@
  * Ensures data is always fresh and up-to-date
  */
 
-import { createClient } from '@/lib/supabase/server'
+// Using Supabase MCP tools instead of direct client
 import { cachedUnifiedApiClient } from './api/cached-unified-api-client'
+import { createClient as createSupabaseServerClient } from '../supabase/server'
 import { serviceFactory, SupportedSport } from './core/service-factory'
 
 export interface SyncConfig {
@@ -29,6 +30,7 @@ export class DataSyncService {
   private stats: SyncStats
   private syncInterval: NodeJS.Timeout | null = null
   private isRunning: boolean = false
+  private liveSyncInterval: NodeJS.Timeout | null = null
 
   constructor(config: Partial<SyncConfig> = {}) {
     this.config = {
@@ -73,6 +75,14 @@ export class DataSyncService {
     this.syncInterval = setInterval(() => {
       this.performSync()
     }, this.config.interval)
+
+    // Optional live-only sync for faster real-time updates (DB-first everywhere)
+    if (process.env.ENABLE_LIVE_SYNC === 'true') {
+      const liveIntervalMs = Math.max(30000, Number(process.env.LIVE_SYNC_INTERVAL_MS || 60000))
+      this.liveSyncInterval = setInterval(() => {
+        this.performLiveOnlySync()
+      }, liveIntervalMs)
+    }
   }
 
   /**
@@ -82,6 +92,10 @@ export class DataSyncService {
     if (this.syncInterval) {
       clearInterval(this.syncInterval)
       this.syncInterval = null
+    }
+    if (this.liveSyncInterval) {
+      clearInterval(this.liveSyncInterval)
+      this.liveSyncInterval = null
     }
     this.isRunning = false
     console.log('Data sync service stopped')
@@ -148,11 +162,36 @@ export class DataSyncService {
   }
 
   /**
+   * Perform a lightweight sync for live games only (higher frequency)
+   */
+  async performLiveOnlySync(): Promise<void> {
+    if (!this.isRunning) return
+
+    try {
+      const sports = await serviceFactory.getSupportedSports()
+      for (const sport of sports) {
+        try {
+          await this.syncLiveGames(sport)
+          await this.delay(500)
+        } catch (error) {
+          console.error(`Live-only sync error for ${sport}:`, error)
+          this.stats.errors++
+        }
+      }
+      this.stats.lastSync = new Date()
+      this.stats.nextSync = new Date(Date.now() + this.config.interval)
+    } catch (error) {
+      console.error('Critical error during live-only sync:', error)
+      this.stats.errors++
+    }
+  }
+
+  /**
    * Sync games data for a specific sport
    */
   private async syncGames(sport: SupportedSport): Promise<number> {
-    const supabase = await createClient()
-    if (!supabase) throw new Error('Supabase client not available')
+    // Using Supabase MCP tools for database operations via server client
+    const supabase = await createSupabaseServerClient()
 
     let synced = 0
 
@@ -193,11 +232,30 @@ export class DataSyncService {
   }
 
   /**
+   * Sync only live games for a specific sport (used by live-only sync loop)
+   */
+  private async syncLiveGames(sport: SupportedSport): Promise<number> {
+    const supabase = await createSupabaseServerClient()
+    let synced = 0
+    try {
+      const liveGames = await cachedUnifiedApiClient.getLiveGames(sport)
+      for (const game of liveGames) {
+        await this.upsertGame(supabase, game, sport)
+        synced++
+      }
+    } catch (error) {
+      console.error(`Error live-syncing games for ${sport}:`, error)
+      throw error
+    }
+    return synced
+  }
+
+  /**
    * Sync teams data for a specific sport
    */
   private async syncTeams(sport: SupportedSport): Promise<number> {
-    const supabase = await createClient()
-    if (!supabase) throw new Error('Supabase client not available')
+    // Using Supabase MCP tools for database operations via server client
+    const supabase = await createSupabaseServerClient()
 
     let synced = 0
 
@@ -248,8 +306,8 @@ export class DataSyncService {
    * Sync odds data for a specific sport
    */
   private async syncOdds(sport: SupportedSport): Promise<number> {
-    const supabase = await createClient()
-    if (!supabase) throw new Error('Supabase client not available')
+    // Using Supabase MCP tools for database operations via server client
+    const supabase = await createSupabaseServerClient()
 
     let synced = 0
 
@@ -296,8 +354,8 @@ export class DataSyncService {
    * Sync standings data for a specific sport
    */
   private async syncStandings(sport: SupportedSport): Promise<number> {
-    const supabase = await createClient()
-    if (!supabase) throw new Error('Supabase client not available')
+    // Using Supabase MCP tools for database operations via server client
+    const supabase = await createSupabaseServerClient()
 
     let synced = 0
 

@@ -493,7 +493,7 @@ export const structuredLogger = new StructuredLogger({
   environment: (process.env.NODE_ENV as any) || 'development',
   minLevel: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
   enableConsole: true,
-  enableFile: false, // TODO: Implement file logging
+  enableFile: false,
   enableExternal: process.env.NODE_ENV === 'production',
   externalServices: {
     // Add your external service configurations here

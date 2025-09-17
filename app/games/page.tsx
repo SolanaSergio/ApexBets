@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
+import { Suspense, useEffect, useState, useCallback } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -224,7 +224,6 @@ export default function GamesPage() {
             <Suspense fallback={<LiveGamesSkeleton />}>
               <LiveGamesSection 
                 selectedSport={selectedSport} 
-                selectedLeague={selectedLeague}
                 dateRange={dateRange}
                 searchTerm={searchTerm}
               />
@@ -235,7 +234,6 @@ export default function GamesPage() {
             <Suspense fallback={<UpcomingGamesSkeleton />}>
               <UpcomingGamesSection 
                 selectedSport={selectedSport} 
-                selectedLeague={selectedLeague}
                 dateRange={dateRange}
                 searchTerm={searchTerm}
               />
@@ -246,7 +244,6 @@ export default function GamesPage() {
             <Suspense fallback={<CompletedGamesSkeleton />}>
               <CompletedGamesSection 
                 selectedSport={selectedSport} 
-                selectedLeague={selectedLeague}
                 dateRange={dateRange}
                 searchTerm={searchTerm}
               />
@@ -261,25 +258,17 @@ export default function GamesPage() {
 // Live Games Section
 function LiveGamesSection({ 
   selectedSport, 
-  selectedLeague, 
   dateRange, 
   searchTerm 
 }: { 
   selectedSport: SupportedSport | null
-  selectedLeague: string
   dateRange: { from: Date; to: Date }
   searchTerm: string
 }) {
   const [liveGames, setLiveGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (selectedSport) {
-      fetchLiveGames()
-    }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchLiveGames])
-
-  async function fetchLiveGames() {
+  const fetchLiveGames = useCallback(async () => {
     if (!selectedSport) return
     
     try {
@@ -302,7 +291,13 @@ function LiveGamesSection({
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
+
+  useEffect(() => {
+    if (selectedSport) {
+      fetchLiveGames()
+    }
+  }, [selectedSport, fetchLiveGames])
 
   if (loading) {
     return <LiveGamesSkeleton />
@@ -384,25 +379,17 @@ function LiveGamesSection({
 // Upcoming Games Section
 function UpcomingGamesSection({ 
   selectedSport, 
-  selectedLeague, 
   dateRange, 
   searchTerm 
 }: { 
   selectedSport: SupportedSport | null
-  selectedLeague: string
   dateRange: { from: Date; to: Date }
   searchTerm: string
 }) {
   const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (selectedSport) {
-      fetchUpcomingGames()
-    }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchUpcomingGames])
-
-  async function fetchUpcomingGames() {
+  const fetchUpcomingGames = useCallback(async () => {
     if (!selectedSport) return
     
     try {
@@ -424,7 +411,13 @@ function UpcomingGamesSection({
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
+
+  useEffect(() => {
+    if (selectedSport) {
+      fetchUpcomingGames()
+    }
+  }, [selectedSport, fetchUpcomingGames])
 
   if (loading) {
     return <UpcomingGamesSkeleton />
@@ -502,25 +495,17 @@ function UpcomingGamesSection({
 // Completed Games Section
 function CompletedGamesSection({ 
   selectedSport, 
-  selectedLeague, 
   dateRange, 
   searchTerm 
 }: { 
   selectedSport: SupportedSport | null
-  selectedLeague: string
   dateRange: { from: Date; to: Date }
   searchTerm: string
 }) {
   const [completedGames, setCompletedGames] = useState<Game[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    if (selectedSport) {
-      fetchCompletedGames()
-    }
-  }, [selectedSport, selectedLeague, dateRange, searchTerm, fetchCompletedGames])
-
-  async function fetchCompletedGames() {
+  const fetchCompletedGames = useCallback(async () => {
     if (!selectedSport) return
     
     try {
@@ -542,7 +527,13 @@ function CompletedGamesSection({
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
+
+  useEffect(() => {
+    if (selectedSport) {
+      fetchCompletedGames()
+    }
+  }, [selectedSport, fetchCompletedGames])
 
   if (loading) {
     return <CompletedGamesSkeleton />

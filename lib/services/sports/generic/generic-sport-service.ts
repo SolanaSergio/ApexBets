@@ -3,8 +3,9 @@
  * Provides a fallback service for sports that don't have dedicated implementations
  */
 
-import { SportSpecificService, ServiceConfig } from '../../core/sport-specific-service'
-import { GameData, TeamData, PlayerData } from '../../../types/sports'
+import { SportSpecificService } from '../../core/sport-specific-service'
+import { ServiceConfig } from '../../core/base-service'
+import type { GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
 import { sportsDBClient } from '../../../sports-apis/sportsdb-client'
 import { espnClient } from '../../../sports-apis/espn-client'
 
@@ -89,8 +90,8 @@ export class GenericSportService extends SportSpecificService {
         try {
           const espnSport = this.getESPNSportMapping(this.sport)
           if (espnSport) {
-            const games = await espnClient.getGames(espnSport)
-            return games.map(game => this.mapESPNGameData(game))
+          const games = await espnClient.getNBAScoreboard()
+          return games.map((game: any) => this.mapESPNGameData(game))
           }
         } catch (espnError) {
           console.warn(`ESPN fallback failed for ${this.sport}:`, espnError)
@@ -104,18 +105,21 @@ export class GenericSportService extends SportSpecificService {
     }
   }
 
-  private async fetchTeams(params: any): Promise<TeamData[]> {
+  private async fetchTeams(_params: any): Promise<TeamData[]> {
     try {
       const sportName = this.sportMapping[this.sport] || this.sport
-      const teams = await sportsDBClient.getTeamsBySport(sportName)
-      return teams.map(team => this.mapTeamData(team))
+      const leagues = await sportsDBClient.getLeaguesBySport(sportName)
+      const league = leagues?.[0]?.idLeague
+      if (!league) return []
+      const teams = await sportsDBClient.getTeamsByLeague(league)
+      return teams.map((team: any) => this.mapTeamData(team))
     } catch (error) {
       console.error(`Error fetching teams for ${this.sport}:`, error)
       return []
     }
   }
 
-  private async fetchPlayers(params: any): Promise<PlayerData[]> {
+  private async fetchPlayers(_params: any): Promise<PlayerData[]> {
     try {
       // Generic sports may not have detailed player data
       // Return empty array or basic placeholder data
@@ -137,7 +141,7 @@ export class GenericSportService extends SportSpecificService {
     }
   }
 
-  private async fetchStandings(season?: string): Promise<any[]> {
+  private async fetchStandings(_season?: string): Promise<any[]> {
     try {
       // Generic sports may not have standings
       return []
@@ -147,7 +151,7 @@ export class GenericSportService extends SportSpecificService {
     }
   }
 
-  private async fetchOdds(params: any): Promise<any[]> {
+  private async fetchOdds(_params: any): Promise<any[]> {
     try {
       // Generic sports may not have odds data readily available
       console.warn(`Odds not available for ${this.sport}`)
@@ -169,34 +173,35 @@ export class GenericSportService extends SportSpecificService {
     }
   }
 
+  protected async fetchTeamById(teamId: string): Promise<TeamData | null> {
+    try {
+      const team = await sportsDBClient.getTeamById(teamId)
+      return team ? this.mapTeamData(team) : null
+    } catch (error) {
+      console.error(`Error fetching team ${teamId}:`, error)
+      return null
+    }
+  }
+
+  protected async fetchPlayerById(_playerId: string): Promise<PlayerData | null> {
+    return null
+  }
+
   // Data mapping methods
-  private mapGameData(event: any): GameData {
+  protected mapGameData(event: any): GameData {
     return {
       id: event.idEvent || event.id,
-      homeTeam: {
-        id: event.idHomeTeam || 'unknown',
-        name: event.strHomeTeam || 'Home Team',
-        abbreviation: event.strHomeTeamShort || 'HOME',
-        logo: event.strHomeTeamBadge || '',
-        score: parseInt(event.intHomeScore) || 0
-      },
-      awayTeam: {
-        id: event.idAwayTeam || 'unknown',
-        name: event.strAwayTeam || 'Away Team',
-        abbreviation: event.strAwayTeamShort || 'AWAY',
-        logo: event.strAwayTeamBadge || '',
-        score: parseInt(event.intAwayScore) || 0
-      },
+      sport: this.sport,
+      league: this.league,
+      homeTeam: event.strHomeTeam || 'Home Team',
+      awayTeam: event.strAwayTeam || 'Away Team',
       date: event.dateEvent || new Date().toISOString().split('T')[0],
       time: event.strTime || '00:00:00',
       status: this.mapGameStatus(event.strStatus),
       venue: event.strVenue || 'TBD',
-      league: this.league,
-      sport: this.sport,
       season: event.strSeason || new Date().getFullYear().toString(),
-      week: event.intRound || 1,
-      period: event.strProgress || '',
-      clock: event.strProgress || '',
+      homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : null,
+      awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : null,
       lastUpdated: new Date().toISOString()
     }
   }
@@ -207,48 +212,44 @@ export class GenericSportService extends SportSpecificService {
 
     return {
       id: game.id,
-      homeTeam: {
-        id: homeTeam?.team?.id || 'unknown',
-        name: homeTeam?.team?.displayName || 'Home Team',
-        abbreviation: homeTeam?.team?.abbreviation || 'HOME',
-        logo: homeTeam?.team?.logo || '',
-        score: parseInt(homeTeam?.score) || 0
-      },
-      awayTeam: {
-        id: awayTeam?.team?.id || 'unknown',
-        name: awayTeam?.team?.displayName || 'Away Team',
-        abbreviation: awayTeam?.team?.abbreviation || 'AWAY',
-        logo: awayTeam?.team?.logo || '',
-        score: parseInt(awayTeam?.score) || 0
-      },
+      sport: this.sport,
+      league: this.league,
+      homeTeam: homeTeam?.team?.displayName || 'Home Team',
+      awayTeam: awayTeam?.team?.displayName || 'Away Team',
       date: game.date?.split('T')[0] || new Date().toISOString().split('T')[0],
       time: game.date?.split('T')[1]?.split('.')[0] || '00:00:00',
       status: this.mapESPNGameStatus(game.status?.type?.name),
       venue: game.competitions?.[0]?.venue?.fullName || 'TBD',
-      league: this.league,
-      sport: this.sport,
       season: game.season?.year?.toString() || new Date().getFullYear().toString(),
-      week: game.week?.number || 1,
-      period: game.status?.period?.toString() || '',
-      clock: game.status?.displayClock || '',
+      homeScore: homeTeam?.score ? parseInt(homeTeam.score) : null,
+      awayScore: awayTeam?.score ? parseInt(awayTeam.score) : null,
       lastUpdated: new Date().toISOString()
     }
   }
 
-  private mapTeamData(team: any): TeamData {
+  protected mapTeamData(team: any): TeamData {
     return {
       id: team.idTeam || team.id,
+      sport: this.sport,
+      league: this.league,
       name: team.strTeam || team.name,
       abbreviation: team.strTeamShort || team.abbreviation || '',
       logo: team.strTeamBadge || team.logo || '',
       city: team.strLocation || '',
-      conference: team.strLeague || '',
-      division: team.strDivision || '',
-      founded: team.intFormedYear || null,
-      colors: {
-        primary: team.strColour1 || '#000000',
-        secondary: team.strColour2 || '#FFFFFF'
-      }
+      lastUpdated: new Date().toISOString()
+    }
+  }
+
+  protected mapPlayerData(rawData: any): PlayerData {
+    return {
+      id: rawData.id?.toString() || rawData.idPlayer || '',
+      sport: this.sport,
+      league: this.league,
+      name: rawData.strPlayer || rawData.fullName || rawData.name || '',
+      team: rawData.strTeam || rawData.team?.displayName || '',
+      position: rawData.strPosition || rawData.position || '',
+      stats: rawData.stats || {},
+      lastUpdated: new Date().toISOString()
     }
   }
 

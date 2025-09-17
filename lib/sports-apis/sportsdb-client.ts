@@ -135,7 +135,17 @@ export class SportsDBClient {
       // Reset consecutive errors on successful request
       this.consecutiveRateLimitErrors = 0
 
-      const data = await response.json()
+      // Some SportsDB endpoints may return empty body on errors; guard parsing
+      const text = await response.text()
+      if (!text || text.trim() === '') {
+        throw new Error('Empty response body from SportsDB API')
+      }
+      let data: any
+      try {
+        data = JSON.parse(text)
+      } catch (e) {
+        throw new Error('Invalid JSON response from SportsDB API')
+      }
       
       // Validate response data
       if (!data || typeof data !== 'object') {
@@ -298,7 +308,7 @@ export class SportsDBClient {
 // Create instance with API key from environment or use free key
 const getSportsDBApiKey = (): string => {
   const apiKey = process.env.NEXT_PUBLIC_SPORTSDB_API_KEY
-  if (!apiKey || apiKey === 'your_sportsdb_api_key' || apiKey === '') {
+  if (!apiKey) {
     console.warn('NEXT_PUBLIC_SPORTSDB_API_KEY not configured, using free tier')
     return '123' // Free tier key
   }

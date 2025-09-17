@@ -2,7 +2,6 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Badge } from "@/components/ui/badge"
 import { 
   Activity, 
   Users, 
@@ -64,19 +63,21 @@ export function EnhancedLoadingStats({ count = 4, variant = 'default' }: Loading
   const icons = [Activity, Users, Trophy, Target]
   
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+    <div className={`grid gap-3 lg:gap-4 ${
+      variant === 'compact' ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4'
+    }`}>
       {Array.from({ length: count }).map((_, i) => {
         const Icon = icons[i % icons.length]
         return (
           <Card key={i} className="animate-pulse relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10" />
-            <CardContent className="p-4 lg:p-6">
+            <CardContent className={variant === 'compact' ? 'p-3' : 'p-4 lg:p-6'}>
               <div className="flex items-center justify-between mb-2">
-                <Skeleton className="h-4 w-16" />
-                <Icon className="h-4 w-4 text-muted-foreground/50" />
+                <Skeleton className={variant === 'compact' ? 'h-3 w-12' : 'h-4 w-16'} />
+                <Icon className={`text-muted-foreground/50 ${variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'}`} />
               </div>
-              <Skeleton className="h-8 w-12 mb-1" />
-              <Skeleton className="h-3 w-20" />
+              <Skeleton className={variant === 'compact' ? 'h-6 w-8 mb-1' : 'h-8 w-12 mb-1'} />
+              <Skeleton className={variant === 'compact' ? 'h-2 w-16' : 'h-3 w-20'} />
             </CardContent>
           </Card>
         )
@@ -86,35 +87,40 @@ export function EnhancedLoadingStats({ count = 4, variant = 'default' }: Loading
 }
 
 export function EnhancedLoadingTable({ rows = 8, variant = 'default' }: LoadingProps & { rows?: number }) {
+  const isCompact = variant === 'compact'
+  const headerHeight = isCompact ? 'h-3' : 'h-4'
+  const rowHeight = isCompact ? 'h-4' : 'h-6'
+  const padding = isCompact ? 'p-2' : 'p-3'
+  
   return (
-    <div className="space-y-2">
+    <div className={isCompact ? 'space-y-1' : 'space-y-2'}>
       {/* Header */}
-      <div className="flex items-center gap-3 p-3 border-b bg-muted/20">
-        <Skeleton className="h-4 w-8" />
-        <Skeleton className="h-4 w-8" />
-        <Skeleton className="h-4 w-32" />
+      <div className={`flex items-center gap-3 ${padding} border-b bg-muted/20`}>
+        <Skeleton className={`${headerHeight} w-8`} />
+        <Skeleton className={`${headerHeight} w-8`} />
+        <Skeleton className={`${headerHeight} w-32`} />
         <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 flex-1">
-          <Skeleton className="h-4 w-8" />
-          <Skeleton className="h-4 w-8" />
-          <Skeleton className="h-4 w-12 hidden lg:block" />
-          <Skeleton className="h-4 w-12" />
+          <Skeleton className={`${headerHeight} w-8`} />
+          <Skeleton className={`${headerHeight} w-8`} />
+          <Skeleton className={`${headerHeight} w-12 hidden lg:block`} />
+          <Skeleton className={`${headerHeight} w-12`} />
         </div>
-        <Skeleton className="h-4 w-12" />
+        <Skeleton className={`${headerHeight} w-12`} />
       </div>
       
       {/* Rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="flex items-center gap-3 p-3 hover:bg-muted/20 animate-pulse">
-          <Skeleton className="h-6 w-6 rounded-full" />
-          <Skeleton className="h-6 w-6 rounded" />
-          <Skeleton className="h-4 w-32" />
+        <div key={i} className={`flex items-center gap-3 ${padding} hover:bg-muted/20 animate-pulse`}>
+          <Skeleton className={`${rowHeight} w-6 rounded-full`} />
+          <Skeleton className={`${rowHeight} w-6 rounded`} />
+          <Skeleton className={`${headerHeight} w-32`} />
           <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 flex-1">
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 w-8" />
-            <Skeleton className="h-4 w-12 hidden lg:block" />
-            <Skeleton className="h-4 w-12" />
+            <Skeleton className={`${headerHeight} w-8`} />
+            <Skeleton className={`${headerHeight} w-8`} />
+            <Skeleton className={`${headerHeight} w-12 hidden lg:block`} />
+            <Skeleton className={`${headerHeight} w-12`} />
           </div>
-          <Skeleton className="h-4 w-12" />
+          <Skeleton className={`${headerHeight} w-12`} />
         </div>
       ))}
     </div>
