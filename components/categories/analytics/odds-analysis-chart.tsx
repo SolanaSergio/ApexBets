@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, DollarSign } from "lucide-react"
@@ -16,7 +16,7 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
   const [oddsData, setOddsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchOddsData = async () => {
+  const fetchOddsData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -41,11 +41,11 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
     } finally {
       setLoading(false)
     }
-  }
+  }, [team, timeRange, sport, league])
 
   useEffect(() => {
     fetchOddsData()
-  }, [team, timeRange, sport, league, fetchOddsData])
+  }, [fetchOddsData])
 
   if (loading) {
     return (

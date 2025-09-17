@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Target, TrendingUp, CheckCircle } from "lucide-react"
@@ -16,7 +16,7 @@ export default function PredictionAccuracyChart({ team, timeRange, sport, league
   const [accuracyData, setAccuracyData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchAccuracyData = async () => {
+  const fetchAccuracyData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -41,11 +41,11 @@ export default function PredictionAccuracyChart({ team, timeRange, sport, league
     } finally {
       setLoading(false)
     }
-  }
+  }, [team, timeRange, sport, league])
 
   useEffect(() => {
     fetchAccuracyData()
-  }, [team, timeRange, sport, league, fetchAccuracyData])
+  }, [fetchAccuracyData])
 
   if (loading) {
     return (

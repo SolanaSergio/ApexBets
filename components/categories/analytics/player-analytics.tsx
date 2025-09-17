@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { User, TrendingUp, Target } from "lucide-react"
@@ -16,7 +16,7 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
   const [playerData, setPlayerData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchPlayerData = async () => {
+  const fetchPlayerData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -65,11 +65,11 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
     } finally {
       setLoading(false)
     }
-  }
+  }, [team, timeRange, sport, league])
 
   useEffect(() => {
     fetchPlayerData()
-  }, [team, timeRange, sport, league, fetchPlayerData])
+  }, [fetchPlayerData])
 
   if (loading) {
     return (

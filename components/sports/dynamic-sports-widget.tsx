@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -31,9 +31,9 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
 
   useEffect(() => {
     loadSportsData()
-  }, [sport, loadSportsData])
+  }, [loadSportsData])
 
-  const loadSportsData = async () => {
+  const loadSportsData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -54,7 +54,7 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
     } finally {
       setLoading(false)
     }
-  }
+  }, [sport])
 
   if (loading) {
     return <DynamicSportsWidgetSkeleton />

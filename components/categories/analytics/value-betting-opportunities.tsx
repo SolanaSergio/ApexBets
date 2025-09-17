@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { DollarSign, TrendingUp, Target } from "lucide-react"
@@ -28,7 +28,7 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
   const [valueBets, setValueBets] = useState<ValueBet[]>([])
   const [loading, setLoading] = useState(true)
 
-  const fetchValueBets = async () => {
+  const fetchValueBets = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -43,11 +43,11 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
     } finally {
       setLoading(false)
     }
-  }
+  }, [timeRange, sport, league])
 
   useEffect(() => {
     fetchValueBets()
-  }, [timeRange, sport, league, fetchValueBets])
+  }, [fetchValueBets])
 
   if (loading) {
     return (

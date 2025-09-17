@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -50,18 +50,7 @@ export default function AnalyticsDashboard({
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  useEffect(() => {
-    loadSupportedSports()
-  }, [loadSupportedSports])
-
-  useEffect(() => {
-    if (selectedSport) {
-      fetchAnalyticsOverview()
-      loadAvailableTeams()
-    }
-  }, [timeRange, selectedSport, selectedLeague, fetchAnalyticsOverview, loadAvailableTeams])
-
-  const loadSupportedSports = () => {
+  const loadSupportedSports = useCallback(() => {
     try {
       const sports = SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
@@ -72,9 +61,9 @@ export default function AnalyticsDashboard({
     } catch (error) {
       console.error('Error loading supported sports:', error)
     }
-  }
+  }, [selectedSport])
 
-  const loadAvailableTeams = async () => {
+  const loadAvailableTeams = useCallback(async () => {
     if (!selectedSport) return
     try {
       const teams = await simpleApiClient.getTeams({ sport: selectedSport, league: selectedLeague })
@@ -83,9 +72,9 @@ export default function AnalyticsDashboard({
       console.error('Error loading available teams:', error)
       setAvailableTeams([])
     }
-  }
+  }, [selectedSport, selectedLeague])
 
-  const fetchAnalyticsOverview = async () => {
+  const fetchAnalyticsOverview = useCallback(async () => {
     try {
       setLoading(true)
       const data = await simpleApiClient.getAnalyticsStats(selectedSport)
@@ -118,7 +107,18 @@ export default function AnalyticsDashboard({
     } finally {
       setLoading(false)
     }
-  }
+  }, [selectedSport])
+
+  useEffect(() => {
+    loadSupportedSports()
+  }, [loadSupportedSports])
+
+  useEffect(() => {
+    if (selectedSport) {
+      fetchAnalyticsOverview()
+      loadAvailableTeams()
+    }
+  }, [selectedSport, selectedLeague, fetchAnalyticsOverview, loadAvailableTeams])
 
   const refreshData = () => {
     fetchAnalyticsOverview()

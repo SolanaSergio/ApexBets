@@ -59,7 +59,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     } finally {
       setLoading(false)
     }
-  }, [sport, loadLiveGames, loadValueBets, loadOddsUpdates]);
+  }, [loadLiveGames, loadValueBets, loadOddsUpdates]);
 
   useEffect(() => {
     loadLiveData()
@@ -68,16 +68,16 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     return () => clearInterval(interval)
   }, [loadLiveData])
 
-  const loadLiveGames = async () => {
+  const loadLiveGames = useCallback(async () => {
     try {
       const games = await unifiedApiClient.getLiveGames(sport)
       setLiveGames(games)
     } catch (error) {
       console.error('Error loading live games:', error)
     }
-  }
+  }, [sport])
 
-  const loadValueBets = async () => {
+  const loadValueBets = useCallback(async () => {
     try {
       const response = await fetch(`/api/value-bets?sport=${sport}&min_value=0.05`)
       const data = await response.json()
@@ -85,9 +85,9 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     } catch (error) {
       console.error('Error loading value bets:', error)
     }
-  }
+  }, [sport])
 
-  const loadOddsUpdates = async () => {
+  const loadOddsUpdates = useCallback(async () => {
     try {
       const response = await fetch(`/api/odds?sport=${sport}`)
       const data = await response.json()
@@ -95,7 +95,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     } catch (error) {
       console.error('Error loading odds updates:', error)
     }
-  }
+  }, [sport])
 
   const handleRefresh = async () => {
     setRefreshing(true)
