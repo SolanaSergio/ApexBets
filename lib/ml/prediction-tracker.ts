@@ -327,14 +327,15 @@ export class PredictionTracker {
       
       // Analyze each model
       Object.entries(modelGroups).forEach(([modelKey, predictions]) => {
-        if (predictions.length < 5) {
+        const typedPredictions = predictions as any[]
+        if (typedPredictions.length < 5) {
           // Not enough data
           modelHealthScores[modelKey] = 0.5
           return
         }
         
-        const accuracy = predictions.filter(p => p.is_correct).length / predictions.length
-        const avgConfidence = predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length
+        const accuracy = typedPredictions.filter((p: any) => p.is_correct).length / typedPredictions.length
+        const avgConfidence = typedPredictions.reduce((sum: number, p: any) => sum + p.confidence, 0) / typedPredictions.length
         
         // Calculate health score
         const healthScore = (accuracy * 0.7) + (avgConfidence * 0.3)
@@ -351,7 +352,7 @@ export class PredictionTracker {
           recommendedActions.push(`Recalibrate confidence intervals for ${modelKey}`)
         }
         
-        if (predictions.length > 20 && accuracy > 0.8) {
+        if (typedPredictions.length > 20 && accuracy > 0.8) {
           // Good performance
           // No alert needed, but could log success
         }
@@ -486,7 +487,7 @@ export class PredictionTracker {
     
     const result: Record<string, PredictionMetrics> = {}
     Object.entries(seasons).forEach(([season, preds]) => {
-      result[season] = this.calculateMetrics(preds, `Season ${season}`, sport, league)
+      result[season] = this.calculateMetrics(preds as any[], `Season ${season}`, sport, league)
     })
     
     return result
@@ -504,7 +505,7 @@ export class PredictionTracker {
     
     const result: Record<string, PredictionMetrics> = {}
     Object.entries(gameTypes).forEach(([type, preds]) => {
-      result[type] = this.calculateMetrics(preds, type, sport, league)
+      result[type] = this.calculateMetrics(preds as any[], type, sport, league)
     })
     
     return result

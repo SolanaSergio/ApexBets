@@ -45,29 +45,6 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
   const [oddsUpdates, setOddsUpdates] = useState<any[]>([])
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
-  const loadLiveData = useCallback(async () => {
-    try {
-      setLoading(true)
-      await Promise.all([
-        loadLiveGames(),
-        loadValueBets(),
-        loadOddsUpdates()
-      ])
-      setLastUpdate(new Date())
-    } catch (error) {
-      console.error('Error loading live data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [loadLiveGames, loadValueBets, loadOddsUpdates]);
-
-  useEffect(() => {
-    loadLiveData()
-    // Set up auto-refresh every 30 seconds
-    const interval = setInterval(loadLiveData, 30000)
-    return () => clearInterval(interval)
-  }, [loadLiveData])
-
   const loadLiveGames = useCallback(async () => {
     try {
       const games = await unifiedApiClient.getLiveGames(sport)
@@ -96,6 +73,29 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
       console.error('Error loading odds updates:', error)
     }
   }, [sport])
+
+  const loadLiveData = useCallback(async () => {
+    try {
+      setLoading(true)
+      await Promise.all([
+        loadLiveGames(),
+        loadValueBets(),
+        loadOddsUpdates()
+      ])
+      setLastUpdate(new Date())
+    } catch (error) {
+      console.error('Error loading live data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [loadLiveGames, loadValueBets, loadOddsUpdates])
+
+  useEffect(() => {
+    loadLiveData()
+    // Set up auto-refresh every 30 seconds
+    const interval = setInterval(loadLiveData, 30000)
+    return () => clearInterval(interval)
+  }, [loadLiveData])
 
   const handleRefresh = async () => {
     setRefreshing(true)

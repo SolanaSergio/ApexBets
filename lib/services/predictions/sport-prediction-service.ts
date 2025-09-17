@@ -205,7 +205,11 @@ export class SportPredictionService {
   private async generateMLPrediction(homeStats: any, awayStats: any, gameData: any): Promise<PredictionResult> {
     try {
       // Import advanced ML algorithms
-      const { EnsembleModel, TeamStats, GameContext } = await import('@/lib/ml/prediction-algorithms')
+      const { EnsembleModel } = await import('@/lib/ml/prediction-algorithms')
+      
+      // Import types for TypeScript (these are interfaces, not runtime values)
+      type TeamStats = import('@/lib/ml/prediction-algorithms').TeamStats
+      type GameContext = import('@/lib/ml/prediction-algorithms').GameContext
       
       // Convert stats to TeamStats format
       const homeTeamStats: TeamStats = {

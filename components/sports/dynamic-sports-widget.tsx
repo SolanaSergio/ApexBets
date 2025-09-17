@@ -29,10 +29,6 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
 
-  useEffect(() => {
-    loadSportsData()
-  }, [loadSportsData])
-
   const loadSportsData = useCallback(async () => {
     try {
       setLoading(true)
@@ -55,6 +51,10 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
       setLoading(false)
     }
   }, [sport])
+
+  useEffect(() => {
+    loadSportsData()
+  }, [loadSportsData])
 
   if (loading) {
     return <DynamicSportsWidgetSkeleton />

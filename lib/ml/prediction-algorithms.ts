@@ -375,7 +375,7 @@ export class LogisticRegressionModel {
     return importance
   }
   
-  private static generateFactors(featureDiff: number[], homeStats: TeamStats, awayStats: TeamStats): string[] {
+  private static generateFactors(featureDiff: number[], _homeStats: TeamStats, _awayStats: TeamStats): string[] {
     const factors: string[] = []
     
     if (Math.abs(featureDiff[0]) > 0.1) {
