@@ -175,7 +175,6 @@ export class TeamStrengthRating {
     if (!recentForm.length) return 0.5
     
     const recentGames = recentForm.slice(-5)
-    const wins = recentGames.filter(result => result === 'W').length
     
     // Weight more recent games higher
     let weightedScore = 0

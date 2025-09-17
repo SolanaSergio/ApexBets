@@ -4,19 +4,19 @@
  * CLEAN DASHBOARD COMPONENT
  * 
  * ================================================================================
- * CRITICAL: HARDCODED DEFAULT SPORT FOR INITIAL DASHBOARD LOAD
+ * COMPLIANT: NO HARDCODED SPORTS - ENVIRONMENT/CONFIGURATION BASED
  * ================================================================================
  * 
- * This component contains ONE hardcoded sport value ('baseball') as a fallback
- * to ensure the dashboard loads when no sport configuration is available. This is 
- * the ONLY hardcoded sport value in the entire application.
+ * This component is fully compliant with the NO HARDCODED SPORT rules.
+ * All sport handling is dynamic and uses environment/configuration sources.
  * 
- * PURPOSE: The hardcoded value is used ONLY for:
- * 1. Initial component state when no defaultSport prop is provided
- * 2. Fallback when SportConfigManager fails to load supported sports
- * 3. Emergency fallback when database/configuration is completely unavailable
+ * PURPOSE: Sport selection uses this priority chain:
+ * 1. defaultSport prop (passed from parent)
+ * 2. First sport from SportConfigManager.getSupportedSports()
+ * 3. First sport from NEXT_PUBLIC_SUPPORTED_SPORTS environment variable
+ * 4. If all fail, shows sport selection UI (no default sport)
  * 
- * DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
+ * DYNAMIC GUARANTEE: All sport handling is completely dynamic:
  * - Dynamic sport loading from SportConfigManager
  * - User sport selection changes (users can select any sport)
  * - API data fetching (all data is loaded dynamically based on selected sport)
@@ -25,9 +25,9 @@
  * - Data normalization (all data is processed dynamically)
  * - Error handling (all errors are handled dynamically)
  * 
- * FALLBACK CHAIN: defaultSport prop → SportConfigManager → hardcoded 'baseball'
+ * FALLBACK CHAIN: defaultSport prop → SportConfigManager → environment → null (sport selection UI)
  * 
- * All subsequent behavior after initialization is completely dynamic and sport-agnostic.
+ * All behavior is completely dynamic and sport-agnostic with no hardcoded values.
  * ================================================================================
  */
 
@@ -71,25 +71,26 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const [mounted, setMounted] = useState(false)
   
   // ============================================================================
-  // CRITICAL: HARDCODED DEFAULT SPORT FOR INITIAL DASHBOARD LOAD
+  // COMPLIANT: NO HARDCODED SPORT - USING ENVIRONMENT/CONFIGURATION ONLY
   // ============================================================================
-  // This is the ONLY hardcoded sport value in the entire application.
+  // Updated to be fully compliant with NO HARDCODED SPORT rules.
   // 
-  // PURPOSE: Ensures the dashboard always loads with a valid sport when:
-  // 1. No defaultSport prop is provided
-  // 2. SportConfigManager fails to load supported sports
-  // 3. Database/configuration is unavailable
+  // PURPOSE: Gets default sport from environment or configuration only:
+  // 1. Use defaultSport prop if provided
+  // 2. Use first sport from SportConfigManager supported sports
+  // 3. Use first sport from SUPPORTED_SPORTS environment variable
+  // 4. If all fail, component will show "no sport selected" state
   //
-  // DYNAMIC BEHAVIOR: This hardcoded value does NOT affect:
+  // DYNAMIC BEHAVIOR: All sport handling is completely dynamic:
   // - Dynamic sport loading from SportConfigManager
   // - User sport selection changes
   // - API data fetching (all data is loaded dynamically based on selected sport)
   // - Real-time updates (all updates are sport-agnostic)
   // - Multi-sport support (dashboard supports all configured sports)
   //
-  // FALLBACK CHAIN: defaultSport prop → SportConfigManager → hardcoded 'baseball'
+  // FALLBACK CHAIN: defaultSport prop → SportConfigManager → environment → null (shows selection UI)
   // ============================================================================
-  const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(defaultSport || 'baseball')
+  const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(defaultSport)
   const [activeTab, setActiveTab] = useState("overview")
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -572,8 +573,15 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           //
           // This is purely for initial component state - all subsequent behavior is dynamic.
           // ========================================================================
-          console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
-          setSelectedSupportedSport('baseball' as SupportedSport)
+          // Use environment configuration instead of hardcoded sports
+          const envSports = (process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || '').split(',').filter(Boolean)
+          if (envSports.length > 0) {
+            console.warn('No supported sports found in configuration, using environment fallback:', envSports[0])
+            setSelectedSupportedSport(envSports[0] as SupportedSport)
+          } else {
+            console.warn('No supported sports found in configuration or environment, showing sport selection UI')
+            setSelectedSupportedSport(null)
+          }
         }
       }
     } catch (error) {
@@ -604,8 +612,15 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           //
           // This is purely for initial component state - all subsequent behavior is dynamic.
           // ========================================================================
-          console.warn('No supported sports found in configuration, using hardcoded fallback: baseball')
-          setSelectedSupportedSport('baseball' as SupportedSport)
+          // Use environment configuration instead of hardcoded sports
+          const envSports = (process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || '').split(',').filter(Boolean)
+          if (envSports.length > 0) {
+            console.warn('No supported sports found in configuration, using environment fallback:', envSports[0])
+            setSelectedSupportedSport(envSports[0] as SupportedSport)
+          } else {
+            console.warn('No supported sports found in configuration or environment, showing sport selection UI')
+            setSelectedSupportedSport(null)
+          }
         }
       }
     }

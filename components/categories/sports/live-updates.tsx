@@ -59,7 +59,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
     } finally {
       setLoading(false)
     }
-  }, [sport]);
+  }, [sport, loadLiveGames, loadValueBets, loadOddsUpdates]);
 
   useEffect(() => {
     loadLiveData()

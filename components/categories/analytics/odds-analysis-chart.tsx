@@ -45,7 +45,7 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
 
   useEffect(() => {
     fetchOddsData()
-  }, [team, timeRange, sport, league])
+  }, [team, timeRange, sport, league, fetchOddsData])
 
   if (loading) {
     return (

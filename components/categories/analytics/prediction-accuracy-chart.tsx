@@ -45,7 +45,7 @@ export default function PredictionAccuracyChart({ team, timeRange, sport, league
 
   useEffect(() => {
     fetchAccuracyData()
-  }, [team, timeRange, sport, league])
+  }, [team, timeRange, sport, league, fetchAccuracyData])
 
   if (loading) {
     return (

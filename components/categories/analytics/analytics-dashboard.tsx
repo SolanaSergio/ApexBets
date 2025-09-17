@@ -52,14 +52,14 @@ export default function AnalyticsDashboard({
 
   useEffect(() => {
     loadSupportedSports()
-  }, [])
+  }, [loadSupportedSports])
 
   useEffect(() => {
     if (selectedSport) {
       fetchAnalyticsOverview()
       loadAvailableTeams()
     }
-  }, [timeRange, selectedSport, selectedLeague])
+  }, [timeRange, selectedSport, selectedLeague, fetchAnalyticsOverview, loadAvailableTeams])
 
   const loadSupportedSports = () => {
     try {

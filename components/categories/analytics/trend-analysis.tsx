@@ -45,7 +45,7 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
 
   useEffect(() => {
     fetchTrendData()
-  }, [team, timeRange, sport, league])
+  }, [team, timeRange, sport, league, fetchTrendData])
 
   if (loading) {
     return (

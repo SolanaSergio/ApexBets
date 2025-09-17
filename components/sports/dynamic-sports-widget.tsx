@@ -31,7 +31,7 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
 
   useEffect(() => {
     loadSportsData()
-  }, [sport])
+  }, [sport, loadSportsData])
 
   const loadSportsData = async () => {
     try {
