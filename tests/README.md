@@ -140,7 +140,7 @@ NEXT_PUBLIC_APP_NAME=ApexBets
 ### Development Server
 Make sure your development server is running:
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## 🚨 Troubleshooting

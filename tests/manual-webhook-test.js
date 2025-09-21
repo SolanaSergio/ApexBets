@@ -1,7 +1,7 @@
 /**
  * Manual webhook authentication test
  * Run this with: node tests/manual-webhook-test.js
- * Make sure the dev server is running: npm run dev
+ * Make sure the dev server is running: pnpm run dev
  */
 
 const { hmacWebhookAuthenticator } = require('../lib/security/hmac-webhook-authenticator')
@@ -156,7 +156,7 @@ async function checkServer() {
       return true
     }
   } catch (error) {
-    console.log('❌ Server is not running. Please start with: npm run dev\n')
+    console.log('❌ Server is not running. Please start with: pnpm run dev\n')
     return false
   }
 }

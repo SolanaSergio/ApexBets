@@ -1,0 +1,44 @@
+{
+  "autoStartup": {
+    "enabled": true,
+    "monitoring": {
+      "enabled": true,
+      "intervalMinutes": 5,
+      "alerts": {
+        "enabled": true,
+        "severity": ["high", "critical"]
+      }
+    },
+    "dataQuality": {
+      "enabled": true,
+      "autoCleanup": true,
+      "integrityChecks": true
+    },
+    "healthChecks": {
+      "enabled": true,
+      "intervalMinutes": 10
+    },
+    "startupDelay": 5000,
+    "retryAttempts": 3
+  },
+  "environments": {
+    "development": {
+      "monitoring": {
+        "intervalMinutes": 2
+      },
+      "dataQuality": {
+        "autoCleanup": true
+      },
+      "startupDelay": 5000
+    },
+    "production": {
+      "monitoring": {
+        "intervalMinutes": 10
+      },
+      "dataQuality": {
+        "autoCleanup": true
+      },
+      "startupDelay": 10000
+    }
+  }
+}

@@ -16,14 +16,20 @@
     "pnpm": ">=8.0.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "pnpm run build:server && node server.js",
+    "dev:next": "next dev",
     "build": "next build",
-    "start": "next start",
+    "build:server": "tsc -p tsconfig.server.json && powershell -Command \"Copy-Item startup.config.json dist/server/\"",
+    "build:all": "pnpm run build:server && pnpm run build",
+    "start": "pnpm run build:server && node server.js",
+    "start:next": "next start",
     "lint": "next lint --fix",
     "type-check": "tsc --noEmit",
+    "type-check:server": "tsc -p tsconfig.server.json --noEmit",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "clean": "rm -rf .next out",
+    "clean": "rm -rf .next out dist",
+    "clean:server": "rm -rf dist/server",
     "setup": "node scripts/setup-environment.js",
     "setup:database": "node scripts/setup-database-simple.js",
     "populate:data": "node scripts/populate-real-data.js",
@@ -41,7 +47,11 @@
     "mcp:start": "node supabase-mcp-server.js",
     "mcp:dev": "nodemon supabase-mcp-server.js",
     "mcp:test": "node test-mcp-server.js",
-    "mcp:setup": "node scripts/setup/setup-mcp-database.js"
+    "mcp:setup": "node scripts/setup/setup-mcp-database.js",
+    "startup:status": "curl http://localhost:3000/api/startup?action=status",
+    "startup:health": "curl http://localhost:3000/api/startup?action=health",
+    "startup:restart": "curl -X GET http://localhost:3000/api/startup?action=restart",
+    "startup:stop": "curl -X GET http://localhost:3000/api/startup?action=stop"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

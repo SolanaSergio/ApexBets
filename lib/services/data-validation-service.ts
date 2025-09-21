@@ -1,357 +1,277 @@
 /**
- * DATA VALIDATION SERVICE
- * Ensures all game data is accurate and prevents false live games
- * Validates game statuses, scores, and timing before displaying
+ * Data Validation Service
+ * Comprehensive validation for all data entry points to prevent duplicates and ensure data integrity
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod';
+
+// Validation schemas for different data types
+export const TeamValidationSchema = z.object({
+  name: z.string().min(1).max(255).trim(),
+  city: z.string().max(100).trim().optional(),
+  league: z.string().min(1).max(100).trim(),
+  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
+  abbreviation: z.string().max(10).trim().optional(),
+  logo_url: z.string().url().optional(),
+  conference: z.string().max(50).trim().optional(),
+  division: z.string().max(50).trim().optional(),
+  founded_year: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
+  stadium_name: z.string().max(200).trim().optional(),
+  stadium_capacity: z.number().int().min(0).max(200000).optional(),
+  primary_color: z.string().max(20).trim().optional(),
+  secondary_color: z.string().max(20).trim().optional(),
+  country: z.string().max(100).trim().default('US'),
+  is_active: z.boolean().default(true)
+});
+
+export const GameValidationSchema = z.object({
+  home_team_id: z.string().uuid(),
+  away_team_id: z.string().uuid(),
+  game_date: z.string().datetime(),
+  season: z.string().min(1).max(20).trim(),
+  week: z.number().int().min(1).max(52).optional(),
+  home_score: z.number().int().min(0).max(999).optional(),
+  away_score: z.number().int().min(0).max(999).optional(),
+  status: z.enum(['scheduled', 'live', 'completed', 'postponed', 'cancelled']).default('scheduled'),
+  venue: z.string().max(200).trim().optional(),
+  weather_conditions: z.record(z.any()).optional(),
+  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
+  league: z.string().max(100).trim().optional(),
+  game_type: z.string().max(50).trim().default('regular'),
+  round: z.string().max(50).trim().optional(),
+  series_game: z.number().int().min(1).optional(),
+  overtime_periods: z.number().int().min(0).max(10).default(0),
+  attendance: z.number().int().min(0).max(200000).optional(),
+  referee_crew: z.record(z.any()).optional(),
+  game_notes: z.string().max(1000).trim().optional()
+});
+
+export const OddsValidationSchema = z.object({
+  game_id: z.string().uuid(),
+  source: z.string().min(1).max(100).trim(),
+  odds_type: z.string().min(1).max(50).trim(),
+  home_odds: z.number().positive().max(1000).optional(),
+  away_odds: z.number().positive().max(1000).optional(),
+  spread: z.number().optional(),
+  total: z.number().positive().optional(),
+  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
+  league: z.string().max(100).trim().optional(),
+  prop_bets: z.record(z.any()).optional(),
+  live_odds: z.boolean().default(false),
+  odds_movement: z.record(z.any()).optional()
+});
 
 export interface ValidationResult {
-  isValid: boolean
-  errors: string[]
-  warnings: string[]
-  correctedData?: any
-}
-
-export interface GameValidationRules {
-  maxHoursBeforeLive: number // Hours before game start to consider as live
-  maxHoursAfterStart: number // Hours after game start to consider as live
-  minScoreForLive: number // Minimum score required to show as live
-  requireRealScores: boolean // Must have actual scores to show as live
-  requireTimeValidation: boolean // Must validate game timing
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  data?: any;
 }
 
 export class DataValidationService {
-  private rules: GameValidationRules
+  private static instance: DataValidationService;
+  private validationCache = new Map<string, any>();
 
-  constructor(rules: Partial<GameValidationRules> = {}) {
-    this.rules = {
-      maxHoursBeforeLive: 0.5, // 30 minutes before start
-      maxHoursAfterStart: 4, // 4 hours after start
-      minScoreForLive: 0, // Any score is valid
-      requireRealScores: true, // Must have real scores
-      requireTimeValidation: true,
-      ...rules
+  static getInstance(): DataValidationService {
+    if (!DataValidationService.instance) {
+      DataValidationService.instance = new DataValidationService();
     }
+    return DataValidationService.instance;
   }
 
   /**
-   * Validate a single game for accuracy
+   * Validate team data
    */
-  validateGame(game: any): ValidationResult {
-    const errors: string[] = []
-    const warnings: string[] = []
-    let isValid = true
-
-    // Check if game has required fields
-    if (!game.id) {
-      errors.push('Game missing ID')
-      isValid = false
-    }
-
-    if (!game.game_date) {
-      errors.push('Game missing date')
-      isValid = false
-    }
-
-    if (!game.status) {
-      errors.push('Game missing status')
-      isValid = false
-    }
-
-    // Validate game timing
-    if (this.rules.requireTimeValidation && game.game_date) {
-      const gameTime = new Date(game.game_date)
-      const now = new Date()
-      const hoursDiff = (now.getTime() - gameTime.getTime()) / (1000 * 60 * 60)
-
-      // Check if game is too far in the future to be live
-      if (hoursDiff < -this.rules.maxHoursBeforeLive) {
-        if (game.status === 'live' || game.status === 'in_progress') {
-          errors.push(`Game marked as live but starts in ${Math.abs(hoursDiff).toFixed(1)} hours`)
-          isValid = false
-        }
-      }
-
-      // Check if game is too old to be live
-      if (hoursDiff > this.rules.maxHoursAfterStart) {
-        if (game.status === 'live' || game.status === 'in_progress') {
-          errors.push(`Game marked as live but started ${hoursDiff.toFixed(1)} hours ago`)
-          isValid = false
-        }
-      }
-    }
-
-    // Validate scores for live games
-    if (game.status === 'live' || game.status === 'in_progress') {
-      if (this.rules.requireRealScores) {
-        const hasHomeScore = game.home_score !== null && game.home_score !== undefined
-        const hasAwayScore = game.away_score !== null && game.away_score !== undefined
-
-        if (!hasHomeScore || !hasAwayScore) {
-          errors.push('Live game missing scores')
-          isValid = false
-        }
-
-        // Check if scores are realistic
-        if (hasHomeScore && hasAwayScore) {
-          if (game.home_score < 0 || game.away_score < 0) {
-            errors.push('Game has negative scores')
-            isValid = false
-          }
-
-          // Sport-specific score validation
-          if (game.sport === 'basketball') {
-            if (game.home_score > 200 || game.away_score > 200) {
-              warnings.push('Unusually high basketball scores')
-            }
-          } else if (game.sport === 'football') {
-            if (game.home_score > 100 || game.away_score > 100) {
-              warnings.push('Unusually high football scores')
-            }
-          }
-        }
-      }
-    }
-
-    // Validate status consistency
-    if (game.status === 'completed' || game.status === 'finished') {
-      if (game.home_score === null || game.away_score === null) {
-        warnings.push('Completed game missing final scores')
-      }
-    }
-
-    // Create corrected data if needed
-    let correctedData = null
-    if (!isValid && errors.length > 0) {
-      correctedData = {
-        ...game,
-        status: this.correctGameStatus(game),
-        home_score: this.correctScore(game.home_score),
-        away_score: this.correctScore(game.away_score)
-      }
-    }
-
-    return {
-      isValid,
-      errors,
-      warnings,
-      correctedData
-    }
-  }
-
-  /**
-   * Validate multiple games
-   */
-  validateGames(games: any[]): { valid: any[], invalid: any[], corrected: any[] } {
-    const valid: any[] = []
-    const invalid: any[] = []
-    const corrected: any[] = []
-
-    for (const game of games) {
-      const validation = this.validateGame(game)
-      
-      if (validation.isValid) {
-        valid.push(game)
-      } else if (validation.correctedData) {
-        corrected.push(validation.correctedData)
-      } else {
-        invalid.push(game)
-      }
-    }
-
-    return { valid, invalid, corrected }
-  }
-
-  /**
-   * Validate live games specifically
-   */
-  validateLiveGames(games: any[]): any[] {
-    return games.filter(game => {
-      const validation = this.validateGame(game)
-      
-      // Only include games that are truly live and valid
-      const isLive = game.status === 'live' || game.status === 'in_progress'
-      const hasValidScores = game.home_score > 0 || game.away_score > 0
-      const isRecent = this.isGameRecent(game)
-      
-      return isLive && validation.isValid && (hasValidScores || !this.rules.requireRealScores) && isRecent
-    })
-  }
-
-  /**
-   * Check if game is recent enough to be considered live
-   */
-  private isGameRecent(game: any): boolean {
-    if (!game.game_date) return false
-    
-    const gameTime = new Date(game.game_date)
-    const now = new Date()
-    const hoursDiff = (now.getTime() - gameTime.getTime()) / (1000 * 60 * 60)
-    
-    return hoursDiff >= -this.rules.maxHoursBeforeLive && hoursDiff <= this.rules.maxHoursAfterStart
-  }
-
-  /**
-   * Correct game status based on timing and scores
-   */
-  private correctGameStatus(game: any): string {
-    if (!game.game_date) return 'scheduled'
-    
-    const gameTime = new Date(game.game_date)
-    const now = new Date()
-    const hoursDiff = (now.getTime() - gameTime.getTime()) / (1000 * 60 * 60)
-    
-    // Game hasn't started yet
-    if (hoursDiff < -this.rules.maxHoursBeforeLive) {
-      return 'scheduled'
-    }
-    
-    // Game is in progress
-    if (hoursDiff >= -this.rules.maxHoursBeforeLive && hoursDiff <= this.rules.maxHoursAfterStart) {
-      return 'in_progress'
-    }
-    
-    // Game is too old
-    return 'completed'
-  }
-
-  /**
-   * Correct score values
-   */
-  private correctScore(score: any): number {
-    if (score === null || score === undefined) return 0
-    if (typeof score !== 'number') return 0
-    if (score < 0) return 0
-    return score
-  }
-
-  /**
-   * Get validation statistics
-   */
-  async getValidationStats(): Promise<{
-    totalGames: number
-    validGames: number
-    invalidGames: number
-    correctedGames: number
-    liveGames: number
-    lastValidation: Date
-  }> {
-    const supabase = await createClient()
-    if (!supabase) {
-      throw new Error('Supabase client not available')
-    }
-
-    const { data: allGames } = await supabase
-      .from('games')
-      .select('id, status, game_date, home_score, away_score')
-      .gte('updated_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
-
-    if (!allGames) {
+  validateTeam(data: any): ValidationResult {
+    try {
+      const validatedData = TeamValidationSchema.parse(data);
       return {
-        totalGames: 0,
-        validGames: 0,
-        invalidGames: 0,
-        correctedGames: 0,
-        liveGames: 0,
-        lastValidation: new Date()
+        isValid: true,
+        errors: [],
+        warnings: this.generateTeamWarnings(validatedData),
+        data: validatedData
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: this.extractValidationErrors(error),
+        warnings: [],
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Validate game data
+   */
+  validateGame(data: any): ValidationResult {
+    try {
+      const validatedData = GameValidationSchema.parse(data);
+      return {
+        isValid: true,
+        errors: [],
+        warnings: this.generateGameWarnings(validatedData),
+        data: validatedData
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: this.extractValidationErrors(error),
+        warnings: [],
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Validate odds data
+   */
+  validateOdds(data: any): ValidationResult {
+    try {
+      const validatedData = OddsValidationSchema.parse(data);
+      return {
+        isValid: true,
+        errors: [],
+        warnings: this.generateOddsWarnings(validatedData),
+        data: validatedData
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: this.extractValidationErrors(error),
+        warnings: [],
+        data: null
+      };
+    }
+  }
+
+  /**
+   * Validate data based on type
+   */
+  validateData(type: 'team' | 'game' | 'odds', data: any): ValidationResult {
+    const cacheKey = `${type}_${JSON.stringify(data)}`;
+    
+    if (this.validationCache.has(cacheKey)) {
+      return this.validationCache.get(cacheKey);
+    }
+
+    let result: ValidationResult;
+    
+    switch (type) {
+      case 'team':
+        result = this.validateTeam(data);
+        break;
+      case 'game':
+        result = this.validateGame(data);
+        break;
+      case 'odds':
+        result = this.validateOdds(data);
+        break;
+      default:
+        result = {
+          isValid: false,
+          errors: ['Unknown validation type'],
+          warnings: [],
+          data: null
+        };
+    }
+
+    // Cache result for 5 minutes
+    this.validationCache.set(cacheKey, result);
+    setTimeout(() => this.validationCache.delete(cacheKey), 5 * 60 * 1000);
+
+    return result;
+  }
+
+  /**
+   * Batch validate multiple records
+   */
+  validateBatch(type: 'team' | 'game' | 'odds', dataArray: any[]): {
+    valid: any[];
+    invalid: { data: any; errors: string[] }[];
+    warnings: string[];
+  } {
+    const valid: any[] = [];
+    const invalid: { data: any; errors: string[] }[] = [];
+    const allWarnings: string[] = [];
+
+    for (const data of dataArray) {
+      const result = this.validateData(type, data);
+      
+      if (result.isValid) {
+        valid.push(result.data);
+        allWarnings.push(...result.warnings);
+      } else {
+        invalid.push({ data, errors: result.errors });
       }
     }
 
-    const validation = this.validateGames(allGames)
-    const liveGames = this.validateLiveGames(allGames)
+    return { valid, invalid, warnings: allWarnings };
+  }
 
-    return {
-      totalGames: allGames.length,
-      validGames: validation.valid.length,
-      invalidGames: validation.invalid.length,
-      correctedGames: validation.corrected.length,
-      liveGames: liveGames.length,
-      lastValidation: new Date()
+  private extractValidationErrors(error: any): string[] {
+    if (error instanceof z.ZodError) {
+      return error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
     }
+    return [error.message || 'Unknown validation error'];
   }
 
-  /**
-   * Update validation rules
-   */
-  updateRules(newRules: Partial<GameValidationRules>): void {
-    this.rules = { ...this.rules, ...newRules }
-  }
-
-  /**
-   * Get current validation rules
-   */
-  getRules(): GameValidationRules {
-    return { ...this.rules }
-  }
-
-  /**
-   * Validate component data access
-   */
-  async validateComponentDataAccess(_component: string): Promise<{
-    hasRequiredData: boolean
-    dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
-    missingFields: string[]
-    recommendations: string[]
-  }> {
-    // Mock implementation for now
-    return {
-      hasRequiredData: true,
-      dataQuality: 'good',
-      missingFields: [],
-      recommendations: []
+  private generateTeamWarnings(data: any): string[] {
+    const warnings: string[] = [];
+    
+    if (!data.logo_url) {
+      warnings.push('Team missing logo URL');
     }
-  }
-
-  /**
-   * Validate all components
-   */
-  async validateAllComponents(): Promise<Array<{
-    component: string
-    hasRequiredData: boolean
-    dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
-    missingFields: string[]
-  }>> {
-    const components = ['dashboard', 'games', 'teams', 'players', 'standings']
-    const results = []
-
-    for (const component of components) {
-      const validation = await this.validateComponentDataAccess(component)
-      results.push({
-        component,
-        ...validation
-      })
+    
+    if (!data.abbreviation) {
+      warnings.push('Team missing abbreviation');
     }
+    
+    if (data.founded_year && data.founded_year < 1900) {
+      warnings.push('Team founded year seems unusually early');
+    }
+    
+    return warnings;
+  }
 
-    return results
+  private generateGameWarnings(data: any): string[] {
+    const warnings: string[] = [];
+    
+    if (data.home_team_id === data.away_team_id) {
+      warnings.push('Home team and away team are the same');
+    }
+    
+    if (data.game_date && new Date(data.game_date) > new Date()) {
+      warnings.push('Game date is in the future');
+    }
+    
+    if (data.status === 'completed' && (data.home_score === null || data.away_score === null)) {
+      warnings.push('Completed game missing scores');
+    }
+    
+    return warnings;
+  }
+
+  private generateOddsWarnings(data: any): string[] {
+    const warnings: string[] = [];
+    
+    if (data.home_odds && data.away_odds && Math.abs(data.home_odds - data.away_odds) > 50) {
+      warnings.push('Large odds difference between teams');
+    }
+    
+    if (data.spread && Math.abs(data.spread) > 50) {
+      warnings.push('Very large spread value');
+    }
+    
+    return warnings;
   }
 
   /**
-   * Get data population recommendations
+   * Clear validation cache
    */
-  async getDataPopulationRecommendations(): Promise<Array<{
-    component: string
-    priority: 'high' | 'medium' | 'low'
-    action: string
-    description: string
-  }>> {
-    // Mock implementation for now
-    return [
-      {
-        component: 'games',
-        priority: 'high',
-        action: 'Update live scores',
-        description: 'Ensure real-time game data is being fetched'
-      },
-      {
-        component: 'teams',
-        priority: 'medium',
-        action: 'Refresh team rosters',
-        description: 'Update player information for all teams'
-      }
-    ]
+  clearCache(): void {
+    this.validationCache.clear();
   }
 }
 
-// Export singleton instance
-export const dataValidationService = new DataValidationService()
+export const dataValidationService = DataValidationService.getInstance();

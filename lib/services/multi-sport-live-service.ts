@@ -203,7 +203,12 @@ export class MultiSportLiveService {
       // Validate live games if enabled
       let validatedLiveGames = normalizedLiveGames
       if (this.config.validationEnabled) {
-        validatedLiveGames = dataValidationService.validateLiveGames(normalizedLiveGames)
+        const validationResult = dataValidationService.validateGame(normalizedLiveGames)
+        if (validationResult.isValid) {
+          validatedLiveGames = validationResult.data
+        } else {
+          console.warn(`Validation failed for ${sport} live games:`, validationResult.errors)
+        }
       }
 
       const duration = Date.now() - startTime

@@ -41,8 +41,6 @@ A comprehensive sports betting analytics platform built with Next.js, featuring 
 
 2. **Install dependencies**
    ```bash
-   npm install
-   # or
    pnpm install
    ```
 
@@ -80,7 +78,7 @@ A comprehensive sports betting analytics platform built with Next.js, featuring 
 
 6. **Start the development server**
    ```bash
-   npm run dev
+   pnpm run dev
    ```
 
 ## 🔑 API Keys Setup
@@ -232,8 +230,8 @@ docker run -p 3000:3000 apexbets
 
 ### Manual Deployment
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
 
 ## 📊 Monitoring

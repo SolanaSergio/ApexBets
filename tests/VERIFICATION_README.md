@@ -33,8 +33,8 @@ The verification system consists of several components:
 Run a fast check of critical functionality:
 
 ```bash
-# Using npm script
-npm run verify
+# Using pnpm script
+pnpm run verify
 
 # Or directly
 node tests/quick-verification.js
@@ -45,11 +45,11 @@ node tests/quick-verification.js
 Run comprehensive verification tests:
 
 ```bash
-# Using npm script
-npm run verify:full
+# Using pnpm script
+pnpm run verify:full
 
 # Or using test runner
-npm run test:verification
+pnpm run test:verification
 ```
 
 ### Check Status
@@ -57,8 +57,8 @@ npm run test:verification
 View current verification status:
 
 ```bash
-# Using npm script
-npm run verify:status
+# Using pnpm script
+pnpm run verify:status
 
 # Or directly
 node tests/verification-tracker.js status
@@ -69,8 +69,8 @@ node tests/verification-tracker.js status
 Create detailed verification report:
 
 ```bash
-# Using npm script
-npm run verify:report
+# Using pnpm script
+pnpm run verify:report
 
 # Or directly
 node tests/generate-verification-report.js
@@ -183,9 +183,9 @@ The verification system integrates with:
 
 ## Best Practices
 
-1. **Run Quick Verification First** - Use `npm run verify` for fast checks
-2. **Check Status Regularly** - Use `npm run verify:status` to see current state
-3. **Generate Reports** - Use `npm run verify:report` for detailed analysis
+1. **Run Quick Verification First** - Use `pnpm run verify` for fast checks
+2. **Check Status Regularly** - Use `pnpm run verify:status` to see current state
+3. **Generate Reports** - Use `pnpm run verify:report` for detailed analysis
 4. **Fix Broken Components** - Address broken tests immediately
 5. **Monitor Unknown Components** - Test unknown components to determine status
 
@@ -215,9 +215,9 @@ The verification system integrates with:
 
 ### Getting Help
 
-1. Check the verification status: `npm run verify:status`
-2. Run quick verification: `npm run verify`
-3. Generate detailed report: `npm run verify:report`
+1. Check the verification status: `pnpm run verify:status`
+2. Run quick verification: `pnpm run verify`
+3. Generate detailed report: `pnpm run verify:report`
 4. Check the generated reports in `tests/reports/`
 
 ## Maintenance

@@ -197,7 +197,7 @@ export class EnhancedApiClient {
   /**
    * Get cache statistics
    */
-  getCacheStats() {
+  getCacheStats(): any {
     return advancedCache.getStats()
   }
 

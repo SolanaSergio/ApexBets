@@ -4,6 +4,8 @@
  * This replaces all direct Supabase client calls throughout the application
  */
 
+import { createAdminClient } from '../supabase/server-admin'
+
 export interface DatabaseQuery {
   table: string
   select?: string[]
@@ -108,7 +110,7 @@ export class MCPDatabaseService {
    */
   async executeSQL(sql: string, params?: any[]): Promise<any> {
     try {
-      const { mcp_supabase_execute_sql } = await import('@/lib/mcp/supabase-mcp')
+      const { mcp_supabase_execute_sql } = await import('../mcp/supabase-mcp')
       
       if (params && params.length > 0) {
         // For parameterized queries, we need to construct the query with parameters
