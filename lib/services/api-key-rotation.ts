@@ -162,11 +162,13 @@ export class ApiKeyRotationService {
       this.currentKeyIndex.set('balldontlie', 0)
     }
 
-    // Log the configuration results
-    logger.logBusinessEvent('api_key_rotation:key_configs_loaded', {
-      providers: Array.from(this.keyConfigs.keys()),
-      totalKeys: Array.from(this.keyConfigs.values()).reduce((sum, keys) => sum + keys.length, 0)
-    })
+    // Log the configuration results - only in development mode
+    if (process.env.NODE_ENV === 'development') {
+      logger.logBusinessEvent('api_key_rotation:key_configs_loaded', {
+        providers: Array.from(this.keyConfigs.keys()),
+        totalKeys: Array.from(this.keyConfigs.values()).reduce((sum, keys) => sum + keys.length, 0)
+      })
+    }
   }
 
   // Parse comma-separated API keys

@@ -116,22 +116,9 @@ export async function GET(request: NextRequest) {
         { category: "Score Differential", value: scoreDifferential.toFixed(1), rank: 1, trend: scoreDifferential > 0 ? "up" : "down" }
       ]
 
-      // Add sport-specific stats only if we have additional data
-      if (teamGames.some(game => game.home_yards || game.away_yards)) {
-        const totalYards = completedGames.reduce((sum, game) => {
-          const isHomeTeam = game.home_team_id === team.id
-          return sum + (isHomeTeam ? (game.home_yards || 0) : (game.away_yards || 0))
-        }, 0)
-        stats.push({ category: "Yards Per Game", value: (totalYards / completedGames.length).toFixed(0), rank: 1, trend: "up" })
-      }
+      // Sport-specific stats removed - columns don't exist in database
 
-      if (teamGames.some(game => game.home_possession || game.away_possession)) {
-        const totalPossession = completedGames.reduce((sum, game) => {
-          const isHomeTeam = game.home_team_id === team.id
-          return sum + (isHomeTeam ? (game.home_possession || 0) : (game.away_possession || 0))
-        }, 0)
-        stats.push({ category: "Possession %", value: `${(totalPossession / completedGames.length).toFixed(1)}%`, rank: 1, trend: "up" })
-      }
+      // Possession stats removed - columns don't exist in database
 
       return stats
     }

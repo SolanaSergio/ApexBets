@@ -2,6 +2,13 @@
  * Data utilities for handling sports data consistently across the application
  */
 
+// Simple cache for normalized data to prevent redundant operations
+const normalizationCache = new Map<string, any>()
+const CACHE_TTL = 60000 // 1 minute
+
+// Store timestamps with cache entries for proper cleanup
+const cacheTimestamps = new Map<string, number>()
+
 /**
  * Generate a unique game ID based on game details to prevent duplicates
  */
@@ -48,10 +55,17 @@ export function generateTeamId(teamData: {
  * Normalize team data to ensure consistency across all sports
  */
 export function normalizeTeamData(team: any, sport: string, league?: string) {
+  // Check cache first for better performance
+  const cacheKey = `team-${JSON.stringify(team)}-${sport}-${league || ''}`
+  const cached = normalizationCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+  
   // Handle different data sources and normalize team names
   // If team is null/undefined, return a default structure
   if (!team || (typeof team === 'object' && Object.keys(team).length === 0)) {
-    return {
+    const result = {
       id: generateTeamId({ name: 'Unknown Team', sport, league: league || 'Unknown' }),
       name: 'Unknown Team',
       city: null,
@@ -64,7 +78,10 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
       capacity: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
-    };
+    }
+    normalizationCache.set(cacheKey, result)
+    cacheTimestamps.set(cacheKey, Date.now())
+    return result
   }
   
   const teamName = team.name || team.displayName || team.full_name || team.teamName || 'Unknown Team';
@@ -77,14 +94,14 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
     .replace(' SC', '')
     .replace(' AFC', '')
     .replace(' BFC', '')
-    .replace(' RFC', '')
+    .replace(' RFC', ' ')
     .replace(' LFC', '')
     .replace('IFK ', '')
     .replace(' BK ', '')
     .replace(' FK ', ' ')
     .trim();
 
-  return {
+  const result = {
     id: team.id || generateTeamId({ name: normalizedTeamName, sport, league: league || 'Unknown' }),
     name: normalizedTeamName,
     city: team.city || team.location || team.venueCity || null,
@@ -97,13 +114,24 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
     capacity: team.capacity || team.venueCapacity || null,
     created_at: team.created_at || new Date().toISOString(),
     updated_at: team.updated_at || new Date().toISOString()
-  };
+  }
+  
+  normalizationCache.set(cacheKey, result)
+  cacheTimestamps.set(cacheKey, Date.now())
+  return result
 }
 
 /**
  * Normalize game data to ensure consistency across all sports
  */
 export function normalizeGameData(game: any, sport: string, league?: string) {
+  // Check cache first for better performance
+  const cacheKey = `game-${JSON.stringify(game)}-${sport}-${league || ''}`
+  const cached = normalizationCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+  
   // Normalize team data first with better error handling - support multiple data structures
   const homeTeamData = game.home_team_data || game.home_team || game.homeTeam || game.home || {};
   const awayTeamData = game.away_team_data || game.away_team || game.awayTeam || game.away || {};
@@ -136,7 +164,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
     status = 'scheduled';
   }
 
-  return {
+  const result = {
     id: game.id || generateGameId({
       homeTeam: normalizedHomeTeam.name,
       awayTeam: normalizedAwayTeam.name,
@@ -170,7 +198,11 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
     away_team: normalizedAwayTeam,
     created_at: game.created_at || new Date().toISOString(),
     updated_at: game.updated_at || new Date().toISOString()
-  };
+  }
+  
+  normalizationCache.set(cacheKey, result)
+  cacheTimestamps.set(cacheKey, Date.now())
+  return result
 }
 
 /**
@@ -339,6 +371,13 @@ export function deduplicateTeams(teams: any[]): any[] {
  * Uses dynamic sport configuration from database instead of hardcoded rules
  */
 export async function normalizeSportData(data: any, sport: string): Promise<any> {
+  // Check cache first for better performance
+  const cacheKey = `sport-${JSON.stringify(data)}-${sport}`
+  const cached = normalizationCache.get(cacheKey)
+  if (cached) {
+    return cached
+  }
+  
   try {
     // Get sport configuration dynamically
     const { SportConfigManager } = await import('@/lib/services/core/sport-config')
@@ -346,6 +385,8 @@ export async function normalizeSportData(data: any, sport: string): Promise<any>
     
     if (!config) {
       console.warn(`No configuration found for sport: ${sport}`)
+      normalizationCache.set(cacheKey, data) // Cache the result
+      cacheTimestamps.set(cacheKey, Date.now())
       return data // Return as-is for unknown sports
     }
 
@@ -362,13 +403,41 @@ export async function normalizeSportData(data: any, sport: string): Promise<any>
         normalized.time_remaining = data.time_remaining || data.clock || null
       }
     }
-
+    
+    normalizationCache.set(cacheKey, normalized) // Cache the result
+    cacheTimestamps.set(cacheKey, Date.now())
     return normalized
   } catch (error) {
     console.error('Error in dynamic sport normalization:', error)
+    normalizationCache.set(cacheKey, data) // Cache the result
+    cacheTimestamps.set(cacheKey, Date.now())
     return data // Fallback to original data
   }
 }
+
+// Periodically clean up the cache
+setInterval(() => {
+  const now = Date.now()
+  const expiredKeys: string[] = []
+  
+  // Find expired entries
+  for (const [key, timestamp] of cacheTimestamps) {
+    if (now - timestamp > CACHE_TTL) {
+      expiredKeys.push(key)
+    }
+  }
+  
+  // Remove expired entries
+  for (const key of expiredKeys) {
+    normalizationCache.delete(key)
+    cacheTimestamps.delete(key)
+  }
+  
+  // Only log if we actually cleaned up entries
+  if (expiredKeys.length > 0) {
+    console.log(`[Data Utils] Cleaned up ${expiredKeys.length} expired cache entries`)
+  }
+}, 30000) // Clean up every 30 seconds
 
 /**
  * DEPRECATED: Legacy sport-specific functions removed in favor of dynamic configuration

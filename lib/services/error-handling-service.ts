@@ -56,9 +56,9 @@ export class EnhancedErrorHandlingService {
   // Provider-specific error handling configurations
   private readonly providerConfigs = {
     'api-sports': {
-      maxRetries: 3,
-      baseDelay: 1000,
-      maxDelay: 60000,
+      maxRetries: 2,
+      baseDelay: 2000,
+      maxDelay: 120000,
       retryableStatuses: [429, 500, 502, 503, 504],
       fallbackProviders: ['thesportsdb', 'espn']
     },

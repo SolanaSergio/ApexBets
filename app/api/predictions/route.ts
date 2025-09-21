@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
       const allValueBets: any[] = [];
       const allModelPerformance: any[] = [];
       
-      for (const supportedSport of supportedSports) {
+      // Process sports in parallel for better performance
+      const sportPromises = supportedSports.map(async (supportedSport) => {
         try {
           const predictionService = new SportPredictionService(supportedSport, league);
           const [predictions, valueBets, modelPerformance] = await Promise.all([
@@ -33,13 +34,24 @@ export async function GET(request: NextRequest) {
             predictionService.getModelPerformance()
           ]);
           
-          allPredictions.push(...predictions);
-          allValueBets.push(...valueBets);
-          allModelPerformance.push(modelPerformance);
+          return { predictions, valueBets, modelPerformance };
         } catch (error) {
           console.warn(`Failed to get predictions for ${supportedSport}:`, error);
+          return { predictions: [], valueBets: [], modelPerformance: null };
         }
-      }
+      });
+
+      const sportResults = await Promise.allSettled(sportPromises);
+      
+      sportResults.forEach((result) => {
+        if (result.status === 'fulfilled') {
+          allPredictions.push(...result.value.predictions);
+          allValueBets.push(...result.value.valueBets);
+          if (result.value.modelPerformance) {
+            allModelPerformance.push(result.value.modelPerformance);
+          }
+        }
+      });
       
       return NextResponse.json({
         success: true,

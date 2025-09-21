@@ -6,7 +6,6 @@
 
 // Using Supabase MCP tools instead of direct client
 import { cachedUnifiedApiClient } from './api/cached-unified-api-client'
-import { createClient as createSupabaseServerClient } from '../supabase/server'
 import { serviceFactory, SupportedSport } from './core/service-factory'
 
 export interface SyncConfig {
@@ -190,8 +189,9 @@ export class DataSyncService {
    * Sync games data for a specific sport
    */
   private async syncGames(sport: SupportedSport): Promise<number> {
-    // Using Supabase MCP tools for database operations via server client
-    const supabase = await createSupabaseServerClient()
+    // Using MCP Database Service for database operations
+    const { MCPDatabaseService } = await import('./mcp-database-service')
+    const dbService = MCPDatabaseService.getInstance()
 
     let synced = 0
 
@@ -199,7 +199,7 @@ export class DataSyncService {
       // Get live games
       const liveGames = await cachedUnifiedApiClient.getLiveGames(sport)
       for (const game of liveGames) {
-        await this.upsertGame(supabase, game, sport)
+        await this.upsertGame(dbService, game, sport)
         synced++
       }
 
@@ -209,7 +209,7 @@ export class DataSyncService {
         limit: 100
       })
       for (const game of upcomingGames) {
-        await this.upsertGame(supabase, game, sport)
+        await this.upsertGame(dbService, game, sport)
         synced++
       }
 
@@ -219,7 +219,7 @@ export class DataSyncService {
         limit: 50
       })
       for (const game of recentGames) {
-        await this.upsertGame(supabase, game, sport)
+        await this.upsertGame(dbService, game, sport)
         synced++
       }
 
@@ -235,12 +235,15 @@ export class DataSyncService {
    * Sync only live games for a specific sport (used by live-only sync loop)
    */
   private async syncLiveGames(sport: SupportedSport): Promise<number> {
-    const supabase = await createSupabaseServerClient()
+    // Using MCP Database Service for database operations
+    const { MCPDatabaseService } = await import('./mcp-database-service')
+    const dbService = MCPDatabaseService.getInstance()
+    
     let synced = 0
     try {
       const liveGames = await cachedUnifiedApiClient.getLiveGames(sport)
       for (const game of liveGames) {
-        await this.upsertGame(supabase, game, sport)
+        await this.upsertGame(dbService, game, sport)
         synced++
       }
     } catch (error) {
@@ -254,8 +257,9 @@ export class DataSyncService {
    * Sync teams data for a specific sport
    */
   private async syncTeams(sport: SupportedSport): Promise<number> {
-    // Using Supabase MCP tools for database operations via server client
-    const supabase = await createSupabaseServerClient()
+    // Using MCP Database Service for database operations
+    const { MCPDatabaseService } = await import('./mcp-database-service')
+    const dbService = MCPDatabaseService.getInstance()
 
     let synced = 0
 
@@ -263,34 +267,55 @@ export class DataSyncService {
       const teams = await cachedUnifiedApiClient.getTeams(sport)
       
       for (const team of teams) {
-        const { error } = await supabase
-          .from('teams')
-          .upsert({
-            id: team.id,
-            name: team.name,
-            abbreviation: team.abbreviation,
-            sport: sport,
-            league: team.league,
-            city: team.city,
-            logo_url: team.logoUrl,
-            conference: team.conference,
-            division: team.division,
-            founded_year: team.foundedYear,
-            stadium_name: team.stadiumName,
-            stadium_capacity: team.stadiumCapacity,
-            primary_color: team.primaryColor,
-            secondary_color: team.secondaryColor,
-            country: team.country,
-            is_active: team.isActive ?? true,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
-          })
-
-        if (error) {
-          console.error(`Error upserting team ${team.name}:`, error)
-        } else {
+        const upsertQuery = `
+          INSERT INTO public.teams (
+            id, name, abbreviation, sport, league, city, logo_url,
+            conference, division, founded_year, stadium_name, stadium_capacity,
+            primary_color, secondary_color, country, is_active, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, NOW()
+          )
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            abbreviation = EXCLUDED.abbreviation,
+            sport = EXCLUDED.sport,
+            league = EXCLUDED.league,
+            city = EXCLUDED.city,
+            logo_url = EXCLUDED.logo_url,
+            conference = EXCLUDED.conference,
+            division = EXCLUDED.division,
+            founded_year = EXCLUDED.founded_year,
+            stadium_name = EXCLUDED.stadium_name,
+            stadium_capacity = EXCLUDED.stadium_capacity,
+            primary_color = EXCLUDED.primary_color,
+            secondary_color = EXCLUDED.secondary_color,
+            country = EXCLUDED.country,
+            is_active = EXCLUDED.is_active,
+            updated_at = NOW()
+        `
+        
+        try {
+          await dbService.executeSQL(upsertQuery, [
+            team.id,
+            team.name,
+            team.abbreviation,
+            sport,
+            team.league,
+            team.city,
+            team.logoUrl,
+            team.conference,
+            team.division,
+            team.foundedYear,
+            team.stadiumName,
+            team.stadiumCapacity,
+            team.primaryColor,
+            team.secondaryColor,
+            team.country,
+            team.isActive ?? true
+          ])
           synced++
+        } catch (error) {
+          console.error(`Error upserting team ${team.name}:`, error)
         }
       }
 
@@ -306,8 +331,9 @@ export class DataSyncService {
    * Sync odds data for a specific sport
    */
   private async syncOdds(sport: SupportedSport): Promise<number> {
-    // Using Supabase MCP tools for database operations via server client
-    const supabase = await createSupabaseServerClient()
+    // Using MCP Database Service for database operations
+    const { MCPDatabaseService } = await import('./mcp-database-service')
+    const dbService = MCPDatabaseService.getInstance()
 
     let synced = 0
 
@@ -317,26 +343,41 @@ export class DataSyncService {
       for (const game of games) {
         if (game.odds && game.odds.length > 0) {
           for (const odd of game.odds) {
-            const { error } = await supabase
-              .from('odds')
-              .upsert({
-                id: `${game.id}_${odd.odds_type}_${Date.now()}`,
-                game_id: game.id,
-                source: odd.source || 'external_api',
-                odds_type: odd.odds_type,
-                home_odds: odd.home_odds,
-                away_odds: odd.away_odds,
-                spread: odd.spread,
-                total: odd.total,
-                timestamp: new Date().toISOString()
-              }, {
-                onConflict: 'id'
-              })
-
-            if (error) {
-              console.error(`Error upserting odds for game ${game.id}:`, error)
-            } else {
+            const oddsId = `${game.id}_${odd.odds_type}_${Date.now()}`
+            
+            const upsertQuery = `
+              INSERT INTO public.odds (
+                id, game_id, source, odds_type, home_odds, away_odds, 
+                spread, total, timestamp, sport, league, created_at
+              ) VALUES (
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()
+              )
+              ON CONFLICT (id) DO UPDATE SET
+                home_odds = EXCLUDED.home_odds,
+                away_odds = EXCLUDED.away_odds,
+                spread = EXCLUDED.spread,
+                total = EXCLUDED.total,
+                timestamp = EXCLUDED.timestamp,
+                updated_at = NOW()
+            `
+            
+            try {
+              await dbService.executeSQL(upsertQuery, [
+                oddsId,
+                game.id,
+                odd.source || 'external_api',
+                odd.odds_type,
+                odd.home_odds,
+                odd.away_odds,
+                odd.spread,
+                odd.total,
+                new Date().toISOString(),
+                sport,
+                game.league || null
+              ])
               synced++
+            } catch (error) {
+              console.error(`Error upserting odds for game ${game.id}:`, error)
             }
           }
         }
@@ -354,8 +395,9 @@ export class DataSyncService {
    * Sync standings data for a specific sport
    */
   private async syncStandings(sport: SupportedSport): Promise<number> {
-    // Using Supabase MCP tools for database operations via server client
-    const supabase = await createSupabaseServerClient()
+    // Using MCP Database Service for database operations
+    const { MCPDatabaseService } = await import('./mcp-database-service')
+    const dbService = MCPDatabaseService.getInstance()
 
     let synced = 0
 
@@ -363,31 +405,48 @@ export class DataSyncService {
       const standings = await cachedUnifiedApiClient.getStandings(sport)
       
       for (const standing of standings) {
-        const { error } = await supabase
-          .from('league_standings')
-          .upsert({
-            id: `${sport}_${standing.team_id}_${standing.season}`,
-            sport: sport,
-            league: standing.league,
-            team_id: standing.team_id,
-            team_name: standing.team_name,
-            season: standing.season,
-            wins: standing.wins,
-            losses: standing.losses,
-            ties: standing.ties || 0,
-            win_percentage: standing.win_percentage,
-            games_back: standing.games_back,
-            conference: standing.conference,
-            division: standing.division,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'id'
-          })
-
-        if (error) {
-          console.error(`Error upserting standing for team ${standing.team_name}:`, error)
-        } else {
+        const upsertQuery = `
+          INSERT INTO public.league_standings (
+            id, sport, league, team_id, team_name, season, wins, losses, ties,
+            win_percentage, games_back, conference, division, updated_at
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW()
+          )
+          ON CONFLICT (id) DO UPDATE SET
+            sport = EXCLUDED.sport,
+            league = EXCLUDED.league,
+            team_id = EXCLUDED.team_id,
+            team_name = EXCLUDED.team_name,
+            season = EXCLUDED.season,
+            wins = EXCLUDED.wins,
+            losses = EXCLUDED.losses,
+            ties = EXCLUDED.ties,
+            win_percentage = EXCLUDED.win_percentage,
+            games_back = EXCLUDED.games_back,
+            conference = EXCLUDED.conference,
+            division = EXCLUDED.division,
+            updated_at = NOW()
+        `
+        
+        try {
+          await dbService.executeSQL(upsertQuery, [
+            `${sport}_${standing.team_id}_${standing.season}`,
+            sport,
+            standing.league,
+            standing.team_id,
+            standing.team_name,
+            standing.season,
+            standing.wins,
+            standing.losses,
+            standing.ties || 0,
+            standing.win_percentage,
+            standing.games_back,
+            standing.conference,
+            standing.division
+          ])
           synced++
+        } catch (error) {
+          console.error(`Error upserting standing for team ${standing.team_name}:`, error)
         }
       }
 
@@ -402,31 +461,47 @@ export class DataSyncService {
   /**
    * Upsert a game into the database
    */
-  private async upsertGame(supabase: any, game: any, sport: SupportedSport): Promise<void> {
+  private async upsertGame(dbService: any, game: any, sport: SupportedSport): Promise<void> {
     // Find or create team IDs
-    const homeTeamId = await this.getOrCreateTeamId(supabase, game.homeTeam, sport, game.league)
-    const awayTeamId = await this.getOrCreateTeamId(supabase, game.awayTeam, sport, game.league)
+    const homeTeamId = await this.getOrCreateTeamId(dbService, game.homeTeam, sport, game.league)
+    const awayTeamId = await this.getOrCreateTeamId(dbService, game.awayTeam, sport, game.league)
 
-    const { error } = await supabase
-      .from('games')
-      .upsert({
-        id: game.id,
-        home_team_id: homeTeamId,
-        away_team_id: awayTeamId,
-        game_date: game.date || game.game_date,
-        season: game.season || '2024-25',
-        home_score: game.homeScore || game.home_score,
-        away_score: game.awayScore || game.away_score,
-        status: this.mapGameStatus(game.status),
-        venue: game.venue || game.location,
-        league: game.league,
-        sport: sport,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'id'
-      })
+    const upsertQuery = `
+      INSERT INTO public.games (
+        id, home_team_id, away_team_id, game_date, season, home_score, away_score,
+        status, venue, league, sport, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW()
+      )
+      ON CONFLICT (id) DO UPDATE SET
+        home_team_id = EXCLUDED.home_team_id,
+        away_team_id = EXCLUDED.away_team_id,
+        game_date = EXCLUDED.game_date,
+        season = EXCLUDED.season,
+        home_score = EXCLUDED.home_score,
+        away_score = EXCLUDED.away_score,
+        status = EXCLUDED.status,
+        venue = EXCLUDED.venue,
+        league = EXCLUDED.league,
+        sport = EXCLUDED.sport,
+        updated_at = NOW()
+    `
 
-    if (error) {
+    try {
+      await dbService.executeSQL(upsertQuery, [
+        game.id,
+        homeTeamId,
+        awayTeamId,
+        game.date || game.game_date,
+        game.season || '2024-25',
+        game.homeScore || game.home_score,
+        game.awayScore || game.away_score,
+        this.mapGameStatus(game.status),
+        game.venue || game.location,
+        game.league,
+        sport
+      ])
+    } catch (error) {
       console.error(`Error upserting game ${game.id}:`, error)
       throw error
     }
@@ -435,41 +510,48 @@ export class DataSyncService {
   /**
    * Get or create team ID for a team name
    */
-  private async getOrCreateTeamId(supabase: any, teamName: string, sport: SupportedSport, league: string): Promise<string> {
+  private async getOrCreateTeamId(dbService: any, teamName: string, sport: SupportedSport, league: string): Promise<string> {
     // Try to find existing team
-    const { data: existingTeam } = await supabase
-      .from('teams')
-      .select('id')
-      .eq('name', teamName)
-      .eq('sport', sport)
-      .single()
-
-    if (existingTeam) {
-      return existingTeam.id
+    const findQuery = `
+      SELECT id FROM public.teams 
+      WHERE name = $1 AND sport = $2
+      LIMIT 1
+    `
+    
+    try {
+      const result = await dbService.executeSQL(findQuery, [teamName, sport])
+      if (result && result.length > 0) {
+        return result[0].id
+      }
+    } catch (error) {
+      console.error(`Error finding team ${teamName}:`, error)
     }
 
     // Create new team
-    const { data: newTeam, error } = await supabase
-      .from('teams')
-      .insert({
-        name: teamName,
-        abbreviation: this.generateAbbreviation(teamName),
-        sport: sport,
-        league: league,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select('id')
-      .single()
-
-    if (error) {
+    const teamId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const insertQuery = `
+      INSERT INTO public.teams (
+        id, name, abbreviation, sport, league, is_active, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, NOW(), NOW()
+      )
+    `
+    
+    try {
+      await dbService.executeSQL(insertQuery, [
+        teamId,
+        teamName,
+        this.generateAbbreviation(teamName),
+        sport,
+        league,
+        true
+      ])
+      return teamId
+    } catch (error) {
       console.error(`Error creating team ${teamName}:`, error)
       // Return a fallback ID
       return `temp_${teamName.replace(/\s+/g, '_').toLowerCase()}`
     }
-
-    return newTeam.id
   }
 
   /**

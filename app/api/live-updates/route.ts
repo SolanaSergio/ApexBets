@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-// Using MCP tools instead of direct Supabase client
+import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData } from "@/lib/utils/data-utils"
+import { databaseOptimizer } from "@/lib/database/optimize-queries"
 
 // Simple in-memory cache to reduce API calls
 const liveDataCache = new Map<string, { data: any, timestamp: number }>()
@@ -18,16 +19,19 @@ export async function GET(request: NextRequest) {
     const databaseResult = await getLiveDataFromDatabase(sport, league)
     
     // If we have recent data from database, return it
-    if (databaseResult && databaseResult.summary.totalLive > 0) {
+    if (databaseResult && (databaseResult.summary.totalLive > 0 || databaseResult.summary.totalRecent > 0)) {
+      console.log(`Returning database data for ${sport}`)
       return NextResponse.json(databaseResult)
     }
 
     // If requesting real data or no database data available, try APIs
     if (useRealData || !databaseResult) {
+      console.log(`Getting live data from APIs for ${sport}`)
       return await getLiveDataFromAPIs(sport, league)
     }
 
     // Return database result even if empty
+    console.log(`Returning empty database data for ${sport}`)
     return NextResponse.json(databaseResult)
 
   } catch (error) {
@@ -50,57 +54,137 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Get live data from database first using MCP tools
+ * Get live data from database first using Supabase client
  */
 async function getLiveDataFromDatabase(sport: string, league: string) {
   try {
-    // Using MCP execute_sql instead of direct Supabase client
-    
-    // Get live games from database using MCP execute_sql
-    let liveGamesSql = `
-      SELECT 
-        g.*,
-        ht.name as home_team_name,
-        ht.logo_url as home_team_logo,
-        ht.abbreviation as home_team_abbreviation,
-        at.name as away_team_name,
-        at.logo_url as away_team_logo,
-        at.abbreviation as away_team_abbreviation
-      FROM games g
-      LEFT JOIN teams ht ON g.home_team_id = ht.id
-      LEFT JOIN teams at ON g.away_team_id = at.id
-      WHERE g.status IN ('live', 'in_progress', 'in progress')
-        AND g.home_score IS NOT NULL
-        AND g.away_score IS NOT NULL
-        AND (g.home_score > 0 OR g.away_score > 0)
-    `
+    // Create Supabase client
+    const supabase = await createClient()
 
-    // Add sport filter only if not "all"
-    if (sport !== "all") {
-      liveGamesSql += ` AND g.sport = '${sport.replace(/'/g, "''")}'`
+    if (!supabase) {
+      throw new Error("Failed to create Supabase client")
     }
 
-    // Add league filter only if not "all"
-    if (league !== "all") {
-      liveGamesSql += ` AND g.league = '${league.replace(/'/g, "''")}'`
-    }
+    // Use optimized database queries
+    const liveGames = await databaseOptimizer.getLiveGames(sport, 50)
 
-    liveGamesSql += ` ORDER BY g.game_date ASC`
+    // Use optimized database queries
+    const recentGames = await databaseOptimizer.getRecentGames(sport, 24, 50)
 
-    // Note: In production, this would use MCP tools via server-side MCP client
-    // For now, return empty array to avoid build errors until MCP integration is complete
-    const liveGames: any[] = []
-
-    // Get recent games (finished in last 24 hours) - using empty array for MCP compliance
-    const recentGames: any[] = []
-
-    // Get upcoming games (scheduled for next 7 days) - using empty array for MCP compliance
-    const upcomingGames: any[] = []
+    // Use optimized database queries
+    const upcomingGames = await databaseOptimizer.getUpcomingGames(sport, 7, 50)
 
     // Normalize game data
-    const normalizedLiveGames = (liveGames || []).map(game => normalizeGameData(game, sport, league))
-    const normalizedRecentGames = (recentGames || []).map(game => normalizeGameData(game, sport, league))
-    const normalizedUpcomingGames = (upcomingGames || []).map(game => normalizeGameData(game, sport, league))
+    const normalizedLiveGames = (liveGames || []).map((game: any) => {
+      const homeTeam = game.home_team_data || { 
+        name: game.home_team || 'Home Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      const awayTeam = game.away_team_data || { 
+        name: game.away_team || 'Visiting Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      
+      const gameData = {
+        id: game.id,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
+        status: game.status,
+        venue: game.venue,
+        league: game.league,
+        sport: game.sport,
+        attendance: game.attendance,
+        game_type: game.game_type,
+        overtime_periods: game.overtime_periods,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
+      }
+      
+      return normalizeGameData(gameData, game.sport, game.league)
+    })
+    
+    const normalizedRecentGames = (recentGames || []).map((game: any) => {
+      const homeTeam = game.home_team_data || { 
+        name: game.home_team || 'Home Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      const awayTeam = game.away_team_data || { 
+        name: game.away_team || 'Visiting Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      
+      const gameData = {
+        id: game.id,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
+        status: game.status,
+        venue: game.venue,
+        league: game.league,
+        sport: game.sport,
+        attendance: game.attendance,
+        game_type: game.game_type,
+        overtime_periods: game.overtime_periods,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
+      }
+      
+      return normalizeGameData(gameData, game.sport, game.league)
+    })
+    
+    const normalizedUpcomingGames = (upcomingGames || []).map((game: any) => {
+      const homeTeam = game.home_team_data || { 
+        name: game.home_team || 'Home Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      const awayTeam = game.away_team_data || { 
+        name: game.away_team || 'Visiting Team', 
+        logo_url: null, 
+        abbreviation: null 
+      }
+      
+      const gameData = {
+        id: game.id,
+        home_team_id: game.home_team_id,
+        away_team_id: game.away_team_id,
+        game_date: game.game_date,
+        season: game.season,
+        week: game.week,
+        home_score: game.home_score,
+        away_score: game.away_score,
+        status: game.status,
+        venue: game.venue,
+        league: game.league,
+        sport: game.sport,
+        attendance: game.attendance,
+        game_type: game.game_type,
+        overtime_periods: game.overtime_periods,
+        home_team: homeTeam,
+        away_team: awayTeam,
+        created_at: game.created_at,
+        updated_at: game.updated_at
+      }
+      
+      return normalizeGameData(gameData, game.sport, game.league)
+    })
 
     return {
       success: true,

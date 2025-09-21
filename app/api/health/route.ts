@@ -60,11 +60,8 @@ export async function GET(request: NextRequest) {
       console.warn("Cache service not available:", error)
     }
 
-    try {
-      apiTests = await testApiConnectivity()
-    } catch (error) {
-      console.warn("API connectivity tests failed:", error)
-    }
+    // Skip API connectivity tests for basic health check to improve performance
+    // apiTests = await testApiConnectivity()
 
     return NextResponse.json({
       ...basicHealth,

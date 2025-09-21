@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData, normalizeTeamData, deduplicateGames } from "@/lib/utils/data-utils"
-
+import { cachedSupabaseQuery } from "@/lib/utils/supabase-query-cache"
 
 // Map to store active connections
 const connections = new Map<string, {
@@ -10,6 +10,9 @@ const connections = new Map<string, {
   lastPing: number
 }>()
 
+// Keep track of last sent data to avoid sending duplicates
+const lastSentData = new Map<string, string>()
+
 // Cleanup inactive connections
 setInterval(() => {
   const now = Date.now()
@@ -17,6 +20,14 @@ setInterval(() => {
     // Remove connections that haven't pinged in 2 minutes
     if (now - connection.lastPing > 120000) {
       connections.delete(id)
+    }
+  }
+  
+  // Clean up old last sent data
+  for (const [sport, _dataStr] of lastSentData) {
+    // Remove entries older than 10 minutes
+    if (Math.random() < 0.1) { // Random cleanup to avoid performance issues
+      lastSentData.delete(sport)
     }
   }
 }, 30000) // Check every 30 seconds
@@ -64,63 +75,70 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Function to fetch and send live data with enhanced error handling
-  const sendLiveData = async () => {
+  // Function to fetch live data with caching
+  const fetchLiveDataWithCache = async (sport: string) => {
+    // Skip if sport is "all" to prevent excessive queries
+    if (sport === "all") {
+      return []
+    }
+
     try {
-      const supabase = await createClient()
+      // Use cached query to reduce database load
+      const cacheKey = `live-games-${sport}`
+      const liveGames = await cachedSupabaseQuery(cacheKey, async () => {
+        const supabase = await createClient()
 
-      if (!supabase) {
-        sendData({
-          type: "error",
-          data: { message: "Database connection failed" },
-          timestamp: new Date().toISOString()
-        })
-        return
-      }
+        if (!supabase) {
+          throw new Error("Database connection failed")
+        }
 
-      // Skip if sport is "all" to prevent excessive queries
-      if (sport === "all") {
-        sendData({
-          type: "game_update",
-          data: [],
-          timestamp: new Date().toISOString()
-        })
-        return
-      }
+        // Get live games from database with enhanced filtering and error handling
+        // NOTE: Removed 'broadcast' column as it doesn't exist in the database
+        const { data: liveGames, error: liveGamesError } = await supabase
+          .from('games')
+          .select(`
+            id,
+            home_team_id,
+            away_team_id,
+            game_date,
+            season,
+            week,
+            home_score,
+            away_score,
+            status,
+            venue,
+            league,
+            sport,
+            attendance,
+          game_type,
+          overtime_periods,
+            created_at,
+            updated_at,
+            home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
+            away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
+          `)
+          .eq('sport', sport)
+          .in('status', ['live', 'in_progress', 'in progress'])
+          .order('game_date', { ascending: true })
+          .limit(50) // Limit results to prevent excessive data
 
-      // Get live games from database with enhanced filtering and error handling
-      const { data: liveGames, error: liveGamesError } = await supabase
-        .from('games')
-        .select(`
-          *,
-          home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
-          away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-        `)
-        .eq('sport', sport)
-        .in('status', ['live', 'in_progress', 'in progress'])
-        .order('game_date', { ascending: true })
-        .limit(50) // Limit results to prevent excessive data
+        if (liveGamesError) {
+          console.error('Live games error:', liveGamesError)
+          throw liveGamesError
+        }
 
-      if (liveGamesError) {
-        console.error('Live games error:', liveGamesError)
-        // Send empty data instead of error to prevent client-side failures
-        sendData({
-          type: "game_update",
-          data: [],
-          timestamp: new Date().toISOString()
-        })
-        return
-      }
+        return liveGames || []
+      }, 30000) // 30 second cache TTL
 
       // Format live games with enhanced data normalization
-      const formattedLiveGames = (liveGames || []).map(game => {
+      const formattedLiveGames = liveGames.map(game => {
         const homeTeam = game.home_team_data || { 
-          name: game.home_team || 'Home Team', 
+          name: 'Home Team', 
           logo_url: null, 
           abbreviation: null 
         }
         const awayTeam = game.away_team_data || { 
-          name: game.away_team || 'Visiting Team', 
+          name: 'Visiting Team', 
           logo_url: null, 
           abbreviation: null 
         }
@@ -142,14 +160,10 @@ export async function GET(request: NextRequest) {
           venue: game.venue,
           league: game.league,
           sport: game.sport,
-          broadcast: game.broadcast,
+          // Removed broadcast field as it doesn't exist in the database
           attendance: game.attendance,
-          game_time: game.game_time,
-          time_remaining: game.time_remaining,
-          quarter: game.quarter,
-          period: game.period,
-          possession: game.possession,
-          last_play: game.last_play,
+        game_type: game.game_type,
+        overtime_periods: game.overtime_periods,
           home_team: normalizedHomeTeam,
           away_team: normalizedAwayTeam,
           created_at: game.created_at,
@@ -162,13 +176,35 @@ export async function GET(request: NextRequest) {
 
       // Remove duplicates and ensure data consistency
       const uniqueGames = deduplicateGames(formattedLiveGames)
+      
+      return uniqueGames
+    } catch (error) {
+      console.error("Live stream data fetch error:", error)
+      // Return empty array on error
+      return []
+    }
+  }
 
-      // Send live game updates
-      sendData({
-        type: "game_update",
-        data: uniqueGames,
-        timestamp: new Date().toISOString()
-      })
+  // Function to send live data with enhanced error handling and deduplication
+  const sendLiveData = async () => {
+    try {
+      const liveGames = await fetchLiveDataWithCache(sport)
+      
+      // Create a string representation to check for changes
+      const dataStr = JSON.stringify(liveGames)
+      const lastDataStr = lastSentData.get(sport)
+      
+      // Only send data if it has changed
+      if (dataStr !== lastDataStr) {
+        lastSentData.set(sport, dataStr)
+        
+        // Send live game updates
+        sendData({
+          type: "game_update",
+          data: liveGames,
+          timestamp: new Date().toISOString()
+        })
+      }
 
       // Send heartbeat
       sendData({
@@ -189,8 +225,8 @@ export async function GET(request: NextRequest) {
   // Send initial data
   await sendLiveData()
 
-  // Set up periodic updates (every 60 seconds to reduce API spam)
-  const intervalId = setInterval(sendLiveData, 60000)
+  // Set up periodic updates (every 15 seconds for better responsiveness)
+  const intervalId = setInterval(sendLiveData, 15000)
 
   // Handle client disconnect
   request.signal.addEventListener('abort', () => {
@@ -211,6 +247,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { sport, data } = await request.json()
+    
+    // Update last sent data
+    const dataStr = JSON.stringify(data)
+    lastSentData.set(sport, dataStr)
     
     // Send data to all clients interested in this sport
     for (const [id, connection] of connections) {
