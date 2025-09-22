@@ -282,6 +282,30 @@ export class CachedUnifiedApiClient {
       league?: string
     } = {}
   ): Promise<UnifiedGameData[]> {
+    // Handle "all" sport by aggregating data from all supported sports
+    if (sport === 'all') {
+      try {
+        const supportedSports = await serviceFactory.getSupportedSports()
+        const allGames: UnifiedGameData[] = []
+        
+        // Fetch games from each supported sport
+        for (const individualSport of supportedSports) {
+          try {
+            const sportGames = await this.getGames(individualSport, params)
+            allGames.push(...sportGames)
+          } catch (error) {
+            console.warn(`Failed to fetch games for ${individualSport}:`, error)
+            // Continue with other sports even if one fails
+          }
+        }
+        
+        return allGames
+      } catch (error) {
+        console.error(`Error fetching games for all sports:`, error)
+        return []
+      }
+    }
+
     const cacheKey = this.generateCacheKey(`games:${sport}`, params)
     const cached = await this.getCachedData<UnifiedGameData[]>(cacheKey, 'scheduled_games', sport)
 
@@ -424,6 +448,30 @@ export class CachedUnifiedApiClient {
       limit?: number
     } = {}
   ): Promise<any[]> {
+    // Handle "all" sport by aggregating data from all supported sports
+    if (sport === 'all') {
+      try {
+        const supportedSports = await serviceFactory.getSupportedSports()
+        const allOdds: any[] = []
+        
+        // Fetch odds from each supported sport
+        for (const individualSport of supportedSports) {
+          try {
+            const sportOdds = await this.getOdds(individualSport, params)
+            allOdds.push(...sportOdds)
+          } catch (error) {
+            console.warn(`Failed to fetch odds for ${individualSport}:`, error)
+            // Continue with other sports even if one fails
+          }
+        }
+        
+        return allOdds
+      } catch (error) {
+        console.error(`Error fetching odds for all sports:`, error)
+        return []
+      }
+    }
+
     const cacheKey = this.generateCacheKey(`odds:${sport}`, params)
     const cached = await this.getCachedData<any[]>(cacheKey, 'odds', sport)
 
@@ -455,6 +503,30 @@ export class CachedUnifiedApiClient {
       limit?: number
     } = {}
   ): Promise<any[]> {
+    // Handle "all" sport by aggregating data from all supported sports
+    if (sport === 'all') {
+      try {
+        const supportedSports = await serviceFactory.getSupportedSports()
+        const allPredictions: any[] = []
+        
+        // Fetch predictions from each supported sport
+        for (const individualSport of supportedSports) {
+          try {
+            const sportPredictions = await this.getPredictions(individualSport, params)
+            allPredictions.push(...sportPredictions)
+          } catch (error) {
+            console.warn(`Failed to fetch predictions for ${individualSport}:`, error)
+            // Continue with other sports even if one fails
+          }
+        }
+        
+        return allPredictions
+      } catch (error) {
+        console.error(`Error fetching predictions for all sports:`, error)
+        return []
+      }
+    }
+
     const cacheKey = this.generateCacheKey(`predictions:${sport}`, params)
     const cached = await this.getCachedData<any[]>(cacheKey, 'predictions', sport)
 
@@ -486,6 +558,30 @@ export class CachedUnifiedApiClient {
       league?: string
     } = {}
   ): Promise<any[]> {
+    // Handle "all" sport by aggregating data from all supported sports
+    if (sport === 'all') {
+      try {
+        const supportedSports = await serviceFactory.getSupportedSports()
+        const allStandings: any[] = []
+        
+        // Fetch standings from each supported sport
+        for (const individualSport of supportedSports) {
+          try {
+            const sportStandings = await this.getStandings(individualSport, params)
+            allStandings.push(...sportStandings)
+          } catch (error) {
+            console.warn(`Failed to fetch standings for ${individualSport}:`, error)
+            // Continue with other sports even if one fails
+          }
+        }
+        
+        return allStandings
+      } catch (error) {
+        console.error(`Error fetching standings for all sports:`, error)
+        return []
+      }
+    }
+
     const cacheKey = this.generateCacheKey(`standings:${sport}`, params)
     const cached = await this.getCachedData<any[]>(cacheKey, 'standings', sport)
 

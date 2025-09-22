@@ -9,13 +9,13 @@ import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-cl
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
-    const league = searchParams.get("league")
-    const season = searchParams.get("season")
-    const forceRefresh = searchParams.get("forceRefresh") === "true"
+  const { searchParams } = new URL(request.url)
+  const sport = searchParams.get("sport")
+  const league = searchParams.get("league")
+  const season = searchParams.get("season")
+  const forceRefresh = searchParams.get("forceRefresh") === "true"
 
+  try {
     if (!sport) {
       return NextResponse.json({
         success: false,
@@ -117,15 +117,25 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     structuredLogger.error('Database-first standings API error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage,
+      stack: errorStack,
+      sport,
+      league,
+      season
     })
     
     return NextResponse.json(
       { 
         success: false, 
         error: 'Failed to fetch standings',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMessage,
+        sport,
+        league,
+        season
       },
       { status: 500 }
     )
@@ -139,23 +149,27 @@ async function updateDatabaseWithExternalData(sport: string, externalStandings: 
   try {
     // Get existing standings to avoid duplicates
     const existingStandings = await productionSupabaseClient.getStandings(sport)
-    const existingStandingMap = new Map(existingStandings.map((s: any) => [s.team_name, s]))
+    const existingStandingMap = new Map(existingStandings.map((s: any) => [s.team?.name || s.team_name, s]))
+
+    // Get teams to resolve team IDs
+    const teams = await productionSupabaseClient.getTeams(sport)
+    const teamMap = new Map(teams.map((team: any) => [team.name, team.id]))
 
     const standingsToUpsert = externalStandings.map(externalStanding => {
       const existingStanding = existingStandingMap.get(externalStanding.teamName)
+      const teamId = teamMap.get(externalStanding.teamName) || externalStanding.teamId
       
       return {
         id: (existingStanding as any)?.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sport: sport,
         league: externalStanding.league || 'default',
         season: externalStanding.season || '2024-25',
-        team_name: externalStanding.teamName,
-        position: externalStanding.position || 0,
+        team_id: teamId || null,
         wins: externalStanding.wins || 0,
         losses: externalStanding.losses || 0,
         ties: externalStanding.ties || 0,
         win_percentage: externalStanding.winPercentage || 0,
-        games_behind: externalStanding.gamesBehind || 0,
+        games_back: externalStanding.gamesBehind || 0,
         points_for: externalStanding.pointsFor || 0,
         points_against: externalStanding.pointsAgainst || 0,
         last_updated: new Date().toISOString()
@@ -164,7 +178,7 @@ async function updateDatabaseWithExternalData(sport: string, externalStandings: 
 
     // Upsert standings
     await productionSupabaseClient.supabase
-      .from('standings')
+      .from('league_standings')
       .upsert(standingsToUpsert, { onConflict: 'id' })
 
     structuredLogger.info('Successfully updated database with external data', {

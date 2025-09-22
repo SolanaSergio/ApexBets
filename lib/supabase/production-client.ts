@@ -139,7 +139,7 @@ class ProductionSupabaseClient {
   }
 
   async getStandings(sport?: string, league?: string, season?: string) {
-    let query = this.supabase.from('standings').select(`
+    let query = this.supabase.from('league_standings').select(`
       *,
       team:teams(name, abbreviation, logo_url)
     `)
@@ -148,7 +148,7 @@ class ProductionSupabaseClient {
     if (league) query = query.eq('league', league)
     if (season) query = query.eq('season', season)
 
-    const { data, error } = await query.order('position')
+    const { data, error } = await query.order('wins', { ascending: false })
 
     if (error) throw error
     return data || []

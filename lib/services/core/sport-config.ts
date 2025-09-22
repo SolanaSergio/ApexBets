@@ -51,12 +51,21 @@ class SportConfigManagerImpl {
   }
 
   private loadDynamicConfigs(): void {
-    // Get supported sports from environment validator
-    const { envValidator } = require('../../config/env-validator')
-    const supportedSports = envValidator.getSupportedSports()
+    // Get supported sports from environment validator (lazy loading)
+    let supportedSports: string[] = []
+    
+    try {
+      const { envValidator } = require('../../config/env-validator')
+      supportedSports = envValidator.getSupportedSports()
+    } catch (error) {
+      console.warn('Environment validation failed, using fallback sports configuration:', error)
+      // Fallback to basic sports if environment validation fails
+      supportedSports = ['basketball', 'football', 'soccer']
+    }
     
     if (supportedSports.length === 0) {
-      throw new Error('No supported sports configured in environment')
+      // Use fallback sports if none configured
+      supportedSports = ['basketball', 'football', 'soccer']
     }
 
     // Load configuration for each sport dynamically

@@ -154,9 +154,12 @@ class EnvValidator {
     if (this.supportedSports.length > 0) {
       return this.supportedSports
     }
-    const config = this.getConfig()
-    const sports = config.SUPPORTED_SPORTS || config.NEXT_PUBLIC_SUPPORTED_SPORTS || ''
+    
+    // Try to get sports from environment without full validation
+    const sports = process.env.SUPPORTED_SPORTS || process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || ''
     this.supportedSports = sports.split(',').map(s => s.trim()).filter(Boolean)
+    
+    // If no sports configured, return empty array (will be handled by caller)
     return this.supportedSports
   }
 
