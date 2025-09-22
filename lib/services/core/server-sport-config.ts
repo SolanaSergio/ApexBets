@@ -3,7 +3,7 @@
  * Loads sport configuration directly from database on server side
  */
 
-// MCP-only approach - no direct Supabase client imports
+// Production-ready approach - no direct Supabase client imports
 import { SportConfig } from "./sport-config"
 
 export class ServerSportConfigManager {
@@ -17,10 +17,10 @@ export class ServerSportConfigManager {
     if (this.initialized) return
 
     try {
-      // MCP-only approach - use MCP database service
-      const { mcpDatabaseService } = await import('../mcp-database-service')
+      // Production approach - use database service
+      const { databaseService } = await import('../database-service')
       
-      const result = await mcpDatabaseService.executeSQL(`
+      const result = await databaseService.executeSQL(`
         SELECT 
           name,
           display_name,

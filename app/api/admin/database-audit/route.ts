@@ -306,8 +306,8 @@ async function runSpecificTests(tests: string[]): Promise<any> {
 }
 
 async function testDataIntegrity(): Promise<any> {
-  const { MCPDatabaseService } = await import('@/lib/services/mcp-database-service')
-  const dbService = MCPDatabaseService.getInstance()
+  const { databaseService } = await import('@/lib/services/database-service')
+  const dbService = databaseService
 
   const query = `
     SELECT 
@@ -321,8 +321,8 @@ async function testDataIntegrity(): Promise<any> {
 }
 
 async function testForeignKeyIntegrity(): Promise<any> {
-  const { MCPDatabaseService } = await import('@/lib/services/mcp-database-service')
-  const dbService = MCPDatabaseService.getInstance()
+  const { databaseService } = await import('@/lib/services/database-service')
+  const dbService = databaseService
 
   const query = `
     SELECT 
@@ -338,8 +338,8 @@ async function testForeignKeyIntegrity(): Promise<any> {
 }
 
 async function testPerformance(): Promise<any> {
-  const { MCPDatabaseService } = await import('@/lib/services/mcp-database-service')
-  const dbService = MCPDatabaseService.getInstance()
+  const { databaseService } = await import('@/lib/services/database-service')
+  const dbService = databaseService
 
   const startTime = Date.now()
   
@@ -383,8 +383,8 @@ async function testAPIDataFlow(): Promise<any> {
 }
 
 async function testRealTimeUpdates(): Promise<any> {
-  const { MCPDatabaseService } = await import('@/lib/services/mcp-database-service')
-  const dbService = MCPDatabaseService.getInstance()
+  const { databaseService } = await import('@/lib/services/database-service')
+  const dbService = databaseService
 
   const liveQuery = `
     SELECT COUNT(*) as live_count

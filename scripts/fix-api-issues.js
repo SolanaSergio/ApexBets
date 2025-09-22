@@ -97,7 +97,6 @@ async function cleanupUnusedFiles() {
     'lib/services/game-status-validator.ts',
     'lib/services/image-service.ts',
     'lib/services/intelligent-rate-limiter.ts',
-    'lib/services/mcp-database-service.ts',
     'lib/services/ml-prediction-service.ts',
     'lib/services/multi-sport-live-service.ts',
     'lib/services/optimized-live-updates.ts',

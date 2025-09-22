@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { TrendingUp, TrendingDown, BarChart3, Target, DollarSign, Activity, ArrowUp, ArrowDown } from "lucide-react"
-import { simpleApiClient as apiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient as apiClient } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface MarketMetrics {

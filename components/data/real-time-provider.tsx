@@ -105,14 +105,14 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     const fetchLiveGames = async () => {
       try {
         liveGamesController = new AbortController()
-        const result = await fetchWithCache(`/api/live-updates?sport=${selectedSport}&real=true`, {
+        const result = await fetchWithCache(`/api/database-first/games?sport=${selectedSport}&status=live`, {
           signal: liveGamesController.signal,
           headers: {
             'Cache-Control': 'max-age=60', // Cache for 60 seconds
           }
         })
 
-        const newLiveGames = Array.isArray(result.live) ? result.live : []
+        const newLiveGames = Array.isArray(result.data) ? result.data : []
 
         if (result.success) {
           // Create a string representation to check for changes
@@ -168,7 +168,7 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     const fetchPredictions = async () => {
       try {
         predictionsController = new AbortController()
-        const result = await fetchWithCache(`/api/predictions?sport=${selectedSport}&limit=10`, {
+        const result = await fetchWithCache(`/api/database-first/predictions?sport=${selectedSport}&limit=10`, {
           signal: predictionsController.signal,
           headers: {
             'Cache-Control': 'max-age=60', // Cache for 1 minute
@@ -176,7 +176,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
         })
 
         // Create a string representation to check for changes
-        const dataStr = JSON.stringify(result.predictions)
+        const predictions = Array.isArray(result.data) ? result.data : (Array.isArray(result.predictions) ? result.predictions : [])
+        const dataStr = JSON.stringify(predictions)
         const lastDataStr = lastDataState.get('predictions')
         
         // Only update state if data has actually changed
@@ -185,10 +186,10 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
           
           setData(prev => ({
             ...prev,
-            predictions: Array.isArray(result.predictions) ? result.predictions : [],
+            predictions: predictions,
             stats: {
               ...prev.stats,
-              dataPoints: result.predictions?.length || 0,
+              dataPoints: predictions.length || 0,
               accuracy: result.accuracy || prev.stats.accuracy
             }
           }))
@@ -208,7 +209,7 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     const fetchOdds = async () => {
       try {
         oddsController = new AbortController()
-        const result = await fetchWithCache(`/api/odds?sport=${selectedSport}`, {
+        const result = await fetchWithCache(`/api/database-first/odds?sport=${selectedSport}`, {
           signal: oddsController.signal,
           headers: {
             'Cache-Control': 'max-age=120', // Cache for 2 minutes
@@ -225,7 +226,7 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
           
           setData(prev => ({
             ...prev,
-            odds: Array.isArray(result) ? result : []
+            odds: Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : [])
           }))
         }
       } catch (err) {
@@ -387,12 +388,12 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
   }, [gameUpdates, isConnected, lastUpdate, error])
 
   const refreshData = async () => {
-    // Force refresh all data
+    // Force refresh all data using database-first endpoints
     try {
       const [gamesRes, predictionsRes, oddsRes, statsRes] = await Promise.all([
-        fetch(`/api/live-updates?sport=${selectedSport}&real=true`),
-        fetch(`/api/predictions?sport=${selectedSport}&limit=10`),
-        fetch(`/api/odds?sport=${selectedSport}`),
+        fetch(`/api/database-first/games?sport=${selectedSport}&status=live&forceRefresh=true`),
+        fetch(`/api/database-first/predictions?sport=${selectedSport}&limit=10&forceRefresh=true`),
+        fetch(`/api/database-first/odds?sport=${selectedSport}&forceRefresh=true`),
         fetch(`/api/analytics/stats?sport=${selectedSport}`)
       ])
 
@@ -405,11 +406,11 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
 
       setData(prev => ({
         ...prev,
-        liveGames: Array.isArray(games.live) ? games.live : [],
-        predictions: Array.isArray(predictions.predictions) ? predictions.predictions : [],
-        odds: Array.isArray(odds) ? odds : [],
+        liveGames: Array.isArray(games.data) ? games.data : [],
+        predictions: Array.isArray(predictions.data) ? predictions.data : (Array.isArray(predictions.predictions) ? predictions.predictions : []),
+        odds: Array.isArray(odds.data) ? odds.data : (Array.isArray(odds) ? odds : []),
         stats: {
-          totalGames: stats.data?.total_games || (Array.isArray(games.live) ? games.live.length : 0),
+          totalGames: stats.data?.total_games || (Array.isArray(games.data) ? games.data.length : 0),
           accuracy: Math.round((stats.data?.accuracy_rate || 0) * 100),
           teamsTracked: stats.data?.total_teams || 0,
           dataPoints: stats.data?.total_predictions || 0

@@ -396,13 +396,12 @@ export class BasketballService extends SportSpecificService {
     if (parts.length > 1) {
       // Use sport-specific configuration for team suffixes if available
       const leagueConfig = this.getLeagueConfig()
-      const suffixes = leagueConfig?.teamSuffixes || [
-        // Common basketball team suffixes
-        'Lakers', 'Celtics', 'Warriors', 'Heat', 'Bulls', 'Knicks', '76ers', 'Nets', 'Hawks', 'Hornets', 
-        'Cavaliers', 'Mavericks', 'Nuggets', 'Pistons', 'Rockets', 'Pacers', 'Clippers', 'Grizzlies', 
-        'Bucks', 'Timberwolves', 'Pelicans', 'Thunder', 'Magic', 'Suns', 'Blazers', 'Kings', 'Spurs', 
-        'Raptors', 'Jazz', 'Wizards'
-      ]
+      const suffixes = leagueConfig?.teamSuffixes || []
+      
+      // If no suffixes configured, try to extract city by removing the last word
+      if (suffixes.length === 0) {
+        return parts.slice(0, -1).join(' ')
+      }
       
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {

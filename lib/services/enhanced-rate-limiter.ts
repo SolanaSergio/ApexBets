@@ -3,7 +3,7 @@
  * Comprehensive rate limiting with database persistence and provider-specific limits
  */
 
-import { supabaseMCPClient } from '../supabase/mcp-client'
+import { productionSupabaseClient } from '../supabase/production-client'
 
 export interface RateLimitConfig {
   provider: string
@@ -166,8 +166,8 @@ export class EnhancedRateLimiter {
         AND window_start = '${windowStart.toISOString()}'
       `
 
-      const minuteResult = await supabaseMCPClient.executeSQL(minuteQuery)
-      const currentMinuteRequests = minuteResult[0]?.requests_count || 0
+      const minuteResult = await productionSupabaseClient.executeSQL(minuteQuery)
+      const currentMinuteRequests = minuteResult.success && minuteResult.data && minuteResult.data[0] ? minuteResult.data[0].requests_count || 0 : 0
 
       if (currentMinuteRequests >= config.requestsPerMinute) {
         return {
@@ -188,8 +188,8 @@ export class EnhancedRateLimiter {
         LIMIT 1
       `
 
-      const dailyResult = await supabaseMCPClient.executeSQL(dailyQuery)
-      const currentDailyRequests = dailyResult[0]?.daily_requests || 0
+      const dailyResult = await productionSupabaseClient.executeSQL(dailyQuery)
+      const currentDailyRequests = dailyResult.success && dailyResult.data && dailyResult.data[0] ? dailyResult.data[0].daily_requests || 0 : 0
 
       if (currentDailyRequests >= config.requestsPerDay) {
         const tomorrow = new Date(now)
@@ -273,7 +273,7 @@ export class EnhancedRateLimiter {
           updated_at = NOW()
       `
 
-      await supabaseMCPClient.executeSQL(updateMinuteQuery)
+      await productionSupabaseClient.executeSQL(updateMinuteQuery)
 
       // Update daily counter
       const updateDailyQuery = `
@@ -285,7 +285,7 @@ export class EnhancedRateLimiter {
           updated_at = NOW()
       `
 
-      await supabaseMCPClient.executeSQL(updateDailyQuery)
+      await productionSupabaseClient.executeSQL(updateDailyQuery)
     } catch (error) {
       console.error('Failed to update rate limit counters:', error)
     }
@@ -317,8 +317,8 @@ export class EnhancedRateLimiter {
         AND window_start = '${windowStart.toISOString()}'
       `
 
-      const result = await supabaseMCPClient.executeSQL(query)
-      const data = result[0] || { minute_requests: 0, daily_requests: 0 }
+      const result = await productionSupabaseClient.executeSQL(query)
+      const data = result.success && result.data && result.data[0] ? result.data[0] : { minute_requests: 0, daily_requests: 0 }
 
       return {
         provider,
@@ -345,11 +345,11 @@ export class EnhancedRateLimiter {
     try {
       if (provider) {
         const query = `DELETE FROM api_rate_limits WHERE provider = '${provider}'`
-        await supabaseMCPClient.executeSQL(query)
+        await productionSupabaseClient.executeSQL(query)
         console.log(`Rate limits reset for provider: ${provider}`)
       } else {
         const query = 'DELETE FROM api_rate_limits'
-        await supabaseMCPClient.executeSQL(query)
+        await productionSupabaseClient.executeSQL(query)
         console.log('All rate limits reset')
       }
     } catch (error) {

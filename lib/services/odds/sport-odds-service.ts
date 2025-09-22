@@ -145,7 +145,7 @@ export class SportOddsService extends BaseService {
    */
   private async fetchOddsForGame(game: any): Promise<OddsData | null> {
     try {
-      // Fetch real odds data from database using Supabase MCP
+      // Fetch real odds data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
       

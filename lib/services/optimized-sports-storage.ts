@@ -3,8 +3,9 @@
  * Efficiently stores and retrieves sports API data for fast access
  */
 
-import { supabaseMCPClient } from '../supabase/mcp-client'
+import { productionSupabaseClient } from '../supabase/production-client'
 import { databaseCacheService } from '../services/database-cache-service'
+import { structuredLogger } from './structured-logger'
 // import { enhancedRateLimiter } from './enhanced-rate-limiter'
 
 export interface SportsDataConfig {
@@ -69,7 +70,7 @@ export class OptimizedSportsStorage {
             last_updated = EXCLUDED.last_updated
         `
 
-        await supabaseMCPClient.executeSQL(insertQuery)
+        await productionSupabaseClient.executeSQL(insertQuery)
       }
 
       // Invalidate cache keys related to this sport after writes
@@ -77,9 +78,9 @@ export class OptimizedSportsStorage {
         await databaseCacheService.clearBySport(sport)
       } catch {}
 
-      console.log(`✅ Stored ${games.length} games for ${sport}/${league}`)
+      structuredLogger.info('Stored games', { count: games.length, sport, league })
     } catch (error) {
-      console.error('Failed to store games:', error)
+      structuredLogger.error('Failed to store games', { error: error instanceof Error ? error.message : String(error), sport, league })
       throw error
     }
   }
@@ -92,20 +93,20 @@ export class OptimizedSportsStorage {
       for (const batch of batches) {
         const values = batch.map(team => ({
           id: team.id || this.generateId(),
-          name: team.name || team.teamName || team.full_name,
-          sport,
-          league,
-          abbreviation: team.abbreviation || team.abbr || team.teamAbbreviation || '',
-          city: team.city || team.homeTeam || '',
-          logo_url: team.logo_url || team.logoUrl || team.logo || null,
-          conference: team.conference || null,
-          division: team.division || null,
+          name: this.escape(String(team.name || team.teamName || team.full_name || '')),
+          sport: this.escape(String(sport)),
+          league: this.escape(String(league)),
+          abbreviation: this.escape(String(team.abbreviation || team.abbr || team.teamAbbreviation || '')),
+          city: this.escape(String(team.city || team.homeTeam || '')),
+          logo_url: team.logo_url ? this.escape(String(team.logo_url)) : (team.logoUrl ? this.escape(String(team.logoUrl)) : (team.logo ? this.escape(String(team.logo)) : null)),
+          conference: team.conference ? this.escape(String(team.conference)) : null,
+          division: team.division ? this.escape(String(team.division)) : null,
           founded_year: team.foundedYear || team.founded || null,
-          stadium_name: team.stadiumName || team.stadium || null,
+          stadium_name: team.stadiumName ? this.escape(String(team.stadiumName)) : (team.stadium ? this.escape(String(team.stadium)) : null),
           stadium_capacity: team.stadiumCapacity || team.capacity || null,
-          primary_color: team.primaryColor || team.primary_color || null,
-          secondary_color: team.secondaryColor || team.secondary_color || null,
-          country: team.country || null,
+          primary_color: team.primaryColor ? this.escape(String(team.primaryColor)) : (team.primary_color ? this.escape(String(team.primary_color)) : null),
+          secondary_color: team.secondaryColor ? this.escape(String(team.secondaryColor)) : (team.secondary_color ? this.escape(String(team.secondary_color)) : null),
+          country: team.country ? this.escape(String(team.country)) : null,
           is_active: team.isActive !== false,
           last_updated: new Date().toISOString()
         }))
@@ -121,7 +122,7 @@ export class OptimizedSportsStorage {
             last_updated = EXCLUDED.last_updated
         `
 
-        await supabaseMCPClient.executeSQL(insertQuery)
+        await productionSupabaseClient.executeSQL(insertQuery)
       }
 
       // Invalidate cache keys related to this sport after writes
@@ -129,9 +130,9 @@ export class OptimizedSportsStorage {
         await databaseCacheService.clearBySport(sport)
       } catch {}
 
-      console.log(`✅ Stored ${teams.length} teams for ${sport}/${league}`)
+      structuredLogger.info('Stored teams', { count: teams.length, sport, league })
     } catch (error) {
-      console.error('Failed to store teams:', error)
+      structuredLogger.error('Failed to store teams', { error: error instanceof Error ? error.message : String(error), sport, league })
       throw error
     }
   }
@@ -172,7 +173,7 @@ export class OptimizedSportsStorage {
             last_updated = EXCLUDED.last_updated
         `
 
-        await supabaseMCPClient.executeSQL(insertQuery)
+        await productionSupabaseClient.executeSQL(insertQuery)
       }
 
       // Invalidate cache keys related to this sport after writes
@@ -180,9 +181,9 @@ export class OptimizedSportsStorage {
         await databaseCacheService.clearBySport(sport)
       } catch {}
 
-      console.log(`✅ Stored ${players.length} players for ${sport}/${league}`)
+      structuredLogger.info('Stored players', { count: players.length, sport, league })
     } catch (error) {
-      console.error('Failed to store players:', error)
+      structuredLogger.error('Failed to store players', { error: error instanceof Error ? error.message : String(error), sport, league })
       throw error
     }
   }
@@ -215,11 +216,11 @@ export class OptimizedSportsStorage {
 
       query += ` ORDER BY g.game_date DESC LIMIT 100`
 
-      const result = await supabaseMCPClient.executeSQL(query)
+      const result = await productionSupabaseClient.executeSQL(query)
       const responseTime = Date.now() - startTime
 
       return {
-        data: result || [],
+        data: result.success ? result.data : [],
         cached: false,
         source: 'database',
         responseTime,
@@ -249,18 +250,18 @@ export class OptimizedSportsStorage {
 
       query += ` ORDER BY name LIMIT 100`
 
-      const result = await supabaseMCPClient.executeSQL(query)
+      const result = await productionSupabaseClient.executeSQL(query)
       const responseTime = Date.now() - startTime
 
       return {
-        data: result || [],
+        data: result.success ? result.data : [],
         cached: false,
         source: 'database',
         responseTime,
         lastUpdated: new Date().toISOString()
       }
     } catch (error) {
-      console.error('Failed to get teams:', error)
+      structuredLogger.error('Failed to get teams', { error: error instanceof Error ? error.message : String(error), sport, league })
       return {
         data: [],
         cached: false,
@@ -283,18 +284,18 @@ export class OptimizedSportsStorage {
 
       query += ` ORDER BY name LIMIT ${limit}`
 
-      const result = await supabaseMCPClient.executeSQL(query)
+      const result = await productionSupabaseClient.executeSQL(query)
       const responseTime = Date.now() - startTime
 
       return {
-        data: result || [],
+        data: result.success ? result.data : [],
         cached: false,
         source: 'database',
         responseTime,
         lastUpdated: new Date().toISOString()
       }
     } catch (error) {
-      console.error('Failed to get players:', error)
+      structuredLogger.error('Failed to get players', { error: error instanceof Error ? error.message : String(error), sport, teamId })
       return {
         data: [],
         cached: false,
@@ -344,12 +345,12 @@ export class OptimizedSportsStorage {
             last_updated = EXCLUDED.last_updated
         `
 
-        await supabaseMCPClient.executeSQL(insertQuery)
+        await productionSupabaseClient.executeSQL(insertQuery)
       }
 
-      console.log(`✅ Stored ${standings.length} standings for ${sport}/${league}`)
+      structuredLogger.info('Stored standings', { count: standings.length, sport, league })
     } catch (error) {
-      console.error('Failed to store standings:', error)
+      structuredLogger.error('Failed to store standings', { error: error instanceof Error ? error.message : String(error), sport, league })
       throw error
     }
   }
@@ -371,11 +372,11 @@ export class OptimizedSportsStorage {
 
       query += ` ORDER BY s.position ASC`
 
-      const result = await supabaseMCPClient.executeSQL(query)
+      const result = await productionSupabaseClient.executeSQL(query)
       const responseTime = Date.now() - startTime
 
       return {
-        data: result || [],
+        data: result.success ? result.data : [],
         cached: false,
         source: 'database',
         responseTime,
@@ -393,13 +394,17 @@ export class OptimizedSportsStorage {
     }
   }
 
+  private escape(value: string): string {
+    return value.replace(/'/g, "''")
+  }
+
   async clearOldData(sport: string, daysToKeep: number = 30): Promise<void> {
     try {
       const cutoffDate = new Date()
       cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
 
       // Clear old games
-      await supabaseMCPClient.executeSQL(`
+      await productionSupabaseClient.executeSQL(`
         DELETE FROM games 
         WHERE sport = '${sport}' 
         AND game_date < '${cutoffDate.toISOString()}'
@@ -407,7 +412,7 @@ export class OptimizedSportsStorage {
       `)
 
       // Clear old cache entries
-      await supabaseMCPClient.executeSQL(`
+      await productionSupabaseClient.executeSQL(`
         DELETE FROM cache_entries 
         WHERE sport = '${sport}' 
         AND expires_at < '${new Date().toISOString()}'
@@ -429,19 +434,19 @@ export class OptimizedSportsStorage {
   }> {
     try {
       const [gamesResult, teamsResult, playersResult, standingsResult, cacheResult] = await Promise.all([
-        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM games'),
-        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM teams'),
-        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM players'),
-        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM standings'),
-        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM cache_entries')
+        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM games'),
+        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM teams'),
+        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM players'),
+        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM standings'),
+        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM cache_entries')
       ])
 
       return {
-        totalGames: parseInt(gamesResult[0]?.count) || 0,
-        totalTeams: parseInt(teamsResult[0]?.count) || 0,
-        totalPlayers: parseInt(playersResult[0]?.count) || 0,
-        totalStandings: parseInt(standingsResult[0]?.count) || 0,
-        cacheEntries: parseInt(cacheResult[0]?.count) || 0,
+        totalGames: parseInt(gamesResult.success && gamesResult.data && gamesResult.data[0] ? gamesResult.data[0].count : 0) || 0,
+        totalTeams: parseInt(teamsResult.success && teamsResult.data && teamsResult.data[0] ? teamsResult.data[0].count : 0) || 0,
+        totalPlayers: parseInt(playersResult.success && playersResult.data && playersResult.data[0] ? playersResult.data[0].count : 0) || 0,
+        totalStandings: parseInt(standingsResult.success && standingsResult.data && standingsResult.data[0] ? standingsResult.data[0].count : 0) || 0,
+        cacheEntries: parseInt(cacheResult.success && cacheResult.data && cacheResult.data[0] ? cacheResult.data[0].count : 0) || 0,
         lastUpdated: new Date().toISOString()
       }
     } catch (error) {

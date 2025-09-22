@@ -22,7 +22,7 @@ import {
   Clock, 
   CheckCircle 
 } from "lucide-react"
-import { simpleApiClient, type Game } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, type Game } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { TeamLogo } from "@/components/ui/team-logo"
 import { cn } from "@/lib/utils"
@@ -50,11 +50,11 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
       const today = new Date().toISOString().split('T')[0]
       const params: any = { sport, date: dateFilter || today }
 
-      // Use Promise.all for parallel data fetching
+      // Use Promise.all for parallel data fetching with database-first approach
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        simpleApiClient.getGames({ sport, status: 'in_progress' }).catch(() => []),
-        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }).catch(() => []),
-        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10 }).catch(() => [])
+        databaseFirstApiClient.getGames({ sport, status: 'in_progress' }).catch(() => []),
+        databaseFirstApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }).catch(() => []),
+        databaseFirstApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10 }).catch(() => [])
       ])
 
       // Normalize and filter out games that don't meet live criteria

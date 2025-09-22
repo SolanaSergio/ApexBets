@@ -43,7 +43,7 @@ class SportServiceFactory {
    */
   async initialize(): Promise<void> {
     try {
-      // Load sport configurations from database via MCP
+      // Load sport configurations from database
       await this.loadSportConfigurations()
       
       // Initialize sport services dynamically
@@ -104,8 +104,8 @@ class SportServiceFactory {
 
   private async loadSportConfigurations(): Promise<void> {
     try {
-      // Import MCP database service
-      const { mcpDatabaseService } = await import('../mcp-database-service')
+      // Import database service
+      const { databaseService } = await import('../database-service')
       
       const query = `
         SELECT 
@@ -120,7 +120,7 @@ class SportServiceFactory {
         ORDER BY display_name
       `
       
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       
       if (!result.success) {
         throw new Error(`Failed to load sport configurations: ${result.error}`)

@@ -46,7 +46,7 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react"
-import { simpleApiClient, Game, Team } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, Game, Team } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
@@ -117,7 +117,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   // All function definitions moved to top to prevent reference errors
   const loadServiceHealth = useCallback(async () => {
     try {
-      const healthStatus = await simpleApiClient.getHealthStatus()
+      const healthStatus = await databaseFirstApiClient.getHealthStatus()
       setServiceHealth(healthStatus as Record<SupportedSport, boolean>)
     } catch (error) {
       console.error('Error loading service health:', error)
@@ -155,80 +155,33 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
 
   const loadTeamsForSport = useCallback(async (sport: SupportedSport) => {
     try {
-      console.log(`Loading teams for ${sport}...`)
+      console.log(`Loading teams for ${sport} using database-first approach...`)
       
-      // Prefer database-first; only external if DB empty and allowed via server
-      let teams: TeamData[] = []
-      try {
-        teams = await simpleApiClient.getTeams({ sport })
-        console.log(`Database: Loaded ${teams.length} teams for ${sport}`)
-        
-        // Normalize team data to ensure consistency with error handling
-        teams = teams
-          .filter(team => team && typeof team === 'object') // Filter out invalid teams
-          .map(team => {
-            try {
-              return normalizeTeamData(team, sport)
-            } catch (error) {
-              console.warn('Error normalizing team data:', error, team)
-              return null
-            }
-          })
-          .filter(team => team !== null) // Remove failed normalizations
-        
-        // Deduplicate teams
-        teams = deduplicateTeams(teams)
-        
-        // If empty, request server-managed external fallback (no client forcing external)
-        if (teams.length === 0) {
+      const teams = await databaseFirstApiClient.getTeams({ sport })
+      console.log(`Database-first: Loaded ${teams.length} teams for ${sport}`)
+      
+      // Normalize team data to ensure consistency
+      const normalizedTeams = teams
+        .filter(team => team && typeof team === 'object')
+        .map(team => {
           try {
-            teams = await simpleApiClient.getTeams({ sport })
-            teams = teams
-              .filter(team => team && typeof team === 'object') // Filter out invalid teams
-              .map(team => {
-                try {
-                  return normalizeTeamData(team, sport)
-                } catch (error) {
-                  console.warn('Error normalizing team data (DB fallback):', error, team)
-                  return null
-                }
-              })
-              .filter(team => team !== null) // Remove failed normalizations
-            teams = deduplicateTeams(teams)
-            console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
-          } catch (dbError) {
-            console.warn(`Database fallback failed for teams ${sport}:`, dbError)
-            teams = []
+            return normalizeTeamData(team, sport)
+          } catch (error) {
+            console.warn('Error normalizing team data:', error, team)
+            return null
           }
-        }
-      } catch (externalError) {
-        console.warn(`External API failed for teams ${sport}:`, externalError)
-        // Fallback to database data
-        try {
-          teams = await simpleApiClient.getTeams({ sport, external: false })
-          teams = teams
-            .filter(team => team && typeof team === 'object') // Filter out invalid teams
-            .map(team => {
-              try {
-                return normalizeTeamData(team, sport)
-              } catch (error) {
-                console.warn('Error normalizing team data (catch fallback):', error, team)
-                return null
-              }
-            })
-            .filter(team => team !== null) // Remove failed normalizations
-          teams = deduplicateTeams(teams)
-          console.log(`Database fallback: Loaded ${teams.length} teams for ${sport}`)
-        } catch (dbError) {
-          console.warn(`Database fallback failed for teams ${sport}:`, dbError)
-          teams = []
-        }
-      }
+        })
+        .filter(team => team !== null) as TeamData[]
+      
+      // Deduplicate teams
+      const uniqueTeams = deduplicateTeams(normalizedTeams)
       
       setAllTeams(prev => {
         const filtered = prev.filter(team => team.sport !== sport)
-        return [...filtered, ...teams]
+        return [...filtered, ...uniqueTeams]
       })
+      
+      console.log(`Successfully loaded ${uniqueTeams.length} teams for ${sport}`)
     } catch (error) {
       console.warn(`Failed to load teams for ${sport}:`, error)
     }
@@ -245,24 +198,22 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       let games: GameData[] = []
       try {
         // Try today first, then tomorrow if no games today
-        games = await simpleApiClient.getGames({
+        games = await databaseFirstApiClient.getGames({
           sport,
           dateFrom: today,
           status: 'scheduled',
-          limit: 20,
-          external: true
+          limit: 20
         })
         console.log(`External API: Loaded ${games.length} upcoming games for ${sport} on ${today}`)
         
         // If no games today, try tomorrow
         if (games.length === 0) {
           console.log(`No games today, trying tomorrow (${tomorrow})...`)
-          games = await simpleApiClient.getGames({
+          games = await databaseFirstApiClient.getGames({
             sport,
             dateFrom: tomorrow,
             status: 'scheduled',
-            limit: 20,
-            external: true
+            limit: 20
           })
           console.log(`External API: Loaded ${games.length} upcoming games for ${sport} on ${tomorrow}`)
         }
@@ -303,16 +254,15 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         // If no games found for today, try without date filter to get any scheduled games
         if (games.length === 0) {
           console.log(`No games found for today, trying without date filter...`)
-          const allScheduledGames = await simpleApiClient.getGames({
+          const allScheduledGames = await databaseFirstApiClient.getGames({
             sport,
             status: 'scheduled',
-            limit: 20,
-            external: true
+            limit: 20
           })
           console.log(`External API (no date filter): Loaded ${allScheduledGames.length} scheduled games for ${sport}`)
           games = allScheduledGames
-            .filter(game => game && typeof game === 'object') // Filter out invalid games
-            .map(game => {
+            .filter((game: any) => game && typeof game === 'object') // Filter out invalid games
+            .map((game: any) => {
               try {
                 return normalizeGameData(game, sport)
               } catch (error) {
@@ -320,19 +270,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 return null
               }
             })
-            .filter(game => game !== null) // Remove failed normalizations
+            .filter((game: any) => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
         }
         
         // Fallback to database if external API fails or returns no data
         if (games.length === 0) {
           try {
-            games = await simpleApiClient.getGames({
+            games = await databaseFirstApiClient.getGames({
               sport,
               dateFrom: today,
               status: 'scheduled',
-              limit: 20,
-              external: false
+              limit: 20
             })
             games = games
               .filter(game => game && typeof game === 'object') // Filter out invalid games
@@ -344,7 +293,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                   return null
                 }
               })
-              .filter(game => game !== null) // Remove failed normalizations
+              .filter((game: any) => game !== null) // Remove failed normalizations
             games = deduplicateGames(games)
             console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
           } catch (dbError) {
@@ -355,16 +304,15 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         console.warn(`External API failed for upcoming games ${sport}:`, externalError)
         // Fallback to database
         try {
-          games = await simpleApiClient.getGames({
+          games = await databaseFirstApiClient.getGames({
             sport,
             dateFrom: today,
             status: 'scheduled',
-            limit: 20,
-            external: false
+            limit: 20
           })
           games = games
-            .filter(game => game && typeof game === 'object') // Filter out invalid games
-            .map(game => {
+            .filter((game: any) => game && typeof game === 'object') // Filter out invalid games
+            .map((game: any) => {
               try {
                 return normalizeGameData(game, sport)
               } catch (error) {
@@ -372,7 +320,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 return null
               }
             })
-            .filter(game => game !== null) // Remove failed normalizations
+            .filter((game: any) => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
           console.log(`Database fallback: Loaded ${games.length} upcoming games for ${sport}`)
         } catch (dbError) {
@@ -399,20 +347,18 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       let games: GameData[] = []
       try {
         // Try to get live games (status: 'live')
-        games = await simpleApiClient.getGames({ 
+        games = await databaseFirstApiClient.getGames({ 
           sport, 
-          status: 'live',
-          external: true 
+          status: 'live'
         })
         console.log(`External API: Loaded ${games.length} live games for ${sport}`)
         
         // If no live games, try to get any games with 'in_progress' status
         if (games.length === 0) {
           console.log(`No live games, trying in_progress status...`)
-          games = await simpleApiClient.getGames({ 
+          games = await databaseFirstApiClient.getGames({ 
             sport, 
-            status: 'in_progress',
-            external: true 
+            status: 'in_progress'
           })
           console.log(`External API: Loaded ${games.length} in_progress games for ${sport}`)
         }
@@ -463,10 +409,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         // Fallback to database if external API fails
         if (games.length === 0) {
           try {
-            games = await simpleApiClient.getGames({ 
+            games = await databaseFirstApiClient.getGames({ 
               sport, 
-              status: 'in_progress',
-              external: false 
+              status: 'in_progress'
             })
             games = games
               .filter(game => game && typeof game === 'object') // Filter out invalid games
@@ -478,7 +423,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                   return null
                 }
               })
-              .filter(game => game !== null) // Remove failed normalizations
+              .filter((game: any) => game !== null) // Remove failed normalizations
             games = deduplicateGames(games)
             
             // Filter to only show truly live games (with real scores or live indicators)
@@ -499,14 +444,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         console.warn(`External API failed for live games ${sport}:`, externalError)
         // Fallback to database
         try {
-          games = await simpleApiClient.getGames({ 
+          games = await databaseFirstApiClient.getGames({ 
             sport, 
-            status: 'in_progress',
-            external: false 
+            status: 'in_progress'
           })
           games = games
-            .filter(game => game && typeof game === 'object') // Filter out invalid games
-            .map(game => {
+            .filter((game: any) => game && typeof game === 'object') // Filter out invalid games
+            .map((game: any) => {
               try {
                 return normalizeGameData(game, sport)
               } catch (error) {
@@ -514,7 +458,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                 return null
               }
             })
-            .filter(game => game !== null) // Remove failed normalizations
+            .filter((game: any) => game !== null) // Remove failed normalizations
           games = deduplicateGames(games)
           
           // Filter to only show truly live games (with real scores or live indicators)
@@ -583,7 +527,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   // Load standings data
   const loadStandings = useCallback(async (sport: SupportedSport) => {
     try {
-      const response = await simpleApiClient.getStandings({ sport })
+      const response = await databaseFirstApiClient.getStandings({ sport })
       // Handle both wrapped and direct array responses
       const standingsData = Array.isArray(response) ? response : (response as any)?.data || []
       setStandings(standingsData)
@@ -597,7 +541,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   // Load upcoming predictions
   const loadUpcomingPredictions = useCallback(async (sport: SupportedSport) => {
     try {
-      const predictions = await simpleApiClient.getUpcomingPredictions({ sport, limit: 5 })
+      const predictions = await databaseFirstApiClient.getUpcomingPredictions({ sport, limit: 5 })
       setUpcomingPredictions(predictions)
       console.log(`Loaded ${predictions.length} upcoming predictions for ${sport}`)
     } catch (error) {
@@ -623,7 +567,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   // Load live odds
   const loadLiveOdds = useCallback(async (sport: SupportedSport) => {
     try {
-      const odds = await simpleApiClient.getOdds({ sport, limit: 10 })
+      const odds = await databaseFirstApiClient.getOdds({ sport, limit: 10 })
       // Ensure odds is an array and filter out any invalid entries
       const validOdds = Array.isArray(odds) ? odds.filter(odd => odd && odd.home_team && odd.away_team) : []
       setLiveOdds(validOdds)
@@ -678,7 +622,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     // Clear cache to force fresh data
-    simpleApiClient.clearCache()
+    databaseFirstApiClient.clearCache()
     if (selectedSupportedSport) {
       await loadDataForSport(selectedSupportedSport)
     }

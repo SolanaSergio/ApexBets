@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Activity, BarChart3, Target, Users } from "lucide-react"
-import { simpleApiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient } from "@/lib/api-client-database-first"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 
 interface QuickAccessStats {
@@ -36,12 +36,12 @@ export function DynamicQuickAccessPanel() {
       let totalTeams = 0
       let totalPredictions = 0
       
-      // Aggregate data across all sports
+      // Aggregate data across all sports using database-first approach
       for (const sport of supportedSports) {
         try {
           const [games, teams] = await Promise.all([
-            simpleApiClient.getGames({ sport, status: 'live' }),
-            simpleApiClient.getTeams({ sport })
+            databaseFirstApiClient.getGames({ sport, status: 'live' }),
+            databaseFirstApiClient.getTeams({ sport })
           ])
           
           totalLiveGames += games.length
@@ -55,7 +55,7 @@ export function DynamicQuickAccessPanel() {
       // Calculate accuracy rate based on real prediction data
       let accuracyRate = 0
       try {
-        const predictionsResponse = await simpleApiClient.getPredictions({ limit: 100 })
+        const predictionsResponse = await databaseFirstApiClient.getPredictions({ limit: 100 })
         if (predictionsResponse && predictionsResponse.length > 0) {
           const correctPredictions = predictionsResponse.filter(p => p.accuracy === true).length
           accuracyRate = Math.round((correctPredictions / predictionsResponse.length) * 100)

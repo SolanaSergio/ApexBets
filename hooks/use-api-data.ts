@@ -96,8 +96,8 @@ export function useGames(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
       if (!sport) throw new Error('Sport is required for games data')
-      const { simpleApiClient } = await import('@/lib/api-client-simple')
-      return simpleApiClient.getGames({ sport, limit: 50 })
+      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+      return databaseFirstApiClient.getGames({ sport, limit: 50 })
     },
     { enabled: !!sport, ...options }
   )
@@ -106,10 +106,10 @@ export function useGames(sport?: string, options?: UseApiDataOptions<any[]>) {
 export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
-      const { simpleApiClient } = await import('@/lib/api-client-simple')
-      const params: Parameters<typeof simpleApiClient.getTeams>[0] = {}
+      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+      const params: { sport?: string; league?: string } = {}
       if (sport) params.sport = sport
-      return simpleApiClient.getTeams(params)
+      return databaseFirstApiClient.getTeams(params)
     },
     { enabled: !!sport, ...options }
   )
@@ -118,10 +118,10 @@ export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
 export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {
   return useApiData(
     async () => {
-      const { simpleApiClient } = await import('@/lib/api-client-simple')
-      const params: Parameters<typeof simpleApiClient.getPlayers>[0] = { limit: 50 }
+      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+      const params: { sport?: string; limit?: number; search?: string } = { limit: 50 }
       if (sport) params.sport = sport
-      return simpleApiClient.getPlayers(params)
+      return databaseFirstApiClient.getPlayers(params)
     },
     { enabled: !!sport, ...options }
   )
@@ -130,8 +130,8 @@ export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {
 export function useHealthStatus(options?: UseApiDataOptions<Record<string, boolean>>) {
   return useApiData(
     async () => {
-      const { simpleApiClient } = await import('@/lib/api-client-simple')
-      return simpleApiClient.getHealthStatus()
+      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+      return databaseFirstApiClient.getHealthStatus()
     },
     { refetchInterval: 30000, ...options } // Refetch every 30 seconds
   )

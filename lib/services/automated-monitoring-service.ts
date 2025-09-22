@@ -4,7 +4,7 @@
  */
 
 import { structuredLogger } from './structured-logger'
-import { mcpDatabaseService } from './mcp-database-service'
+import { databaseService } from './database-service'
 import { enhancedApiClient } from './enhanced-api-client'
 
 export interface MonitoringMetrics {
@@ -76,7 +76,7 @@ export class AutomatedMonitoringService {
       const startTime = Date.now()
       
       // Check database health
-      const dbHealth = await mcpDatabaseService.healthCheck()
+      const dbHealth = await databaseService.healthCheck()
       
       // Check API health
       const apiHealth = await enhancedApiClient.forceHealthCheck()

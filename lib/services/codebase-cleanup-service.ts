@@ -268,7 +268,6 @@ export class CodebaseCleanupService {
       'lib/services/game-status-validator.ts',
       'lib/services/image-service.ts',
       'lib/services/intelligent-rate-limiter.ts',
-      'lib/services/mcp-database-service.ts',
       'lib/services/ml-prediction-service.ts',
       'lib/services/multi-sport-live-service.ts',
       'lib/services/optimized-live-updates.ts',
@@ -283,8 +282,6 @@ export class CodebaseCleanupService {
       // Unused API files
       'app/api/cleanup/',
       'app/api/debug/',
-      'app/api/test-mcp/',
-      'app/api/test-mcp-service/',
       
       // Unused component files
       'components/error-boundary.tsx',

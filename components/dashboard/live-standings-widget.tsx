@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -130,43 +130,22 @@ export function LiveStandingsWidget() {
   const { selectedSport } = useRealTimeData()
   const [conference, setConference] = useState<"all" | "eastern" | "western" | "american" | "national">("all")
   const [refreshing, setRefreshing] = useState(false)
-  const [lastFetchTime, setLastFetchTime] = useState<number>(0)
 
-  // Debounced fetch function to prevent excessive API calls
-  const debouncedFetch = useCallback(async () => {
-    const now = Date.now()
-    // Prevent calls within 30 seconds of each other
-    if (now - lastFetchTime < 30000) {
-      return []
-    }
-
-    if (!selectedSport || selectedSport === "all") return []
-
-    try {
-      setLastFetchTime(now)
-      const response = await fetch(`/api/standings?sport=${selectedSport}&conference=${conference}`, {
-        headers: {
-          'Cache-Control': 'max-age=300', // Cache for 5 minutes
-        }
-      })
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const result = await response.json()
-      return result.data || result.standings || []
-    } catch (error) {
-      console.error('Error fetching standings:', error)
-      return []
-    }
-  }, [selectedSport, conference, lastFetchTime])
-
+  // Use database-first API client for standings
   const { data: standings, loading, error, refetch } = useApiData(
-    debouncedFetch,
+    async () => {
+      if (!selectedSport || selectedSport === "all") return []
+
+      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+      const params: { sport: string; league?: string } = { sport: selectedSport }
+      if (conference !== "all") {
+        params.league = conference
+      }
+      return databaseFirstApiClient.getStandings(params)
+    },
     {
       enabled: selectedSport !== "all",
-      refetchInterval: 600000 // Refresh every 10 minutes instead of 5
+      refetchInterval: 600000 // Refresh every 10 minutes
     }
   )
 

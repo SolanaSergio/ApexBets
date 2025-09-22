@@ -326,8 +326,13 @@ export class FootballService extends SportSpecificService {
     // Extract city from team name (e.g., "New England Patriots" -> "New England")
     const parts = teamName.split(' ')
     if (parts.length > 1) {
-      // Remove common team suffixes
-      const suffixes = ['Cardinals', 'Falcons', 'Ravens', 'Bills', 'Panthers', 'Bears', 'Bengals', 'Browns', 'Cowboys', 'Broncos', 'Lions', 'Packers', 'Texans', 'Colts', 'Jaguars', 'Chiefs', 'Raiders', 'Chargers', 'Rams', 'Dolphins', 'Vikings', 'Patriots', 'Saints', 'Giants', 'Jets', 'Eagles', 'Steelers', '49ers', 'Seahawks', 'Buccaneers', 'Titans', 'Commanders']
+      // Use sport-specific configuration for team suffixes if available
+      const suffixes: string[] = []
+      
+      // If no suffixes configured, try to extract city by removing the last word
+      if (suffixes.length === 0) {
+        return parts.slice(0, -1).join(' ')
+      }
       
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {

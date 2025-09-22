@@ -4,12 +4,12 @@
  */
 
 const { databaseAuditService } = require('../../lib/services/database-audit-service')
-const { MCPDatabaseService } = require('../../lib/services/mcp-database-service')
+const { DatabaseService } = require('../../lib/services/database-service')
 
 async function runDatabaseTests() {
   console.log('🚀 Starting Database Test Suite...')
   
-  const dbService = MCPDatabaseService.getInstance()
+  const dbService = DatabaseService.getInstance()
   const testResults = []
 
   const addTestResult = (result) => {

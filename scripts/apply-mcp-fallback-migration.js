@@ -1,6 +1,6 @@
 /**
- * Apply MCP Fallback Migration
- * This script applies the necessary RPC functions for MCP fallback functionality
+ * Apply Database Fallback Migration
+ * This script applies the necessary RPC functions for database fallback functionality
  */
 
 const { createClient } = require('@supabase/supabase-js')
@@ -20,10 +20,10 @@ async function applyMigration() {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Read migration file
-    const migrationPath = path.join(__dirname, '..', 'lib', 'migrations', '001_create_mcp_fallback_functions.sql')
+    const migrationPath = path.join(__dirname, '..', 'lib', 'migrations', '001_create_database_fallback_functions.sql')
     const migrationSQL = fs.readFileSync(migrationPath, 'utf8')
 
-    console.log('🚀 Applying MCP fallback migration...')
+    console.log('🚀 Applying database fallback migration...')
 
     // Execute migration
     const { data, error } = await supabase.rpc('exec', { sql: migrationSQL })
@@ -50,10 +50,10 @@ async function applyMigration() {
       }
     }
 
-    console.log('✅ MCP fallback migration applied successfully')
+    console.log('✅ Database fallback migration applied successfully')
     
     // Test the functions
-    console.log('🧪 Testing MCP fallback functions...')
+    console.log('🧪 Testing database fallback functions...')
     
     const { data: testResult, error: testError } = await supabase.rpc('execute_sql', { 
       query: 'SELECT 1 as test' 

@@ -319,17 +319,17 @@ function getCurrentSeason(sport: string): string {
 // Real implementation that fetches player stats from external APIs
 async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
   try {
-    const { simpleApiClient } = await import('@/lib/api-client-simple')
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
     // Get game details first to extract player IDs
-    const game = await simpleApiClient.getGame(gameId)
+    const game = await databaseFirstApiClient.getGame(gameId)
     if (!game) return []
     
     // Get player stats for each team
-    const homeTeamPlayers = await simpleApiClient.getPlayers({ 
+    const homeTeamPlayers = await databaseFirstApiClient.getPlayers({ 
       sport, 
       team_id: game.home_team_id 
     })
-    const awayTeamPlayers = await simpleApiClient.getPlayers({ 
+    const awayTeamPlayers = await databaseFirstApiClient.getPlayers({ 
       sport, 
       team_id: game.away_team_id 
     })
@@ -340,7 +340,7 @@ async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any
     // Get stats for each player
     for (const player of allPlayers) {
       try {
-        const stats = await simpleApiClient.getPlayerStats({ 
+        const stats = await databaseFirstApiClient.getPlayerStats({ 
           sport, 
           player_id: player.id 
         })
@@ -360,8 +360,8 @@ async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any
 // Real implementation that fetches odds from external APIs
 async function getOddsForGame(gameId: string, sport: string): Promise<any[]> {
   try {
-    const { simpleApiClient } = await import('@/lib/api-client-simple')
-    const odds = await simpleApiClient.getOdds({ game_id: gameId, sport })
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    const odds = await databaseFirstApiClient.getOdds({ game_id: gameId, sport })
     return odds || []
   } catch (error) {
     console.error('Error fetching odds for game:', gameId, error)

@@ -20,7 +20,7 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
     try {
       setLoading(true)
       
-      // Use simpleApiClient for consistent error handling and caching
+      // Use database-first API for consistent error handling and caching
       const response = await fetch(`/api/analytics/trend-analysis?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`)
       
       if (!response.ok) {

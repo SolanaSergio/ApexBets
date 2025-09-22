@@ -1,10 +1,10 @@
 /**
- * MCP Database Service
- * Service for database operations using MCP (Model Context Protocol)
+ * Database Service
+ * Service for database operations using production Supabase client
+ * Vercel-compatible implementation
  */
 
-import { supabaseMCPClient } from '../supabase/mcp-client'
-import { mcpInitializer } from '../mcp/mcp-initializer'
+import { productionSupabaseClient } from '../supabase/production-client'
 import { structuredLogger } from './structured-logger'
 
 export interface DatabaseStats {
@@ -23,16 +23,16 @@ export interface QueryResult {
   error?: string
 }
 
-export class MCPDatabaseService {
-  private static instance: MCPDatabaseService
+export class DatabaseService {
+  private static instance: DatabaseService
   private isConnected: boolean = false
   private lastHealthCheck: Date = new Date()
 
-  public static getInstance(): MCPDatabaseService {
-    if (!MCPDatabaseService.instance) {
-      MCPDatabaseService.instance = new MCPDatabaseService()
+  public static getInstance(): DatabaseService {
+    if (!DatabaseService.instance) {
+      DatabaseService.instance = new DatabaseService()
     }
-    return MCPDatabaseService.instance
+    return DatabaseService.instance
   }
 
   constructor() {
@@ -41,41 +41,25 @@ export class MCPDatabaseService {
 
   private async initializeConnection(): Promise<void> {
     try {
-      // Initialize MCP system first
-      const initResult = await mcpInitializer.initialize()
+      // Test connection with production Supabase client
+      this.isConnected = productionSupabaseClient.isConnected()
       
-      // Always mark as initialized, even in fallback mode
-      this.isConnected = true
-      
-      if (initResult.mcpAvailable) {
-        // Test connection with a simple query
-        try {
-          await this.executeSQL('SELECT 1 as test')
-          structuredLogger.info('MCP Database Service initialized successfully', {
-            mcpAvailable: initResult.mcpAvailable,
-            fallbackMode: false
-          })
-        } catch (testError) {
-          structuredLogger.warn('MCP Database Service initialized with limited functionality', {
-            mcpAvailable: initResult.mcpAvailable,
-            fallbackMode: false,
-            testError: testError instanceof Error ? testError.message : String(testError)
-          })
-        }
+      if (this.isConnected) {
+        structuredLogger.info('Database Service initialized successfully', {
+          client: 'production-supabase',
+          connected: true
+        })
       } else {
-        // Fallback mode - service is available but with limited functionality
-        structuredLogger.info('MCP Database Service initialized in fallback mode', {
-          mcpAvailable: false,
-          fallbackMode: true,
-          message: initResult.message
+        structuredLogger.warn('Database Service initialized but not connected', {
+          client: 'production-supabase',
+          connected: false
         })
       }
     } catch (error) {
-      // Even if initialization fails, mark as connected for graceful degradation
-      this.isConnected = true
-      structuredLogger.warn('MCP Database Service initialized in fallback mode due to error', { 
+      this.isConnected = false
+      structuredLogger.error('Database Service initialization failed', { 
         error: error instanceof Error ? error.message : String(error),
-        fallbackMode: true
+        connected: false
       })
     }
   }
@@ -84,34 +68,31 @@ export class MCPDatabaseService {
     const startTime = Date.now()
     
     try {
-      // Check if we're in build/SSR context
-      if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
+      // Block only during Next.js build/static generation, allow server runtime
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
         return {
           success: false,
           data: [],
           rowCount: 0,
           executionTime: Date.now() - startTime,
-          error: 'Database operations not available during build/SSR'
+          error: 'Database operations not available during build/static generation'
         }
       }
 
-      // Enforce MCP usage - no fallback mode allowed
-      if (!mcpInitializer.isMCPAvailable()) {
-        throw new Error('MCP not available - database operations require MCP')
-      }
-      
-      const result = await supabaseMCPClient.executeSQL(query)
+      // Use production Supabase client for Vercel compatibility
+      const result = await productionSupabaseClient.executeSQL(query, _params)
       const executionTime = Date.now() - startTime
       
-      const data = Array.isArray(result) ? result : []
+      const data = Array.isArray(result.data) ? result.data : []
       
       structuredLogger.databaseQuery(query, executionTime, data.length)
       
       return {
-        success: true,
+        success: result.success,
         data,
         rowCount: data.length,
-        executionTime
+        executionTime,
+        ...(result.error ? { error: result.error } : {})
       }
     } catch (error) {
       const executionTime = Date.now() - startTime
@@ -345,4 +326,4 @@ export class MCPDatabaseService {
   }
 }
 
-export const mcpDatabaseService = MCPDatabaseService.getInstance()
+export const databaseService = DatabaseService.getInstance()

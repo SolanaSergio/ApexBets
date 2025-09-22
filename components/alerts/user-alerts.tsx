@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Trash2, Bell } from "lucide-react"
-import { simpleApiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient } from "@/lib/api-client-database-first"
 
 interface UserAlert {
   id: string
@@ -54,7 +54,7 @@ export function UserAlerts() {
 
   async function fetchTeams() {
     try {
-      const teamsData = await simpleApiClient.getTeams()
+      const teamsData = await databaseFirstApiClient.getTeams()
       setTeams(teamsData)
     } catch (error) {
       console.error("Error fetching teams:", error)

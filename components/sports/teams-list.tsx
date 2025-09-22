@@ -20,7 +20,7 @@ import {
   Trophy, 
   MapPin 
 } from "lucide-react"
-import { simpleApiClient, type Team } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, type Team } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { TeamLogo } from "@/components/ui/team-logo"
 import { normalizeTeamData, deduplicateTeams } from "@/lib/utils/data-utils"
@@ -43,7 +43,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
   const loadTeams = useCallback(async () => {
     try {
       setLoading(true)
-      const sportTeams = await simpleApiClient.getTeams({ sport })
+      const sportTeams = await databaseFirstApiClient.getTeams({ sport })
       // Normalize team data to ensure consistency
       const normalizedTeams = sportTeams.map(team => normalizeTeamData(team, sport))
       // Deduplicate teams

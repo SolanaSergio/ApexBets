@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Users, Search, Filter, Trophy, TrendingUp, Target } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { simpleApiClient as apiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient as apiClient } from "@/lib/api-client-database-first"
 import { TeamsList } from "@/components/sports/teams-list"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 

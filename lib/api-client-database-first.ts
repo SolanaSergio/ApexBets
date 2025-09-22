@@ -1,6 +1,6 @@
 /**
- * SIMPLE CLIENT-SIDE API CLIENT
- * Direct API calls without server-side dependencies
+ * DATABASE-FIRST API CLIENT
+ * Always uses database-first endpoints for optimal performance and rate limit management
  */
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
@@ -142,10 +142,9 @@ export interface Prediction {
   predicted_value: number;
   created_at: string;
   updated_at: string;
-  // Add other fields as they become apparent from usage
 }
 
-class SimpleApiClient {
+class DatabaseFirstApiClient {
   private baseUrl: string
   private cache: Map<string, { data: any; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes
@@ -238,9 +237,9 @@ class SimpleApiClient {
     throw new Error('Max retries exceeded')
   }
 
-  // Teams
-  async getTeams(params?: { league?: string; sport?: string; external?: boolean }): Promise<Team[]> {
-    const cacheKey = this.getCacheKey('/teams', params)
+  // Teams - DATABASE FIRST
+  async getTeams(params?: { league?: string; sport?: string }): Promise<Team[]> {
+    const cacheKey = this.getCacheKey('/database-first/teams', params)
     const cached = this.getCachedData<Team[]>(cacheKey)
     if (cached) {
       return cached
@@ -249,17 +248,11 @@ class SimpleApiClient {
     const searchParams = new URLSearchParams()
     if (params?.league) searchParams.set("league", params.league)
     if (params?.sport) searchParams.set("sport", params.sport)
-    
-    // Use external API unless explicitly disabled
-    if (params?.external !== false) {
-      searchParams.set("external", "true")
-    }
 
     const query = searchParams.toString()
-    const response = await this.request<{ data: Team[] } | Team[]>(`/teams${query ? `?${query}` : ""}`)
+    const response = await this.request<{ success: boolean; data: Team[] }>(`/database-first/teams${query ? `?${query}` : ""}`)
     
-    // Handle both wrapped and direct array responses
-    const result = Array.isArray(response) ? response : response.data || []
+    const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
   }
@@ -268,7 +261,7 @@ class SimpleApiClient {
     return this.request<Team>(`/teams/${teamId}`)
   }
 
-  // Games
+  // Games - DATABASE FIRST
   async getGames(params?: {
     date_from?: string
     date_to?: string
@@ -279,9 +272,8 @@ class SimpleApiClient {
     limit?: number
     sport?: string
     search?: string
-    external?: boolean
   }): Promise<Game[]> {
-    const cacheKey = this.getCacheKey('/games', params)
+    const cacheKey = this.getCacheKey('/database-first/games', params)
     const cached = this.getCachedData<Game[]>(cacheKey)
     if (cached) {
       return cached
@@ -297,17 +289,11 @@ class SimpleApiClient {
     if (params?.limit) searchParams.set("limit", params.limit.toString())
     if (params?.sport) searchParams.set("sport", params.sport)
     if (params?.search) searchParams.set("search", params.search)
-    
-    // Use external API unless explicitly disabled
-    if (params?.external !== false) {
-      searchParams.set("external", "true")
-    }
 
     const query = searchParams.toString()
-    const response = await this.request<{ data: Game[] } | Game[]>(`/games${query ? `?${query}` : ""}`)
+    const response = await this.request<{ success: boolean; data: Game[] }>(`/database-first/games${query ? `?${query}` : ""}`)
     
-    // Handle both wrapped and direct array responses
-    const result = Array.isArray(response) ? response : response.data || []
+    const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
   }
@@ -316,7 +302,7 @@ class SimpleApiClient {
     return this.request<Game>(`/games/${gameId}`)
   }
 
-  // Players
+  // Players - DATABASE FIRST
   async getPlayers(params?: {
     sport?: string;
     team_id?: string;
@@ -330,11 +316,11 @@ class SimpleApiClient {
     if (params?.search) searchParams.set("search", params.search);
 
     const query = searchParams.toString();
-    const response = await this.request<{ data: Player[] } | Player[]>(
+    const response = await this.request<{ success: boolean; data: Player[] }>(
       `/players${query ? `?${query}` : ""}`
     );
 
-    return Array.isArray(response) ? response : response.data || [];
+    return response.success ? response.data : [];
   }
 
   async getPlayerStats(params: {
@@ -352,13 +338,19 @@ class SimpleApiClient {
     return this.request<PlayerStats[]>(`/players/stats?${query}`);
   }
 
-  // Predictions
+  // Predictions - DATABASE FIRST
   async getPredictions(params?: {
     game_id?: string
     prediction_type?: string
     model_name?: string
     limit?: number
   }): Promise<any[]> {
+    const cacheKey = this.getCacheKey('/database-first/predictions', params)
+    const cached = this.getCachedData<any[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const searchParams = new URLSearchParams()
     if (params?.game_id) searchParams.set("game_id", params.game_id)
     if (params?.prediction_type) searchParams.set("prediction_type", params.prediction_type)
@@ -366,19 +358,26 @@ class SimpleApiClient {
     if (params?.limit) searchParams.set("limit", params.limit.toString())
 
     const query = searchParams.toString()
-    const response = await this.request<{ data: any[] } | any[]>(`/predictions${query ? `?${query}` : ""}`)
+    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/predictions${query ? `?${query}` : ""}`)
     
-    // Handle both wrapped and direct array responses
-    return Array.isArray(response) ? response : response.data || []
+    const result = response.success ? response.data : []
+    this.setCachedData(cacheKey, result)
+    return result
   }
 
-  // Odds
+  // Odds - DATABASE FIRST
   async getOdds(params?: {
     sport?: string
     game_id?: string
     source?: string
     limit?: number
   }): Promise<any[]> {
+    const cacheKey = this.getCacheKey('/database-first/odds', params)
+    const cached = this.getCachedData<any[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const searchParams = new URLSearchParams()
     if (params?.sport) searchParams.set("sport", params.sport)
     if (params?.game_id) searchParams.set("gameId", params.game_id)
@@ -386,29 +385,53 @@ class SimpleApiClient {
     if (params?.limit) searchParams.set("limit", params.limit.toString())
 
     const query = searchParams.toString()
-    return this.request<any[]>(`/odds${query ? `?${query}` : ""}`)
+    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/odds${query ? `?${query}` : ""}`)
+    
+    const result = response.success ? response.data : []
+    this.setCachedData(cacheKey, result)
+    return result
   }
 
   // Analytics
   async getAnalyticsStats(sport?: string): Promise<AnalyticsStats> {
     const url = sport ? `/analytics/stats?sport=${sport}` : "/analytics/stats"
-    const response = await this.request<{ data: AnalyticsStats }>(url)
-    return response.data
+    const response = await this.request<{ success: boolean; data: AnalyticsStats }>(url)
+    return response.success ? response.data : {
+      total_games: 0,
+      total_predictions: 0,
+      total_teams: 0,
+      accuracy_rate: 0,
+      recent_predictions: 0,
+      recent_performance: {
+        accuracy_by_type: {},
+        daily_stats: []
+      }
+    }
   }
 
   async getTeamAnalytics(teamId: string): Promise<any> {
     return this.request(`/analytics/team/${teamId}`)
   }
 
-  // Standings
+  // Standings - DATABASE FIRST
   async getStandings(params?: { league?: string; sport?: string; season?: string }): Promise<any[]> {
+    const cacheKey = this.getCacheKey('/database-first/standings', params)
+    const cached = this.getCachedData<any[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const searchParams = new URLSearchParams()
     if (params?.league) searchParams.set("league", params.league)
     if (params?.sport) searchParams.set("sport", params.sport)
     if (params?.season) searchParams.set("season", params.season)
 
     const query = searchParams.toString()
-    return this.request<any[]>(`/standings${query ? `?${query}` : ""}`)
+    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/standings${query ? `?${query}` : ""}`)
+    
+    const result = response.success ? response.data : []
+    this.setCachedData(cacheKey, result)
+    return result
   }
 
   // Team Stats
@@ -437,8 +460,8 @@ class SimpleApiClient {
   // Health check
   async getHealthStatus(): Promise<Record<string, boolean>> {
     try {
-      const response = await this.request<{ data: Record<string, boolean> }>("/health")
-      return response.data || {}
+      const response = await this.request<{ success: boolean; data: Record<string, boolean> }>("/health")
+      return response.success ? response.data : {}
     } catch (error) {
       console.warn('Health check failed:', error)
       return {}
@@ -446,4 +469,4 @@ class SimpleApiClient {
   }
 }
 
-export const simpleApiClient = new SimpleApiClient()
+export const databaseFirstApiClient = new DatabaseFirstApiClient()

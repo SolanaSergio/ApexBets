@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import type { Game } from "@/lib/api-client-simple"
+import type { Game } from "@/lib/api-client-database-first"
 import { normalizeGameData, deduplicateGames, normalizeSportData } from "@/lib/utils/data-utils"
 
 interface LiveUpdate {

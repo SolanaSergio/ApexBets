@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { productionSupabaseClient } from "@/lib/supabase/production-client"
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,38 +49,25 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Fallback to Supabase for stored data
-    const supabase = await createClient()
-    const league = searchParams.get("league")
+    // Use production Supabase client for DB reads
+    const league = searchParams.get("league") || undefined
     const sport = searchParams.get("sport")
 
-    if (!supabase) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+    if (!sport) {
+      return NextResponse.json({
+        success: false,
+        error: "Sport parameter is required"
+      }, { status: 400 })
     }
 
-    let query = supabase.from("teams").select("*")
-
-    if (league) {
-      query = query.eq("league", league)
-    }
-
-    if (sport) {
-      query = query.eq("sport", sport)
-    }
-
-    const { data: teams, error } = await query.order("name")
-
-    if (error) {
-      console.error("Error fetching teams:", error)
-      return NextResponse.json({ error: "Failed to fetch teams" }, { status: 500 })
-    }
+    const teams = await productionSupabaseClient.getTeams(sport, league)
 
     return NextResponse.json({
       data: teams,
       meta: {
         fromCache: false,
         responseTime: 0,
-        source: "supabase"
+        source: "database"
       }
     })
   } catch (error) {
@@ -91,40 +78,40 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    
-    if (!supabase) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
-    }
-    
-    const teamData = await request.json()
+    const body = await request.json()
 
-    // Validate required fields
-    if (!teamData.name || !teamData.sport) {
+    if (!body?.name || !body?.sport) {
       return NextResponse.json({ error: "Missing required fields: name, sport" }, { status: 400 })
     }
 
-    const { data: team, error } = await supabase
-      .from("teams")
-      .insert([{
-        name: teamData.name,
-        city: teamData.city || teamData.homeTeam || '',
-        league: teamData.league || 'Unknown',
-        sport: teamData.sport,
-        abbreviation: teamData.abbreviation || teamData.abbr || '',
-        logo_url: teamData.logo_url || null
-      }])
+    // Persist via production Supabase client
+    const teamData = {
+      id: body.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: body.name,
+      sport: body.sport,
+      league: body.league || 'default',
+      abbreviation: body.abbreviation || '',
+      city: body.city || '',
+      logo_url: body.logo_url || null,
+      conference: body.conference || null,
+      division: body.division || null,
+      country: body.country || null,
+      is_active: body.is_active !== false,
+      last_updated: new Date().toISOString()
+    }
+
+    const { data: inserted, error } = await productionSupabaseClient.supabase
+      .from('teams')
+      .upsert([teamData], { onConflict: 'id' })
       .select()
       .single()
 
     if (error) {
-      console.error("Error inserting team:", error)
-      return NextResponse.json({ error: "Failed to insert team" }, { status: 500 })
+      throw new Error(`Failed to store team: ${error.message}`)
     }
 
-    return NextResponse.json({ success: true, data: team })
+    return NextResponse.json({ success: true, data: inserted })
   } catch (error) {
-    console.error("API Error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

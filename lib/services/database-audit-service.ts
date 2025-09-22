@@ -3,8 +3,7 @@
  * Comprehensive database auditing and health monitoring
  */
 
-import { supabaseMCPClient } from '../supabase/mcp-client'
-import { mcpInitializer } from '../mcp/mcp-initializer'
+import { productionSupabaseClient } from '../supabase/production-client'
 import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
 
@@ -203,7 +202,8 @@ export class DatabaseAuditService {
     try {
       const issues: string[] = []
 
-      if (mcpInitializer.isMCPAvailable()) {
+      // Use production Supabase client for Vercel compatibility
+      if (true) {
         const integrityChecks = [
           'SELECT COUNT(*) as count FROM teams WHERE sport IS NULL',
           'SELECT COUNT(*) as count FROM games WHERE home_team_id IS NULL OR away_team_id IS NULL',
@@ -211,8 +211,8 @@ export class DatabaseAuditService {
           'SELECT COUNT(*) as count FROM odds WHERE game_id IS NULL'
         ]
         for (const check of integrityChecks) {
-          const result = await supabaseMCPClient.executeSQL(check)
-          if (result && result[0] && Number(result[0].count) > 0) {
+          const result = await productionSupabaseClient.executeSQL(check)
+          if (result.success && result.data && result.data[0] && Number(result.data[0].count) > 0) {
             issues.push(check)
           }
         }
@@ -306,20 +306,22 @@ export class DatabaseAuditService {
     try {
       let indexes: any[] = []
       
-      if (mcpInitializer.isMCPAvailable()) {
+      // Use production Supabase client for Vercel compatibility
+      if (true) {
         const indexQuery = `
           SELECT schemaname, tablename, indexname, indexdef
           FROM pg_indexes 
           WHERE schemaname = 'public'
           ORDER BY tablename, indexname
         `
-        indexes = await supabaseMCPClient.executeSQL(indexQuery)
+        const indexResult = await productionSupabaseClient.executeSQL(indexQuery)
+        indexes = indexResult.success ? indexResult.data : []
       } else {
-        // Use RPC function when MCP not available
+        // Use RPC function for database operations
         const supabase = this.getAdminClient()
         const { data, error } = await supabase.rpc('get_public_indexes')
         if (error) {
-          throw new Error(`Failed to get indexes: ${error.message}`)
+          throw new Error(`Failed to get indexes: ${error?.message || 'Unknown error'}`)
         }
         indexes = data || []
       }
@@ -361,7 +363,8 @@ export class DatabaseAuditService {
     try {
       let foreignKeys: any[] = []
       
-      if (mcpInitializer.isMCPAvailable()) {
+      // Use production Supabase client for Vercel compatibility
+      if (true) {
         const fkQuery = `
           SELECT
             tc.table_name,
@@ -376,13 +379,14 @@ export class DatabaseAuditService {
           WHERE tc.constraint_type = 'FOREIGN KEY'
           AND tc.table_schema = 'public'
         `
-        foreignKeys = await supabaseMCPClient.executeSQL(fkQuery)
+        const fkResult = await productionSupabaseClient.executeSQL(fkQuery)
+        foreignKeys = fkResult.success ? fkResult.data : []
       } else {
-        // Use RPC function when MCP not available
+        // Use RPC function for database operations
         const supabase = this.getAdminClient()
         const { data, error } = await supabase.rpc('get_public_foreign_keys')
         if (error) {
-          throw new Error(`Failed to get foreign keys: ${error.message}`)
+          throw new Error(`Failed to get foreign keys: ${error?.message || 'Unknown error'}`)
         }
         foreignKeys = data || []
       }
@@ -411,11 +415,12 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      if (!mcpInitializer.isMCPAvailable()) {
+      // Always use production client for Vercel compatibility
+      if (false) {
         return {
           testName: 'Data Consistency',
           status: 'WARNING',
-          message: 'Consistency checks skipped (MCP unavailable for join queries)',
+          message: 'Consistency checks skipped (complex join queries not supported)',
           executionTime: Date.now() - startTime
         }
       }
@@ -428,8 +433,8 @@ export class DatabaseAuditService {
       
       const issues: string[] = []
       for (const check of consistencyChecks) {
-        const result = await supabaseMCPClient.executeSQL(check)
-        if (result && result[0] && Number(result[0].count) > 0) {
+        const result = await productionSupabaseClient.executeSQL(check)
+        if (result.success && result.data && result.data[0] && Number(result.data[0].count) > 0) {
           issues.push(check)
         }
       }
@@ -459,8 +464,8 @@ export class DatabaseAuditService {
     
     try {
       // This would typically check backup files, but for now we'll just verify data exists
-      const dataCheck = await supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM sports')
-      const hasData = dataCheck && dataCheck[0] && dataCheck[0].count > 0
+      const dataCheck = await productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM sports')
+      const hasData = dataCheck.success && dataCheck.data && dataCheck.data[0] && dataCheck.data[0].count > 0
       
       return {
         testName: 'Backup Integrity',
@@ -496,8 +501,8 @@ export class DatabaseAuditService {
         WHERE schemaname = 'public'
         ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
       `
-      const result = await supabaseMCPClient.executeSQL(tableSizesQuery)
-      tableSizes = (result || []).map((t: any) => ({
+      const result = await productionSupabaseClient.executeSQL(tableSizesQuery)
+      tableSizes = (result.success ? result.data : []).map((t: any) => ({
         table: t.tablename,
         size: t.size,
         rowCount: t.row_count || 0
@@ -617,7 +622,7 @@ export class DatabaseAuditService {
     
     const definition = indexDefinitions[indexName]
     if (definition) {
-      await supabaseMCPClient.executeSQL(definition)
+      await productionSupabaseClient.executeSQL(definition)
     }
   }
 

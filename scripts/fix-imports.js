@@ -24,7 +24,6 @@ const filesToFix = [
   'app/api/startup/route.ts',
   'app/api/sync/route.ts',
   'app/api/teams/logo/route.ts',
-  'app/api/test-mcp-service/route.ts',
   'app/page.tsx',
   'components/categories/dashboard/clean-dashboard.tsx',
   'components/ui/sports-image.tsx',
@@ -48,7 +47,6 @@ const importReplacements = {
   '@/lib/services/enhanced-api-client': '@/lib/services/enhanced-api-client',
   '@/lib/services/automated-monitoring-service': '@/lib/services/automated-monitoring-service',
   '@/lib/services/data-integrity-service': '@/lib/services/data-integrity-service',
-  '@/lib/services/mcp-database-service': '@/lib/supabase/mcp-client',
   '@/lib/services/data-validation-service': '@/lib/services/data-validation-service',
   '@/lib/services/data-sync-service': '@/lib/services/data-sync-service',
   '@/lib/services/game-status-validator': '@/lib/services/game-status-validator',
@@ -73,7 +71,6 @@ const filesToDisable = [
   'app/api/startup/route.ts',
   'app/api/sync/route.ts',
   'app/api/teams/logo/route.ts',
-  'app/api/test-mcp-service/route.ts',
   'tests/database/comprehensive-database-test.ts',
   'tests/database/simple-database-test.ts'
 ]
@@ -106,7 +103,7 @@ function fixImports(filePath) {
       'import { automatedMonitoringService }',
       'import { dataIntegrityService }',
       'import { enhancedApiClient }',
-      'import { mcpDatabaseService }',
+      'import { databaseService }',
       'import { dynamicTeamServiceClient }',
       'import { SyncInitializer }',
       'import { ErrorBoundary }',

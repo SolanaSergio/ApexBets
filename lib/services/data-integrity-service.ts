@@ -4,7 +4,7 @@
  */
 
 import { structuredLogger } from './structured-logger'
-import { mcpDatabaseService } from './mcp-database-service'
+import { databaseService } from './database-service'
 
 export interface IntegrityCheckResult {
   success: boolean
@@ -103,7 +103,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM odds 
         WHERE game_id NOT IN (SELECT id FROM games)
       `
-      const oddsResult = await mcpDatabaseService.executeSQL(orphanedOddsQuery)
+      const oddsResult = await databaseService.executeSQL(orphanedOddsQuery)
       const orphanedOdds = oddsResult.data?.[0]?.count || 0
 
       if (orphanedOdds > 0) {
@@ -120,7 +120,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM predictions 
         WHERE game_id NOT IN (SELECT id FROM games)
       `
-      const predictionsResult = await mcpDatabaseService.executeSQL(orphanedPredictionsQuery)
+      const predictionsResult = await databaseService.executeSQL(orphanedPredictionsQuery)
       const orphanedPredictions = predictionsResult.data?.[0]?.count || 0
 
       if (orphanedPredictions > 0) {
@@ -137,7 +137,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM player_stats 
         WHERE player_id NOT IN (SELECT id FROM players)
       `
-      const playerStatsResult = await mcpDatabaseService.executeSQL(orphanedPlayerStatsQuery)
+      const playerStatsResult = await databaseService.executeSQL(orphanedPlayerStatsQuery)
       const orphanedPlayerStats = playerStatsResult.data?.[0]?.count || 0
 
       if (orphanedPlayerStats > 0) {
@@ -170,7 +170,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM games 
         WHERE home_team_id IS NULL OR away_team_id IS NULL OR sport IS NULL
       `
-      const gamesResult = await mcpDatabaseService.executeSQL(gamesMissingFieldsQuery)
+      const gamesResult = await databaseService.executeSQL(gamesMissingFieldsQuery)
       const gamesMissingFields = gamesResult.data?.[0]?.count || 0
 
       if (gamesMissingFields > 0) {
@@ -187,7 +187,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM teams 
         WHERE name IS NULL OR sport IS NULL
       `
-      const teamsResult = await mcpDatabaseService.executeSQL(teamsMissingFieldsQuery)
+      const teamsResult = await databaseService.executeSQL(teamsMissingFieldsQuery)
       const teamsMissingFields = teamsResult.data?.[0]?.count || 0
 
       if (teamsMissingFields > 0) {
@@ -204,7 +204,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM players 
         WHERE name IS NULL OR sport IS NULL
       `
-      const playersResult = await mcpDatabaseService.executeSQL(playersMissingFieldsQuery)
+      const playersResult = await databaseService.executeSQL(playersMissingFieldsQuery)
       const playersMissingFields = playersResult.data?.[0]?.count || 0
 
       if (playersMissingFields > 0) {
@@ -238,7 +238,7 @@ export class DataIntegrityService {
         WHERE (home_score IS NOT NULL AND home_score < 0) 
         OR (away_score IS NOT NULL AND away_score < 0)
       `
-      const scoresResult = await mcpDatabaseService.executeSQL(invalidScoresQuery)
+      const scoresResult = await databaseService.executeSQL(invalidScoresQuery)
       const invalidScores = scoresResult.data?.[0]?.count || 0
 
       if (invalidScores > 0) {
@@ -255,7 +255,7 @@ export class DataIntegrityService {
         SELECT COUNT(*) as count FROM players 
         WHERE age IS NOT NULL AND (age < 16 OR age > 50)
       `
-      const agesResult = await mcpDatabaseService.executeSQL(invalidAgesQuery)
+      const agesResult = await databaseService.executeSQL(invalidAgesQuery)
       const invalidAges = agesResult.data?.[0]?.count || 0
 
       if (invalidAges > 0) {
@@ -292,7 +292,7 @@ export class DataIntegrityService {
           HAVING COUNT(*) > 1
         ) duplicates
       `
-      const gamesResult = await mcpDatabaseService.executeSQL(duplicateGamesQuery)
+      const gamesResult = await databaseService.executeSQL(duplicateGamesQuery)
       const duplicateGames = gamesResult.data?.[0]?.count || 0
 
       if (duplicateGames > 0) {
@@ -313,7 +313,7 @@ export class DataIntegrityService {
           HAVING COUNT(*) > 1
         ) duplicates
       `
-      const teamsResult = await mcpDatabaseService.executeSQL(duplicateTeamsQuery)
+      const teamsResult = await databaseService.executeSQL(duplicateTeamsQuery)
       const duplicateTeams = teamsResult.data?.[0]?.count || 0
 
       if (duplicateTeams > 0) {

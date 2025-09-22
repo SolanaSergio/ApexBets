@@ -4,7 +4,7 @@
  */
 
 import { databaseAuditService } from '../../lib/services/database-audit-service'
-import { MCPDatabaseService } from '../../lib/services/mcp-database-service'
+import { databaseService } from '../../lib/services/database-service'
 
 interface TestResult {
   testName: string
@@ -16,7 +16,7 @@ interface TestResult {
 async function runDatabaseTests() {
   console.log('🚀 Starting Database Test Suite...')
   
-  const dbService = MCPDatabaseService.getInstance()
+  const dbService = databaseService
   const testResults: TestResult[] = []
 
   const addTestResult = (result: TestResult) => {

@@ -4,7 +4,7 @@
  */
 
 import { structuredLogger } from './structured-logger'
-import { mcpDatabaseService } from './mcp-database-service'
+import { databaseService } from './database-service'
 
 export interface CleanupResult {
   success: boolean
@@ -106,7 +106,7 @@ export class DatabaseCleanupService {
         WHERE expires_at < NOW()
       `
       
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       
       if (result.success) {
         cleanedRecords = result.rowCount
@@ -133,7 +133,7 @@ export class DatabaseCleanupService {
         WHERE game_id NOT IN (SELECT id FROM games)
       `
       
-      const oddsResult = await mcpDatabaseService.executeSQL(oddsQuery)
+      const oddsResult = await databaseService.executeSQL(oddsQuery)
       if (oddsResult.success) {
         cleanedRecords += oddsResult.rowCount
       } else {
@@ -146,7 +146,7 @@ export class DatabaseCleanupService {
         WHERE game_id NOT IN (SELECT id FROM games)
       `
       
-      const predictionsResult = await mcpDatabaseService.executeSQL(predictionsQuery)
+      const predictionsResult = await databaseService.executeSQL(predictionsQuery)
       if (predictionsResult.success) {
         cleanedRecords += predictionsResult.rowCount
       } else {
@@ -159,7 +159,7 @@ export class DatabaseCleanupService {
         WHERE player_id NOT IN (SELECT id FROM players)
       `
       
-      const playerStatsResult = await mcpDatabaseService.executeSQL(playerStatsQuery)
+      const playerStatsResult = await databaseService.executeSQL(playerStatsQuery)
       if (playerStatsResult.success) {
         cleanedRecords += playerStatsResult.rowCount
       } else {
@@ -192,7 +192,7 @@ export class DatabaseCleanupService {
         )
       `
       
-      const gamesResult = await mcpDatabaseService.executeSQL(gamesQuery)
+      const gamesResult = await databaseService.executeSQL(gamesQuery)
       if (gamesResult.success) {
         cleanedRecords += gamesResult.rowCount
       } else {
@@ -211,7 +211,7 @@ export class DatabaseCleanupService {
       const tables = ['games', 'teams', 'players', 'odds', 'predictions', 'standings', 'cache_entries']
       
       for (const table of tables) {
-        await mcpDatabaseService.vacuumTable(table)
+        await databaseService.vacuumTable(table)
       }
 
       structuredLogger.info('Table vacuum completed')
@@ -230,7 +230,7 @@ export class DatabaseCleanupService {
         SELECT COUNT(*) as count FROM odds 
         WHERE game_id NOT IN (SELECT id FROM games)
       `
-      const orphanedOddsResult = await mcpDatabaseService.executeSQL(orphanedOddsQuery)
+      const orphanedOddsResult = await databaseService.executeSQL(orphanedOddsQuery)
       const orphanedRecords = orphanedOddsResult.data?.[0]?.count || 0
 
       // Get old cache entries count
@@ -238,11 +238,11 @@ export class DatabaseCleanupService {
         SELECT COUNT(*) as count FROM cache_entries 
         WHERE expires_at < NOW() - INTERVAL '7 days'
       `
-      const oldCacheResult = await mcpDatabaseService.executeSQL(oldCacheQuery)
+      const oldCacheResult = await databaseService.executeSQL(oldCacheQuery)
       const oldCacheEntries = oldCacheResult.data?.[0]?.count || 0
 
       // Get table sizes
-      const tableSizesResult = await mcpDatabaseService.getTableSizes()
+      const tableSizesResult = await databaseService.getTableSizes()
       const largeTables = (tableSizesResult.data || [])
         .filter((table: any) => table.rowCount > 10000)
         .map((table: any) => ({

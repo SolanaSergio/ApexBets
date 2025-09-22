@@ -35,7 +35,7 @@ export class ImageService {
         return cached.url
       }
 
-      // Fetch from database via MCP - no mock data allowed
+      // Fetch from database - no mock data allowed
       const logoUrl = await this.fetchTeamLogoFromDatabase(teamName, league, sport)
       
       if (logoUrl) {
@@ -79,7 +79,7 @@ export class ImageService {
         return cached.url
       }
 
-      // Fetch from database via MCP - no mock data allowed
+      // Fetch from database - no mock data allowed
       const photoUrl = await this.fetchPlayerPhotoFromDatabase(playerId, sport)
       
       if (photoUrl) {
@@ -113,8 +113,8 @@ export class ImageService {
 
   private async fetchTeamLogoFromDatabase(teamName: string, league?: string, sport?: string): Promise<string | null> {
     try {
-      // Import MCP database service
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      // Import database service
+      const { databaseService } = await import('./database-service')
       
       const query = `
         SELECT logo_url 
@@ -125,7 +125,7 @@ export class ImageService {
         LIMIT 1
       `
       
-      const result = await mcpDatabaseService.executeSQL(query, [teamName, league, sport])
+      const result = await databaseService.executeSQL(query, [teamName, league, sport])
       
       if (result.success && result.data && result.data.length > 0) {
         return result.data[0].logo_url
@@ -145,8 +145,8 @@ export class ImageService {
 
   private async fetchPlayerPhotoFromDatabase(playerId: string, sport?: string): Promise<string | null> {
     try {
-      // Import MCP database service
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      // Import database service
+      const { databaseService } = await import('./database-service')
       
       const query = `
         SELECT photo_url 
@@ -156,7 +156,7 @@ export class ImageService {
         LIMIT 1
       `
       
-      const result = await mcpDatabaseService.executeSQL(query, [playerId, sport])
+      const result = await databaseService.executeSQL(query, [playerId, sport])
       
       if (result.success && result.data && result.data.length > 0) {
         return result.data[0].photo_url

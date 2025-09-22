@@ -6,31 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { autoStartupService } from '@/lib/services/auto-startup-service';
 
-// Initialize services on module load
-let isInitialized = false;
-
-async function initializeServices() {
-  if (isInitialized) return;
-  
-  try {
-    console.log('🚀 Next.js server starting - initializing auto-startup services...');
-    
-    await autoStartupService.initialize({
-      enableDataSync: true,
-      enableDatabaseAudit: true,
-      enableHealthChecks: true,
-      syncInterval: 30
-    });
-    
-    isInitialized = true;
-    console.log('✅ Auto-startup services initialized successfully!');
-  } catch (error) {
-    console.error('❌ Failed to initialize auto-startup services:', error);
-  }
-}
-
-// Initialize immediately when this module loads
-initializeServices();
+// Production startup route - no auto-initialization needed
 
 export async function GET(request: NextRequest) {
   try {

@@ -28,19 +28,19 @@ export class EnhancedApiClient {
     return EnhancedApiClient.instance
   }
 
-  // Insert helpers used by admin routes. These delegate to MCP or unified strategy.
+  // Insert helpers used by admin routes. These delegate to database service or unified strategy.
   async insertTeam(data: any): Promise<{ success: boolean }> {
     try {
       // Validate minimal shape
       if (!data?.name || !data?.sport) {
         return { success: false }
       }
-      // Persist via MCP
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      // Persist via database service
+      const { databaseService } = await import('./database-service')
       const columns = Object.keys(data)
       const values = columns.map(k => `'${String(data[k]).replace(/'/g, "''")}'`).join(',')
       const query = `INSERT INTO teams (${columns.join(',')}) VALUES (${values})`
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       return { success: result.success }
     } catch {
       return { success: false }
@@ -52,11 +52,11 @@ export class EnhancedApiClient {
       if (!data?.sport || !data?.game_date) {
         return { success: false }
       }
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      const { databaseService } = await import('./database-service')
       const columns = Object.keys(data)
       const values = columns.map(k => `'${String(data[k]).replace(/'/g, "''")}'`).join(',')
       const query = `INSERT INTO games (${columns.join(',')}) VALUES (${values})`
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       return { success: result.success }
     } catch {
       return { success: false }
@@ -68,11 +68,11 @@ export class EnhancedApiClient {
       if (!data?.game_id || !data?.market) {
         return { success: false }
       }
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      const { databaseService } = await import('./database-service')
       const columns = Object.keys(data)
       const values = columns.map(k => `'${String(data[k]).replace(/'/g, "''")}'`).join(',')
       const query = `INSERT INTO odds (${columns.join(',')}) VALUES (${values})`
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       return { success: result.success }
     } catch {
       return { success: false }

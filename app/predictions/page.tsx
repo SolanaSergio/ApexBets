@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
-import { simpleApiClient, Game, Prediction } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, Game, Prediction } from "@/lib/api-client-database-first"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 import { format } from "date-fns"
 
@@ -110,14 +110,14 @@ function TodayPredictionsSection() {
       setLoading(true)
       
       // Fetch today's predictions
-      const predictionsData = await simpleApiClient.getPredictions({
+      const predictionsData = await databaseFirstApiClient.getPredictions({
         limit: 10
       })
 
       // Fetch game details for each prediction
       const gamePromises = predictionsData.map(async (prediction) => {
         try {
-          const game = await simpleApiClient.getGame(prediction.game_id)
+          const game = await databaseFirstApiClient.getGame(prediction.game_id)
           return { predictionId: prediction.id, game }
         } catch {
           return { predictionId: prediction.id, game: null }
@@ -256,7 +256,7 @@ function UpcomingPredictionsSection() {
   async function fetchUpcomingPredictions() {
     try {
       setLoading(true)
-      const predictionsData = await simpleApiClient.getUpcomingPredictions({
+      const predictionsData = await databaseFirstApiClient.getUpcomingPredictions({
         limit: 10,
         days: 7
       })

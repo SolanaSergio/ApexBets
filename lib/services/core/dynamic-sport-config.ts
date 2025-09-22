@@ -71,10 +71,10 @@ export class DynamicSportConfigService {
     }
 
     try {
-      // Load from database via MCP; no hardcoded defaults
+      // Load from database; no hardcoded defaults
       this.configs.clear()
 
-      const { supabaseMCPClient } = await import('../../supabase/mcp-client')
+      const { productionSupabaseClient } = await import('../../supabase/production-client')
       const sql = `
         SELECT id,
                name,
@@ -95,9 +95,9 @@ export class DynamicSportConfigService {
         WHERE is_active = true
         ORDER BY display_name
       `
-      const rows = await supabaseMCPClient.executeSQL(sql)
+      const rows = await productionSupabaseClient.executeSQL(sql)
 
-      for (const row of rows) {
+      for (const row of rows.success ? rows.data : []) {
         const cfg: DynamicSportConfig = {
           id: row.id,
           name: row.name,

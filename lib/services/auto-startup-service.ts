@@ -5,7 +5,7 @@
 
 import { structuredLogger } from './structured-logger'
 import { dataSyncService } from './data-sync-service'
-import { mcpDatabaseService } from './mcp-database-service'
+import { databaseService } from './database-service'
 import { databaseAuditService } from './database-audit-service'
 
 export interface StartupConfig {
@@ -51,7 +51,7 @@ export class AutoStartupService {
 
       // Initialize database connection
       if (this.config.enableHealthChecks) {
-        const dbHealth = await mcpDatabaseService.healthCheck()
+        const dbHealth = await databaseService.healthCheck()
         if (!dbHealth.healthy) {
           structuredLogger.warn('Database health check failed during startup', dbHealth.details)
         }

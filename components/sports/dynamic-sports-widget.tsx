@@ -13,7 +13,7 @@ import {
   RefreshCw
 } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { simpleApiClient, type Game, type Team } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, type Game, type Team } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
 interface DynamicSportsWidgetProps {
@@ -34,14 +34,14 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
       setLoading(true)
       
       // Load live games
-      const games = await simpleApiClient.getGames({
+      const games = await databaseFirstApiClient.getGames({
         sport,
         status: "in_progress"
       })
       setLiveGames(games)
 
       // Load top teams
-      const teams = await simpleApiClient.getTeams({
+      const teams = await databaseFirstApiClient.getTeams({
         sport
       })
       setTopTeams(teams)

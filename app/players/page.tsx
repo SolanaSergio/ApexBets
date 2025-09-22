@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
 import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
-import { Player } from "@/lib/api-client-simple"
+import { Player } from "@/lib/api-client-database-first"
 
 export default function PlayersPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | Player | null>(null)

@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
-import { simpleApiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import TeamPerformanceChart from "./team-performance-chart"
 import PredictionAccuracyChart from "./prediction-accuracy-chart"
@@ -66,7 +66,9 @@ export default function AnalyticsDashboard({
   const loadAvailableTeams = useCallback(async () => {
     if (!selectedSport) return
     try {
-      const teams = await simpleApiClient.getTeams({ sport: selectedSport, league: selectedLeague })
+      const response = await fetch(`/api/database-first/teams?sport=${selectedSport}${selectedLeague ? `&league=${selectedLeague}` : ''}`)
+      const data = await response.json()
+      const teams = Array.isArray(data.data) ? data.data : []
       setAvailableTeams(teams)
     } catch (error) {
       console.error('Error loading available teams:', error)
@@ -77,7 +79,7 @@ export default function AnalyticsDashboard({
   const fetchAnalyticsOverview = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await simpleApiClient.getAnalyticsStats(selectedSport)
+      const data = await databaseFirstApiClient.getAnalyticsStats(selectedSport)
       
       // Transform the API response to match our interface
       setOverview({

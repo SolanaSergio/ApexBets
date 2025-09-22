@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dynamicTeamServiceClient } from '@/lib/services/dynamic-team-service-client'
+import { productionSupabaseClient } from '@/lib/supabase/production-client'
 
 /**
  * GET /api/teams/logo?teamName=...&league=...
@@ -43,12 +44,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const { mcpDatabaseService } = await import('@/lib/services/mcp-database-service')
-    const query = `UPDATE teams SET logo_url='${String(logoUrl).replace(/'/g, "''")}' WHERE name='${String(teamName).replace(/'/g, "''")}' AND league='${String(league).replace(/'/g, "''")}'`
-    const result = await mcpDatabaseService.executeSQL(query)
-    const success = result.success
+    const { error } = await productionSupabaseClient.supabase
+      .from('teams')
+      .update({ logo_url: logoUrl })
+      .eq('name', teamName)
+      .eq('league', league)
 
-    if (!success) {
+    if (error) {
       return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })
     }
 

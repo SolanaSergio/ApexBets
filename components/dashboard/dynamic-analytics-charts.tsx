@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { ModernChart } from "@/components/charts/modern-chart"
-import { simpleApiClient } from "@/lib/api-client-simple"
+import { databaseFirstApiClient } from "@/lib/api-client-database-first"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 
 interface AnalyticsData {
@@ -37,9 +37,9 @@ export function DynamicAnalyticsCharts() {
       for (const sport of supportedSports) {
         try {
           const [games, teams, liveGames] = await Promise.all([
-            simpleApiClient.getGames({ sport }),
-            simpleApiClient.getTeams({ sport }),
-            simpleApiClient.getGames({ sport, status: 'live' })
+            databaseFirstApiClient.getGames({ sport }),
+            databaseFirstApiClient.getTeams({ sport }),
+            databaseFirstApiClient.getGames({ sport, status: 'live' })
           ])
           
           totalGames += games.length

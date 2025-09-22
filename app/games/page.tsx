@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, Filter, Search, Trophy, RefreshCw } from "lucide-react"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { simpleApiClient, type Game } from "@/lib/api-client-simple"
+import { databaseFirstApiClient, type Game } from "@/lib/api-client-database-first"
 import { format, addDays, subDays } from "date-fns"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 
@@ -275,7 +275,7 @@ function LiveGamesSection({
       setLoading(true)
       
       // Fetch from database with date range and search
-      const games = await simpleApiClient.getGames({
+      const games = await databaseFirstApiClient.getGames({
         sport: selectedSport,
         status: "in_progress",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
@@ -395,7 +395,7 @@ function UpcomingGamesSection({
     try {
       setLoading(true)
       
-      const games = await simpleApiClient.getGames({
+      const games = await databaseFirstApiClient.getGames({
         sport: selectedSport,
         status: "scheduled",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
@@ -511,7 +511,7 @@ function CompletedGamesSection({
     try {
       setLoading(true)
       
-      const games = await simpleApiClient.getGames({
+      const games = await databaseFirstApiClient.getGames({
         sport: selectedSport,
         status: "completed",
         dateFrom: format(dateRange.from, 'yyyy-MM-dd'),

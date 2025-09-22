@@ -1,13 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { structuredLogger } from '@/lib/services/structured-logger'
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
-    }
-
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport")
     const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
@@ -22,57 +18,36 @@ export async function GET(request: NextRequest) {
         if (sportResponse.ok) {
           const sportData = await sportResponse.json()
           if (sportData.success && sportData.data && sportData.data.length > 0) {
-            return NextResponse.json(sportData.data)
+            return NextResponse.json({
+              success: true,
+              data: sportData.data,
+              meta: sportData.meta
+            })
           }
         }
       } catch (error) {
-        console.warn(`Sport-specific odds failed for ${sport}, falling back to general query:`, error)
+        structuredLogger.warn('Sport-specific odds failed, falling back to general query', {
+          sport,
+          error: error instanceof Error ? error.message : String(error)
+        })
       }
     }
 
-    // Get general odds data from database
-    let query = supabase
-      .from("odds")
-      .select(`
-        *,
-        game:games!odds_game_id_fkey(
-          id,
-          home_team:teams!games_home_team_id_fkey(name, abbreviation),
-          away_team:teams!games_away_team_id_fkey(name, abbreviation),
-          game_date,
-          status
-        )
-      `)
-      .order("created_at", { ascending: false })
-      .limit(limit)
+    // Use production Supabase client for odds data
+    const odds = await productionSupabaseClient.getOdds(sport || undefined, gameId || undefined, limit)
 
-    if (gameId) {
-      query = query.eq("game_id", gameId)
-    }
-
-    if (sport) {
-      query = query.eq("sport", sport)
-    }
-
-    const { data: odds, error } = await query
-
-    if (error) {
-      console.error("Error fetching odds:", error)
-      return NextResponse.json({ error: "Failed to fetch odds" }, { status: 500 })
-    }
-
-    if (!odds || odds.length === 0) {
+    if (odds.length === 0) {
       return NextResponse.json([])
     }
 
     // Transform data to match expected format - only include odds with valid team data
     const transformedOdds = odds
-      .filter(odd => odd.game?.home_team?.name && odd.game?.away_team?.name) // Only include odds with real team data
-      .map(odd => ({
+      .filter((odd: any) => odd.game?.home_team?.name && odd.game?.away_team?.name) // Only include odds with real team data
+      .map((odd: any) => ({
         id: odd.id,
         game_id: odd.game_id,
-        home_team: odd.game.home_team.name,
-        away_team: odd.game.away_team.name,
+        home_team: odd.game?.home_team?.name,
+        away_team: odd.game?.away_team?.name,
         home_odds: odd.home_odds,
         away_odds: odd.away_odds,
         draw_odds: odd.draw_odds,
@@ -87,10 +62,21 @@ export async function GET(request: NextRequest) {
         status: odd.game?.status
       }))
 
-    return NextResponse.json(transformedOdds)
+    return NextResponse.json({
+      success: true,
+      data: transformedOdds,
+      meta: {
+        fromCache: false,
+        responseTime: 0,
+        source: "database",
+        count: transformedOdds.length
+      }
+    })
 
   } catch (error) {
-    console.error("API Error:", error)
+    structuredLogger.error('Odds API error', {
+      error: error instanceof Error ? error.message : String(error)
+    })
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

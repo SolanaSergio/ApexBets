@@ -62,8 +62,8 @@ export const getPlayerPhotoUrl = async (playerId: number, sport: string): Promis
 
 export const getTeamColors = async (teamName: string, sport: string): Promise<{ primary: string; secondary: string }> => {
   try {
-    // Try to get team colors from database first using Supabase MCP
-    // This will be replaced with MCP integration
+    // Try to get team colors from database first using database service
+    // This will be replaced with database service integration
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     

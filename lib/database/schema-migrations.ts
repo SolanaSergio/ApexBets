@@ -3,7 +3,7 @@
  * Centralized schema management for ApexBets database
  */
 
-import { supabaseMCPClient } from '../supabase/mcp-client'
+import { productionSupabaseClient } from '../supabase/production-client'
 
 export class SchemaMigrations {
   private static instance: SchemaMigrations
@@ -244,7 +244,7 @@ export class SchemaMigrations {
 
     for (const [name, query] of this.migrations) {
       try {
-        await supabaseMCPClient.executeSQL(query)
+        await productionSupabaseClient.executeSQL(query)
         results.push({ name, success: true })
         console.log(`✅ Migration ${name} completed successfully`)
       } catch (error) {
@@ -265,7 +265,7 @@ export class SchemaMigrations {
     }
 
     try {
-      await supabaseMCPClient.executeSQL(query)
+      await productionSupabaseClient.executeSQL(query)
       console.log(`✅ Migration ${name} completed successfully`)
       return { success: true }
     } catch (error) {

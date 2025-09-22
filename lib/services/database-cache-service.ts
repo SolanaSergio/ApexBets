@@ -3,7 +3,7 @@
  * Provides caching functionality for database operations using Supabase
  */
 
-// MCP-only approach - no direct Supabase client imports
+// Production approach - no direct Supabase client imports
 
 interface CacheConfig {
   ttl: number
@@ -36,7 +36,7 @@ class DatabaseCacheService {
       ttl: ttl || this.config.ttl
     })
 
-    // MCP-only approach - database operations handled by MCP services
+    // Production approach - database operations handled by database services
     // Cache is stored in memory only for now
   }
 
@@ -49,7 +49,7 @@ class DatabaseCacheService {
       return entry.data
     }
 
-    // MCP-only approach - database operations handled by MCP services
+    // Production approach - database operations handled by database services
     // Cache is stored in memory only for now
 
     return null
@@ -58,14 +58,14 @@ class DatabaseCacheService {
   async delete(key: string): Promise<void> {
     this.cache.delete(key)
     
-    // MCP-only approach - database operations handled by MCP services
+    // Production approach - database operations handled by database services
     // Cache is stored in memory only for now
   }
 
   async clear(): Promise<void> {
     this.cache.clear()
     
-    // MCP-only approach - database operations handled by MCP services
+    // Production approach - database operations handled by database services
     // Cache is stored in memory only for now
   }
 
@@ -78,7 +78,7 @@ class DatabaseCacheService {
     }
     keysToDelete.forEach(key => this.cache.delete(key))
     
-    // MCP-only approach - database operations handled by MCP services
+    // Production approach - database operations handled by database services
     // Cache is stored in memory only for now
   }
 

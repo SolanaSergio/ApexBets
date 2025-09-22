@@ -17,7 +17,7 @@ let SPORT_STYLES: Record<string, SportStyles> = {}
 // Initialize sport styles from database
 async function initializeSportStyles() {
   try {
-    // Use Supabase MCP to get sport configurations
+    // Use database service to get sport configurations
     const { createClient } = await import('@/lib/supabase/client')
     const supabase = createClient()
     

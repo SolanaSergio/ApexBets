@@ -1,6 +1,6 @@
 /**
- * Server-side Supabase client - MCP COMPLIANCE REQUIRED
- * All database operations must go through MCP tools
+ * Server-side Supabase client - Production ready
+ * All database operations use production client
  * This file is kept for Next.js SSR compatibility but should not be used for data operations
  */
 
@@ -39,4 +39,4 @@ export async function createClient() {
 }
 
 // WARNING: This client should only be used for authentication
-// All data operations must use MCP tools via mcpDatabaseService
+// All data operations must use database service

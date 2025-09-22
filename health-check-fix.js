@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
     console.log('Health check started...');
     
     // Test database connection
-    const dbStatus = supabaseMCPClient.getConnectionStatus();
+    const dbStatus = productionSupabaseClient.isConnected();
     console.log('Database status:', dbStatus);
     
     // Test rate limiter

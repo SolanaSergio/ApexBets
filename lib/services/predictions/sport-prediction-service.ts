@@ -63,7 +63,7 @@ export class SportPredictionService {
 
   private async getGameData(gameId: string): Promise<any> {
     try {
-      // Fetch real game data from database using Supabase MCP
+      // Fetch real game data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
       
@@ -129,7 +129,7 @@ export class SportPredictionService {
 
   private async getTeamStats(teamName: string): Promise<any> {
     try {
-      // Fetch real team stats from database using Supabase MCP
+      // Fetch real team stats from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
       
@@ -457,7 +457,7 @@ export class SportPredictionService {
    */
   async getModelPerformance(): Promise<any> {
     try {
-      // Fetch real model performance data from database using Supabase MCP
+      // Fetch real model performance data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
       
@@ -529,7 +529,7 @@ export class SportPredictionService {
     model?: string 
   } = {}): Promise<any> {
     try {
-      // Fetch real prediction accuracy data from database using Supabase MCP
+      // Fetch real prediction accuracy data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
       

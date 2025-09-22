@@ -5,17 +5,17 @@
 
 // Simple test runner without Jest dependencies
 import { databaseAuditService, DatabaseAuditReport } from '@/lib/services/database-audit-service'
-import { MCPDatabaseService } from '@/lib/services/mcp-database-service'
+import { databaseService } from '@/lib/services/database-service'
 import { dataSyncService } from '@/lib/services/data-sync-service'
 // Adjust import to available service or skip if not present
 // import { automatedUpdateService } from '@/lib/services/automated-update-service'
 
 describe('Database Comprehensive Test Suite', () => {
-  let dbService: MCPDatabaseService
+  let dbService: typeof databaseService
   let auditReport: DatabaseAuditReport
 
   beforeAll(async () => {
-    dbService = MCPDatabaseService.getInstance()
+    dbService = databaseService
     console.log('🚀 Starting comprehensive database tests...')
   })
 

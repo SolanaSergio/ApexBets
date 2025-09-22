@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X, User } from "lucide-react";
-import { simpleApiClient, type Player, type Team } from "@/lib/api-client-simple";
+import { databaseFirstApiClient, type Player, type Team } from "@/lib/api-client-database-first";
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
 import { BallDontLiePlayer } from "@/lib/sports-apis";
@@ -80,7 +80,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
     if (!sport) return;
 
     try {
-      const teamsData = await simpleApiClient.getTeams({ sport: sport as SupportedSport });
+      const teamsData = await databaseFirstApiClient.getTeams({ sport: sport as SupportedSport });
       setTeams(teamsData);
     } catch (error) {
       console.error("Error fetching teams:", error);
@@ -98,7 +98,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
     setError(null);
 
     try {
-      const playersData = await simpleApiClient.getPlayers({
+      const playersData = await databaseFirstApiClient.getPlayers({
         sport: sport as SupportedSport,
         limit: 20,
       });

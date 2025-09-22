@@ -150,8 +150,8 @@ export class APIFallbackStrategy {
 
   private async loadSportSpecificProviders(supportedSports: string[]): Promise<void> {
     try {
-      // Import MCP database service
-      const { mcpDatabaseService } = await import('./mcp-database-service')
+      // Import database service
+      const { databaseService } = await import('./database-service')
       
       const query = `
         SELECT 
@@ -169,7 +169,7 @@ export class APIFallbackStrategy {
         ORDER BY priority
       `
       
-      const result = await mcpDatabaseService.executeSQL(query)
+      const result = await databaseService.executeSQL(query)
       
       if (result.success && result.data) {
         for (const row of result.data) {
