@@ -64,6 +64,11 @@ class MCPInitializer {
   }
 
   private checkMCPAvailability(): boolean {
+    // Skip MCP check during build time or SSR
+    if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
+      return false
+    }
+
     // Check if MCP functions are available on globalThis
     const requiredFunctions = [
       'mcp_supabase_execute_sql',

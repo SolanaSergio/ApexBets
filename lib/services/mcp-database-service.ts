@@ -84,6 +84,17 @@ export class MCPDatabaseService {
     const startTime = Date.now()
     
     try {
+      // Check if we're in build/SSR context
+      if (typeof window === 'undefined' || process.env.NODE_ENV === 'production') {
+        return {
+          success: false,
+          data: [],
+          rowCount: 0,
+          executionTime: Date.now() - startTime,
+          error: 'Database operations not available during build/SSR'
+        }
+      }
+
       // Enforce MCP usage - no fallback mode allowed
       if (!mcpInitializer.isMCPAvailable()) {
         throw new Error('MCP not available - database operations require MCP')
