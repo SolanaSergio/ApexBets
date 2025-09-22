@@ -120,8 +120,15 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { action, options = {} } = body
+    let body = {}
+    try {
+      body = await request.json()
+    } catch (jsonError) {
+      // If no JSON body provided, use default values
+      body = { action: 'audit', options: {} }
+    }
+    
+    const { action = 'audit', options = {} } = body
 
     console.log(`🔧 Running database ${action} with options:`, options)
 

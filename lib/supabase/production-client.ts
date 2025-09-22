@@ -127,15 +127,66 @@ class ProductionSupabaseClient {
   }
 
   async getPlayers(sport?: string, teamId?: string, limit: number = 100) {
-    let query = this.supabase.from('players').select('*')
+    // Map sport names to their specific player stats tables
+    const sportTableMap: { [key: string]: string } = {
+      'basketball': 'player_stats',
+      'football': 'football_player_stats', 
+      'baseball': 'baseball_player_stats',
+      'hockey': 'hockey_player_stats',
+      'soccer': 'soccer_player_stats',
+      'tennis': 'tennis_match_stats',
+      'golf': 'golf_tournament_stats'
+    }
 
-    if (sport) query = query.eq('sport', sport)
-    if (teamId) query = query.eq('team_id', teamId)
+    if (!sport) {
+      // If no sport specified, get from main players table
+      const { data, error } = await this.supabase.from('players').select('*').order('name').limit(limit)
+      if (error) throw error
+      return data || []
+    }
 
-    const { data, error } = await query.order('name').limit(limit)
+    const tableName = sportTableMap[sport] || 'players'
+    
+    try {
+      let query = this.supabase.from(tableName).select('*')
+      
+      if (teamId) {
+        // Handle different team_id column names across tables
+        if (tableName === 'tennis_match_stats' || tableName === 'golf_tournament_stats') {
+          // These tables might not have team_id, skip the filter
+        } else {
+          query = query.eq('team_id', teamId)
+        }
+      }
 
-    if (error) throw error
-    return data || []
+      const { data, error } = await query.order('player_name').limit(limit)
+      
+      if (error) throw error
+      
+      // Transform data to consistent format
+      const transformedData = (data || []).map((player: any) => ({
+        id: player.id || player.player_id,
+        name: player.player_name || player.name || player.player,
+        sport: sport,
+        team_id: player.team_id,
+        position: player.position,
+        ...player
+      }))
+      
+      return transformedData
+    } catch (error) {
+      // Fallback to main players table if sport-specific table fails
+      console.warn(`Failed to fetch from ${tableName}, falling back to players table:`, error)
+      const { data, error: fallbackError } = await this.supabase
+        .from('players')
+        .select('*')
+        .eq('sport', sport)
+        .order('name')
+        .limit(limit)
+      
+      if (fallbackError) throw fallbackError
+      return data || []
+    }
   }
 
   async getStandings(sport?: string, league?: string, season?: string) {
@@ -168,7 +219,8 @@ class ProductionSupabaseClient {
     if (sport) query = query.eq('sport', sport)
     if (gameId) query = query.eq('game_id', gameId)
 
-    const { data, error } = await query.order('updated_at', { ascending: false }).limit(limit)
+    // Order by timestamp (most recent first), fallback to created_at
+    const { data, error } = await query.order('timestamp', { ascending: false }).limit(limit)
 
     if (error) throw error
     return data || []

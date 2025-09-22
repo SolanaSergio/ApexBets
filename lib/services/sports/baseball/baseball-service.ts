@@ -372,10 +372,20 @@ export class BaseballService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchPlayers(params), ttl)
   }
 
-  private async fetchPlayers(_params: any): Promise<PlayerData[]> {
+  private async fetchPlayers(params: any): Promise<PlayerData[]> {
     try {
-      // Baseball players would need different API integration
-      return []
+      // Fetch from database using production client
+      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
+      const players = await productionSupabaseClient.getPlayers('baseball', params.teamId, params.limit || 100)
+      
+      return players.map((player: any) => ({
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        team_id: player.team_id,
+        sport: 'baseball',
+        ...player
+      }))
     } catch (error) {
       console.error('Error fetching baseball players:', error)
       return []

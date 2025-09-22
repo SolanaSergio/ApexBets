@@ -3,12 +3,13 @@ import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url)
+  const sport = searchParams.get("sport")
+  const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
+  const limit = parseInt(searchParams.get("limit") || "10")
+  const gameId = searchParams.get("gameId")
+  
   try {
-    const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
-    const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
-    const limit = parseInt(searchParams.get("limit") || "10")
-    const gameId = searchParams.get("gameId")
 
     // If sport is provided, try sport-specific endpoint first, fallback to general query
     if (sport && externalAllowed) {
@@ -74,9 +75,23 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const errorStack = error instanceof Error ? error.stack : undefined
+    
     structuredLogger.error('Odds API error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: errorMessage,
+      stack: errorStack,
+      sport,
+      limit,
+      gameId
     })
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    
+    console.error('Odds API detailed error:', error)
+    
+    return NextResponse.json({ 
+      error: "Internal server error",
+      details: errorMessage,
+      timestamp: new Date().toISOString()
+    }, { status: 500 })
   }
 }

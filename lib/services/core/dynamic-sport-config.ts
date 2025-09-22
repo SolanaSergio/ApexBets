@@ -91,7 +91,7 @@ export class DynamicSportConfigService {
                season_config,
                rate_limits,
                update_frequency
-        FROM sport_configurations
+        FROM sports
         WHERE is_active = true
         ORDER BY display_name
       `

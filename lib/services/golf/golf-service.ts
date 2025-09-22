@@ -30,10 +30,24 @@ export class GolfService extends SportSpecificService {
     return []
   }
 
-  async getPlayers(_params?: any): Promise<PlayerData[]> {
-    // Golf players would be fetched from a golf-specific API
-    // For now, return empty array
-    return []
+  async getPlayers(params: any = {}): Promise<PlayerData[]> {
+    try {
+      // Fetch from database using production client
+      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
+      const players = await productionSupabaseClient.getPlayers('golf', params.teamId, params.limit || 100)
+      
+      return players.map((player: any) => ({
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        team_id: player.team_id,
+        sport: 'golf',
+        ...player
+      }))
+    } catch (error) {
+      console.error('Error fetching golf players:', error)
+      return []
+    }
   }
 
   async getLiveGames(): Promise<GameData[]> {

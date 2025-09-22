@@ -112,10 +112,10 @@ class SportServiceFactory {
           name,
           display_name,
           is_active,
-          api_providers,
-          default_league,
-          supported_leagues
-        FROM sport_configurations
+          data_source as api_providers,
+          season_config->>'defaultLeague' as default_league,
+          season_config->>'supportedLeagues' as supported_leagues
+        FROM sports
         WHERE is_active = true
         ORDER BY display_name
       `
@@ -135,9 +135,9 @@ class SportServiceFactory {
           name: row.name,
           displayName: row.display_name,
           isActive: row.is_active,
-          apiProviders: Array.isArray(row.api_providers) ? row.api_providers : [],
-          defaultLeague: row.default_league,
-          supportedLeagues: Array.isArray(row.supported_leagues) ? row.supported_leagues : []
+          apiProviders: row.api_providers ? [row.api_providers] : [],
+          defaultLeague: row.default_league || null,
+          supportedLeagues: row.supported_leagues ? [row.supported_leagues] : []
         }
         
         this.sportConfigs.set(config.name, config)
@@ -150,7 +150,8 @@ class SportServiceFactory {
 
     } catch (error) {
       structuredLogger.error('Failed to load sport configurations', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
       })
       
       // If database fails, fall back to environment-based configuration
