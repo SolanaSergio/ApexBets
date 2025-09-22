@@ -3,7 +3,7 @@
  * PGA/LPGA golf service
  */
 
-import { cacheManager } from '@/lib/cache'
+import { cacheManager } from '../../cache'
 import { errorHandlingService } from '../../services/error-handling-service'
 
 export interface GolfTournament {

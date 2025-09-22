@@ -3,7 +3,7 @@
  * Loads sport configuration directly from database on server side
  */
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "../../supabase/server"
 import { SportConfig } from "./sport-config"
 
 export class ServerSportConfigManager {
@@ -51,24 +51,21 @@ export class ServerSportConfigManager {
       if (sports && sports.length > 0) {
         for (const sport of sports) {
           this.configs[sport.name] = {
-            name: sport.display_name || sport.name,
-            leagues: [], // Will be loaded separately
-            defaultLeague: '', // Will be set from leagues
+            name: sport.name,
+            displayName: sport.display_name || sport.name,
             icon: sport.icon || '🏆',
-            color: sport.color || 'text-gray-500',
-            apiKey: sport.api_key || '',
+            color: sport.color || '#666666',
+            isActive: !!sport.is_active,
             dataSource: sport.data_source || 'sportsdb',
-            positions: sport.positions || [],
-            scoringFields: sport.scoring_fields || {},
-            bettingMarkets: sport.betting_markets || [],
-            seasonConfig: sport.season_config || {},
-            rateLimits: sport.rate_limits || {
-              requestsPerMinute: 30,
-              requestsPerHour: 500,
-              requestsPerDay: 5000,
-              burstLimit: 5
-            },
-            updateFrequency: sport.update_frequency || 30
+            apiKey: sport.api_key || undefined,
+            playerStatsTable: sport.player_stats_table || undefined,
+            leagues: [],
+            positions: Array.isArray(sport.positions) ? sport.positions : [],
+            scoringFields: Array.isArray(sport.scoring_fields) ? sport.scoring_fields : [],
+            bettingMarkets: Array.isArray(sport.betting_markets) ? sport.betting_markets : [],
+            seasonConfig: sport.season_config || { startMonth: 1, endMonth: 12, currentSeason: '' },
+            rateLimits: sport.rate_limits || { requests: 30, interval: '1m' },
+            updateFrequency: String(sport.update_frequency ?? '30m')
           }
         }
       } else {

@@ -4,7 +4,7 @@
  * Runs independently of the main application
  */
 
-import { dataSyncService } from '@/lib/services/data-sync-service'
+import { dataSyncService } from '../services/data-sync-service'
 
 class SyncWorker {
   private isRunning: boolean = false
@@ -72,10 +72,10 @@ class SyncWorker {
     console.log('Sync worker health check:', {
       isRunning: this.isRunning,
       serviceRunning: isServiceRunning,
-      lastSync: stats.lastSync,
-      totalSynced: stats.totalSynced,
-      errors: stats.errors,
-      successRate: stats.successRate
+      lastSync: stats.lastSyncTime,
+      totalSynced: stats.totalSyncs,
+      errors: stats.failedSyncs,
+      successRate: stats.totalSyncs > 0 ? Math.round((stats.successfulSyncs / stats.totalSyncs) * 100) : 0
     })
 
     // If service is not running but worker is, restart it

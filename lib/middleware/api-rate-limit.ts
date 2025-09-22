@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
+import { apiRateLimiter } from '../rules/api-rate-limiter'
 
 interface RateLimitConfig {
   service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn'

@@ -7,12 +7,10 @@ export async function GET() {
     const healthCheck = await mcpDatabaseService.healthCheck()
     
     // Test a simple select query
-    const sports = await mcpDatabaseService.select({
-      table: 'sports',
-      select: ['name', 'display_name', 'is_active'],
-      filters: { is_active: true },
-      limit: 5
-    })
+    // Use executeSQL via MCP instead of a custom select helper
+    const sportsResult = await mcpDatabaseService.executeSQL(
+      `SELECT name, display_name, is_active FROM sports WHERE is_active = true ORDER BY name LIMIT 5`
+    )
 
     // Test getting all tables
     const tables = await mcpDatabaseService.getAllTables()
@@ -21,7 +19,7 @@ export async function GET() {
       success: true,
       data: {
         healthCheck,
-        sports: sports || [],
+        sports: sportsResult.success ? sportsResult.data : [],
         tablesCount: tables.length,
         message: 'MCP Database Service is working correctly'
       }

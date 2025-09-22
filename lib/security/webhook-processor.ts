@@ -3,10 +3,10 @@
  * Handles webhook processing with validation, deduplication, and batch support
  */
 
-import { createClient } from '@/lib/supabase/server'
-import { dataSyncService } from '@/lib/services/data-sync-service'
+import { createClient } from '../supabase/server'
 import { WebhookValidator, type WebhookPayload, type BatchWebhookPayload } from './webhook-validator'
 import { WebhookDeduplicator } from './webhook-deduplicator'
+import { dataSyncService } from '../services/data-sync-service'
 
 export interface ProcessingResult {
   success: boolean

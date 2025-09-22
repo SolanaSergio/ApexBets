@@ -1,267 +1,133 @@
 /**
  * Auto Startup Service
- * Automatically starts all monitoring and data quality services when the application starts
+ * Handles automatic service initialization on startup
  */
 
-import { automatedMonitoringService } from './automated-monitoring-service';
-import { dataIntegrityService } from './data-integrity-service';
-import { enhancedApiClient } from './enhanced-api-client';
-// Load startup config dynamically to avoid path issues
-import * as path from 'path';
-import * as fs from 'fs';
-
-const getStartupConfig = () => {
-  try {
-    // Try multiple possible paths for the config file
-    const possiblePaths = [
-      path.join(process.cwd(), 'startup.config.json'),
-      path.join(__dirname, '../../startup.config.json'),
-      path.join(__dirname, '../../../startup.config.json'),
-      path.join(process.cwd(), 'dist/server/startup.config.json')
-    ];
-    
-    for (const configPath of possiblePaths) {
-      if (fs.existsSync(configPath)) {
-        return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      }
-    }
-    
-    // Fallback to default config if file not found
-    console.warn('⚠️ startup.config.json not found, using default configuration');
-    return {
-      autoStartup: {
-        enabled: true,
-        monitoring: { enabled: true, intervalMinutes: 5 },
-        dataQuality: { enabled: true, autoCleanup: false },
-        healthChecks: { enabled: true, intervalMinutes: 10 },
-        startupDelay: 5000
-      }
-    };
-  } catch (error) {
-    console.error('❌ Error loading startup config:', error);
-    return {
-      autoStartup: {
-        enabled: true,
-        monitoring: { enabled: true, intervalMinutes: 5 },
-        dataQuality: { enabled: true, autoCleanup: false },
-        healthChecks: { enabled: true, intervalMinutes: 10 },
-        startupDelay: 5000
-      }
-    };
-  }
-};
-
-const startupConfig = getStartupConfig();
+import { structuredLogger } from './structured-logger'
+import { dataSyncService } from './data-sync-service'
+import { mcpDatabaseService } from './mcp-database-service'
+import { databaseAuditService } from './database-audit-service'
 
 export interface StartupConfig {
-  enableMonitoring: boolean;
-  monitoringIntervalMinutes: number;
-  enableDataQualityChecks: boolean;
-  enableHealthChecks: boolean;
-  enableAutoCleanup: boolean;
-  startupDelay: number; // milliseconds to wait before starting services
+  enableDataSync: boolean
+  enableDatabaseAudit: boolean
+  enableHealthChecks: boolean
+  syncInterval: number // in minutes
 }
 
 export class AutoStartupService {
-  private static instance: AutoStartupService;
-  private isInitialized = false;
-  private startupConfig: StartupConfig;
+  private static instance: AutoStartupService
+  private isInitialized: boolean = false
+  private config: StartupConfig
+
+  public static getInstance(): AutoStartupService {
+    if (!AutoStartupService.instance) {
+      AutoStartupService.instance = new AutoStartupService()
+    }
+    return AutoStartupService.instance
+  }
 
   constructor() {
-    // Load configuration from JSON file
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const envConfig = isDevelopment ? startupConfig.environments.development : startupConfig.environments.production;
-    
-    this.startupConfig = {
-      enableMonitoring: startupConfig.autoStartup.monitoring.enabled,
-      monitoringIntervalMinutes: envConfig.monitoring.intervalMinutes,
-      enableDataQualityChecks: startupConfig.autoStartup.dataQuality.enabled,
-      enableHealthChecks: startupConfig.autoStartup.healthChecks.enabled,
-      enableAutoCleanup: envConfig.dataQuality.autoCleanup, // Now enabled by default
-      startupDelay: isDevelopment ? startupConfig.autoStartup.startupDelay : envConfig.startupDelay || startupConfig.autoStartup.startupDelay
-    };
-  }
-
-  static getInstance(): AutoStartupService {
-    if (!AutoStartupService.instance) {
-      AutoStartupService.instance = new AutoStartupService();
+    this.config = {
+      enableDataSync: true,
+      enableDatabaseAudit: true,
+      enableHealthChecks: true,
+      syncInterval: 30 // 30 minutes
     }
-    return AutoStartupService.instance;
   }
 
-  /**
-   * Initialize auto-startup services
-   */
-  async initialize(config?: Partial<StartupConfig>): Promise<void> {
+  async initialize(config?: Partial<StartupConfig>): Promise<{ success: boolean; message: string }> {
     if (this.isInitialized) {
-      console.log('🚀 Auto-startup already initialized');
-      return;
-    }
-
-    // Merge config
-    this.startupConfig = { ...this.startupConfig, ...config };
-
-    console.log('🚀 Initializing auto-startup services...');
-    console.log('📋 Configuration:', this.startupConfig);
-
-    // Wait for startup delay
-    if (this.startupConfig.startupDelay > 0) {
-      console.log(`⏳ Waiting ${this.startupConfig.startupDelay}ms before starting services...`);
-      await this.sleep(this.startupConfig.startupDelay);
+      return { success: true, message: 'Service already initialized' }
     }
 
     try {
-      // Start monitoring if enabled
-      if (this.startupConfig.enableMonitoring) {
-        console.log('📊 Starting automated monitoring...');
-        automatedMonitoringService.start(this.startupConfig.monitoringIntervalMinutes);
-        console.log('✅ Monitoring started');
+      structuredLogger.info('Initializing auto startup service')
+
+      // Update config if provided
+      if (config) {
+        this.config = { ...this.config, ...config }
       }
 
-      // Run initial health check if enabled
-      if (this.startupConfig.enableHealthChecks) {
-        console.log('🏥 Running initial health check...');
-        const healthCheck = await enhancedApiClient.forceHealthCheck();
-        if (healthCheck) {
-          console.log('✅ Health check completed');
-          console.log('📈 Database Health:', healthCheck.databaseHealth.connectionStatus ? 'Connected' : 'Disconnected');
-          console.log('📊 Data Quality:', {
-            duplicates: healthCheck.dataQuality.duplicateCount,
-            orphaned: healthCheck.dataQuality.orphanedRecords,
-            freshness: `${healthCheck.dataQuality.dataFreshness}h old`
-          });
+      // Initialize database connection
+      if (this.config.enableHealthChecks) {
+        const dbHealth = await mcpDatabaseService.healthCheck()
+        if (!dbHealth.healthy) {
+          structuredLogger.warn('Database health check failed during startup', dbHealth.details)
         }
       }
 
-      // Run data quality checks if enabled
-      if (this.startupConfig.enableDataQualityChecks) {
-        console.log('🔍 Running data quality checks...');
-        const integrityCheck = await dataIntegrityService.runIntegrityCheck();
-        console.log('✅ Data quality check completed');
-        console.log('📊 Integrity Status:', integrityCheck.overall ? 'All Good' : 'Issues Found');
-        
-        if (!integrityCheck.overall) {
-          console.log('⚠️ Issues found:', integrityCheck.recommendations);
+      // Run database audit if enabled
+      if (this.config.enableDatabaseAudit) {
+        try {
+          const auditResult = await databaseAuditService.runFullAudit()
+          structuredLogger.info('Startup database audit completed', {
+            success: auditResult.success,
+            totalTests: auditResult.totalTests,
+            passedTests: auditResult.passedTests
+          })
+        } catch (error) {
+          structuredLogger.error('Startup database audit failed', {
+            error: error instanceof Error ? error.message : String(error)
+          })
         }
       }
 
-      // Auto cleanup if enabled (use with caution)
-      if (this.startupConfig.enableAutoCleanup) {
-        console.log('🧹 Running automatic cleanup...');
-        const cleanupResults = await enhancedApiClient.cleanupDuplicates();
-        if (cleanupResults.success) {
-          console.log('✅ Auto cleanup completed');
-          console.log('📊 Cleanup Results:', {
-            teamsRemoved: cleanupResults.teamsRemoved,
-            gamesRemoved: cleanupResults.gamesRemoved,
-            oddsRemoved: cleanupResults.oddsRemoved
-          });
-        } else {
-          console.log('❌ Auto cleanup failed:', cleanupResults.errors);
-        }
+      // Start data sync if enabled
+      if (this.config.enableDataSync) {
+        dataSyncService.start()
+        structuredLogger.info('Data sync service started')
       }
 
-      this.isInitialized = true;
-      console.log('🎉 Auto-startup services initialized successfully!');
+      this.isInitialized = true
 
-    } catch (error) {
-      console.error('❌ Auto-startup initialization failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Start services with custom configuration
-   */
-  async startWithConfig(config: Partial<StartupConfig>): Promise<void> {
-    this.isInitialized = false; // Reset to allow re-initialization
-    await this.initialize(config);
-  }
-
-  /**
-   * Stop all auto-started services
-   */
-  stop(): void {
-    console.log('🛑 Stopping auto-startup services...');
-    
-    try {
-      automatedMonitoringService.stop();
-      console.log('✅ Monitoring stopped');
-    } catch (error) {
-      console.error('❌ Error stopping monitoring:', error);
-    }
-
-    this.isInitialized = false;
-    console.log('🛑 Auto-startup services stopped');
-  }
-
-  /**
-   * Get current status
-   */
-  getStatus(): {
-    isInitialized: boolean;
-    config: StartupConfig;
-    monitoringStatus: any;
-  } {
-    return {
-      isInitialized: this.isInitialized,
-      config: this.startupConfig,
-      monitoringStatus: automatedMonitoringService.getStatus()
-    };
-  }
-
-  /**
-   * Update configuration
-   */
-  updateConfig(newConfig: Partial<StartupConfig>): void {
-    this.startupConfig = { ...this.startupConfig, ...newConfig };
-    console.log('📋 Configuration updated:', this.startupConfig);
-  }
-
-  /**
-   * Restart services with current configuration
-   */
-  async restart(): Promise<void> {
-    console.log('🔄 Restarting auto-startup services...');
-    this.stop();
-    await this.sleep(1000); // Wait 1 second
-    await this.initialize();
-  }
-
-  /**
-   * Run a quick health check
-   */
-  async quickHealthCheck(): Promise<{
-    success: boolean;
-    database: boolean;
-    monitoring: boolean;
-    dataQuality: boolean;
-  }> {
-    try {
-      const healthCheck = await enhancedApiClient.forceHealthCheck();
-      const monitoringStatus = automatedMonitoringService.getStatus();
-      const integrityCheck = await dataIntegrityService.runIntegrityCheck();
+      structuredLogger.info('Auto startup service initialized successfully', {
+        config: this.config
+      })
 
       return {
-        success: healthCheck !== null && monitoringStatus.isRunning && integrityCheck.overall,
-        database: healthCheck?.databaseHealth.connectionStatus || false,
-        monitoring: monitoringStatus.isRunning,
-        dataQuality: integrityCheck.overall
-      };
+        success: true,
+        message: 'Auto startup service initialized successfully'
+      }
+
     } catch (error) {
-      console.error('❌ Quick health check failed:', error);
+      structuredLogger.error('Failed to initialize auto startup service', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+
       return {
         success: false,
-        database: false,
-        monitoring: false,
-        dataQuality: false
-      };
+        message: `Failed to initialize: ${error instanceof Error ? error.message : String(error)}`
+      }
     }
   }
 
-  private sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+  async start(): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize()
+    }
+
+    structuredLogger.info('Auto startup service started')
+  }
+
+  async stop(): Promise<void> {
+    dataSyncService.stop()
+    this.isInitialized = false
+    structuredLogger.info('Auto startup service stopped')
+  }
+
+  getInitializationStatus(): boolean {
+    return this.isInitialized
+  }
+
+  getConfig(): StartupConfig {
+    return { ...this.config }
+  }
+
+  updateConfig(updates: Partial<StartupConfig>): void {
+    this.config = { ...this.config, ...updates }
+    structuredLogger.info('Startup config updated', { config: this.config })
   }
 }
 
-export const autoStartupService = AutoStartupService.getInstance();
+export const autoStartupService = AutoStartupService.getInstance()

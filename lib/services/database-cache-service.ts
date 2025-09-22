@@ -3,7 +3,7 @@
  * Provides caching functionality for database operations using Supabase
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '../supabase/server'
 
 interface CacheConfig {
   ttl: number

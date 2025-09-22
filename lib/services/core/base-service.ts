@@ -3,10 +3,10 @@
  * Core functionality shared across all services
  */
 
-import { cacheManager } from '@/lib/cache'
+import { cacheManager } from '../../cache'
 import { rateLimiter } from '../rate-limiter'
+import { apiRateLimiter } from '../../rules/api-rate-limiter'
 import { errorHandlingService } from '../error-handling-service'
-import { apiRateLimiter } from '@/lib/rules/api-rate-limiter'
 
 export interface ServiceConfig {
   name: string
@@ -37,7 +37,7 @@ export abstract class BaseService {
     }
     // Check database first (if available)
     try {
-      const { databaseCacheService } = await import('@/lib/services/database-cache-service')
+      const { databaseCacheService } = await import('../database-cache-service')
       if (databaseCacheService.isAvailable()) {
         const dbCached = await databaseCacheService.get<T>(key)
         if (dbCached) {
@@ -77,12 +77,19 @@ export abstract class BaseService {
         const data = await errorHandlingService.withCircuitBreaker(
           () => errorHandlingService.withRetry(
             fetchFn,
-            this.config.retryAttempts,
-            this.config.retryDelay
+            {
+              maxRetries: this.config.retryAttempts,
+              baseDelay: this.config.retryDelay,
+              maxDelay: this.config.retryDelay * 10,
+              backoffMultiplier: 2
+            }
           ),
           this.config.name,
-          5,
-          60000
+          {
+            failureThreshold: 5,
+            recoveryTimeout: 60000,
+            monitoringPeriod: 300000
+          }
         )
 
         const responseTime = Date.now() - startTime
@@ -96,7 +103,7 @@ export abstract class BaseService {
 
         // Also store in database cache
         try {
-          const { databaseCacheService } = await import('@/lib/services/database-cache-service')
+          const { databaseCacheService } = await import('../database-cache-service')
           if (databaseCacheService.isAvailable()) {
             await databaseCacheService.set(key, data, ttl || this.config.cacheTTL)
           }

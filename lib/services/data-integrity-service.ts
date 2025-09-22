@@ -1,323 +1,341 @@
 /**
  * Data Integrity Service
- * Ensures data consistency and prevents duplicates at the database level
+ * Handles data integrity checks and validation
  */
 
-import { MCPDatabaseService } from './mcp-database-service';
-import { dataValidationService } from './data-validation-service';
+import { structuredLogger } from './structured-logger'
+import { mcpDatabaseService } from './mcp-database-service'
 
 export interface IntegrityCheckResult {
-  isValid: boolean;
-  issues: string[];
-  suggestions: string[];
-  duplicateCount: number;
-  orphanedRecords: number;
+  success: boolean
+  issues: IntegrityIssue[]
+  executionTime: number
+  timestamp: Date
+}
+
+export interface IntegrityIssue {
+  type: 'error' | 'warning' | 'info'
+  table: string
+  description: string
+  count: number
+  details?: any
 }
 
 export class DataIntegrityService {
-  private static instance: DataIntegrityService;
-  private dbService: MCPDatabaseService;
+  private static instance: DataIntegrityService
 
-  constructor() {
-    this.dbService = MCPDatabaseService.getInstance();
-  }
-
-  static getInstance(): DataIntegrityService {
+  public static getInstance(): DataIntegrityService {
     if (!DataIntegrityService.instance) {
-      DataIntegrityService.instance = new DataIntegrityService();
+      DataIntegrityService.instance = new DataIntegrityService()
     }
-    return DataIntegrityService.instance;
+    return DataIntegrityService.instance
   }
 
-  /**
-   * Check for duplicate teams
-   */
-  async checkDuplicateTeams(): Promise<IntegrityCheckResult> {
+  async runIntegrityCheck(sport?: string): Promise<IntegrityCheckResult> {
+    const startTime = Date.now()
+    const issues: IntegrityIssue[] = []
+
     try {
-      const duplicates = await this.dbService.executeSQL(`
-        SELECT name, sport, league, COUNT(*) as count
-        FROM teams 
-        GROUP BY name, sport, league 
-        HAVING COUNT(*) > 1
-        ORDER BY count DESC
-      `);
+      structuredLogger.info('Starting data integrity check', { sport })
 
-      return {
-        isValid: duplicates.length === 0,
-        issues: duplicates.length > 0 ? [`Found ${duplicates.length} duplicate team groups`] : [],
-        suggestions: duplicates.length > 0 ? ['Run cleanup to remove duplicates'] : [],
-        duplicateCount: duplicates.length,
-        orphanedRecords: 0
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        issues: [`Error checking duplicate teams: ${error}`],
-        suggestions: ['Check database connection and table structure'],
-        duplicateCount: 0,
-        orphanedRecords: 0
-      };
-    }
-  }
+      // Check for orphaned records
+      const orphanedIssues = await this.checkOrphanedRecords()
+      issues.push(...orphanedIssues)
 
-  /**
-   * Check for duplicate games
-   */
-  async checkDuplicateGames(): Promise<IntegrityCheckResult> {
-    try {
-      const duplicates = await this.dbService.executeSQL(`
-        SELECT home_team_id, away_team_id, game_date, COUNT(*) as count
-        FROM games 
-        GROUP BY home_team_id, away_team_id, game_date 
-        HAVING COUNT(*) > 1
-        ORDER BY count DESC
-      `);
+      // Check for missing required fields
+      const missingFieldIssues = await this.checkMissingRequiredFields()
+      issues.push(...missingFieldIssues)
 
-      return {
-        isValid: duplicates.length === 0,
-        issues: duplicates.length > 0 ? [`Found ${duplicates.length} duplicate game groups`] : [],
-        suggestions: duplicates.length > 0 ? ['Run cleanup to remove duplicates'] : [],
-        duplicateCount: duplicates.length,
-        orphanedRecords: 0
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        issues: [`Error checking duplicate games: ${error}`],
-        suggestions: ['Check database connection and table structure'],
-        duplicateCount: 0,
-        orphanedRecords: 0
-      };
-    }
-  }
+      // Check for data consistency
+      const consistencyIssues = await this.checkDataConsistency()
+      issues.push(...consistencyIssues)
 
-  /**
-   * Check for orphaned records
-   */
-  async checkOrphanedRecords(): Promise<IntegrityCheckResult> {
-    try {
-      const orphanedGames = await this.dbService.executeSQL(`
-        SELECT COUNT(*) as count
-        FROM games g
-        LEFT JOIN teams ht ON g.home_team_id = ht.id
-        LEFT JOIN teams at ON g.away_team_id = at.id
-        WHERE ht.id IS NULL OR at.id IS NULL
-      `);
+      // Check for duplicate records
+      const duplicateIssues = await this.checkDuplicateRecords()
+      issues.push(...duplicateIssues)
 
-      const orphanedOdds = await this.dbService.executeSQL(`
-        SELECT COUNT(*) as count
-        FROM odds o
-        LEFT JOIN games g ON o.game_id = g.id
-        WHERE g.id IS NULL
-      `);
+      const executionTime = Date.now() - startTime
+      const success = issues.filter(issue => issue.type === 'error').length === 0
 
-      const orphanedPlayerStats = await this.dbService.executeSQL(`
-        SELECT COUNT(*) as count
-        FROM player_stats ps
-        LEFT JOIN games g ON ps.game_id = g.id
-        LEFT JOIN teams t ON ps.team_id = t.id
-        WHERE g.id IS NULL OR t.id IS NULL
-      `);
-
-      const totalOrphaned = orphanedGames[0]?.count + orphanedOdds[0]?.count + orphanedPlayerStats[0]?.count;
-
-      return {
-        isValid: totalOrphaned === 0,
-        issues: totalOrphaned > 0 ? [`Found ${totalOrphaned} orphaned records`] : [],
-        suggestions: totalOrphaned > 0 ? ['Clean up orphaned records to maintain referential integrity'] : [],
-        duplicateCount: 0,
-        orphanedRecords: totalOrphaned
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        issues: [`Error checking orphaned records: ${error}`],
-        suggestions: ['Check database connection and foreign key constraints'],
-        duplicateCount: 0,
-        orphanedRecords: 0
-      };
-    }
-  }
-
-  /**
-   * Validate data before insertion
-   */
-  async validateBeforeInsert(type: 'team' | 'game' | 'odds', data: any): Promise<{
-    isValid: boolean;
-    errors: string[];
-    warnings: string[];
-    duplicateCheck: boolean;
-  }> {
-    // First validate the data structure
-    const validation = dataValidationService.validateData(type, data);
-    
-    if (!validation.isValid) {
-      return {
-        isValid: false,
-        errors: validation.errors,
-        warnings: validation.warnings,
-        duplicateCheck: false
-      };
-    }
-
-    // Check for duplicates
-    const duplicateCheck = await this.checkForDuplicates(type, validation.data);
-
-    return {
-      isValid: !duplicateCheck.hasDuplicates,
-      errors: duplicateCheck.hasDuplicates ? ['Duplicate record detected'] : [],
-      warnings: validation.warnings,
-      duplicateCheck: !duplicateCheck.hasDuplicates
-    };
-  }
-
-  /**
-   * Check for duplicates before insertion
-   */
-  private async checkForDuplicates(type: 'team' | 'game' | 'odds', data: any): Promise<{
-    hasDuplicates: boolean;
-    duplicateFields: string[];
-  }> {
-    try {
-      let query = '';
-      let params: any[] = [];
-
-      switch (type) {
-        case 'team':
-          query = 'SELECT COUNT(*) as count FROM teams WHERE name = $1 AND sport = $2 AND league = $3';
-          params = [data.name, data.sport, data.league];
-          break;
-        case 'game':
-          query = 'SELECT COUNT(*) as count FROM games WHERE home_team_id = $1 AND away_team_id = $2 AND game_date = $3';
-          params = [data.home_team_id, data.away_team_id, data.game_date];
-          break;
-        case 'odds':
-          query = 'SELECT COUNT(*) as count FROM odds WHERE game_id = $1 AND source = $2';
-          params = [data.game_id, data.source];
-          break;
+      const result: IntegrityCheckResult = {
+        success,
+        issues,
+        executionTime,
+        timestamp: new Date()
       }
 
-      const result = await this.dbService.executeSQL(query, params);
-      const count = result[0]?.count || 0;
+      structuredLogger.info('Data integrity check completed', {
+        success,
+        totalIssues: issues.length,
+        errorIssues: issues.filter(i => i.type === 'error').length,
+        warningIssues: issues.filter(i => i.type === 'warning').length,
+        executionTime
+      })
 
-      return {
-        hasDuplicates: count > 0,
-        duplicateFields: count > 0 ? ['Duplicate record exists'] : []
-      };
+      return result
+
     } catch (error) {
-      return {
-        hasDuplicates: false,
-        duplicateFields: []
-      };
-    }
-  }
+      const executionTime = Date.now() - startTime
+      const errorMessage = `Data integrity check failed: ${error instanceof Error ? error.message : String(error)}`
 
-  /**
-   * Clean up duplicates
-   */
-  async cleanupDuplicates(): Promise<{
-    success: boolean;
-    teamsRemoved: number;
-    gamesRemoved: number;
-    oddsRemoved: number;
-    errors: string[];
-  }> {
-    const errors: string[] = [];
-    let teamsRemoved = 0;
-    let gamesRemoved = 0;
-    let oddsRemoved = 0;
+      structuredLogger.error(errorMessage)
 
-    try {
-      // Clean up duplicate teams
-      const teamCleanup = await this.dbService.executeSQL(`
-        WITH duplicate_teams AS (
-          SELECT id, name, sport, league, created_at,
-                 ROW_NUMBER() OVER (PARTITION BY name, sport, league ORDER BY created_at DESC) as rn
-          FROM teams
-        )
-        DELETE FROM teams 
-        WHERE id IN (
-          SELECT id FROM duplicate_teams WHERE rn > 1
-        )
-      `);
-      teamsRemoved = teamCleanup.length || 0;
-
-      // Clean up duplicate games
-      const gameCleanup = await this.dbService.executeSQL(`
-        WITH duplicate_games AS (
-          SELECT id, home_team_id, away_team_id, game_date, created_at,
-                 ROW_NUMBER() OVER (PARTITION BY home_team_id, away_team_id, game_date ORDER BY created_at DESC) as rn
-          FROM games
-        )
-        DELETE FROM games 
-        WHERE id IN (
-          SELECT id FROM duplicate_games WHERE rn > 1
-        )
-      `);
-      gamesRemoved = gameCleanup.length || 0;
-
-      // Clean up duplicate odds
-      const oddsCleanup = await this.dbService.executeSQL(`
-        WITH duplicate_odds AS (
-          SELECT id, game_id, source, created_at,
-                 ROW_NUMBER() OVER (PARTITION BY game_id, source ORDER BY created_at DESC) as rn
-          FROM odds
-        )
-        DELETE FROM odds 
-        WHERE id IN (
-          SELECT id FROM duplicate_odds WHERE rn > 1
-        )
-      `);
-      oddsRemoved = oddsCleanup.length || 0;
-
-      return {
-        success: true,
-        teamsRemoved,
-        gamesRemoved,
-        oddsRemoved,
-        errors
-      };
-    } catch (error) {
-      errors.push(`Cleanup failed: ${error}`);
       return {
         success: false,
-        teamsRemoved,
-        gamesRemoved,
-        oddsRemoved,
-        errors
-      };
+        issues: [{
+          type: 'error',
+          table: 'system',
+          description: errorMessage,
+          count: 1
+        }],
+        executionTime,
+        timestamp: new Date()
+      }
     }
   }
 
-  /**
-   * Run comprehensive integrity check
-   */
-  async runIntegrityCheck(): Promise<{
-    overall: boolean;
-    teams: IntegrityCheckResult;
-    games: IntegrityCheckResult;
-    orphaned: IntegrityCheckResult;
-    recommendations: string[];
-  }> {
-    const teams = await this.checkDuplicateTeams();
-    const games = await this.checkDuplicateGames();
-    const orphaned = await this.checkOrphanedRecords();
+  private async checkOrphanedRecords(): Promise<IntegrityIssue[]> {
+    const issues: IntegrityIssue[] = []
 
-    const overall = teams.isValid && games.isValid && orphaned.isValid;
+    try {
+      // Check orphaned odds
+      const orphanedOddsQuery = `
+        SELECT COUNT(*) as count FROM odds 
+        WHERE game_id NOT IN (SELECT id FROM games)
+      `
+      const oddsResult = await mcpDatabaseService.executeSQL(orphanedOddsQuery)
+      const orphanedOdds = oddsResult.data?.[0]?.count || 0
 
-    const recommendations: string[] = [];
-    if (!teams.isValid) recommendations.push('Clean up duplicate teams');
-    if (!games.isValid) recommendations.push('Clean up duplicate games');
-    if (!orphaned.isValid) recommendations.push('Clean up orphaned records');
+      if (orphanedOdds > 0) {
+        issues.push({
+          type: 'error',
+          table: 'odds',
+          description: 'Orphaned odds records found',
+          count: orphanedOdds
+        })
+      }
 
-    return {
-      overall,
-      teams,
-      games,
-      orphaned,
-      recommendations
-    };
+      // Check orphaned predictions
+      const orphanedPredictionsQuery = `
+        SELECT COUNT(*) as count FROM predictions 
+        WHERE game_id NOT IN (SELECT id FROM games)
+      `
+      const predictionsResult = await mcpDatabaseService.executeSQL(orphanedPredictionsQuery)
+      const orphanedPredictions = predictionsResult.data?.[0]?.count || 0
+
+      if (orphanedPredictions > 0) {
+        issues.push({
+          type: 'error',
+          table: 'predictions',
+          description: 'Orphaned predictions records found',
+          count: orphanedPredictions
+        })
+      }
+
+      // Check orphaned player stats
+      const orphanedPlayerStatsQuery = `
+        SELECT COUNT(*) as count FROM player_stats 
+        WHERE player_id NOT IN (SELECT id FROM players)
+      `
+      const playerStatsResult = await mcpDatabaseService.executeSQL(orphanedPlayerStatsQuery)
+      const orphanedPlayerStats = playerStatsResult.data?.[0]?.count || 0
+
+      if (orphanedPlayerStats > 0) {
+        issues.push({
+          type: 'error',
+          table: 'player_stats',
+          description: 'Orphaned player stats records found',
+          count: orphanedPlayerStats
+        })
+      }
+
+    } catch (error) {
+      issues.push({
+        type: 'error',
+        table: 'orphaned_records',
+        description: `Failed to check orphaned records: ${error instanceof Error ? error.message : String(error)}`,
+        count: 1
+      })
+    }
+
+    return issues
+  }
+
+  private async checkMissingRequiredFields(): Promise<IntegrityIssue[]> {
+    const issues: IntegrityIssue[] = []
+
+    try {
+      // Check games with missing required fields
+      const gamesMissingFieldsQuery = `
+        SELECT COUNT(*) as count FROM games 
+        WHERE home_team_id IS NULL OR away_team_id IS NULL OR sport IS NULL
+      `
+      const gamesResult = await mcpDatabaseService.executeSQL(gamesMissingFieldsQuery)
+      const gamesMissingFields = gamesResult.data?.[0]?.count || 0
+
+      if (gamesMissingFields > 0) {
+        issues.push({
+          type: 'error',
+          table: 'games',
+          description: 'Games with missing required fields found',
+          count: gamesMissingFields
+        })
+      }
+
+      // Check teams with missing required fields
+      const teamsMissingFieldsQuery = `
+        SELECT COUNT(*) as count FROM teams 
+        WHERE name IS NULL OR sport IS NULL
+      `
+      const teamsResult = await mcpDatabaseService.executeSQL(teamsMissingFieldsQuery)
+      const teamsMissingFields = teamsResult.data?.[0]?.count || 0
+
+      if (teamsMissingFields > 0) {
+        issues.push({
+          type: 'error',
+          table: 'teams',
+          description: 'Teams with missing required fields found',
+          count: teamsMissingFields
+        })
+      }
+
+      // Check players with missing required fields
+      const playersMissingFieldsQuery = `
+        SELECT COUNT(*) as count FROM players 
+        WHERE name IS NULL OR sport IS NULL
+      `
+      const playersResult = await mcpDatabaseService.executeSQL(playersMissingFieldsQuery)
+      const playersMissingFields = playersResult.data?.[0]?.count || 0
+
+      if (playersMissingFields > 0) {
+        issues.push({
+          type: 'error',
+          table: 'players',
+          description: 'Players with missing required fields found',
+          count: playersMissingFields
+        })
+      }
+
+    } catch (error) {
+      issues.push({
+        type: 'error',
+        table: 'missing_fields',
+        description: `Failed to check missing required fields: ${error instanceof Error ? error.message : String(error)}`,
+        count: 1
+      })
+    }
+
+    return issues
+  }
+
+  private async checkDataConsistency(): Promise<IntegrityIssue[]> {
+    const issues: IntegrityIssue[] = []
+
+    try {
+      // Check for games with invalid scores
+      const invalidScoresQuery = `
+        SELECT COUNT(*) as count FROM games 
+        WHERE (home_score IS NOT NULL AND home_score < 0) 
+        OR (away_score IS NOT NULL AND away_score < 0)
+      `
+      const scoresResult = await mcpDatabaseService.executeSQL(invalidScoresQuery)
+      const invalidScores = scoresResult.data?.[0]?.count || 0
+
+      if (invalidScores > 0) {
+        issues.push({
+          type: 'warning',
+          table: 'games',
+          description: 'Games with invalid scores found',
+          count: invalidScores
+        })
+      }
+
+      // Check for players with invalid ages
+      const invalidAgesQuery = `
+        SELECT COUNT(*) as count FROM players 
+        WHERE age IS NOT NULL AND (age < 16 OR age > 50)
+      `
+      const agesResult = await mcpDatabaseService.executeSQL(invalidAgesQuery)
+      const invalidAges = agesResult.data?.[0]?.count || 0
+
+      if (invalidAges > 0) {
+        issues.push({
+          type: 'warning',
+          table: 'players',
+          description: 'Players with invalid ages found',
+          count: invalidAges
+        })
+      }
+
+    } catch (error) {
+      issues.push({
+        type: 'error',
+        table: 'data_consistency',
+        description: `Failed to check data consistency: ${error instanceof Error ? error.message : String(error)}`,
+        count: 1
+      })
+    }
+
+    return issues
+  }
+
+  private async checkDuplicateRecords(): Promise<IntegrityIssue[]> {
+    const issues: IntegrityIssue[] = []
+
+    try {
+      // Check for duplicate games
+      const duplicateGamesQuery = `
+        SELECT COUNT(*) as count FROM (
+          SELECT home_team_id, away_team_id, game_date, COUNT(*) as cnt
+          FROM games
+          GROUP BY home_team_id, away_team_id, game_date
+          HAVING COUNT(*) > 1
+        ) duplicates
+      `
+      const gamesResult = await mcpDatabaseService.executeSQL(duplicateGamesQuery)
+      const duplicateGames = gamesResult.data?.[0]?.count || 0
+
+      if (duplicateGames > 0) {
+        issues.push({
+          type: 'warning',
+          table: 'games',
+          description: 'Duplicate games found',
+          count: duplicateGames
+        })
+      }
+
+      // Check for duplicate teams
+      const duplicateTeamsQuery = `
+        SELECT COUNT(*) as count FROM (
+          SELECT name, sport, league, COUNT(*) as cnt
+          FROM teams
+          GROUP BY name, sport, league
+          HAVING COUNT(*) > 1
+        ) duplicates
+      `
+      const teamsResult = await mcpDatabaseService.executeSQL(duplicateTeamsQuery)
+      const duplicateTeams = teamsResult.data?.[0]?.count || 0
+
+      if (duplicateTeams > 0) {
+        issues.push({
+          type: 'warning',
+          table: 'teams',
+          description: 'Duplicate teams found',
+          count: duplicateTeams
+        })
+      }
+
+    } catch (error) {
+      issues.push({
+        type: 'error',
+        table: 'duplicates',
+        description: `Failed to check duplicate records: ${error instanceof Error ? error.message : String(error)}`,
+        count: 1
+      })
+    }
+
+    return issues
   }
 }
 
-export const dataIntegrityService = DataIntegrityService.getInstance();
+export const dataIntegrityService = DataIntegrityService.getInstance()

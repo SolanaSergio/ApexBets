@@ -3,7 +3,7 @@
  * Prevents duplicate webhook processing using in-memory and persistent storage
  */
 
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '../supabase/server'
 
 interface ProcessedWebhook {
   hash: string

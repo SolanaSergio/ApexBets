@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { intelligentRateLimiter } from '@/lib/services/intelligent-rate-limiter'
+import { intelligentRateLimiter } from '@/lib/services/enhanced-rate-limiter'
 
 export async function GET(_request: NextRequest) {
   try {

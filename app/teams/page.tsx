@@ -129,7 +129,7 @@ export default function TeamsPage() {
                 <SelectContent>
                   {(() => {
                     const sportConfig = SportConfigManager.getSportConfig(selectedSport)
-                    return sportConfig?.leagues.map((league: any) => (
+                    return (sportConfig?.leagues || []).map((league: any) => (
                       <SelectItem key={league.id} value={league.id}>
                         {league.name}
                       </SelectItem>

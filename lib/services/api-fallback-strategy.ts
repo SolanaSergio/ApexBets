@@ -638,6 +638,39 @@ export class APIFallbackStrategy {
     })
   }
 
+  // Generic fetchData method for unified API client
+  async fetchData(dataType: string, params: Record<string, any>): Promise<{
+    success: boolean
+    data: any
+    source: string
+    error?: string
+  }> {
+    try {
+      const request: FallbackRequest = {
+        sport: params.sport || 'basketball',
+        dataType: dataType as any,
+        params,
+        priority: 'medium'
+      }
+
+      const result = await this.executeWithFallback<any>({ ...request })
+      
+      return {
+        success: !!result.success,
+        data: (result.data as any) || [],
+        source: result.provider || 'unknown',
+        ...(result.success ? {} : { error: result.error || 'Request failed' })
+      }
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        source: 'error',
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+
   // Get statistics on API usage by provider
   getProviderStats(): Record<string, {
     priority: number

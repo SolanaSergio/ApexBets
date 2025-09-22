@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
     } else if (action === 'start-monitoring') {
       // Start automated monitoring
       const intervalMinutes = options.intervalMinutes || 5
-      automatedMonitoringService.start(intervalMinutes)
+      await automatedMonitoringService.start()
       
       return NextResponse.json({
         success: true,
@@ -317,7 +317,7 @@ async function testDataIntegrity(): Promise<any> {
     FROM teams
   `
   const result = await dbService.executeSQL(query)
-  return result[0]
+  return (result.data as any[])[0]
 }
 
 async function testForeignKeyIntegrity(): Promise<any> {
@@ -334,7 +334,7 @@ async function testForeignKeyIntegrity(): Promise<any> {
     LEFT JOIN teams at ON g.away_team_id = at.id
   `
   const result = await dbService.executeSQL(query)
-  return result[0]
+  return (result.data as any[])[0]
 }
 
 async function testPerformance(): Promise<any> {
@@ -402,7 +402,7 @@ async function testRealTimeUpdates(): Promise<any> {
   const recentResult = await dbService.executeSQL(recentQuery)
 
   return {
-    liveGames: liveResult[0].live_count,
-    recentUpdates: recentResult[0].recent_count
+    liveGames: (liveResult.data as any[])[0]?.live_count,
+    recentUpdates: (recentResult.data as any[])[0]?.recent_count
   }
 }

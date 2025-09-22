@@ -44,11 +44,11 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
       let filteredStandings = standingsData
       if (selectedConference !== "all") {
         filteredStandings = standingsData.filter(team => 
-          team.conference === selectedConference
+          (team as any).conference === selectedConference
         )
       }
       
-      setStandings(filteredStandings)
+      setStandings(filteredStandings as any)
     } catch (error) {
       console.error('Error loading standings:', error)
     } finally {
@@ -148,7 +148,7 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
                         <div className="flex items-center gap-3">
                           <SportsImage
                             type="team"
-                            league={sportConfig?.leagues[0] || sport}
+                            league={(sportConfig?.leagues && sportConfig.leagues[0]) || sport}
                             teamName={team.team}
                             alt={`${team.team} logo`}
                             className="h-8 w-8 rounded-full"

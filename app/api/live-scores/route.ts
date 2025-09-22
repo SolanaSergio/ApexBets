@@ -3,13 +3,14 @@ import { createClient } from "@/lib/supabase/server"
 import { cacheManager } from "@/lib/cache"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
 
-async function getDefaultLeagueFromDatabase(sport: string): Promise<string> {
+async function getDefaultLeagueFromDatabase(sport: string): Promise<string | undefined> {
   try {
-    const config = await SportConfigManager.getSportConfigAsync(sport)
-    return config?.defaultLeague || 'Unknown League'
+    const config = await SportConfigManager.getSportConfigAsync(sport as any)
+    const leagues = config?.leagues || []
+    return leagues[0]
   } catch (error) {
     console.error('Error getting default league for sport:', sport, error)
-    return 'Unknown League'
+    return undefined
   }
 }
 

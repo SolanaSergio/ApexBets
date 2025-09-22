@@ -1,0 +1,469 @@
+/**
+ * Optimized Sports Data Storage Service
+ * Efficiently stores and retrieves sports API data for fast access
+ */
+
+import { supabaseMCPClient } from '../supabase/mcp-client'
+// import { enhancedRateLimiter } from './enhanced-rate-limiter'
+
+export interface SportsDataConfig {
+  sport: string
+  league: string
+  season: string
+  dataType: 'games' | 'teams' | 'players' | 'standings' | 'odds' | 'stats'
+  ttl: number
+  priority: 'low' | 'medium' | 'high' | 'critical'
+}
+
+export interface StorageResult<T> {
+  data: T
+  cached: boolean
+  source: 'database' | 'api' | 'cache'
+  responseTime: number
+  lastUpdated: string
+}
+
+export class OptimizedSportsStorage {
+  private static instance: OptimizedSportsStorage
+  // Reserved for future in-memory cache; currently unused to ensure DB-first storage
+  // Keeping declaration removed to avoid unused field while preserving API surface
+
+  private constructor() {}
+
+  static getInstance(): OptimizedSportsStorage {
+    if (!OptimizedSportsStorage.instance) {
+      OptimizedSportsStorage.instance = new OptimizedSportsStorage()
+    }
+    return OptimizedSportsStorage.instance
+  }
+
+  async storeGames(sport: string, league: string, games: any[]): Promise<void> {
+    try {
+      const batchSize = 100
+      const batches = this.chunkArray(games, batchSize)
+
+      for (const batch of batches) {
+        const values = batch.map(game => ({
+          id: game.id || this.generateId(),
+          sport,
+          league,
+          season: game.season || this.getCurrentSeason(sport),
+          home_team_id: game.home_team_id || null,
+          away_team_id: game.away_team_id || null,
+          game_date: game.game_date || game.date || new Date().toISOString(),
+          status: game.status || 'scheduled',
+          home_score: game.home_score || game.homeScore || null,
+          away_score: game.away_score || game.awayScore || null,
+          venue: game.venue || null,
+          last_updated: new Date().toISOString()
+        }))
+
+        const insertQuery = `
+          INSERT INTO games (id, sport, league, season, home_team_id, away_team_id, game_date, status, home_score, away_score, venue, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.home_team_id ? `'${v.home_team_id}'` : 'NULL'}, ${v.away_team_id ? `'${v.away_team_id}'` : 'NULL'}, '${v.game_date}', '${v.status}', ${v.home_score || 'NULL'}, ${v.away_score || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
+          ON CONFLICT (id) DO UPDATE SET
+            status = EXCLUDED.status,
+            home_score = EXCLUDED.home_score,
+            away_score = EXCLUDED.away_score,
+            last_updated = EXCLUDED.last_updated
+        `
+
+        await supabaseMCPClient.executeSQL(insertQuery)
+      }
+
+      console.log(`✅ Stored ${games.length} games for ${sport}/${league}`)
+    } catch (error) {
+      console.error('Failed to store games:', error)
+      throw error
+    }
+  }
+
+  async storeTeams(sport: string, league: string, teams: any[]): Promise<void> {
+    try {
+      const batchSize = 50
+      const batches = this.chunkArray(teams, batchSize)
+
+      for (const batch of batches) {
+        const values = batch.map(team => ({
+          id: team.id || this.generateId(),
+          name: team.name || team.teamName || team.full_name,
+          sport,
+          league,
+          abbreviation: team.abbreviation || team.abbr || team.teamAbbreviation || '',
+          city: team.city || team.homeTeam || '',
+          logo_url: team.logo_url || team.logoUrl || team.logo || null,
+          conference: team.conference || null,
+          division: team.division || null,
+          founded_year: team.foundedYear || team.founded || null,
+          stadium_name: team.stadiumName || team.stadium || null,
+          stadium_capacity: team.stadiumCapacity || team.capacity || null,
+          primary_color: team.primaryColor || team.primary_color || null,
+          secondary_color: team.secondaryColor || team.secondary_color || null,
+          country: team.country || null,
+          is_active: team.isActive !== false,
+          last_updated: new Date().toISOString()
+        }))
+
+        const insertQuery = `
+          INSERT INTO teams (id, name, sport, league, abbreviation, city, logo_url, conference, division, founded_year, stadium_name, stadium_capacity, primary_color, secondary_color, country, is_active, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', '${v.league}', '${v.abbreviation}', '${v.city}', ${v.logo_url ? `'${v.logo_url}'` : 'NULL'}, ${v.conference ? `'${v.conference}'` : 'NULL'}, ${v.division ? `'${v.division}'` : 'NULL'}, ${v.founded_year || 'NULL'}, ${v.stadium_name ? `'${v.stadium_name}'` : 'NULL'}, ${v.stadium_capacity || 'NULL'}, ${v.primary_color ? `'${v.primary_color}'` : 'NULL'}, ${v.secondary_color ? `'${v.secondary_color}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.is_active}, '${v.last_updated}')`).join(', ')}
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            abbreviation = EXCLUDED.abbreviation,
+            city = EXCLUDED.city,
+            logo_url = EXCLUDED.logo_url,
+            last_updated = EXCLUDED.last_updated
+        `
+
+        await supabaseMCPClient.executeSQL(insertQuery)
+      }
+
+      console.log(`✅ Stored ${teams.length} teams for ${sport}/${league}`)
+    } catch (error) {
+      console.error('Failed to store teams:', error)
+      throw error
+    }
+  }
+
+  async storePlayers(sport: string, league: string, players: any[]): Promise<void> {
+    try {
+      const batchSize = 50
+      const batches = this.chunkArray(players, batchSize)
+
+      for (const batch of batches) {
+        const values = batch.map(player => ({
+          id: player.id || this.generateId(),
+          name: player.name || player.fullName || player.full_name,
+          sport,
+          position: player.position || null,
+          team_id: player.team_id || player.teamId || null,
+          team_name: player.team_name || player.teamName || null,
+          height: player.height || null,
+          weight: player.weight || null,
+          age: player.age || null,
+          experience_years: player.experienceYears || player.experience || null,
+          college: player.college || null,
+          country: player.country || null,
+          jersey_number: player.jerseyNumber || player.jersey_number || null,
+          is_active: player.isActive !== false,
+          headshot_url: player.headshotUrl || player.headshot_url || player.headshot || null,
+          last_updated: new Date().toISOString()
+        }))
+
+        const insertQuery = `
+          INSERT INTO players (id, name, sport, position, team_id, team_name, height, weight, age, experience_years, college, country, jersey_number, is_active, headshot_url, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', ${v.position ? `'${v.position}'` : 'NULL'}, ${v.team_id ? `'${v.team_id}'` : 'NULL'}, ${v.team_name ? `'${v.team_name}'` : 'NULL'}, ${v.height ? `'${v.height}'` : 'NULL'}, ${v.weight || 'NULL'}, ${v.age || 'NULL'}, ${v.experience_years || 'NULL'}, ${v.college ? `'${v.college}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.jersey_number || 'NULL'}, ${v.is_active}, ${v.headshot_url ? `'${v.headshot_url}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            position = EXCLUDED.position,
+            team_id = EXCLUDED.team_id,
+            team_name = EXCLUDED.team_name,
+            last_updated = EXCLUDED.last_updated
+        `
+
+        await supabaseMCPClient.executeSQL(insertQuery)
+      }
+
+      console.log(`✅ Stored ${players.length} players for ${sport}/${league}`)
+    } catch (error) {
+      console.error('Failed to store players:', error)
+      throw error
+    }
+  }
+
+  async getGames(sport: string, league?: string, date?: string, status?: string): Promise<StorageResult<any[]>> {
+    const startTime = Date.now()
+    
+    try {
+      let query = `
+        SELECT g.*, 
+               ht.name as home_team_name, ht.abbreviation as home_team_abbr, ht.logo_url as home_team_logo,
+               at.name as away_team_name, at.abbreviation as away_team_abbr, at.logo_url as away_team_logo
+        FROM games g
+        LEFT JOIN teams ht ON g.home_team_id = ht.id
+        LEFT JOIN teams at ON g.away_team_id = at.id
+        WHERE g.sport = '${sport}'
+      `
+
+      if (league) {
+        query += ` AND g.league = '${league}'`
+      }
+
+      if (date) {
+        query += ` AND DATE(g.game_date) = '${date}'`
+      }
+
+      if (status) {
+        query += ` AND g.status = '${status}'`
+      }
+
+      query += ` ORDER BY g.game_date DESC LIMIT 100`
+
+      const result = await supabaseMCPClient.executeSQL(query)
+      const responseTime = Date.now() - startTime
+
+      return {
+        data: result || [],
+        cached: false,
+        source: 'database',
+        responseTime,
+        lastUpdated: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to get games:', error)
+      return {
+        data: [],
+        cached: false,
+        source: 'database',
+        responseTime: Date.now() - startTime,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+
+  async getTeams(sport: string, league?: string): Promise<StorageResult<any[]>> {
+    const startTime = Date.now()
+    
+    try {
+      let query = `SELECT * FROM teams WHERE sport = '${sport}'`
+      
+      if (league) {
+        query += ` AND league = '${league}'`
+      }
+
+      query += ` ORDER BY name LIMIT 100`
+
+      const result = await supabaseMCPClient.executeSQL(query)
+      const responseTime = Date.now() - startTime
+
+      return {
+        data: result || [],
+        cached: false,
+        source: 'database',
+        responseTime,
+        lastUpdated: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to get teams:', error)
+      return {
+        data: [],
+        cached: false,
+        source: 'database',
+        responseTime: Date.now() - startTime,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+
+  async getPlayers(sport: string, teamId?: string, limit: number = 100): Promise<StorageResult<any[]>> {
+    const startTime = Date.now()
+    
+    try {
+      let query = `SELECT * FROM players WHERE sport = '${sport}'`
+      
+      if (teamId) {
+        query += ` AND team_id = '${teamId}'`
+      }
+
+      query += ` ORDER BY name LIMIT ${limit}`
+
+      const result = await supabaseMCPClient.executeSQL(query)
+      const responseTime = Date.now() - startTime
+
+      return {
+        data: result || [],
+        cached: false,
+        source: 'database',
+        responseTime,
+        lastUpdated: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to get players:', error)
+      return {
+        data: [],
+        cached: false,
+        source: 'database',
+        responseTime: Date.now() - startTime,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+
+  async storeStandings(sport: string, league: string, standings: any[]): Promise<void> {
+    try {
+      const batchSize = 50
+      const batches = this.chunkArray(standings, batchSize)
+
+      for (const batch of batches) {
+        const values = batch.map((standing, index) => ({
+          id: standing.id || this.generateId(),
+          sport,
+          league,
+          season: standing.season || this.getCurrentSeason(sport),
+          team_id: standing.team_id || standing.teamId || null,
+          team_name: standing.team_name || standing.teamName || standing.name,
+          position: standing.position || index + 1,
+          wins: standing.wins || standing.w || 0,
+          losses: standing.losses || standing.l || 0,
+          ties: standing.ties || standing.t || 0,
+          win_percentage: standing.win_percentage || standing.winPercentage || null,
+          games_behind: standing.games_behind || standing.gamesBehind || null,
+          points_for: standing.points_for || standing.pointsFor || 0,
+          points_against: standing.points_against || standing.pointsAgainst || 0,
+          last_updated: new Date().toISOString()
+        }))
+
+        const insertQuery = `
+          INSERT INTO standings (id, sport, league, season, team_id, team_name, position, wins, losses, ties, win_percentage, games_behind, points_for, points_against, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.team_id ? `'${v.team_id}'` : 'NULL'}, '${v.team_name}', ${v.position}, ${v.wins}, ${v.losses}, ${v.ties}, ${v.win_percentage || 'NULL'}, ${v.games_behind || 'NULL'}, ${v.points_for}, ${v.points_against}, '${v.last_updated}')`).join(', ')}
+          ON CONFLICT (id) DO UPDATE SET
+            position = EXCLUDED.position,
+            wins = EXCLUDED.wins,
+            losses = EXCLUDED.losses,
+            ties = EXCLUDED.ties,
+            win_percentage = EXCLUDED.win_percentage,
+            games_behind = EXCLUDED.games_behind,
+            points_for = EXCLUDED.points_for,
+            points_against = EXCLUDED.points_against,
+            last_updated = EXCLUDED.last_updated
+        `
+
+        await supabaseMCPClient.executeSQL(insertQuery)
+      }
+
+      console.log(`✅ Stored ${standings.length} standings for ${sport}/${league}`)
+    } catch (error) {
+      console.error('Failed to store standings:', error)
+      throw error
+    }
+  }
+
+  async getStandings(sport: string, league: string, season?: string): Promise<StorageResult<any[]>> {
+    const startTime = Date.now()
+    
+    try {
+      let query = `
+        SELECT s.*, t.name as team_name, t.abbreviation, t.logo_url
+        FROM standings s
+        LEFT JOIN teams t ON s.team_id = t.id
+        WHERE s.sport = '${sport}' AND s.league = '${league}'
+      `
+
+      if (season) {
+        query += ` AND s.season = '${season}'`
+      }
+
+      query += ` ORDER BY s.position ASC`
+
+      const result = await supabaseMCPClient.executeSQL(query)
+      const responseTime = Date.now() - startTime
+
+      return {
+        data: result || [],
+        cached: false,
+        source: 'database',
+        responseTime,
+        lastUpdated: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to get standings:', error)
+      return {
+        data: [],
+        cached: false,
+        source: 'database',
+        responseTime: Date.now() - startTime,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+
+  async clearOldData(sport: string, daysToKeep: number = 30): Promise<void> {
+    try {
+      const cutoffDate = new Date()
+      cutoffDate.setDate(cutoffDate.getDate() - daysToKeep)
+
+      // Clear old games
+      await supabaseMCPClient.executeSQL(`
+        DELETE FROM games 
+        WHERE sport = '${sport}' 
+        AND game_date < '${cutoffDate.toISOString()}'
+        AND status = 'finished'
+      `)
+
+      // Clear old cache entries
+      await supabaseMCPClient.executeSQL(`
+        DELETE FROM cache_entries 
+        WHERE sport = '${sport}' 
+        AND expires_at < '${new Date().toISOString()}'
+      `)
+
+      console.log(`✅ Cleared old data for ${sport} (older than ${daysToKeep} days)`)
+    } catch (error) {
+      console.error('Failed to clear old data:', error)
+    }
+  }
+
+  async getStorageStats(): Promise<{
+    totalGames: number
+    totalTeams: number
+    totalPlayers: number
+    totalStandings: number
+    cacheEntries: number
+    lastUpdated: string
+  }> {
+    try {
+      const [gamesResult, teamsResult, playersResult, standingsResult, cacheResult] = await Promise.all([
+        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM games'),
+        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM teams'),
+        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM players'),
+        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM standings'),
+        supabaseMCPClient.executeSQL('SELECT COUNT(*) as count FROM cache_entries')
+      ])
+
+      return {
+        totalGames: parseInt(gamesResult[0]?.count) || 0,
+        totalTeams: parseInt(teamsResult[0]?.count) || 0,
+        totalPlayers: parseInt(playersResult[0]?.count) || 0,
+        totalStandings: parseInt(standingsResult[0]?.count) || 0,
+        cacheEntries: parseInt(cacheResult[0]?.count) || 0,
+        lastUpdated: new Date().toISOString()
+      }
+    } catch (error) {
+      console.error('Failed to get storage stats:', error)
+      return {
+        totalGames: 0,
+        totalTeams: 0,
+        totalPlayers: 0,
+        totalStandings: 0,
+        cacheEntries: 0,
+        lastUpdated: new Date().toISOString()
+      }
+    }
+  }
+
+  private chunkArray<T>(array: T[], size: number): T[][] {
+    const chunks: T[][] = []
+    for (let i = 0; i < array.length; i += size) {
+      chunks.push(array.slice(i, i + size))
+    }
+    return chunks
+  }
+
+  private generateId(): string {
+    return `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  private getCurrentSeason(_sport: string): string {
+    const year = new Date().getFullYear()
+    const month = new Date().getMonth()
+    
+    // Most sports seasons start in fall/winter
+    if (month >= 8) {
+      return `${year}-${(year + 1).toString().slice(-2)}`
+    } else {
+      return `${year - 1}-${year.toString().slice(-2)}`
+    }
+  }
+}
+
+export const optimizedSportsStorage = OptimizedSportsStorage.getInstance()

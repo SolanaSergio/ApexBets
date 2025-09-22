@@ -59,7 +59,7 @@ function getPlayerId(player: PlayerUnion | null): string {
 function getPlayerHeight(player: PlayerUnion | null): string | undefined {
   if (!player) return undefined;
   if ('height' in player) {
-    return player.height;
+    return typeof player.height === 'number' ? String(player.height) : player.height;
   }
   if ('height_feet' in player && 'height_inches' in player) {
     const feet = player.height_feet;

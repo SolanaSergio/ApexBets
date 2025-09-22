@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { useErrorHandler } from '@/components/error-boundary'
-
+import { useErrorHandler } from '@/components/error/enhanced-error-boundary'
 interface UseApiDataOptions<T> {
   initialData?: T
   enabled?: boolean

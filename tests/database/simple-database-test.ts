@@ -206,10 +206,10 @@ async function runDatabaseTests() {
       addTestResult({
         testName: 'Full Database Audit',
         status: auditReport.failedTests > 0 ? 'WARNING' : 'PASS',
-        message: `Audit completed: ${auditReport.passedTests} passed, ${auditReport.warningTests} warnings, ${auditReport.failedTests} failed`,
+        message: `Audit completed: ${auditReport.passedTests} passed, ${auditReport.failedTests} failed`,
         details: {
           passed: auditReport.passedTests,
-          warnings: auditReport.warningTests,
+          warnings: 0,
           failed: auditReport.failedTests,
           total: auditReport.totalTests
         }

@@ -1,283 +1,304 @@
 /**
  * MCP Database Service
- * Centralized service for all database operations using Supabase MCP tools
- * This replaces all direct Supabase client calls throughout the application
+ * Service for database operations using MCP (Model Context Protocol)
  */
 
-import { createAdminClient } from '../supabase/server-admin'
+import { supabaseMCPClient } from '../supabase/mcp-client'
+import { structuredLogger } from './structured-logger'
 
-export interface DatabaseQuery {
-  table: string
-  select?: string[]
-  filters?: Record<string, any>
-  orderBy?: { column: string; ascending?: boolean }
-  limit?: number
-  offset?: number
+export interface DatabaseStats {
+  totalTables: number
+  totalRows: number
+  databaseSize: string
+  lastBackup?: string
+  connectionStatus: 'connected' | 'disconnected' | 'error'
 }
 
-export interface DatabaseInsert {
-  table: string
-  data: Record<string, any> | Record<string, any>[]
-  onConflict?: string
-}
-
-export interface DatabaseUpdate {
-  table: string
-  data: Record<string, any>
-  filters: Record<string, any>
-}
-
-export interface DatabaseDelete {
-  table: string
-  filters: Record<string, any>
+export interface QueryResult {
+  success: boolean
+  data: any[]
+  rowCount: number
+  executionTime: number
+  error?: string
 }
 
 export class MCPDatabaseService {
   private static instance: MCPDatabaseService
-  private cache = new Map<string, { data: any; timestamp: number }>()
-  private readonly CACHE_TTL = 30000 // 30 seconds
+  private isConnected: boolean = false
+  private lastHealthCheck: Date = new Date()
 
-  private constructor() {}
-
-  static getInstance(): MCPDatabaseService {
+  public static getInstance(): MCPDatabaseService {
     if (!MCPDatabaseService.instance) {
       MCPDatabaseService.instance = new MCPDatabaseService()
     }
     return MCPDatabaseService.instance
   }
 
-  /**
-   * Execute a SELECT query using MCP tools
-   */
-  async select(query: DatabaseQuery): Promise<any[]> {
-    try {
-      const cacheKey = this.generateCacheKey(query)
-      const cached = this.getCached(cacheKey)
-      if (cached) return cached
+  constructor() {
+    this.initializeConnection()
+  }
 
-      const sql = this.buildSelectQuery(query)
-      const result = await this.executeSQL(sql)
+  private async initializeConnection(): Promise<void> {
+    try {
+      // Test connection
+      await this.executeSQL('SELECT 1 as test')
+      this.isConnected = true
+      structuredLogger.info('MCP Database Service initialized successfully')
+    } catch (error) {
+      this.isConnected = false
+      structuredLogger.error('Failed to initialize MCP Database Service', { 
+        error: error instanceof Error ? error.message : String(error) 
+      })
+    }
+  }
+
+  async executeSQL(query: string, _params?: any[]): Promise<QueryResult> {
+    const startTime = Date.now()
+    
+    try {
+      const result = await supabaseMCPClient.executeSQL(query)
+      const executionTime = Date.now() - startTime
       
-      this.setCache(cacheKey, result)
-      return result
-    } catch (error) {
-      console.error('MCP Database Service - Select Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Execute an INSERT query using MCP tools
-   */
-  async insert(insert: DatabaseInsert): Promise<any> {
-    try {
-      const sql = this.buildInsertQuery(insert)
-      return await this.executeSQL(sql)
-    } catch (error) {
-      console.error('MCP Database Service - Insert Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Execute an UPDATE query using MCP tools
-   */
-  async update(update: DatabaseUpdate): Promise<any> {
-    try {
-      const sql = this.buildUpdateQuery(update)
-      return await this.executeSQL(sql)
-    } catch (error) {
-      console.error('MCP Database Service - Update Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Execute a DELETE query using MCP tools
-   */
-  async delete(deleteQuery: DatabaseDelete): Promise<any> {
-    try {
-      const sql = this.buildDeleteQuery(deleteQuery)
-      return await this.executeSQL(sql)
-    } catch (error) {
-      console.error('MCP Database Service - Delete Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Execute raw SQL using MCP tools
-   */
-  async executeSQL(sql: string, params?: any[]): Promise<any> {
-    try {
-      const { mcp_supabase_execute_sql } = await import('../mcp/supabase-mcp')
+      const data = Array.isArray(result) ? result : []
       
-      if (params && params.length > 0) {
-        // For parameterized queries, we need to construct the query with parameters
-        let parameterizedQuery = sql
-        params.forEach((param, index) => {
-          const placeholder = `$${index + 1}`
-          parameterizedQuery = parameterizedQuery.replace(placeholder, `'${param}'`)
-        })
-        return await mcp_supabase_execute_sql({ query: parameterizedQuery })
-      } else {
-        return await mcp_supabase_execute_sql({ query: sql })
-      }
-    } catch (error) {
-      console.error('MCP Database Service - SQL Execution Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get table information using MCP tools
-   */
-  async getTableInfo(tableName: string): Promise<any> {
-    try {
-      const sql = `
-        SELECT column_name, data_type, is_nullable, column_default
-        FROM information_schema.columns 
-        WHERE table_name = '${tableName}' 
-        AND table_schema = 'public'
-        ORDER BY ordinal_position
-      `
-      return await this.executeSQL(sql)
-    } catch (error) {
-      console.error('MCP Database Service - Table Info Error:', error)
-      throw error
-    }
-  }
-
-  /**
-   * Get all tables using MCP tools
-   */
-  async getAllTables(): Promise<any[]> {
-    try {
-      const sql = `
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_type = 'BASE TABLE'
-        ORDER BY table_name
-      `
-      return await this.executeSQL(sql)
-    } catch (error) {
-      console.error('MCP Database Service - Get Tables Error:', error)
-      throw error
-    }
-  }
-
-  private buildSelectQuery(query: DatabaseQuery): string {
-    let sql = `SELECT ${query.select?.join(', ') || '*'} FROM ${query.table}`
-    
-    if (query.filters) {
-      const conditions = Object.entries(query.filters)
-        .map(([key, value]) => `${key} = '${value}'`)
-        .join(' AND ')
-      sql += ` WHERE ${conditions}`
-    }
-    
-    if (query.orderBy) {
-      sql += ` ORDER BY ${query.orderBy.column} ${query.orderBy.ascending ? 'ASC' : 'DESC'}`
-    }
-    
-    if (query.limit) {
-      sql += ` LIMIT ${query.limit}`
-    }
-    
-    if (query.offset) {
-      sql += ` OFFSET ${query.offset}`
-    }
-    
-    return sql
-  }
-
-  private buildInsertQuery(insert: DatabaseInsert): string {
-    const isArray = Array.isArray(insert.data)
-    const data = isArray ? insert.data as Record<string, any>[] : [insert.data as Record<string, any>]
-    
-    if (data.length === 0) {
-      throw new Error('No data provided for insert')
-    }
-    
-    const columns = Object.keys(data[0])
-    const values = data.map((row: Record<string, any>) => 
-      `(${columns.map(col => `'${row[col]}'`).join(', ')})`
-    ).join(', ')
-    
-    let sql = `INSERT INTO ${insert.table} (${columns.join(', ')}) VALUES ${values}`
-    
-    if (insert.onConflict) {
-      sql += ` ON CONFLICT (${insert.onConflict}) DO UPDATE SET `
-      sql += columns.map(col => `${col} = EXCLUDED.${col}`).join(', ')
-    }
-    
-    return sql
-  }
-
-  private buildUpdateQuery(update: DatabaseUpdate): string {
-    const setClause = Object.entries(update.data)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(', ')
-    
-    const whereClause = Object.entries(update.filters)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(' AND ')
-    
-    return `UPDATE ${update.table} SET ${setClause} WHERE ${whereClause}`
-  }
-
-  private buildDeleteQuery(deleteQuery: DatabaseDelete): string {
-    const whereClause = Object.entries(deleteQuery.filters)
-      .map(([key, value]) => `${key} = '${value}'`)
-      .join(' AND ')
-    
-    return `DELETE FROM ${deleteQuery.table} WHERE ${whereClause}`
-  }
-
-  private generateCacheKey(query: DatabaseQuery): string {
-    return `query:${JSON.stringify(query)}`
-  }
-
-  private getCached(key: string): any | null {
-    const cached = this.cache.get(key)
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return cached.data
-    }
-    return null
-  }
-
-  private setCache(key: string, data: any): void {
-    this.cache.set(key, { data, timestamp: Date.now() })
-  }
-
-  /**
-   * Clear cache
-   */
-  clearCache(): void {
-    this.cache.clear()
-  }
-
-  /**
-   * Health check using MCP tools
-   */
-  async healthCheck(): Promise<{ status: string; tables: number; timestamp: string }> {
-    try {
-      const tables = await this.getAllTables()
+      structuredLogger.databaseQuery(query, executionTime, data.length)
+      
       return {
-        status: 'healthy',
-        tables: tables.length,
-        timestamp: new Date().toISOString()
+        success: true,
+        data,
+        rowCount: data.length,
+        executionTime
       }
     } catch (error) {
+      const executionTime = Date.now() - startTime
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      
+      structuredLogger.error('Database query failed', {
+        query: query.substring(0, 100),
+        error: errorMessage,
+        executionTime
+      })
+      
       return {
-        status: 'unhealthy',
-        tables: 0,
-        timestamp: new Date().toISOString()
+        success: false,
+        data: [],
+        rowCount: 0,
+        executionTime,
+        error: errorMessage
       }
     }
+  }
+
+  async getTableInfo(tableName: string): Promise<QueryResult> {
+    const query = `
+      SELECT 
+        column_name,
+        data_type,
+        is_nullable,
+        column_default,
+        character_maximum_length
+      FROM information_schema.columns 
+      WHERE table_name = $1 
+      AND table_schema = 'public'
+      ORDER BY ordinal_position
+    `
+    
+    return this.executeSQL(query, [tableName])
+  }
+
+  async getTableStats(): Promise<DatabaseStats> {
+    try {
+      const tablesQuery = `
+        SELECT 
+          schemaname,
+          tablename,
+          n_tup_ins as inserts,
+          n_tup_upd as updates,
+          n_tup_del as deletes,
+          n_live_tup as live_tuples,
+          n_dead_tup as dead_tuples
+        FROM pg_stat_user_tables
+        WHERE schemaname = 'public'
+      `
+      
+      const tablesResult = await this.executeSQL(tablesQuery)
+      const tables = tablesResult.data || []
+      
+      const totalRows = tables.reduce((sum, table) => sum + (table.live_tuples || 0), 0)
+      
+      const sizeQuery = `
+        SELECT pg_size_pretty(pg_database_size(current_database())) as database_size
+      `
+      
+      const sizeResult = await this.executeSQL(sizeQuery)
+      const databaseSize = sizeResult.data?.[0]?.database_size || 'Unknown'
+      
+      return {
+        totalTables: tables.length,
+        totalRows,
+        databaseSize,
+        connectionStatus: this.isConnected ? 'connected' : 'disconnected'
+      }
+    } catch (error) {
+      structuredLogger.error('Failed to get table stats', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      
+      return {
+        totalTables: 0,
+        totalRows: 0,
+        databaseSize: 'Unknown',
+        connectionStatus: 'error'
+      }
+    }
+  }
+
+  async healthCheck(): Promise<{ healthy: boolean; details: any }> {
+    try {
+      const startTime = Date.now()
+      const result = await this.executeSQL('SELECT 1 as health_check')
+      const responseTime = Date.now() - startTime
+      
+      this.isConnected = result.success
+      this.lastHealthCheck = new Date()
+      
+      return {
+        healthy: result.success && responseTime < 5000, // 5 second timeout
+        details: {
+          connected: this.isConnected,
+          responseTime,
+          lastCheck: this.lastHealthCheck.toISOString(),
+          error: result.error
+        }
+      }
+    } catch (error) {
+      this.isConnected = false
+      return {
+        healthy: false,
+        details: {
+          connected: false,
+          error: error instanceof Error ? error.message : String(error),
+          lastCheck: this.lastHealthCheck.toISOString()
+        }
+      }
+    }
+  }
+
+  async createIndex(tableName: string, columnName: string, indexName?: string): Promise<QueryResult> {
+    const name = indexName || `idx_${tableName}_${columnName}`
+    const query = `CREATE INDEX IF NOT EXISTS ${name} ON ${tableName}(${columnName})`
+    
+    return this.executeSQL(query)
+  }
+
+  async dropIndex(indexName: string): Promise<QueryResult> {
+    const query = `DROP INDEX IF EXISTS ${indexName}`
+    return this.executeSQL(query)
+  }
+
+  async getIndexes(tableName?: string): Promise<QueryResult> {
+    let query = `
+      SELECT 
+        schemaname,
+        tablename,
+        indexname,
+        indexdef
+      FROM pg_indexes 
+      WHERE schemaname = 'public'
+    `
+    
+    if (tableName) {
+      query += ` AND tablename = $1`
+      return this.executeSQL(query, [tableName])
+    }
+    
+    return this.executeSQL(query)
+  }
+
+  async getAllTables(): Promise<string[]> {
+    const query = `
+      SELECT tablename FROM pg_tables
+      WHERE schemaname = 'public'
+      ORDER BY tablename
+    `
+    const result = await this.executeSQL(query)
+    if (!result.success) return []
+    return (result.data as any[]).map((r: any) => r.tablename)
+  }
+
+  async analyzeTable(tableName: string): Promise<QueryResult> {
+    const query = `ANALYZE ${tableName}`
+    return this.executeSQL(query)
+  }
+
+  async vacuumTable(tableName: string): Promise<QueryResult> {
+    const query = `VACUUM ${tableName}`
+    return this.executeSQL(query)
+  }
+
+  async getSlowQueries(limit: number = 10): Promise<QueryResult> {
+    const query = `
+      SELECT 
+        query,
+        calls,
+        total_time,
+        mean_time,
+        rows
+      FROM pg_stat_statements 
+      ORDER BY mean_time DESC 
+      LIMIT $1
+    `
+    
+    return this.executeSQL(query, [limit])
+  }
+
+  async getTableSizes(): Promise<QueryResult> {
+    const query = `
+      SELECT 
+        schemaname,
+        tablename,
+        pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as size,
+        pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
+      FROM pg_tables 
+      WHERE schemaname = 'public'
+      ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
+    `
+    
+    return this.executeSQL(query)
+  }
+
+  async backupTable(tableName: string): Promise<QueryResult> {
+    const backupTableName = `${tableName}_backup_${Date.now()}`
+    const query = `CREATE TABLE ${backupTableName} AS SELECT * FROM ${tableName}`
+    
+    return this.executeSQL(query)
+  }
+
+  async restoreTable(backupTableName: string, targetTableName: string): Promise<QueryResult> {
+    const query = `INSERT INTO ${targetTableName} SELECT * FROM ${backupTableName}`
+    return this.executeSQL(query)
+  }
+
+  async getConnectionStatus(): Promise<boolean> {
+    return this.isConnected
+  }
+
+  async reconnect(): Promise<boolean> {
+    try {
+      await this.initializeConnection()
+      return this.isConnected
+    } catch (error) {
+      structuredLogger.error('Failed to reconnect to database', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return false
+    }
+  }
+
+  async closeConnection(): Promise<void> {
+    this.isConnected = false
+    structuredLogger.info('Database connection closed')
   }
 }
 
-// Export singleton instance
 export const mcpDatabaseService = MCPDatabaseService.getInstance()

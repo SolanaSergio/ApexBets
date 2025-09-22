@@ -1,491 +1,269 @@
 /**
- * SPORT CONFIGURATION
- * Dynamic sport configuration loaded from database
+ * Sport Configuration Manager
+ * Centralized sport configuration and management
  */
-
-export interface SportConfig {
-  name: string
-  leagues: string[]
-  defaultLeague: string
-  icon: string
-  color: string
-  apiKey: string
-  dataSource: 'balldontlie' | 'sportsdb' | 'odds' | 'custom'
-  positions: string[]
-  scoringFields?: {
-    primary: string
-    for: string
-    against: string
-  }
-  bettingMarkets?: {
-    id: string
-    name: string
-    description: string
-  }[]
-  seasonConfig?: {
-    startMonth: number // 0-11 (January = 0)
-    endMonth: number // 0-11 (December = 11)
-    seasonYearOffset?: number // How many months before January to start season
-  }
-  rateLimits: {
-    requestsPerMinute: number
-    requestsPerHour: number
-    requestsPerDay: number
-    burstLimit: number
-  }
-  updateFrequency: number // minutes
-}
 
 export type SupportedSport = string
 
-export interface LeagueConfig {
-  name: string
+export interface SportConfig {
+  name: SupportedSport
   displayName: string
-  sport: string
-  apiKey?: string
+  icon: string
+  color: string
+  isActive: boolean
   dataSource: string
-  season: string
-  active: boolean
+  apiKey?: string
+  playerStatsTable?: string
+  leagues?: string[]
+  positions: string[]
+  scoringFields: string[] | { primary: string; for: string; against: string }
+  bettingMarkets: string[]
+  seasonConfig: {
+    startMonth: number
+    endMonth: number
+    currentSeason: string
+  }
+  rateLimits: {
+    requests: number
+    interval: string
+  }
+  updateFrequency: string
 }
 
-export class SportConfigManager {
-  private static configs: Record<string, SportConfig> = {}
-  private static initialized = false
+class SportConfigManagerImpl {
+  private static instance: SportConfigManagerImpl
+  private configs: Map<SupportedSport, SportConfig> = new Map()
 
-  /**
-   * Initialize sport configurations from database
-   */
-  static async initialize(): Promise<void> {
-    if (this.initialized) return
-
-    try {
-      // Load from database via API endpoint
-      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
-      const response = await fetch(`${baseUrl}/api/sports`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        
-        if (result.data && result.data.length > 0) {
-          for (const sport of result.data) {
-            // Enhanced dynamic configuration mapping
-            this.configs[sport.name] = {
-              name: sport.display_name || sport.name.charAt(0).toUpperCase() + sport.name.slice(1),
-              leagues: sport.leagues || [], // Load from database
-              defaultLeague: sport.default_league || sport.leagues?.[0] || '',
-              icon: this.mapIconName(sport.icon) || 'trophy',
-              color: this.mapColorGradient(sport.color) || 'from-muted to-muted/80',
-              apiKey: sport.api_key || process.env[`${sport.name.toUpperCase()}_API_KEY`] || '',
-              dataSource: sport.data_source || 'sportsdb',
-              positions: Array.isArray(sport.positions) ? sport.positions : (sport.positions ? sport.positions.split(',') : []),
-              scoringFields: sport.scoring_fields || this.getDefaultScoringFields(sport.name),
-              bettingMarkets: sport.betting_markets || this.getDefaultBettingMarkets(sport.name),
-              seasonConfig: sport.season_config || this.getDefaultSeasonConfig(sport.name),
-              rateLimits: sport.rate_limits || {
-                requestsPerMinute: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_MINUTE`] || '30'),
-                requestsPerHour: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_HOUR`] || '500'),
-                requestsPerDay: parseInt(process.env[`${sport.name.toUpperCase()}_RATE_LIMIT_PER_DAY`] || '5000'),
-                burstLimit: parseInt(process.env[`${sport.name.toUpperCase()}_BURST_LIMIT`] || '5')
-              },
-              updateFrequency: sport.update_frequency || parseInt(process.env[`${sport.name.toUpperCase()}_UPDATE_FREQUENCY`] || '30')
-            }
-          }
-        } else {
-          // Enhanced fallback to environment variables with dynamic discovery
-          console.warn('No sports found in database, falling back to environment variables')
-          const sports = this.discoverSportsFromEnvironment()
-          
-          for (const sport of sports) {
-            const config = await this.loadSportConfigFromEnvironment(sport)
-            if (config) {
-              this.configs[sport] = config
-            }
-          }
-        }
-      } else {
-        // Fallback to environment variables if API fails
-        console.warn('Failed to load sports from API, falling back to environment variables')
-        const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
-        
-        for (const sport of sports) {
-          const config = await this.loadSportConfigFromEnvironment(sport)
-          if (config) {
-            this.configs[sport] = config
-          }
-        }
-      }
-      
-      this.initialized = true
-    } catch (error) {
-      console.error('Failed to initialize sport configurations:', error)
-      // Fallback to environment variables
-      try {
-        const sports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'soccer', 'football', 'baseball', 'hockey']
-        
-        for (const sport of sports) {
-          const config = await this.loadSportConfigFromEnvironment(sport)
-          if (config) {
-            this.configs[sport] = config
-          }
-        }
-        this.initialized = true
-      } catch (fallbackError) {
-        console.error('Fallback initialization also failed:', fallbackError)
-        throw error
-      }
+  public static getInstance(): SportConfigManagerImpl {
+    if (!SportConfigManagerImpl.instance) {
+      SportConfigManagerImpl.instance = new SportConfigManagerImpl()
     }
+    return SportConfigManagerImpl.instance
   }
 
-  /**
-   * Synchronous initialization for React components
-   * This is a fallback that uses environment variables when database is not available
-   */
-  static initializeSync(): void {
-    if (this.initialized) return
-
-    try {
-      // Load basic configs synchronously from environment as fallback
-      const sports = process.env.SUPPORTED_SPORTS?.split(',') || []
-      
-      for (const sport of sports) {
-        const sportUpper = sport.toUpperCase()
-        
-        this.configs[sport] = {
-          name: process.env[`${sportUpper}_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
-          leagues: process.env[`${sportUpper}_LEAGUES`]?.split(',') || [],
-          defaultLeague: process.env[`${sportUpper}_DEFAULT_LEAGUE`] || '',
-          icon: process.env[`${sportUpper}_ICON`] || '🏆',
-          color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
-          apiKey: process.env[`${sportUpper}_API_KEY`] || '',
-          dataSource: (process.env[`${sportUpper}_DATA_SOURCE`] as any) || 'sportsdb',
-          positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
-          rateLimits: {
-            requestsPerMinute: parseInt(process.env[`${sportUpper}_RATE_LIMIT_MINUTE`] || '30'),
-            requestsPerHour: parseInt(process.env[`${sportUpper}_RATE_LIMIT_HOUR`] || '500'),
-            requestsPerDay: parseInt(process.env[`${sportUpper}_RATE_LIMIT_DAY`] || '5000'),
-            burstLimit: parseInt(process.env[`${sportUpper}_BURST_LIMIT`] || '5')
-          },
-          updateFrequency: parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '30')
-        }
-      }
-      
-      this.initialized = true
-    } catch (error) {
-      console.error('Failed to initialize sport configurations synchronously:', error)
-      // Don't throw, just log the error
-    }
+  constructor() {
+    this.initializeConfigs()
   }
 
-  /**
-   * Load sport configuration from environment variables
-   */
-  private static async loadSportConfigFromEnvironment(sport: string): Promise<SportConfig | null> {
-    const sportUpper = sport.toUpperCase()
-    
-    return {
-      name: process.env[`${sportUpper}_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
-      leagues: process.env[`${sportUpper}_LEAGUES`]?.split(',') || [],
-      defaultLeague: process.env[`${sportUpper}_DEFAULT_LEAGUE`] || '',
-      icon: process.env[`${sportUpper}_ICON`] || '🏆',
-      color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
-      apiKey: process.env[`${sportUpper}_API_KEY`] || '',
-      dataSource: (process.env[`${sportUpper}_DATA_SOURCE`] as any) || 'sportsdb',
-      positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
-      rateLimits: {
-        requestsPerMinute: parseInt(process.env[`${sportUpper}_RATE_LIMIT_MINUTE`] || '30'),
-        requestsPerHour: parseInt(process.env[`${sportUpper}_RATE_LIMIT_HOUR`] || '500'),
-        requestsPerDay: parseInt(process.env[`${sportUpper}_RATE_LIMIT_DAY`] || '5000'),
-        burstLimit: parseInt(process.env[`${sportUpper}_BURST_LIMIT`] || '5')
+  private initializeConfigs(): void {
+    // Basketball config
+    this.configs.set('basketball', {
+      name: 'basketball',
+      displayName: 'Basketball',
+      icon: '🏀',
+      color: '#FF6B35',
+      isActive: true,
+      dataSource: 'rapidapi',
+      playerStatsTable: 'player_stats',
+      positions: ['PG', 'SG', 'SF', 'PF', 'C'],
+      scoringFields: ['points', 'assists', 'rebounds', 'steals', 'blocks'],
+      bettingMarkets: ['h2h', 'spread', 'totals', 'props'],
+      seasonConfig: {
+        startMonth: 10,
+        endMonth: 6,
+        currentSeason: '2024-25'
       },
-      updateFrequency: parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '30')
-    }
-  }
-
-  static getSportConfig(sport: string): SportConfig | null {
-    if (!this.initialized) {
-      // Initialize synchronously for React components
-      this.initializeSync()
-    }
-    return this.configs[sport] || null
-  }
-
-  static async getSportConfigAsync(sport: string): Promise<SportConfig | null> {
-    await this.initialize()
-    return this.configs[sport] || null
-  }
-
-  static async getAllSports(): Promise<string[]> {
-    await this.initialize()
-    return Object.keys(this.configs)
-  }
-
-  static getAllSportsSync(): string[] {
-    if (!this.initialized) {
-      this.initializeSync()
-    }
-    return Object.keys(this.configs)
-  }
-
-  static getSupportedSports(): string[] {
-    return this.getAllSportsSync()
-  }
-
-  static async getLeaguesForSport(sport: string): Promise<string[]> {
-    await this.initialize()
-    return this.configs[sport]?.leagues || []
-  }
-
-  static async getDefaultLeague(sport: string): Promise<string> {
-    await this.initialize()
-    return this.configs[sport]?.defaultLeague || 'Unknown'
-  }
-
-  static async getPositionsForSport(sport: string): Promise<string[]> {
-    await this.initialize()
-    return this.configs[sport]?.positions || []
-  }
-
-  static async isSportSupported(sport: string): Promise<boolean> {
-    await this.initialize()
-    // "all" is a special case that aggregates all sports
-    if (sport === 'all') {
-      return true
-    }
-    return sport in this.configs
-  }
-
-  static addSportConfig(sport: string, config: SportConfig): void {
-    this.configs[sport] = config
-  }
-
-  static updateSportConfig(sport: string, updates: Partial<SportConfig>): void {
-    if (this.configs[sport]) {
-      this.configs[sport] = { ...this.configs[sport], ...updates }
-    }
-  }
-
-  /**
-   * Get rate limits for a specific sport
-   */
-  static async getRateLimits(sport: string) {
-    await this.initialize()
-    return this.configs[sport]?.rateLimits || {
-      requestsPerMinute: 30,
-      requestsPerHour: 500,
-      requestsPerDay: 5000,
-      burstLimit: 5
-    }
-  }
-
-  /**
-   * Get update frequency for a specific sport
-   */
-  static async getUpdateFrequency(sport: string): Promise<number> {
-    await this.initialize()
-    return this.configs[sport]?.updateFrequency || 30
-  }
-
-  /**
-   * Get all rate limit configurations
-   */
-  static async getAllRateLimits(): Promise<Record<string, any>> {
-    await this.initialize()
-    const limits: Record<string, any> = {}
-    for (const [sport, config] of Object.entries(this.configs)) {
-      limits[sport] = config.rateLimits
-    }
-    return limits
-  }
-
-  /**
-   * Get all update frequencies
-   */
-  static async getAllUpdateFrequencies(): Promise<Record<string, number>> {
-    await this.initialize()
-    const frequencies: Record<string, number> = {}
-    for (const [sport, config] of Object.entries(this.configs)) {
-      frequencies[sport] = config.updateFrequency
-    }
-    return frequencies
-  }
-
-  /**
-   * Get betting markets for a specific sport
-   */
-  static async getBettingMarkets(sport: string): Promise<{ id: string; name: string; description: string }[]> {
-    await this.initialize()
-    return this.configs[sport]?.bettingMarkets || []
-  }
-
-  /**
-   * Get season configuration for a specific sport
-   */
-  static async getSeasonConfig(sport: string): Promise<{ startMonth: number; endMonth: number; seasonYearOffset?: number } | null> {
-    await this.initialize()
-    return this.configs[sport]?.seasonConfig || null
-  }
-
-  /**
-   * Calculate current season for a sport based on its configuration
-   */
-  static async getCurrentSeason(sport: string): Promise<string> {
-    const seasonConfig = await this.getSeasonConfig(sport)
-    const year = new Date().getFullYear()
-    const month = new Date().getMonth()
-
-    if (!seasonConfig) {
-      return year.toString()
-    }
-
-    const { startMonth, seasonYearOffset = 0 } = seasonConfig
-    
-    // If current month is before start month, we're in the previous year's season
-    if (month < startMonth) {
-      return (year - 1 + seasonYearOffset).toString()
-    }
-    
-    return (year + seasonYearOffset).toString()
-  }
-
-  /**
-   * Get all betting markets for all sports
-   */
-  static async getAllBettingMarkets(): Promise<Record<string, { id: string; name: string; description: string }[]>> {
-    await this.initialize()
-    const markets: Record<string, { id: string; name: string; description: string }[]> = {}
-    for (const [sport, config] of Object.entries(this.configs)) {
-      markets[sport] = config.bettingMarkets || []
-    }
-    return markets
-  }
-
-  /**
-   * Dynamic helper methods for enhanced configuration
-   */
-  private static mapIconName(iconName?: string): string {
-    if (!iconName) return 'trophy'
-
-    // Map emojis and sport names to Lucide icon names
-    const iconMap: Record<string, string> = {
-      // Emoji mappings from database
-      '🏀': 'zap',
-      '🏈': 'activity', 
-      '⚽': 'target',
-      '⚾': 'target',
-      '🏒': 'gamepad2',
-      '🎾': 'target',
-      '⛳': 'target',
-      '🏆': 'trophy',
-      // Sport name mappings (fallback)
-      'basketball': 'zap',
-      'football': 'activity',
-      'soccer': 'target',
-      'baseball': 'target',
-      'hockey': 'gamepad2',
-      'tennis': 'target',
-      'golf': 'target',
-      'mma': 'activity',
-      'boxing': 'activity',
-      // Direct Lucide icon names
-      'zap': 'zap',
-      'activity': 'activity',
-      'target': 'target',
-      'gamepad2': 'gamepad2',
-      'trophy': 'trophy'
-    }
-
-    return iconMap[iconName] || iconMap[iconName.toLowerCase()] || 'trophy'
-  }
-
-  private static mapColorGradient(color?: string): string {
-    if (!color) return 'from-muted to-muted/80'
-
-    // If already a gradient, return as is
-    if (color.includes('gradient') || color.includes('from-')) return color
-
-    // Extract base color from Tailwind classes like 'text-blue-600'
-    let baseColor = color.toLowerCase()
-    if (color.startsWith('text-')) {
-      const parts = color.split('-')
-      if (parts.length >= 2) {
-        baseColor = parts[1] // Extract 'blue' from 'text-blue-600'
-      }
-    }
-
-    // Map color names to gradients
-    const colorMap: Record<string, string> = {
-      'blue': 'from-blue-500 to-blue-600',
-      'red': 'from-red-500 to-red-600',
-      'green': 'from-green-500 to-green-600',
-      'orange': 'from-orange-500 to-orange-600',
-      'purple': 'from-purple-500 to-purple-600',
-      'cyan': 'from-cyan-500 to-cyan-600',
-      'yellow': 'from-yellow-500 to-yellow-600',
-      'indigo': 'from-indigo-500 to-indigo-600',
-      'pink': 'from-pink-500 to-pink-600',
-      'gray': 'from-gray-500 to-gray-600',
-      'slate': 'from-slate-500 to-slate-600',
-      'primary': 'from-primary to-primary/80',
-      'secondary': 'from-secondary to-secondary/80',
-      'accent': 'from-accent to-accent/80'
-    }
-
-    return colorMap[baseColor] || `from-${baseColor}-500 to-${baseColor}-600`
-  }
-
-  private static getDefaultScoringFields(sport: string): any {
-    const defaultFields: Record<string, any> = {
-      'basketball': { primary: 'points', for: 'points_for', against: 'points_against' },
-      'football': { primary: 'points', for: 'points_for', against: 'points_against' },
-      'soccer': { primary: 'goals', for: 'goals_for', against: 'goals_against' },
-      'hockey': { primary: 'goals', for: 'goals_for', against: 'goals_against' },
-      'baseball': { primary: 'runs', for: 'runs_for', against: 'runs_against' }
-    }
-    return defaultFields[sport] || { primary: 'points', for: 'points_for', against: 'points_against' }
-  }
-
-  private static getDefaultBettingMarkets(_sport: string): any[] {
-    return [
-      { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss bet' },
-      { id: 'spread', name: 'Point Spread', description: 'Handicap betting' },
-      { id: 'total', name: 'Over/Under', description: 'Total points/goals' }
-    ]
-  }
-
-  private static getDefaultSeasonConfig(sport: string): any {
-    const seasonConfigs: Record<string, any> = {
-      'basketball': { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
-      'football': { startMonth: 8, endMonth: 1, seasonYearOffset: 0 },
-      'baseball': { startMonth: 2, endMonth: 10, seasonYearOffset: 0 },
-      'hockey': { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
-      'soccer': { startMonth: 7, endMonth: 4, seasonYearOffset: 0 }
-    }
-    return seasonConfigs[sport] || { startMonth: 0, endMonth: 11, seasonYearOffset: 0 }
-  }
-
-  private static discoverSportsFromEnvironment(): string[] {
-    // Discover sports from environment variables
-    const envVars = Object.keys(process.env)
-    const sportsSet = new Set<string>()
-
-    // Look for patterns like BASKETBALL_API_KEY, FOOTBALL_LEAGUES, etc.
-    envVars.forEach(key => {
-      const match = key.match(/^([A-Z]+)_(API_KEY|LEAGUES|DATA_SOURCE|UPDATE_FREQUENCY)$/)
-      if (match) {
-        sportsSet.add(match[1].toLowerCase())
-      }
+      rateLimits: {
+        requests: 100,
+        interval: '1m'
+      },
+      updateFrequency: '5m'
     })
 
-    // Fallback to default sports if none found
-    if (sportsSet.size === 0) {
-      return ['basketball', 'soccer', 'football', 'baseball', 'hockey']
-    }
+    // Football config
+    this.configs.set('football', {
+      name: 'football',
+      displayName: 'Football',
+      icon: '🏈',
+      color: '#4A90E2',
+      isActive: true,
+      dataSource: 'rapidapi',
+      playerStatsTable: 'player_stats',
+      positions: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
+      scoringFields: ['passing_yards', 'rushing_yards', 'receiving_yards', 'touchdowns'],
+      bettingMarkets: ['h2h', 'spread', 'totals', 'props'],
+      seasonConfig: {
+        startMonth: 9,
+        endMonth: 2,
+        currentSeason: '2024-25'
+      },
+      rateLimits: {
+        requests: 100,
+        interval: '1m'
+      },
+      updateFrequency: '5m'
+    })
 
-    return Array.from(sportsSet)
+    // Soccer config
+    this.configs.set('soccer', {
+      name: 'soccer',
+      displayName: 'Soccer',
+      icon: '⚽',
+      color: '#2ECC71',
+      isActive: true,
+      dataSource: 'rapidapi',
+      playerStatsTable: 'player_stats',
+      positions: ['GK', 'DEF', 'MID', 'FWD'],
+      scoringFields: ['goals', 'assists', 'yellow_cards', 'red_cards'],
+      bettingMarkets: ['h2h', 'spread', 'totals', 'both_teams_score'],
+      seasonConfig: {
+        startMonth: 8,
+        endMonth: 5,
+        currentSeason: '2024-25'
+      },
+      rateLimits: {
+        requests: 100,
+        interval: '1m'
+      },
+      updateFrequency: '5m'
+    })
+  }
+
+  getSportConfig(sport: SupportedSport): SportConfig | undefined {
+    return this.configs.get(sport)
+  }
+
+  getAllSportConfigs(): SportConfig[] {
+    return Array.from(this.configs.values())
+  }
+
+  getActiveSports(): SupportedSport[] {
+    return Array.from(this.configs.values())
+      .filter(config => config.isActive)
+      .map(config => config.name)
+  }
+
+  getSportDisplayName(sport: SupportedSport): string {
+    const config = this.configs.get(sport)
+    return config?.displayName || sport
+  }
+
+  getSportIcon(sport: SupportedSport): string {
+    const config = this.configs.get(sport)
+    return config?.icon || '🏆'
+  }
+
+  getSportColor(sport: SupportedSport): string {
+    const config = this.configs.get(sport)
+    return config?.color || '#000000'
+  }
+
+  getCurrentSeason(sport: SupportedSport): string {
+    const config = this.configs.get(sport)
+    return config?.seasonConfig.currentSeason || '2024'
+  }
+
+  isSportActive(sport: SupportedSport): boolean {
+    const config = this.configs.get(sport)
+    return config?.isActive || false
+  }
+
+  // Additional methods needed by components
+  async initialize(): Promise<void> {
+    // Initialize any async operations
+  }
+
+  initializeSync(): void {
+    // Initialize sync operations
+  }
+
+  getSupportedSports(): SupportedSport[] {
+    return this.getActiveSports()
+  }
+
+  async getSportConfigAsync(sport: SupportedSport): Promise<SportConfig | undefined> {
+    return this.getSportConfig(sport)
+  }
+
+  getPositionsForSport(sport: SupportedSport): string[] {
+    const config = this.getSportConfig(sport)
+    return config?.positions || []
+  }
+
+  getBettingMarkets(sport: SupportedSport): string[] {
+    const config = this.getSportConfig(sport)
+    return config?.bettingMarkets || []
+  }
+
+  async getAllSports(): Promise<SupportedSport[]> {
+    return this.getActiveSports()
+  }
+
+  getAllSportsSync(): SupportedSport[] {
+    return this.getActiveSports()
+  }
+
+  async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
+    const config = this.getSportConfig(sport)
+    return config?.leagues || []
+  }
+
+  async getDefaultLeague(sport: SupportedSport): Promise<string> {
+    const leagues = await this.getLeaguesForSport(sport)
+    return leagues[0] || 'default'
+  }
+
+  async isSportSupported(sport: SupportedSport): Promise<boolean> {
+    return this.isSportActive(sport)
   }
 }
+
+export const sportConfigManager = SportConfigManagerImpl.getInstance()
+
+// Static proxy methods for compatibility across the app
+export class SportConfigManagerProxy {
+  static async initialize(): Promise<void> {
+    await sportConfigManager.initialize()
+  }
+
+  static initializeSync(): void {
+    sportConfigManager.initializeSync()
+  }
+
+  static getSupportedSports(): SupportedSport[] {
+    return sportConfigManager.getSupportedSports()
+  }
+
+  static getSportConfig(sport: SupportedSport) {
+    return sportConfigManager.getSportConfig(sport)
+  }
+
+  static async getSportConfigAsync(sport: SupportedSport) {
+    return sportConfigManager.getSportConfigAsync(sport)
+  }
+
+  static getPositionsForSport(sport: SupportedSport): string[] {
+    return sportConfigManager.getPositionsForSport(sport)
+  }
+
+  static getBettingMarkets(sport: SupportedSport): string[] {
+    return sportConfigManager.getBettingMarkets(sport)
+  }
+
+  static async getAllSports(): Promise<SupportedSport[]> {
+    return sportConfigManager.getAllSports()
+  }
+
+  static getAllSportsSync(): SupportedSport[] {
+    return sportConfigManager.getAllSportsSync()
+  }
+
+  static async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
+    return sportConfigManager.getLeaguesForSport(sport)
+  }
+
+  static async getDefaultLeague(sport: SupportedSport): Promise<string> {
+    return sportConfigManager.getDefaultLeague(sport)
+  }
+
+  static async isSportSupported(sport: SupportedSport): Promise<boolean> {
+    return sportConfigManager.isSportSupported(sport)
+  }
+
+  static getCurrentSeason(sport: SupportedSport): string {
+    return sportConfigManager.getCurrentSeason(sport)
+  }
+}
+
+// Backward-compatible alias used throughout the app
+export const SportConfigManager = SportConfigManagerProxy

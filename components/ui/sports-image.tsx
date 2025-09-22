@@ -33,7 +33,7 @@ interface SportsImageProps {
 interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {
   teamName: string
   league?: SportsLeague
-  config?: TeamLogoConfig
+  config?: Partial<TeamLogoConfig>
   sport?: string
   dynamicGeneration?: boolean // Enable for custom teams/leagues not in mappings
 }
@@ -41,7 +41,7 @@ interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {
 interface PlayerPhotoProps extends Omit<SportsImageProps, 'src'> {
   playerId: number | string
   league?: SportsLeague
-  config?: PlayerPhotoConfig
+  config?: Partial<PlayerPhotoConfig>
 }
 
 interface SportsImageGenericProps extends Omit<SportsImageProps, 'src'> {
@@ -105,7 +105,7 @@ export function SportsImage({
  */
 export function TeamLogo({ 
   teamName, 
-  league = 'NBA', 
+  league,
   config = {},
   alt,
   width = 200,
@@ -123,12 +123,12 @@ export function TeamLogo({
   useEffect(() => {
     const loadLogo = async () => {
       try {
-        const result = await getTeamLogoData(teamName, league, config)
-        setImgSrc(result.url)
+        const result = await getTeamLogoData(teamName, league)
+        setImgSrc(result.logoUrl)
       } catch (error) {
         console.warn('Failed to load team logo:', error)
         // Fallback to API service
-        const fallbackUrl = getApiTeamLogoUrl(teamName, league, config)
+        const fallbackUrl = await getApiTeamLogoUrl(teamName, league)
         setImgSrc(fallbackUrl)
       }
     }
@@ -195,8 +195,6 @@ export function TeamLogo({
  */
 export function PlayerPhoto({ 
   playerId, 
-  league = 'NBA', 
-  config = {},
   alt,
   width = 200,
   height = 200,
@@ -206,8 +204,20 @@ export function PlayerPhoto({
   priority = false,
   quality = 80
 }: PlayerPhotoProps) {
-  const [imgSrc, setImgSrc] = useState(() => getPlayerPhotoUrl(playerId, league, config))
+  const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const url = await getPlayerPhotoUrl(String(playerId))
+        setImgSrc(url)
+      } catch {
+        setImgSrc(getFallbackImageUrl('player'))
+      }
+    }
+    load()
+  }, [playerId])
 
   const handleError = useCallback(() => {
     if (!hasError) {
@@ -251,7 +261,7 @@ export function SportsImageGeneric({
   priority = false,
   quality = 80
 }: SportsImageGenericProps) {
-  const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(category as any, { width, height }))
+  const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(String(category), { width, height }))
   const [hasError, setHasError] = useState(false)
 
   const handleError = useCallback(() => {

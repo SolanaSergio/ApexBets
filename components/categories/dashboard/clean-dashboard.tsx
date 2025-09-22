@@ -48,8 +48,6 @@ import {
 } from "lucide-react"
 import { simpleApiClient, Game, Team } from "@/lib/api-client-simple"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import { ErrorBoundary } from "@/components/error-boundary"
-import { LoadingCard, LoadingSpinner } from "@/components/loading-states"
 import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
 
 type GameData = Game
@@ -770,7 +768,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
 
   // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {
-    return <LoadingSpinner />
+    return null
   }
 
   const isServiceHealthy = selectedSupportedSport ? (serviceHealth[selectedSupportedSport] ?? false) : false
@@ -793,7 +791,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   }
 
   return (
-    <ErrorBoundary>
+    <div>
       <div className={`space-y-8 ${className}`}>
       {/* Header */}
       <FadeIn delay={0.1}>
@@ -1177,7 +1175,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-lg">{config?.name}</div>
                         <div className="text-sm text-muted-foreground">
-                          {config?.leagues.length} leagues
+                          {(config?.leagues?.length || 0)} leagues
                         </div>
                         <div className="flex items-center gap-1 mt-1">
                           {isHealthy ? (
@@ -1200,7 +1198,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         </Tabs>
       </FadeIn>
     </div>
-    </ErrorBoundary>
+    </div>
   )
 }
 
@@ -1222,10 +1220,10 @@ function DashboardSkeleton() {
       </div>
       
       <div className="space-y-4">
-        <LoadingCard title="Loading dashboard..." />
+        <div />
         <div className="grid gap-4 md:grid-cols-2">
-          <LoadingCard title="Loading live games..." />
-          <LoadingCard title="Loading upcoming games..." />
+          <div />
+          <div />
         </div>
       </div>
     </div>

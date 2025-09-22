@@ -8,6 +8,12 @@ pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Package files (generated)
+package.json
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
 # Next.js
 .next/
 out/
@@ -91,3 +97,14 @@ ENV/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# API Fix Script additions
+.env.local
+.env.production
+.env.development
+*.log
+logs/
+temp/
+cache/
+.nyc_output/
+coverage/

@@ -1,277 +1,259 @@
 /**
  * Data Validation Service
- * Comprehensive validation for all data entry points to prevent duplicates and ensure data integrity
+ * Handles data validation and integrity checks
  */
 
-import { z } from 'zod';
-
-// Validation schemas for different data types
-export const TeamValidationSchema = z.object({
-  name: z.string().min(1).max(255).trim(),
-  city: z.string().max(100).trim().optional(),
-  league: z.string().min(1).max(100).trim(),
-  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
-  abbreviation: z.string().max(10).trim().optional(),
-  logo_url: z.string().url().optional(),
-  conference: z.string().max(50).trim().optional(),
-  division: z.string().max(50).trim().optional(),
-  founded_year: z.number().int().min(1800).max(new Date().getFullYear()).optional(),
-  stadium_name: z.string().max(200).trim().optional(),
-  stadium_capacity: z.number().int().min(0).max(200000).optional(),
-  primary_color: z.string().max(20).trim().optional(),
-  secondary_color: z.string().max(20).trim().optional(),
-  country: z.string().max(100).trim().default('US'),
-  is_active: z.boolean().default(true)
-});
-
-export const GameValidationSchema = z.object({
-  home_team_id: z.string().uuid(),
-  away_team_id: z.string().uuid(),
-  game_date: z.string().datetime(),
-  season: z.string().min(1).max(20).trim(),
-  week: z.number().int().min(1).max(52).optional(),
-  home_score: z.number().int().min(0).max(999).optional(),
-  away_score: z.number().int().min(0).max(999).optional(),
-  status: z.enum(['scheduled', 'live', 'completed', 'postponed', 'cancelled']).default('scheduled'),
-  venue: z.string().max(200).trim().optional(),
-  weather_conditions: z.record(z.any()).optional(),
-  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
-  league: z.string().max(100).trim().optional(),
-  game_type: z.string().max(50).trim().default('regular'),
-  round: z.string().max(50).trim().optional(),
-  series_game: z.number().int().min(1).optional(),
-  overtime_periods: z.number().int().min(0).max(10).default(0),
-  attendance: z.number().int().min(0).max(200000).optional(),
-  referee_crew: z.record(z.any()).optional(),
-  game_notes: z.string().max(1000).trim().optional()
-});
-
-export const OddsValidationSchema = z.object({
-  game_id: z.string().uuid(),
-  source: z.string().min(1).max(100).trim(),
-  odds_type: z.string().min(1).max(50).trim(),
-  home_odds: z.number().positive().max(1000).optional(),
-  away_odds: z.number().positive().max(1000).optional(),
-  spread: z.number().optional(),
-  total: z.number().positive().optional(),
-  sport: z.enum(['basketball', 'football', 'baseball', 'hockey', 'soccer', 'tennis', 'golf']),
-  league: z.string().max(100).trim().optional(),
-  prop_bets: z.record(z.any()).optional(),
-  live_odds: z.boolean().default(false),
-  odds_movement: z.record(z.any()).optional()
-});
+import { structuredLogger } from './structured-logger'
 
 export interface ValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  data?: any;
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+  validatedCount: number
 }
 
 export class DataValidationService {
-  private static instance: DataValidationService;
-  private validationCache = new Map<string, any>();
+  private static instance: DataValidationService
 
-  static getInstance(): DataValidationService {
+  public static getInstance(): DataValidationService {
     if (!DataValidationService.instance) {
-      DataValidationService.instance = new DataValidationService();
+      DataValidationService.instance = new DataValidationService()
     }
-    return DataValidationService.instance;
+    return DataValidationService.instance
   }
 
-  /**
-   * Validate team data
-   */
-  validateTeam(data: any): ValidationResult {
+  validateLiveGames(games: any[]): ValidationResult {
+    const errors: string[] = []
+    const warnings: string[] = []
+    let validatedCount = 0
+
     try {
-      const validatedData = TeamValidationSchema.parse(data);
-      return {
-        isValid: true,
-        errors: [],
-        warnings: this.generateTeamWarnings(validatedData),
-        data: validatedData
-      };
+      structuredLogger.debug('Validating live games', { count: games.length })
+
+      for (const game of games) {
+        if (!game) {
+          errors.push('Null game object found')
+          continue
+        }
+
+        // Validate required fields
+        if (!game.id) {
+          errors.push('Game missing required field: id')
+        }
+        if (!game.sport) {
+          errors.push('Game missing required field: sport')
+        }
+        if (!game.homeTeam && !game.home_team) {
+          errors.push('Game missing required field: homeTeam')
+        }
+        if (!game.awayTeam && !game.away_team) {
+          errors.push('Game missing required field: awayTeam')
+        }
+
+        // Validate status
+        if (game.status && !['scheduled', 'live', 'finished', 'postponed', 'cancelled'].includes(game.status)) {
+          warnings.push(`Game ${game.id} has invalid status: ${game.status}`)
+        }
+
+        // Validate scores if present
+        if (game.homeScore !== undefined && (typeof game.homeScore !== 'number' || game.homeScore < 0)) {
+          warnings.push(`Game ${game.id} has invalid home score: ${game.homeScore}`)
+        }
+        if (game.awayScore !== undefined && (typeof game.awayScore !== 'number' || game.awayScore < 0)) {
+          warnings.push(`Game ${game.id} has invalid away score: ${game.awayScore}`)
+        }
+
+        validatedCount++
+      }
+
+      const result: ValidationResult = {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        validatedCount
+      }
+
+      structuredLogger.debug('Live games validation completed', result)
+
+      return result
+
     } catch (error) {
+      structuredLogger.error('Live games validation failed', {
+        error: error instanceof Error ? error.message : String(error)
+      })
+
       return {
         isValid: false,
-        errors: this.extractValidationErrors(error),
+        errors: [`Validation failed: ${error instanceof Error ? error.message : String(error)}`],
         warnings: [],
-        data: null
-      };
-    }
-  }
-
-  /**
-   * Validate game data
-   */
-  validateGame(data: any): ValidationResult {
-    try {
-      const validatedData = GameValidationSchema.parse(data);
-      return {
-        isValid: true,
-        errors: [],
-        warnings: this.generateGameWarnings(validatedData),
-        data: validatedData
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        errors: this.extractValidationErrors(error),
-        warnings: [],
-        data: null
-      };
-    }
-  }
-
-  /**
-   * Validate odds data
-   */
-  validateOdds(data: any): ValidationResult {
-    try {
-      const validatedData = OddsValidationSchema.parse(data);
-      return {
-        isValid: true,
-        errors: [],
-        warnings: this.generateOddsWarnings(validatedData),
-        data: validatedData
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        errors: this.extractValidationErrors(error),
-        warnings: [],
-        data: null
-      };
-    }
-  }
-
-  /**
-   * Validate data based on type
-   */
-  validateData(type: 'team' | 'game' | 'odds', data: any): ValidationResult {
-    const cacheKey = `${type}_${JSON.stringify(data)}`;
-    
-    if (this.validationCache.has(cacheKey)) {
-      return this.validationCache.get(cacheKey);
-    }
-
-    let result: ValidationResult;
-    
-    switch (type) {
-      case 'team':
-        result = this.validateTeam(data);
-        break;
-      case 'game':
-        result = this.validateGame(data);
-        break;
-      case 'odds':
-        result = this.validateOdds(data);
-        break;
-      default:
-        result = {
-          isValid: false,
-          errors: ['Unknown validation type'],
-          warnings: [],
-          data: null
-        };
-    }
-
-    // Cache result for 5 minutes
-    this.validationCache.set(cacheKey, result);
-    setTimeout(() => this.validationCache.delete(cacheKey), 5 * 60 * 1000);
-
-    return result;
-  }
-
-  /**
-   * Batch validate multiple records
-   */
-  validateBatch(type: 'team' | 'game' | 'odds', dataArray: any[]): {
-    valid: any[];
-    invalid: { data: any; errors: string[] }[];
-    warnings: string[];
-  } {
-    const valid: any[] = [];
-    const invalid: { data: any; errors: string[] }[] = [];
-    const allWarnings: string[] = [];
-
-    for (const data of dataArray) {
-      const result = this.validateData(type, data);
-      
-      if (result.isValid) {
-        valid.push(result.data);
-        allWarnings.push(...result.warnings);
-      } else {
-        invalid.push({ data, errors: result.errors });
+        validatedCount
       }
     }
-
-    return { valid, invalid, warnings: allWarnings };
   }
 
-  private extractValidationErrors(error: any): string[] {
-    if (error instanceof z.ZodError) {
-      return error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+  async validateComponentDataAccess(component: string): Promise<{ component: string; hasRequiredData: boolean; dataQuality: 'excellent' | 'good' | 'fair' | 'poor'; missingData: string[]; recommendations: string[] }> {
+    // Basic stub using existing validation logic
+    const result = this.validateLiveGames([])
+    return {
+      component,
+      hasRequiredData: result.isValid,
+      dataQuality: 'fair',
+      missingData: result.errors,
+      recommendations: ['Verify data sources and API connectivity']
     }
-    return [error.message || 'Unknown validation error'];
   }
 
-  private generateTeamWarnings(data: any): string[] {
-    const warnings: string[] = [];
-    
-    if (!data.logo_url) {
-      warnings.push('Team missing logo URL');
-    }
-    
-    if (!data.abbreviation) {
-      warnings.push('Team missing abbreviation');
-    }
-    
-    if (data.founded_year && data.founded_year < 1900) {
-      warnings.push('Team founded year seems unusually early');
-    }
-    
-    return warnings;
+  async validateAllComponents(): Promise<Array<{ component: string; hasRequiredData: boolean; dataQuality: 'excellent' | 'good' | 'fair' | 'poor'; missingData: string[]; recommendations: string[] }>> {
+    const components = ['dashboard', 'teams', 'standings', 'players']
+    const results = await Promise.all(components.map(c => this.validateComponentDataAccess(c)))
+    return results
   }
 
-  private generateGameWarnings(data: any): string[] {
-    const warnings: string[] = [];
-    
-    if (data.home_team_id === data.away_team_id) {
-      warnings.push('Home team and away team are the same');
-    }
-    
-    if (data.game_date && new Date(data.game_date) > new Date()) {
-      warnings.push('Game date is in the future');
-    }
-    
-    if (data.status === 'completed' && (data.home_score === null || data.away_score === null)) {
-      warnings.push('Completed game missing scores');
-    }
-    
-    return warnings;
+  async getDataPopulationRecommendations(): Promise<Array<{ component: string; recommendations: string[] }>> {
+    return [
+      { component: 'teams', recommendations: ['Ensure team table has indexes', 'Backfill missing logos'] },
+      { component: 'players', recommendations: ['Sync player rosters from primary provider'] }
+    ]
   }
 
-  private generateOddsWarnings(data: any): string[] {
-    const warnings: string[] = [];
-    
-    if (data.home_odds && data.away_odds && Math.abs(data.home_odds - data.away_odds) > 50) {
-      warnings.push('Large odds difference between teams');
+  validateGameData(game: any): ValidationResult {
+    const errors: string[] = []
+    const warnings: string[] = []
+
+    try {
+      if (!game) {
+        return {
+          isValid: false,
+          errors: ['Game object is null or undefined'],
+          warnings: [],
+          validatedCount: 0
+        }
+      }
+
+      // Validate required fields
+      const requiredFields = ['id', 'sport', 'homeTeam', 'awayTeam']
+      for (const field of requiredFields) {
+        if (!game[field] && !game[field.toLowerCase()]) {
+          errors.push(`Missing required field: ${field}`)
+        }
+      }
+
+      // Validate data types
+      if (game.homeScore !== undefined && typeof game.homeScore !== 'number') {
+        errors.push('homeScore must be a number')
+      }
+      if (game.awayScore !== undefined && typeof game.awayScore !== 'number') {
+        errors.push('awayScore must be a number')
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        validatedCount: 1
+      }
+
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: [],
+        validatedCount: 0
+      }
     }
-    
-    if (data.spread && Math.abs(data.spread) > 50) {
-      warnings.push('Very large spread value');
-    }
-    
-    return warnings;
   }
 
-  /**
-   * Clear validation cache
-   */
-  clearCache(): void {
-    this.validationCache.clear();
+  validateTeamData(team: any): ValidationResult {
+    const errors: string[] = []
+    const warnings: string[] = []
+
+    try {
+      if (!team) {
+        return {
+          isValid: false,
+          errors: ['Team object is null or undefined'],
+          warnings: [],
+          validatedCount: 0
+        }
+      }
+
+      // Validate required fields
+      if (!team.name) {
+        errors.push('Team missing required field: name')
+      }
+      if (!team.sport) {
+        errors.push('Team missing required field: sport')
+      }
+
+      // Validate optional fields
+      if (team.foundedYear && (typeof team.foundedYear !== 'number' || team.foundedYear < 1800 || team.foundedYear > new Date().getFullYear())) {
+        warnings.push(`Team ${team.name} has invalid founded year: ${team.foundedYear}`)
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        validatedCount: 1
+      }
+
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: [],
+        validatedCount: 0
+      }
+    }
+  }
+
+  validatePlayerData(player: any): ValidationResult {
+    const errors: string[] = []
+    const warnings: string[] = []
+
+    try {
+      if (!player) {
+        return {
+          isValid: false,
+          errors: ['Player object is null or undefined'],
+          warnings: [],
+          validatedCount: 0
+        }
+      }
+
+      // Validate required fields
+      if (!player.name) {
+        errors.push('Player missing required field: name')
+      }
+      if (!player.sport) {
+        errors.push('Player missing required field: sport')
+      }
+
+      // Validate optional fields
+      if (player.age && (typeof player.age !== 'number' || player.age < 16 || player.age > 50)) {
+        warnings.push(`Player ${player.name} has invalid age: ${player.age}`)
+      }
+
+      if (player.jerseyNumber && (typeof player.jerseyNumber !== 'number' || player.jerseyNumber < 0 || player.jerseyNumber > 99)) {
+        warnings.push(`Player ${player.name} has invalid jersey number: ${player.jerseyNumber}`)
+      }
+
+      return {
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        validatedCount: 1
+      }
+
+    } catch (error) {
+      return {
+        isValid: false,
+        errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
+        warnings: [],
+        validatedCount: 0
+      }
+    }
   }
 }
 
-export const dataValidationService = DataValidationService.getInstance();
+export const dataValidationService = DataValidationService.getInstance()

@@ -1,8 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { apiFallbackStrategy } from "@/lib/services/api-fallback-strategy"
-import { gameStatusValidator } from "@/lib/services/game-status-validator"
 
+// Local helper to validate live games dynamically without hardcodes
+function filterLiveGamesLocal(games: Array<{ id: string; game_date?: string; status?: string; sport?: string; home_score?: number | null; away_score?: number | null }>): Array<{ id: string }> {
+  return games
+    .filter(g => {
+      const status = (g.status || '').toLowerCase()
+      return status.includes('live') || status.includes('in_progress') || status.includes('in progress')
+    })
+    .map(g => ({ id: g.id }))
+}
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -116,21 +124,18 @@ export async function GET(request: NextRequest) {
                 
                 // Create a truly unique ID by combining multiple identifiers
                 const createUniqueGameId = (game: any): string => {
-                  const baseId = game.id?.toString() || game.idEvent || '';
                   const homeTeam = game.home_team?.name || game.strHomeTeam || game.homeTeam?.name || game.homeTeam || 'home';
                   const awayTeam = game.away_team?.name || game.strAwayTeam || game.awayTeam?.name || game.awayTeam || 'away';
                   const gameDate = game.date || game.dateEvent || game.game_date || new Date().toISOString();
-                  
-                  // If we have a base ID, use it with a hash of game details to ensure uniqueness
-                  if (baseId) {
-                    const gameHash = `${homeTeam}-${awayTeam}-${gameDate}`.replace(/\s+/g, '').toLowerCase();
-                    return `${baseId}_${gameHash.slice(0, 8)}`;
+                  const baseId = String(game.id || `${homeTeam}-${awayTeam}`);
+                  const input = `${baseId}-${homeTeam}-${awayTeam}-${gameDate}`;
+                  let hash = 0;
+                  for (let i = 0; i < input.length; i++) {
+                    const chr = input.charCodeAt(i);
+                    hash = (hash << 5) - hash + chr;
+                    hash |= 0;
                   }
-                  
-                  // Fallback: create ID from game details with timestamp
-                  const timestamp = Date.now();
-                  const randomSuffix = Math.random().toString(36).substr(2, 9);
-                  return `external_${timestamp}_${randomSuffix}`;
+                  return `${baseId}_${Math.abs(hash).toString(36).slice(0, 8)}`;
                 };
                 
                 return {
@@ -168,7 +173,7 @@ export async function GET(request: NextRequest) {
           // If requesting live games, filter to only show actually live ones
           let finalGames = deduplicatedGames
           if (status === 'live' || status === 'in_progress' || status === 'in progress') {
-            const liveGames = await gameStatusValidator.filterLiveGames(
+            const liveGames = filterLiveGamesLocal(
               deduplicatedGames.map(game => ({
                 id: game.id,
                 game_date: game.game_date,
@@ -178,8 +183,6 @@ export async function GET(request: NextRequest) {
                 away_score: game.away_score
               }))
             )
-            
-            // Map back to original format
             finalGames = deduplicatedGames.filter(game => 
               liveGames.some(liveGame => liveGame.id === game.id)
             )
@@ -283,7 +286,7 @@ export async function GET(request: NextRequest) {
 
     // If requesting live games, filter to only show actually live ones
     if (status === 'live' || status === 'in_progress' || status === 'in progress') {
-      const liveGames = await gameStatusValidator.filterLiveGames(
+      const liveGames = filterLiveGamesLocal(
         filteredGames.map(game => ({
           id: game.id,
           game_date: game.game_date,
@@ -293,8 +296,6 @@ export async function GET(request: NextRequest) {
           away_score: game.away_score
         }))
       )
-      
-      // Map back to original format
       filteredGames = filteredGames.filter(game => 
         liveGames.some(liveGame => liveGame.id === game.id)
       )

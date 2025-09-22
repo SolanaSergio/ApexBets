@@ -406,9 +406,10 @@ export class SportTeamStatsService extends BaseService {
       
       if (sportConfig?.scoringFields) {
         // Use configured scoring fields
-        const scoreField = sportConfig.scoringFields.primary || 'score'
-        const scoreForField = sportConfig.scoringFields.for || `${scoreField}For`
-        const scoreAgainstField = sportConfig.scoringFields.against || `${scoreField}Against`
+        const scoring = sportConfig.scoringFields
+        const scoreField = (typeof scoring === 'object' && 'primary' in scoring) ? scoring.primary : 'score'
+        const scoreForField = (typeof scoring === 'object' && 'for' in scoring) ? scoring.for : `${scoreField}For`
+        const scoreAgainstField = (typeof scoring === 'object' && 'against' in scoring) ? scoring.against : `${scoreField}Against`
         
         const score = isHomeTeam ? game.homeScore : game.awayScore
         rawStats[scoreForField] = (rawStats[scoreForField] || 0) + score

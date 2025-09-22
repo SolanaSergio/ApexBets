@@ -21,12 +21,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       message: 'Cron sync completed',
-      stats: {
-        lastSync: stats.lastSync,
-        totalSynced: stats.totalSynced,
-        errors: stats.errors,
-        successRate: stats.successRate
-      }
+      stats
     })
 
   } catch (error) {

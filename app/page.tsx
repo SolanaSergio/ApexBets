@@ -1,8 +1,16 @@
 import { Navigation } from "@/components/navigation/navigation"
-import { SyncInitializer } from "@/components/sync-initializer"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { RealTimeProvider } from "@/components/data/real-time-provider"
 import { ComprehensiveSportsDashboardWithErrorBoundary } from "@/components/dashboard/comprehensive-sports-dashboard"
+import { useEffect } from "react"
+import { autoStartupService } from "@/lib/services/auto-startup-service"
+
+function SyncInitializer() {
+  useEffect(() => {
+    autoStartupService.initialize().catch(() => {})
+  }, [])
+  return null
+}
 
 export default function HomePage() {
   return (

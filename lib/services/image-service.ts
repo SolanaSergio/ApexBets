@@ -1,318 +1,233 @@
 /**
- * COMPREHENSIVE SPORTS IMAGE SERVICE
- * Dynamic logo system for all teams and sports
+ * Image Service
+ * Handles team logos and player photos
  */
 
-// import { promises as fs } from 'fs';
-// import path from 'path';
+import { structuredLogger } from './structured-logger'
 
-// ============================================================================
-// TYPES AND INTERFACES
-// ============================================================================
-
-export type SportsLeague = string; // Dynamic league support
-
-export interface LogoInfo {
-  url: string;
-  fallback: string;
-  dimensions?: {
-    width: number;
-    height: number;
-  };
+export interface ImageResult {
+  url: string
+  width?: number
+  height?: number
+  format?: string
+  cached: boolean
 }
 
-export interface TeamLogoConfig {
-  variant?: 'primary' | 'secondary' | 'alt';
-  format?: 'svg' | 'png' | 'webp';
-  quality?: number;
-}
+export class ImageService {
+  private static instance: ImageService
+  private cache: Map<string, ImageResult> = new Map()
 
-export interface PlayerPhotoConfig {
-  variant?: 'headshot' | 'action';
-  format?: 'jpg' | 'png' | 'webp';
-  quality?: number;
-}
+  public static getInstance(): ImageService {
+    if (!ImageService.instance) {
+      ImageService.instance = new ImageService()
+    }
+    return ImageService.instance
+  }
 
-// ============================================================================
-// IMAGE SOURCES AND MAPPINGS
-// ============================================================================
-
-// Dynamic team logo sources - loaded from database
-const TEAM_LOGOS: Record<string, any> = {}
-
-// Initialize team logos from database - removed unused function
-
-// Dynamic sports images - loaded from database
-const SPORTS_IMAGES: Record<string, string> = {}
-
-// Initialize sports images from database - removed unused function
-
-// ============================================================================
-// MAIN SERVICE FUNCTIONS
-// ============================================================================
-
-/**
- * Get league configuration dynamically from database
- * @deprecated Use dynamic team service for database-driven approach
- */
-function getLeagueConfig(league: string): any {
-  // This function is deprecated - use dynamic team service instead
-  // All league configurations should be loaded from database
-  // Suppress unused parameter warning since this is deprecated
-  void league;
-  return null;
-}
-
-/**
- * Get team logo URL for any supported league and team
- * @deprecated Use getTeamLogoUrl from dynamic-team-service.ts for database-first approach
- */
-export function getTeamLogoUrl(
-  teamName: string,
-  league: SportsLeague,
-  config: TeamLogoConfig = {}
-): string {
-  const { variant = 'primary', format = 'png' } = config;
-  const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
-
-  try {
-    // Get league configuration dynamically
-    const leagueConfig = getLeagueConfig(league);
-    if (leagueConfig) {
-      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
-      if (teamId) {
-        return `${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`;
+  async getTeamLogoUrl(teamName: string, league?: string, sport?: string): Promise<string> {
+    try {
+      const cacheKey = `team_logo_${teamName}_${league}_${sport}`
+      
+      // Check cache first
+      if (this.cache.has(cacheKey)) {
+        const cached = this.cache.get(cacheKey)!
+        structuredLogger.cacheHit(cacheKey)
+        return cached.url
       }
+
+      // In a real implementation, this would fetch from an API or database
+      // For now, return a placeholder URL
+      const logoUrl = this.generatePlaceholderLogoUrl(teamName, league, sport)
+      
+      // Cache the result
+      this.cache.set(cacheKey, {
+        url: logoUrl,
+        cached: true
+      })
+
+      structuredLogger.cacheMiss(cacheKey)
+      structuredLogger.debug('Generated team logo URL', { teamName, league, sport, logoUrl })
+
+      return logoUrl
+
+    } catch (error) {
+      structuredLogger.error('Failed to get team logo URL', {
+        teamName,
+        league,
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+
+      return this.getDefaultTeamLogoUrl()
     }
-  } catch (error) {
-    console.warn(`Logo lookup failed for ${teamName} in ${league}:`, error);
   }
 
-  // Fallback to local API endpoint
-  return `/api/images/team/${encodeURIComponent(league)}/${encodeURIComponent(teamName)}.png`;
-}
-
-/**
- * Get team logo URL using API sources only (for fallback in dynamic service)
- */
-export function getApiLogoUrl(
-  teamName: string,
-  league: SportsLeague,
-  config: TeamLogoConfig = {}
-): string {
-  const { variant = 'primary', format = 'png' } = config;
-  const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
-
-  try {
-    // Get league configuration dynamically
-    const leagueConfig = getLeagueConfig(league);
-    if (leagueConfig) {
-      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
-      if (teamId) {
-        return `${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`;
+  async getPlayerPhotoUrl(playerId: string, sport?: string): Promise<string> {
+    try {
+      const cacheKey = `player_photo_${playerId}_${sport}`
+      
+      // Check cache first
+      if (this.cache.has(cacheKey)) {
+        const cached = this.cache.get(cacheKey)!
+        structuredLogger.cacheHit(cacheKey)
+        return cached.url
       }
+
+      // In a real implementation, this would fetch from an API or database
+      // For now, return a placeholder URL
+      const photoUrl = this.generatePlaceholderPlayerPhotoUrl(playerId, sport)
+      
+      // Cache the result
+      this.cache.set(cacheKey, {
+        url: photoUrl,
+        cached: true
+      })
+
+      structuredLogger.cacheMiss(cacheKey)
+      structuredLogger.debug('Generated player photo URL', { playerId, sport, photoUrl })
+
+      return photoUrl
+
+    } catch (error) {
+      structuredLogger.error('Failed to get player photo URL', {
+        playerId,
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+
+      return this.getDefaultPlayerPhotoUrl()
     }
-  } catch (error) {
-    console.warn(`API logo lookup failed for ${teamName} in ${league}:`, error);
   }
 
-  // Return empty string if no API match found
-  return '';
-}
+  private generatePlaceholderLogoUrl(teamName: string, _league?: string, _sport?: string): string {
+    // Generate a placeholder logo URL based on team name
+    const encodedTeamName = encodeURIComponent(teamName)
+    const size = '200x200'
+    
+    // Use a placeholder service or generate a simple URL
+    return `https://via.placeholder.com/${size}/4A90E2/FFFFFF?text=${encodedTeamName}`
+  }
 
-/**
- * Get multiple potential logo URLs for a team (for testing availability)
- */
-export function getPotentialLogoUrls(
-  teamName: string,
-  league: SportsLeague,
-  config: TeamLogoConfig = {}
-): string[] {
-  const { variant = 'primary', format = 'png' } = config;
-  const normalizedTeam = teamName.toLowerCase().replace(/\s+/g, '-');
-  const urls: string[] = [];
+  private generatePlaceholderPlayerPhotoUrl(_playerId: string, sport?: string): string {
+    // Generate a placeholder player photo URL
+    const size = '150x150'
+    const sportIcon = this.getSportIcon(sport)
+    
+    return `https://via.placeholder.com/${size}/2ECC71/FFFFFF?text=${sportIcon}`
+  }
 
-  try {
-    // Get league configuration dynamically
-    const leagueConfig = getLeagueConfig(league);
-    if (leagueConfig) {
-      const teamId = leagueConfig.teams[normalizedTeam as keyof typeof leagueConfig.teams];
-      if (teamId) {
-        // Primary source
-        urls.push(`${leagueConfig.logos}${teamId}/${variant}/L/logo.${format}`);
-        // ESPN source for NBA
-        if (league === 'NBA') {
-          urls.push(`https://a.espncdn.com/i/teamlogos/nba/500/${normalizedTeam}.png`);
-        }
-      }
-      // Try all sources even without team ID
-      if (leagueConfig.sources) {
-        leagueConfig.sources.forEach((source: string) => {
-          urls.push(`${source}${normalizedTeam}.png`);
-          urls.push(`${source}${normalizedTeam}.svg`);
-        });
-      }
-    } else {
-      // Generic sources for unknown leagues
-      urls.push(
-        `https://logos-world.net/wp-content/uploads/2020/06/${normalizedTeam}-Logo.png`,
-        `https://cdn.freebiesupply.com/logos/large/2x/${normalizedTeam}-logo-png-transparent.png`,
-        `https://upload.wikimedia.org/wikipedia/en/thumb/0/0c/${normalizedTeam}_logo.svg/1200px-${normalizedTeam}_logo.svg.png`
-      );
+  private getSportIcon(sport?: string): string {
+    const icons: { [key: string]: string } = {
+      basketball: '🏀',
+      football: '🏈',
+      soccer: '⚽',
+      baseball: '⚾',
+      hockey: '🏒',
+      tennis: '🎾',
+      golf: '⛳'
     }
-  } catch (error) {
-    console.warn(`Failed to generate potential URLs for ${teamName} in ${league}:`, error);
+    
+    return icons[sport || 'unknown'] || '👤'
   }
 
-  return urls;
-}
-
-/**
- * Get player photo URL for any supported league
- */
-export function getPlayerPhotoUrl(
-  playerId: string | number,
-  league: SportsLeague = 'NBA',
-  config: PlayerPhotoConfig = {}
-): string {
-  const { format = 'jpg' } = config;
-
-  try {
-    // Dynamic league lookup - will be loaded from database configuration
-    // For now, use fallback to local API endpoint for all leagues
-    const leagueConfig = TEAM_LOGOS[league];
-    if (leagueConfig && leagueConfig.headshots) {
-      return `${leagueConfig.headshots}${playerId}.${format}`;
-    }
-  } catch (error) {
-    console.warn(`Player photo lookup failed for ID ${playerId} in ${league}:`, error);
+  private getDefaultTeamLogoUrl(): string {
+    return 'https://via.placeholder.com/200x200/CCCCCC/FFFFFF?text=Team'
   }
 
-  // Fallback to local API endpoint
-  return `/api/images/player/${encodeURIComponent(league)}/${playerId}.jpg`;
-}
-
-/**
- * Get sports category image URL
- */
-export function getSportsImageUrl(
-  category: keyof typeof SPORTS_IMAGES,
-  options: { width?: number; height?: number; quality?: number } = {}
-): string {
-  const { width = 400, height = 250, quality = 80 } = options;
-  const baseUrl = SPORTS_IMAGES[category];
-
-  if (!baseUrl) return getFallbackImageUrl('sports');
-
-  // Add optimization parameters to Unsplash URLs
-  if (baseUrl.includes('unsplash.com')) {
-    return `${baseUrl}&w=${width}&h=${height}&q=${quality}&auto=format&fit=crop`;
+  private getDefaultPlayerPhotoUrl(): string {
+    return 'https://via.placeholder.com/150x150/CCCCCC/FFFFFF?text=Player'
   }
 
-  return baseUrl;
-}
-
-/**
- * Get fallback image URL based on type
- */
-export function getFallbackImageUrl(type: 'team' | 'player' | 'sports' = 'sports'): string {
-  switch (type) {
-    case 'team':
-      return '/images/fallback-team-logo.svg';
-    case 'player':
-      return '/images/fallback-player-photo.svg';
-    case 'sports':
-    default:
-      return '/images/fallback-sports-image.svg';
-  }
-}
-
-/**
- * Utility function to get image with fallback chain
- */
-export function getImageWithFallback(
-  primaryUrl: string,
-  fallbackUrl: string = getFallbackImageUrl('sports')
-): string {
-  return primaryUrl || fallbackUrl;
-}
-
-// ============================================================================
-// DYNAMIC LOGO SERVICE CLASS
-// ============================================================================
-
-interface TeamLogoInfo {
-  [teamId: string]: LogoInfo;
-}
-
-interface SportLogos {
-  [sportId: string]: TeamLogoInfo;
-}
-
-class DynamicImageService {
-  private static instance: DynamicImageService;
-  private logoCache: Map<string, LogoInfo> = new Map();
-  // private sportLogos: SportLogos = {};
-
-  private constructor() {}
-
-  static getInstance(): DynamicImageService {
-    if (!DynamicImageService.instance) {
-      DynamicImageService.instance = new DynamicImageService();
-    }
-    return DynamicImageService.instance;
-  }
-
-  async getTeamLogo(sportId: string, teamId: string): Promise<LogoInfo> {
-    const cacheKey = `${sportId}-${teamId}`;
-
-    if (this.logoCache.has(cacheKey)) {
-      return this.logoCache.get(cacheKey)!;
-    }
-
-    const logoInfo = await this.fetchTeamLogo(sportId, teamId);
-    this.logoCache.set(cacheKey, logoInfo);
-
-    return logoInfo;
-  }
-
-  private async fetchTeamLogo(sportId: string, teamId: string): Promise<LogoInfo> {
-    // const normalizedTeam = teamId.toLowerCase().replace(/\s+/g, '-');
-
-    // Try direct mapping first
-    const directUrl = getTeamLogoUrl(teamId, sportId as SportsLeague);
-
-    // If it's a local API endpoint, it means no mapping was found
-    if (directUrl.startsWith('/api/images/team/')) {
+  async optimizeImage(url: string, width?: number, height?: number): Promise<ImageResult> {
+    try {
+      // In a real implementation, this would use an image optimization service
+      // For now, return the original URL with optimization parameters
+      const optimizedUrl = this.addOptimizationParams(url, width, height)
+      
       return {
-        url: directUrl,
-        fallback: getFallbackImageUrl('team')
-      };
-    }
+        url: optimizedUrl,
+        width: width || 200,
+        height: height || 200,
+        format: 'webp',
+        cached: false
+      }
 
-    // Return the mapped URL
-    return {
-      url: directUrl,
-      fallback: getFallbackImageUrl('team')
-    };
+    } catch (error) {
+      structuredLogger.error('Failed to optimize image', {
+        url,
+        width,
+        height,
+        error: error instanceof Error ? error.message : String(error)
+      })
+
+      return {
+        url,
+        cached: false
+      }
+    }
   }
 
-  async loadSportLogos(sportId: string): Promise<void> {
-    // Load logos from database if needed
-    // Database integration for image metadata
-    console.log(`Loading logos for sport: ${sportId}`);
+  private addOptimizationParams(url: string, width?: number, height?: number): string {
+    const params = new URLSearchParams()
+    
+    if (width) params.set('w', width.toString())
+    if (height) params.set('h', height.toString())
+    params.set('f', 'webp')
+    params.set('q', '80')
+    
+    const separator = url.includes('?') ? '&' : '?'
+    return `${url}${separator}${params.toString()}`
   }
 
   clearCache(): void {
-    this.logoCache.clear();
-    // this.sportLogos = {};
+    this.cache.clear()
+    structuredLogger.info('Image service cache cleared')
+  }
+
+  getCacheStats(): { size: number; keys: string[] } {
+    return {
+      size: this.cache.size,
+      keys: Array.from(this.cache.keys())
+    }
   }
 }
 
-// ============================================================================
-// EXPORTS
-// ============================================================================
+export const imageService = ImageService.getInstance()
 
-export { SPORTS_IMAGES as IMAGE_SOURCES };
-export default DynamicImageService;
-export type { TeamLogoInfo, SportLogos };
+// Export convenience functions
+export const getTeamLogoUrl = (teamName: string, league?: string, sport?: string) => 
+  imageService.getTeamLogoUrl(teamName, league, sport)
+
+export const getPlayerPhotoUrl = (playerId: string, sport?: string) => 
+  imageService.getPlayerPhotoUrl(playerId, sport)
+
+// Align with components/ui/sports-image expected exports (non-breaking stubs)
+export type SportsLeague = string
+export interface TeamLogoConfig { teamName: string; league?: string; sport?: string }
+export interface PlayerPhotoConfig { playerId: string; sport?: string }
+
+export const IMAGE_SOURCES = {
+  teamLogos: 'placeholder',
+  playerPhotos: 'placeholder'
+}
+
+export function getSportsImageUrl(category: string, options?: { width?: number; height?: number }): string {
+  const width = options?.width || 200
+  const height = options?.height || 200
+  const map: Record<string, string> = {
+    team: `https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=${width}&h=${height}&auto=format&fit=crop`,
+    player: `https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=${width}&h=${height}&auto=format&fit=crop`,
+    sports: `https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=${width}&h=${height}&auto=format&fit=crop`
+  }
+  return map[category] || `https://via.placeholder.com/${width}x${height}/CCCCCC/FFFFFF?text=Image`
+}
+
+export function getFallbackImageUrl(type: 'team' | 'player' | 'sports' = 'sports'): string {
+  if (type === 'team') {
+    return 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop'
+  }
+  if (type === 'player') {
+    return 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop'
+  }
+  return 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=400&h=250&auto=format&fit=crop'
+}

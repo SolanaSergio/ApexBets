@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { dataValidationService } from "@/lib/services/data-validation-service"
 import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
 
 export async function GET(request: NextRequest) {
@@ -74,7 +73,7 @@ export async function GET(request: NextRequest) {
             updateFrequency: sport.update_frequency
           }
         }
-        totalLiveGames += sportData.live.length
+        totalLiveGames += Array.isArray((sportData as any).live) ? (sportData as any).live.length : 0
       } catch (error) {
         console.error(`Error processing ${sport.name}:`, error)
         sportsData[sport.name] = {
@@ -177,6 +176,7 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const normalizedUpcomingGames = normalizeGames(upcomingGames || [], sport)
 
   // Validate live games
+  const { dataValidationService } = await import('@/lib/services/data-validation-service')
   const validatedLiveGames = dataValidationService.validateLiveGames(normalizedLiveGames)
 
   return {
@@ -184,7 +184,7 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
     recent: normalizedRecentGames,
     upcoming: normalizedUpcomingGames,
     summary: {
-      totalLive: validatedLiveGames.length,
+      totalLive: Array.isArray(normalizedLiveGames) ? normalizedLiveGames.length : 0,
       totalRecent: normalizedRecentGames.length,
       totalUpcoming: normalizedUpcomingGames.length,
       lastUpdated: new Date().toISOString()

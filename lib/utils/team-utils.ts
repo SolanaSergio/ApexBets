@@ -3,7 +3,7 @@
  * Centralized functions for team-related operations
  */
 
-import { getTeamLogoUrl as getTeamLogoFromService, getPlayerPhotoUrl as getPlayerPhotoFromService } from '@/lib/services/image-service'
+import { getTeamLogoUrl as getTeamLogoFromService, getPlayerPhotoUrl as getPlayerPhotoFromService } from '../services/image-service'
 
 // Re-export the enhanced functions from image service
 export const getTeamLogoUrl = async (teamName: string, sport: string): Promise<string> => {
@@ -49,14 +49,14 @@ export const getPlayerPhotoUrl = async (playerId: number, sport: string): Promis
     if (response && !response.error && response.data?.leagues) {
       const leagues = response.data.leagues
       const primaryLeague = Array.isArray(leagues) ? leagues[0] : leagues
-      return getPlayerPhotoFromService(playerId, primaryLeague)
+      return getPlayerPhotoFromService(String(playerId), primaryLeague)
     }
     
     // Fallback to sport name if no league found
-    return getPlayerPhotoFromService(playerId, sport)
+    return getPlayerPhotoFromService(String(playerId), sport)
   } catch (error) {
     console.warn(`Error getting player photo for ${playerId} in ${sport}:`, error)
-    return getPlayerPhotoFromService(playerId, sport)
+    return getPlayerPhotoFromService(String(playerId), sport)
   }
 }
 

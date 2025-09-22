@@ -8,8 +8,8 @@ const { parse } = require('url');
 const next = require('next');
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
-const port = process.env.PORT || 3000;
+const hostname = process.env.HOSTNAME || 'localhost';
+const port = parseInt(process.env.PORT) || 3000;
 
 // Create Next.js app
 const app = next({ dev, hostname, port });
@@ -43,32 +43,48 @@ app.prepare().then(async () => {
     }
   });
 
-  // Start server
-  server.listen(port, (err) => {
-    if (err) throw err;
-    console.log(`> Ready on http://${hostname}:${port}`);
-    console.log('🎉 Server started successfully!');
-    
-    // Initialize services after server is ready
-    if (autoStartupService) {
-      setTimeout(async () => {
-        try {
-          console.log('🚀 Starting auto-startup services...');
-          await autoStartupService.initialize({
-            enableMonitoring: true,
-            monitoringIntervalMinutes: 5,
-            enableDataQualityChecks: true,
-            enableHealthChecks: true,
-            enableAutoCleanup: false,
-            startupDelay: 2000
-          });
-          console.log('✅ All services started automatically!');
-        } catch (error) {
-          console.error('❌ Auto-startup failed:', error);
+  // Start server with graceful port handling
+  const startServer = (attemptPort) => {
+    server.listen(attemptPort, hostname, (err) => {
+      if (err) {
+        if (err.code === 'EADDRINUSE') {
+          console.log(`⚠️ Port ${attemptPort} is in use, trying ${attemptPort + 1}...`);
+          startServer(attemptPort + 1);
+          return;
         }
-      }, 3000); // Wait 3 seconds after server starts
-    }
-  });
+        throw err;
+      }
+      
+      console.log(`> Ready on http://${hostname}:${attemptPort}`);
+      console.log('🎉 Server started successfully!');
+      
+      // Initialize services after server is ready
+      const isVercel = !!process.env.VERCEL
+      const allowAutoStartup = !isVercel
+      if (autoStartupService && allowAutoStartup) {
+        setTimeout(async () => {
+          try {
+            console.log('🚀 Starting auto-startup services...');
+            await autoStartupService.initialize({
+              enableMonitoring: true,
+              monitoringIntervalMinutes: 5,
+              enableDataQualityChecks: true,
+              enableHealthChecks: true,
+              enableAutoCleanup: false,
+              startupDelay: 2000
+            });
+            console.log('✅ All services started automatically!');
+          } catch (error) {
+            console.error('❌ Auto-startup failed:', error);
+          }
+        }, 3000); // Wait 3 seconds after server starts
+      } else if (isVercel) {
+        console.log('ℹ️ Auto-startup disabled on Vercel environment')
+      }
+    });
+  };
+  
+  startServer(port);
 
   // Graceful shutdown
   process.on('SIGTERM', () => {

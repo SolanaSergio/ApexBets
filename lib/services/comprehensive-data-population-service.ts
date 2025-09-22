@@ -1,846 +1,177 @@
 /**
  * Comprehensive Data Population Service
- * Populates all missing data and sets up automated updates
+ * Handles comprehensive data population for all sports
  */
 
-// Using Supabase MCP tools instead of direct client
-import { serviceFactory } from './core/service-factory'
-import { unifiedApiClient } from './api/unified-api-client'
-import { intelligentRateLimiter } from './intelligent-rate-limiter'
-import { cacheManager } from '@/lib/cache'
+import { structuredLogger } from './structured-logger'
+import { dataSyncService } from './data-sync-service'
+import { SupportedSport } from './core/sport-config'
 
-interface PopulationStats {
-  teams: number
-  games: number
-  playerStats: number
-  odds: number
-  predictions: number
-  standings: number
-  logos: number
+export interface PopulationResult {
+  success: boolean
+  message: string
+  sportsProcessed: number
+  totalRecords: number
   errors: string[]
+  executionTime: number
 }
 
 export class ComprehensiveDataPopulationService {
-  private supabase: any = null
-  private stats: PopulationStats = {
-    teams: 0,
-    games: 0,
-    playerStats: 0,
-    odds: 0,
-    predictions: 0,
-    standings: 0,
-    logos: 0,
-    errors: []
-  }
+  private static instance: ComprehensiveDataPopulationService
 
-  constructor() {
-    this.initializeSupabase()
-  }
-
-  private async initializeSupabase() {
-    // Using Supabase MCP tools instead of direct client
-    this.supabase = null
-  }
-
-  // Main population method
-  async populateAllData(): Promise<PopulationStats> {
-    console.log('🚀 Starting comprehensive data population...')
-    
-    try {
-      // Reset stats
-      this.stats = {
-        teams: 0,
-        games: 0,
-        playerStats: 0,
-        odds: 0,
-        predictions: 0,
-        standings: 0,
-        logos: 0,
-        errors: []
-      }
-
-      // Implement batch processing with delays to avoid rate limits
-      const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
-      // 1. Populate teams and logos (prioritize free APIs)
-      await this.populateTeamsAndLogos()
-      await delay(2000) // 2 second delay between major operations
-      
-      // 2. Populate games (with rate limiting)
-      await this.populateGames()
-      await delay(2000)
-      
-      // 3. Populate player statistics (use caching heavily)
-      await this.populatePlayerStats()
-      await delay(2000)
-      
-      // 4. Populate odds (lowest priority, use cached data when possible)
-      await this.populateOdds()
-      await delay(2000)
-      
-      // 5. Populate predictions (use ML models, minimal API calls)
-      await this.populatePredictions()
-      await delay(1000)
-      
-      // 6. Populate standings (use official APIs first)
-      await this.populateStandings()
-      
-      // 7. Set up automated updates with proper scheduling
-      await this.setupAutomatedUpdates()
-
-      console.log('✅ Comprehensive data population completed!')
-      console.log('📊 Final Stats:', this.stats)
-      
-      return this.stats
-    } catch (error) {
-      console.error('❌ Error in comprehensive data population:', error)
-      this.stats.errors.push(`Main population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      throw error
+  public static getInstance(): ComprehensiveDataPopulationService {
+    if (!ComprehensiveDataPopulationService.instance) {
+      ComprehensiveDataPopulationService.instance = new ComprehensiveDataPopulationService()
     }
+    return ComprehensiveDataPopulationService.instance
   }
 
-  // Populate teams and fetch logos
-  private async populateTeamsAndLogos(): Promise<void> {
-    console.log('👥 Populating teams and logos...')
-    
+  async populateAllData(sports?: SupportedSport[]): Promise<PopulationResult> {
+    const startTime = Date.now()
+    const errors: string[] = []
+    let sportsProcessed = 0
+    let totalRecords = 0
+
     try {
-      const sports = await serviceFactory.getSupportedSports()
-      
-      for (const sport of sports) {
-        console.log(`   Processing ${sport} teams...`)
-        
-        // Check rate limits before making API calls
-        const rateCheck = await intelligentRateLimiter.checkRateLimit('thesportsdb')
-        if (!rateCheck.allowed) {
-          console.log(`   ⏳ Rate limit for TheSportsDB, waiting ${rateCheck.waitTime}ms...`)
-          await new Promise(resolve => setTimeout(resolve, rateCheck.waitTime))
-        }
-        
-        // Get teams from external APIs with rate limiting
-        const externalTeams = await this.fetchTeamsWithRateLimit(sport)
-        
-        if (externalTeams.length > 0) {
-          // Get existing teams to prevent duplicates
-          const { data: existingTeams } = await this.supabase
-            .from('teams')
-            .select('name, abbreviation')
-            .eq('sport', sport);
+      structuredLogger.info('Starting comprehensive data population', { sports })
+
+      const sportsToProcess = sports && sports.length > 0
+        ? sports
+        : await this.getSupportedSportsFromDb()
+
+      for (const sport of sportsToProcess) {
+        try {
+          structuredLogger.info(`Populating data for ${sport}`)
+
+          // Use data sync service to populate data
+          const syncResult = await dataSyncService.performSync(sport)
           
-          const existingTeamNames = new Set(existingTeams?.map((t: any) => t.name) || [])
-          
-          // Filter out existing teams
-          const newTeams = externalTeams.filter(team => !existingTeamNames.has(team.name))
-          
-          if (newTeams.length > 0) {
-            // Batch insert new teams to reduce database calls
-            const teamData = newTeams.map(team => ({
-              name: team.name,
-              city: team.city || team.name.split(' ').slice(0, -1).join(' '),
-              league: team.league,
-              sport: team.sport,
-              abbreviation: team.abbreviation,
-              logo_url: team.logo_url || null,
-              conference: this.getConference(team.name, team.league),
-              division: this.getDivision(team.name, team.league),
-              is_active: true
-            }));
-            
-            const { error } = await this.supabase
-              .from('teams')
-              .upsert(teamData, {
-                onConflict: 'name,league'
-              });
-            
-            if (error && error.length > 0) {
-              this.stats.errors.push(...error.map((e: any) => `Teams insertion error: ${e}`));
-            } else {
-              this.stats.teams += teamData.length;
-              console.log(`   ✅ ${teamData.length} ${sport} teams added`);
-            }
-            
-            // Cache cleared automatically by database operations
+          if (syncResult.success) {
+            sportsProcessed++
+            totalRecords += await this.getRecordCount(sport)
+            structuredLogger.info(`Successfully populated data for ${sport}`)
+          } else {
+            errors.push(`Failed to populate data for ${sport}: ${syncResult.message}`)
           }
+
+        } catch (error) {
+          const errorMessage = `Error populating data for ${sport}: ${error instanceof Error ? error.message : String(error)}`
+          errors.push(errorMessage)
+          structuredLogger.error(errorMessage)
         }
-        
-        // Update logos for existing teams with rate limiting
-        await this.updateTeamLogosWithRateLimit(sport)
-        
-        // Add delay between sports to prevent rate limiting
-        await new Promise(resolve => setTimeout(resolve, intelligentRateLimiter.getRecommendedDelay('thesportsdb')))
       }
+
+      const executionTime = Date.now() - startTime
+
+      const result: PopulationResult = {
+        success: errors.length === 0,
+        message: errors.length === 0 
+          ? `Successfully populated data for ${sportsProcessed} sports` 
+          : `Completed with ${errors.length} errors`,
+        sportsProcessed,
+        totalRecords,
+        errors,
+        executionTime
+      }
+
+      structuredLogger.info('Comprehensive data population completed', result)
+
+      return result
+
     } catch (error) {
-      this.stats.errors.push(`Teams population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating teams:', error)
+      const executionTime = Date.now() - startTime
+      const errorMessage = `Comprehensive data population failed: ${error instanceof Error ? error.message : String(error)}`
+      
+      structuredLogger.error(errorMessage)
+
+      return {
+        success: false,
+        message: errorMessage,
+        sportsProcessed,
+        totalRecords,
+        errors: [errorMessage, ...errors],
+        executionTime
+      }
     }
   }
 
-  // Fetch teams with intelligent rate limiting
-  private async fetchTeamsWithRateLimit(sport: string): Promise<any[]> {
+  private async getRecordCount(sport: SupportedSport): Promise<number> {
     try {
-      // Record the request
-      await intelligentRateLimiter.recordRequest('thesportsdb')
-      
-      // Use cached data first
-      const cacheKey = `teams_${sport}`
-      const cached = await cacheManager.get(cacheKey)
-      if (cached) {
-        console.log(`   💾 Using cached teams for ${sport}`)
-        return cached as any[]
+      if (typeof (dataSyncService as any).getRecordCounts === 'function') {
+        const result = await (dataSyncService as any).getRecordCounts(sport)
+        if (result && typeof result.total === 'number') return result.total
       }
-      
-      // Make API call with fallback strategy
-      const teams = await unifiedApiClient.getTeams(sport)
-      
-      // Cache the result for 1 hour
-      await cacheManager.set(cacheKey, teams, 3600)
-      
-      return teams
+      return 0
     } catch (error) {
-      console.warn(`   ⚠️ Failed to fetch teams for ${sport}:`, error)
+      structuredLogger.error('Failed to get record count', {
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return 0
+    }
+  }
+
+  private async getSupportedSportsFromDb(): Promise<SupportedSport[]> {
+    try {
+      if (typeof (dataSyncService as any).getSupportedSports === 'function') {
+        const res = await (dataSyncService as any).getSupportedSports()
+        if (Array.isArray(res) && res.length > 0) {
+          return res as SupportedSport[]
+        }
+      }
+      return []
+    } catch (error) {
+      structuredLogger.error('Failed to load supported sports', { error: error instanceof Error ? error.message : String(error) })
       return []
     }
   }
 
-  // Update team logos with rate limiting
-  private async updateTeamLogosWithRateLimit(sport: string): Promise<void> {
+  async populateSportData(sport: SupportedSport): Promise<PopulationResult> {
+    const startTime = Date.now()
+
     try {
-      // Get teams without logos
-      const { data: teamsWithoutLogos } = await this.supabase
-        .from('teams')
-        .select('id, name, abbreviation')
-        .eq('sport', sport)
-        .is('logo_url', null)
-      
-      if (teamsWithoutLogos?.length > 0) {
-        console.log(`   🖼️  Updating ${teamsWithoutLogos.length} team logos...`)
-        
-        // Limit logo updates to prevent rate limiting
-        const maxLogosPerRun = 5
-        const teamsToUpdate = teamsWithoutLogos.slice(0, maxLogosPerRun)
-        
-        for (const team of teamsToUpdate) {
-          try {
-            // Check rate limit before each logo fetch
-            const rateCheck = await intelligentRateLimiter.checkRateLimit('thesportsdb')
-            if (!rateCheck.allowed) {
-              console.log(`   ⏳ Rate limit hit, skipping remaining logos`)
-              break
-            }
-            
-            // Try to get logo from external API
-            const logoUrl = await this.fetchTeamLogoWithRateLimit(team.name, team.abbreviation, sport)
-            
-            if (logoUrl) {
-              await this.supabase
-                .from('teams')
-                .update({ logo_url: logoUrl })
-                .eq('id', team.id)
-              
-              this.stats.logos++
-            }
-            
-            // Add delay between logo requests
-            await new Promise(resolve => setTimeout(resolve, intelligentRateLimiter.getRecommendedDelay('thesportsdb')))
-            
-          } catch (error) {
-            // Continue with other teams if one fails
-            console.warn(`   ⚠️  Could not fetch logo for ${team.name}`)
-          }
+      structuredLogger.info(`Populating data for ${sport}`)
+
+      const syncResult = await dataSyncService.performSync(sport)
+      const executionTime = Date.now() - startTime
+
+      if (syncResult.success) {
+        return {
+          success: true,
+          message: `Successfully populated data for ${sport}`,
+          sportsProcessed: 1,
+          totalRecords: await this.getRecordCount(sport),
+          errors: [],
+          executionTime
+        }
+      } else {
+        return {
+          success: false,
+          message: `Failed to populate data for ${sport}: ${syncResult.message}`,
+          sportsProcessed: 0,
+          totalRecords: 0,
+          errors: [syncResult.message],
+          executionTime
         }
       }
-    } catch (error) {
-      this.stats.errors.push(`Logo update error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-    }
-  }
 
-  // Fetch team logo with rate limiting
-  private async fetchTeamLogoWithRateLimit(teamName: string, _abbreviation: string, sport: string): Promise<string | null> {
-    try {
-      // Check cache first
-      const cacheKey = `logo_${teamName}_${sport}`
-      const cached = await cacheManager.get(cacheKey)
-      if (cached) {
-        return cached as string | null
+    } catch (error) {
+      const executionTime = Date.now() - startTime
+      const errorMessage = `Error populating data for ${sport}: ${error instanceof Error ? error.message : String(error)}`
+
+      structuredLogger.error(errorMessage)
+
+      return {
+        success: false,
+        message: errorMessage,
+        sportsProcessed: 0,
+        totalRecords: 0,
+        errors: [errorMessage],
+        executionTime
       }
-      
-      // Record the API request
-      await intelligentRateLimiter.recordRequest('thesportsdb')
-      
-      // Use SportsDB API to get team logo
-      const apiKey = process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123' // Use free key if not configured
-      const response = await fetch(
-        `https://www.thesportsdb.com/api/v1/json/${apiKey}/searchteams.php?t=${encodeURIComponent(teamName)}`
-      )
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-      
-      const data = await response.json()
-      const team = data.teams?.[0]
-      
-      let logoUrl = null
-      if (team?.strTeamBadge) {
-        logoUrl = team.strTeamBadge
-      } else if (team?.strTeamLogo) {
-        logoUrl = team.strTeamLogo
-      }
-      
-      // Cache the result (even if null) for 1 day
-      await cacheManager.set(cacheKey, logoUrl, 86400)
-      
-      return logoUrl
-    } catch (error) {
-      console.warn(`Failed to fetch logo for ${teamName}:`, error)
-      return null
     }
   }
-
-  // Populate games data
-  private async populateGames(): Promise<void> {
-    console.log('🏟️  Populating games...')
-    
-    try {
-      const sports = await serviceFactory.getSupportedSports()
-      
-      for (const sport of sports) {
-        console.log(`   Processing ${sport} games...`)
-        
-        // Get games from external APIs
-        const externalGames = await unifiedApiClient.getGames(sport)
-        
-        if (externalGames.length > 0) {
-          // Get team mappings
-          const { data: teams } = await this.supabase
-            .from('teams')
-            .select('id, name, abbreviation')
-            .eq('sport', sport)
-          
-          const teamMap = new Map()
-          teams?.forEach((team: any) => {
-            teamMap.set(team.name, team.id)
-            teamMap.set(team.abbreviation, team.id)
-          })
-          
-          // Process games
-          const gamesToInsert = []
-          
-          for (const game of externalGames) {
-            const homeTeamId = teamMap.get(game.home_team?.name || '')
-            const awayTeamId = teamMap.get(game.away_team?.name || '')
-            
-            if (homeTeamId && awayTeamId) {
-              gamesToInsert.push({
-                home_team_id: homeTeamId,
-                away_team_id: awayTeamId,
-                game_date: game.game_date,
-                season: await this.getCurrentSeason(sport),
-                home_score: game.home_score,
-                away_score: game.away_score,
-                status: this.mapGameStatus(game.status),
-                sport: sport,
-                league: game.league,
-                venue: game.venue,
-                game_type: 'regular',
-                overtime_periods: 0
-              })
-            }
-          }
-          
-          if (gamesToInsert.length > 0) {
-            const { error } = await this.supabase
-              .from('games')
-              .insert(gamesToInsert)
-            
-            if (error) {
-              this.stats.errors.push(`Games insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            } else {
-              this.stats.games += gamesToInsert.length
-              console.log(`   ✅ ${gamesToInsert.length} ${sport} games added`)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.stats.errors.push(`Games population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating games:', error)
-    }
-  }
-
-  // Populate player statistics
-  private async populatePlayerStats(): Promise<void> {
-    console.log('📊 Populating player statistics...')
-    
-    try {
-      const sports = await serviceFactory.getSupportedSports()
-      
-      for (const sport of sports) {
-        console.log(`   Processing ${sport} player stats...`)
-        
-        // Get recent games for this sport
-        const { data: games } = await this.supabase
-          .from('games')
-          .select('id, home_team_id, away_team_id, sport, league')
-          .eq('sport', sport)
-          .eq('status', 'finished')
-          .limit(10)
-        
-        if (games?.length > 0) {
-          // Get real player stats from APIs
-          const playerStats = await this.generatePlayerStats(games, sport)
-          
-          if (playerStats.length > 0) {
-            const tableName = this.getPlayerStatsTableName(sport)
-            
-            const { error } = await this.supabase
-              .from(tableName)
-              .insert(playerStats)
-            
-            if (error) {
-              this.stats.errors.push(`Player stats insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            } else {
-              this.stats.playerStats += playerStats.length
-              console.log(`   ✅ ${playerStats.length} ${sport} player stats added`)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.stats.errors.push(`Player stats population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating player stats:', error)
-    }
-  }
-
-  // Get real player stats from APIs
-  private async generatePlayerStats(games: any[], sport: string): Promise<any[]> {
-    const stats = []
-    
-    try {
-      // Use the sport-specific service to get real player data
-      const serviceFactory = (await import('./core/service-factory')).serviceFactory
-      const service = serviceFactory.getService(sport as any)
-      
-      for (const game of games) {
-        // Get real player stats for this game
-        const players = await (await service).getPlayers({ limit: 20 })
-        
-        for (const player of players) {
-          if (player.stats) {
-            stats.push({
-              game_id: game.id,
-              player_id: player.id,
-              player_name: player.name,
-              team_id: game.home_team_id, // Would need to map properly
-              position: player.position || 'Unknown',
-              stats: player.stats,
-              created_at: new Date().toISOString()
-            })
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error getting real player stats:', error)
-      // Return empty array if API fails
-    }
-    
-    return stats
-  }
-
-
-  // Get real odds from APIs
-  private async getRealOdds(games: any[], sport: string): Promise<any[]> {
-    const odds = []
-    
-    try {
-      // Use the sport-specific service to get real odds
-      const serviceFactory = (await import('./core/service-factory')).serviceFactory
-      const service = serviceFactory.getService(sport as any)
-      
-      for (const game of games) {
-        const gameOdds = await (await service).getOdds({ gameId: game.id })
-        
-        for (const odd of gameOdds) {
-          odds.push({
-            game_id: game.id,
-            source: 'odds_api',
-            odds_type: 'moneyline',
-            home_odds: odd.markets?.moneyline?.home || null,
-            away_odds: odd.markets?.moneyline?.away || null,
-            spread: odd.markets?.spread?.line || null,
-            total: odd.markets?.total?.line || null,
-            sport: game.sport,
-            league: game.league,
-            live_odds: false,
-            bookmaker: odd.bookmaker || 'Unknown',
-            last_updated: odd.lastUpdated || new Date().toISOString()
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Error getting real odds:', error)
-      // Return empty array if API fails
-    }
-    
-    return odds
-  }
-
-  // Populate odds data
-  private async populateOdds(): Promise<void> {
-    console.log('💰 Populating odds...')
-    
-    try {
-      // Get recent games
-      const { data: games } = await this.supabase
-        .from('games')
-        .select('id, sport, league')
-        .eq('status', 'scheduled')
-        .limit(20)
-      
-      if (games?.length > 0) {
-        const oddsToInsert = []
-        
-        // Get real odds from APIs
-        const realOdds = await this.getRealOdds(games, games[0]?.sport || '')
-        oddsToInsert.push(...realOdds)
-        
-        if (oddsToInsert.length > 0) {
-          const { error } = await this.supabase
-            .from('odds')
-            .insert(oddsToInsert)
-          
-          if (error) {
-            this.stats.errors.push(`Odds insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-          } else {
-            this.stats.odds += oddsToInsert.length
-            console.log(`   ✅ ${oddsToInsert.length} odds records added`)
-          }
-        }
-      }
-    } catch (error) {
-      this.stats.errors.push(`Odds population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating odds:', error)
-    }
-  }
-
-  // Get real predictions from prediction service
-  private async getRealPredictions(games: any[], sport: string): Promise<any[]> {
-    const predictions = []
-    
-    try {
-      // Use the prediction service to get real predictions
-      const { SportPredictionService } = await import('./predictions/sport-prediction-service')
-      const predictionService = new SportPredictionService(sport as any)
-      
-      for (const game of games) {
-        const gamePredictions = await predictionService.getPredictions({ gameId: game.id })
-        
-        for (const prediction of gamePredictions) {
-          predictions.push({
-            game_id: game.id,
-            model_name: prediction.model,
-            prediction_type: 'moneyline',
-            predicted_value: prediction.homeWinProbability > prediction.awayWinProbability ? 'home' : 'away',
-            confidence: prediction.confidence,
-            sport: game.sport,
-            league: game.league,
-            reasoning: prediction.factors.join(', '),
-            model_version: '1.0.0',
-            home_win_probability: prediction.homeWinProbability,
-            away_win_probability: prediction.awayWinProbability,
-            predicted_spread: prediction.predictedSpread,
-            predicted_total: prediction.predictedTotal
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Error getting real predictions:', error)
-      // Return empty array if API fails
-    }
-    
-    return predictions
-  }
-
-  // Get real standings from external APIs
-  private async getRealStandings(sport: string, teams: any[]): Promise<any[]> {
-    const standings = []
-    
-    try {
-      // Use the sport-specific service to get real standings
-      const serviceFactory = (await import('./core/service-factory')).serviceFactory
-      const service = serviceFactory.getService(sport as any)
-      
-      // Get standings from external API
-      const externalStandings = await (await service).getStandings()
-      
-      for (const standing of externalStandings) {
-        // Find matching team in our database
-        const team = teams.find(t => 
-          t.name === standing.teamName || 
-          t.name === standing.team || 
-          t.abbreviation === standing.abbreviation
-        )
-        
-        if (team) {
-          standings.push({
-            team_id: team.id,
-            season: await this.getCurrentSeason(sport),
-            league: team.league,
-            sport: sport,
-            wins: standing.wins || 0,
-            losses: standing.losses || 0,
-            ties: standing.ties || 0,
-            win_percentage: standing.winPercentage || 0,
-            games_back: standing.gamesBack || 0,
-            streak: standing.streak || '',
-            home_wins: standing.homeWins || 0,
-            home_losses: standing.homeLosses || 0,
-            away_wins: standing.awayWins || 0,
-            away_losses: standing.awayLosses || 0,
-            points_for: standing.pointsFor || 0,
-            points_against: standing.pointsAgainst || 0,
-            point_differential: (standing.pointsFor || 0) - (standing.pointsAgainst || 0)
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Error getting real standings:', error)
-      // Return empty array if API fails
-    }
-    
-    return standings
-  }
-
-  // Populate predictions
-  private async populatePredictions(): Promise<void> {
-    console.log('🔮 Populating predictions...')
-    
-    try {
-      // Get recent games
-      const { data: games } = await this.supabase
-        .from('games')
-        .select('id, sport, league')
-        .eq('status', 'scheduled')
-        .limit(20)
-      
-      if (games?.length > 0) {
-        const predictionsToInsert = []
-        
-        // Get real predictions from prediction service
-        const realPredictions = await this.getRealPredictions(games, games[0]?.sport || '')
-        predictionsToInsert.push(...realPredictions)
-        
-        if (predictionsToInsert.length > 0) {
-          const { error } = await this.supabase
-            .from('predictions')
-            .insert(predictionsToInsert)
-          
-          if (error) {
-            this.stats.errors.push(`Predictions insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-          } else {
-            this.stats.predictions += predictionsToInsert.length
-            console.log(`   ✅ ${predictionsToInsert.length} predictions added`)
-          }
-        }
-      }
-    } catch (error) {
-      this.stats.errors.push(`Predictions population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating predictions:', error)
-    }
-  }
-
-  // Populate standings
-  private async populateStandings(): Promise<void> {
-    console.log('🏆 Populating standings...')
-    
-    try {
-      const sports = await serviceFactory.getSupportedSports()
-      
-      for (const sport of sports) {
-        console.log(`   Processing ${sport} standings...`)
-        
-        // Get teams for this sport
-        const { data: teams } = await this.supabase
-          .from('teams')
-          .select('id, name, league')
-          .eq('sport', sport)
-        
-        if (teams?.length > 0) {
-          // Get real standings data from external APIs
-          const realStandings = await this.getRealStandings(sport, teams)
-          
-          if (realStandings.length > 0) {
-            const { error } = await this.supabase
-              .from('league_standings')
-              .insert(realStandings)
-            
-            if (error) {
-              this.stats.errors.push(`Standings insertion error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-            } else {
-              this.stats.standings += realStandings.length
-              console.log(`   ✅ ${realStandings.length} ${sport} standings added`)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      this.stats.errors.push(`Standings population error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error populating standings:', error)
-    }
-  }
-
-  // Set up automated updates
-  private async setupAutomatedUpdates(): Promise<void> {
-    console.log('🔄 Setting up automated updates...')
-    
-    try {
-      // This would typically set up cron jobs or scheduled tasks
-      // For now, we'll just log that it's set up
-      console.log('   ✅ Automated updates configured')
-      console.log('   📅 Games will update every 15 minutes')
-      console.log('   📊 Player stats will update every hour')
-      console.log('   💰 Odds will update every 5 minutes')
-      console.log('   🔮 Predictions will update every 30 minutes')
-    } catch (error) {
-      this.stats.errors.push(`Automated updates setup error: ${error instanceof Error ? error.message : 'Unknown error'}`)
-      console.error('Error setting up automated updates:', error)
-    }
-  }
-
-  // Helper methods
-  private async getConference(teamName: string, league: string): Promise<string | null> {
-    // Get conference from team data or API instead of hardcoded list
-    try {
-      // Try to get team data from database first
-      const teamData = await this.getTeamFromDatabase(teamName, league)
-      if (teamData?.conference) {
-        return teamData.conference
-      }
-      
-      // Fallback to API if not in database
-      const apiData = await this.getTeamFromAPI(teamName, league)
-      return apiData?.conference || null
-    } catch (error) {
-      console.warn(`Could not determine conference for ${teamName} in ${league}:`, error)
-      return null
-    }
-  }
-
-  private async getDivision(teamName: string, league: string): Promise<string | null> {
-    // Get division from team data or API instead of hardcoded list
-    try {
-      // Try to get team data from database first
-      const teamData = await this.getTeamFromDatabase(teamName, league)
-      if (teamData?.division) {
-        return teamData.division
-      }
-      
-      // Fallback to API if not in database
-      const apiData = await this.getTeamFromAPI(teamName, league)
-      return apiData?.division || null
-    } catch (error) {
-      console.warn(`Could not determine division for ${teamName} in ${league}:`, error)
-      return null
-    }
-  }
-
-  private async getTeamFromDatabase(teamName: string, league: string): Promise<any> {
-    try {
-      const { data, error } = await this.supabase
-        .from('teams')
-        .select('*')
-        .eq('name', teamName)
-        .eq('league', league)
-        .single()
-      
-      if (error) return null
-      return data
-    } catch (error) {
-      console.warn(`Error fetching team from database: ${teamName}`, error)
-      return null
-    }
-  }
-
-  private async getTeamFromAPI(teamName: string, _league: string): Promise<any> {
-    try {
-      // This would call the appropriate API based on the league
-      // For now, return null as this is a fallback
-      return null
-    } catch (error) {
-      console.warn(`Error fetching team from API: ${teamName}`, error)
-      return null
-    }
-  }
-
-  private async getCurrentSeason(sport: string): Promise<string> {
-    // Return current season based on sport
-    const currentYear = new Date().getFullYear()
-    const month = new Date().getMonth()
-    
-    // Get sport configuration from database to determine season start
-    try {
-      // Using Supabase MCP tools for database operations
-      
-      const response = await this.supabase
-        ?.from('sports')
-        .select('name, season_start_month')
-        .eq('name', sport)
-        .eq('is_active', true)
-        .single()
-      
-      if (response && !response.error && response.data?.season_start_month) {
-        const seasonStartMonth = response.data.season_start_month
-        return month >= seasonStartMonth ? `${currentYear}` : `${currentYear - 1}`
-      }
-    } catch (error) {
-      console.warn(`Failed to get season configuration for ${sport}:`, error)
-    }
-    
-    // Fallback: use generic season logic
-    return `${currentYear}-${(currentYear + 1).toString().slice(-2)}`
-  }
-
-  private mapGameStatus(status: string): string {
-    const statusMap: Record<string, string> = {
-      'FT': 'finished',
-      'LIVE': 'in_progress',
-      'Scheduled': 'scheduled',
-      'Postponed': 'postponed',
-      'Cancelled': 'cancelled'
-    }
-    return statusMap[status] || 'scheduled'
-  }
-
-  private async getPlayerStatsTableName(sport: string): Promise<string> {
-    try {
-      // Using Supabase MCP tools for database operations
-      
-      const response = await this.supabase
-        ?.from('sports')
-        .select('name, player_stats_table')
-        .eq('name', sport)
-        .eq('is_active', true)
-        .single()
-      
-      if (response && !response.error && response.data?.player_stats_table) {
-        return response.data.player_stats_table
-      }
-    } catch (error) {
-      console.warn(`Failed to get player stats table for ${sport}:`, error)
-    }
-    
-    // Fallback to generic table name
-    return 'player_stats'
-  }
-
 }
 
-// Lazy-loaded service to avoid build-time initialization
-let _comprehensiveDataPopulationService: ComprehensiveDataPopulationService | null = null
-
-export function getComprehensiveDataPopulationService(): ComprehensiveDataPopulationService {
-  if (!_comprehensiveDataPopulationService) {
-    _comprehensiveDataPopulationService = new ComprehensiveDataPopulationService()
-  }
-  return _comprehensiveDataPopulationService
-}
-
+export const getComprehensiveDataPopulationService = () => 
+  ComprehensiveDataPopulationService.getInstance()

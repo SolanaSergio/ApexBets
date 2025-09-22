@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       totalEntries: 0,
       totalSize: 0
     }
-    let apiTests: any = {}
+    const apiTests: any = {}
 
     try {
       const { envValidator } = await import("@/lib/config/env-validator")
@@ -101,85 +101,4 @@ export async function GET(request: NextRequest) {
       message: error instanceof Error ? error.message : "Unknown error"
     }, { status: 500 })
   }
-}
-
-async function testApiConnectivity(): Promise<Record<string, any>> {
-  const tests: Record<string, any> = {}
-  
-  try {
-    // Test games endpoint
-    const startTime = Date.now()
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/games`)
-    const responseTime = Date.now() - startTime
-    
-    if (response.ok) {
-      tests.games = {
-        status: "healthy",
-        responseTime: responseTime,
-        fromCache: false
-      }
-    } else {
-      tests.games = {
-        status: "error",
-        error: `HTTP ${response.status}: ${response.statusText}`
-      }
-    }
-  } catch (error) {
-    tests.games = {
-      status: "error",
-      error: error instanceof Error ? error.message : "Unknown error"
-    }
-  }
-
-  try {
-    // Test teams endpoint
-    const startTime = Date.now()
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/teams`)
-    const responseTime = Date.now() - startTime
-    
-    if (response.ok) {
-      tests.teams = {
-        status: "healthy",
-        responseTime: responseTime,
-        fromCache: false
-      }
-    } else {
-      tests.teams = {
-        status: "error",
-        error: `HTTP ${response.status}: ${response.statusText}`
-      }
-    }
-  } catch (error) {
-    tests.teams = {
-      status: "error",
-      error: error instanceof Error ? error.message : "Unknown error"
-    }
-  }
-
-  try {
-    // Test analytics endpoint
-    const startTime = Date.now()
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/analytics/stats`)
-    const responseTime = Date.now() - startTime
-    
-    if (response.ok) {
-      tests.analytics = {
-        status: "healthy",
-        responseTime: responseTime,
-        fromCache: false
-      }
-    } else {
-      tests.analytics = {
-        status: "error",
-        error: `HTTP ${response.status}: ${response.statusText}`
-      }
-    }
-  } catch (error) {
-    tests.analytics = {
-      status: "error",
-      error: error instanceof Error ? error.message : "Unknown error"
-    }
-  }
-
-  return tests
 }

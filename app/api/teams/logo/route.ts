@@ -9,17 +9,17 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const teamName = searchParams.get('teamName')
-    const league = searchParams.get('league') || 'NBA'
+    const league = searchParams.get('league') || undefined
 
     if (!teamName) {
       return NextResponse.json({ error: 'teamName is required' }, { status: 400 })
     }
 
-    const result = await dynamicTeamServiceClient.getTeamLogo(teamName, league as any)
+    const url = await dynamicTeamServiceClient.getTeamLogoUrl(teamName, league as any)
     
     return NextResponse.json({
       success: true,
-      data: result
+      data: { url }
     })
   } catch (error) {
     console.error('Error fetching team logo:', error)
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    const { teamName, league, logoUrl, teamData } = body
+    const { teamName, league, logoUrl } = body
 
     if (!teamName || !league || !logoUrl) {
       return NextResponse.json({ 
@@ -43,12 +43,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    const success = await dynamicTeamServiceClient.updateTeamLogo(
-      teamName, 
-      league, 
-      logoUrl, 
-      teamData
-    )
+    const { mcpDatabaseService } = await import('@/lib/services/mcp-database-service')
+    const query = `UPDATE teams SET logo_url='${String(logoUrl).replace(/'/g, "''")}' WHERE name='${String(teamName).replace(/'/g, "''")}' AND league='${String(league).replace(/'/g, "''")}'`
+    const result = await mcpDatabaseService.executeSQL(query)
+    const success = result.success
 
     if (!success) {
       return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })
@@ -75,11 +73,9 @@ export async function DELETE(request: NextRequest) {
     const league = searchParams.get('league')
 
     if (teamName && league) {
-      // Clear specific team cache
-      dynamicTeamServiceClient.clearCache()
+      // No in-memory cache layer to clear; return success
     } else {
-      // Clear all cache
-      dynamicTeamServiceClient.clearCache()
+      // No global cache to clear here; return success
     }
 
     return NextResponse.json({ 

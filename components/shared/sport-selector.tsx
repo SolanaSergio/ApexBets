@@ -154,7 +154,7 @@ export function SportSelector({
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {currentSportConfig?.leagues.length || 0} leagues available
+                      {(currentSportConfig?.leagues?.length || 0)} leagues available
                     </div>
                   </div>
                 </div>
@@ -197,13 +197,13 @@ export function SportSelector({
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {config?.leagues.join(", ")}
+                            {(config?.leagues || []).join(", ")}
                           </div>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Activity className="h-3 w-3 text-yellow-500" />
                           <span className="text-xs text-muted-foreground">
-                            {config?.leagues.length}
+                            {(config?.leagues?.length || 0)}
                           </span>
                         </div>
                       </div>
@@ -250,7 +250,7 @@ export function SportSelector({
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {currentSportConfig?.leagues.length || 0} leagues available
+                  {(currentSportConfig?.leagues?.length || 0)} leagues available
                 </div>
               </div>
             </div>
@@ -293,13 +293,13 @@ export function SportSelector({
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {config?.leagues.join(", ")}
+                        {(config?.leagues || []).join(", ")}
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Activity className="h-3 w-3 text-yellow-500" />
                       <span className="text-xs text-muted-foreground">
-                        {config?.leagues.length}
+                        {(config?.leagues?.length || 0)}
                       </span>
                     </div>
                   </div>

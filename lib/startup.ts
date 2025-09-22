@@ -3,7 +3,7 @@
  * This file is imported by Next.js to automatically initialize services
  */
 
-import { autoStartupService } from './services/auto-startup-service';
+import { autoStartupService } from './services/auto-startup-service'
 
 // Configuration for automatic startup
 const STARTUP_CONFIG = {

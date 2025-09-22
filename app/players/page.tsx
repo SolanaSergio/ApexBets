@@ -60,7 +60,7 @@ export default function PlayersPage() {
 
         {/* Search Section */}
         {selectedSport ? (
-          <PlayerSearch onPlayerSelect={setSelectedPlayer} selectedPlayer={selectedPlayer} sport={selectedSport} />
+          <PlayerSearch onPlayerSelect={(p) => setSelectedPlayer(p as any)} selectedPlayer={selectedPlayer as any} sport={selectedSport} />
         ) : (
           <Card>
             <CardContent className="p-8">

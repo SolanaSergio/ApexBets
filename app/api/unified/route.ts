@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getStandings(sport, league || undefined)
+        data = await unifiedApiClient.getStandings(sport, league ? { league } : {})
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getOdds(sport, league ? { league } : {})
+        data = await unifiedApiClient.getOdds(sport, {})
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -136,7 +136,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getPredictions(sport, league ? { league } : {})
+        data = await unifiedApiClient.getPredictions(sport, {})
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
@@ -149,7 +149,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getAnalytics(sport, { league })
+        data = await unifiedApiClient.getAnalytics(sport, league ? { league } : undefined)
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)
         break
@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           )
         }
-        data = await unifiedApiClient.getValueBets(sport, { league, limit })
+        data = await unifiedApiClient.getValueBets(sport, { ...(league ? { league } : {}), ...(limit ? { limit } : {}) })
         meta.count = data.length
         meta.sport = sport
         meta.league = league || unifiedApiClient.getDefaultLeague(sport)

@@ -227,7 +227,7 @@ export default function AnalyticsDashboard({
               <SelectItem value="">All Leagues</SelectItem>
               {(() => {
                 const sportConfig = SportConfigManager.getSportConfig(selectedSport as SupportedSport)
-                return sportConfig?.leagues.map((league: any) => (
+                return (sportConfig?.leagues || []).map((league: any) => (
                   <SelectItem key={league.id} value={league.id}>
                     {league.name}
                   </SelectItem>
