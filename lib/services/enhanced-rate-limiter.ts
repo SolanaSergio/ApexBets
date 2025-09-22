@@ -87,6 +87,13 @@ export class EnhancedRateLimiter {
         requestsPerDay: 100,
         burstLimit: 10,
         windowSizeMs: 60000
+      },
+      {
+        provider: 'optimized-api',
+        requestsPerMinute: 1000,
+        requestsPerDay: Number.MAX_SAFE_INTEGER,
+        burstLimit: 100,
+        windowSizeMs: 60000
       }
     ]
 

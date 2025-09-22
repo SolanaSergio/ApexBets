@@ -35,20 +35,25 @@ export class ImageService {
         return cached.url
       }
 
-      // In a real implementation, this would fetch from an API or database
-      // For now, return a placeholder URL
-      const logoUrl = this.generatePlaceholderLogoUrl(teamName, league, sport)
+      // Fetch from database via MCP - no mock data allowed
+      const logoUrl = await this.fetchTeamLogoFromDatabase(teamName, league, sport)
       
-      // Cache the result
-      this.cache.set(cacheKey, {
-        url: logoUrl,
-        cached: true
-      })
+      if (logoUrl) {
+        // Cache the result
+        this.cache.set(cacheKey, {
+          url: logoUrl,
+          cached: true
+        })
 
-      structuredLogger.cacheMiss(cacheKey)
-      structuredLogger.debug('Generated team logo URL', { teamName, league, sport, logoUrl })
+        structuredLogger.cacheMiss(cacheKey)
+        structuredLogger.debug('Fetched team logo URL from database', { teamName, league, sport, logoUrl })
 
-      return logoUrl
+        return logoUrl
+      }
+
+      // No logo found - return empty string per no-mock-data rule
+      structuredLogger.debug('No team logo found in database', { teamName, league, sport })
+      return ''
 
     } catch (error) {
       structuredLogger.error('Failed to get team logo URL', {
@@ -58,7 +63,8 @@ export class ImageService {
         error: error instanceof Error ? error.message : String(error)
       })
 
-      return this.getDefaultTeamLogoUrl()
+      // Return empty string instead of placeholder per no-mock-data rule
+      return ''
     }
   }
 
@@ -73,20 +79,25 @@ export class ImageService {
         return cached.url
       }
 
-      // In a real implementation, this would fetch from an API or database
-      // For now, return a placeholder URL
-      const photoUrl = this.generatePlaceholderPlayerPhotoUrl(playerId, sport)
+      // Fetch from database via MCP - no mock data allowed
+      const photoUrl = await this.fetchPlayerPhotoFromDatabase(playerId, sport)
       
-      // Cache the result
-      this.cache.set(cacheKey, {
-        url: photoUrl,
-        cached: true
-      })
+      if (photoUrl) {
+        // Cache the result
+        this.cache.set(cacheKey, {
+          url: photoUrl,
+          cached: true
+        })
 
-      structuredLogger.cacheMiss(cacheKey)
-      structuredLogger.debug('Generated player photo URL', { playerId, sport, photoUrl })
+        structuredLogger.cacheMiss(cacheKey)
+        structuredLogger.debug('Fetched player photo URL from database', { playerId, sport, photoUrl })
 
-      return photoUrl
+        return photoUrl
+      }
+
+      // No photo found - return empty string per no-mock-data rule
+      structuredLogger.debug('No player photo found in database', { playerId, sport })
+      return ''
 
     } catch (error) {
       structuredLogger.error('Failed to get player photo URL', {
@@ -95,47 +106,71 @@ export class ImageService {
         error: error instanceof Error ? error.message : String(error)
       })
 
-      return this.getDefaultPlayerPhotoUrl()
+      // Return empty string instead of placeholder per no-mock-data rule
+      return ''
     }
   }
 
-  private generatePlaceholderLogoUrl(teamName: string, _league?: string, _sport?: string): string {
-    // Generate a placeholder logo URL based on team name
-    const encodedTeamName = encodeURIComponent(teamName)
-    const size = '200x200'
-    
-    // Use a placeholder service or generate a simple URL
-    return `https://via.placeholder.com/${size}/4A90E2/FFFFFF?text=${encodedTeamName}`
-  }
-
-  private generatePlaceholderPlayerPhotoUrl(_playerId: string, sport?: string): string {
-    // Generate a placeholder player photo URL
-    const size = '150x150'
-    const sportIcon = this.getSportIcon(sport)
-    
-    return `https://via.placeholder.com/${size}/2ECC71/FFFFFF?text=${sportIcon}`
-  }
-
-  private getSportIcon(sport?: string): string {
-    const icons: { [key: string]: string } = {
-      basketball: '🏀',
-      football: '🏈',
-      soccer: '⚽',
-      baseball: '⚾',
-      hockey: '🏒',
-      tennis: '🎾',
-      golf: '⛳'
+  private async fetchTeamLogoFromDatabase(teamName: string, league?: string, sport?: string): Promise<string | null> {
+    try {
+      // Import MCP database service
+      const { mcpDatabaseService } = await import('./mcp-database-service')
+      
+      const query = `
+        SELECT logo_url 
+        FROM teams 
+        WHERE name = $1 
+        AND ($2::text IS NULL OR league = $2)
+        AND ($3::text IS NULL OR sport = $3)
+        LIMIT 1
+      `
+      
+      const result = await mcpDatabaseService.executeSQL(query, [teamName, league, sport])
+      
+      if (result.success && result.data && result.data.length > 0) {
+        return result.data[0].logo_url
+      }
+      
+      return null
+    } catch (error) {
+      structuredLogger.error('Failed to fetch team logo from database', {
+        teamName,
+        league,
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return null
     }
-    
-    return icons[sport || 'unknown'] || '👤'
   }
 
-  private getDefaultTeamLogoUrl(): string {
-    return 'https://via.placeholder.com/200x200/CCCCCC/FFFFFF?text=Team'
-  }
-
-  private getDefaultPlayerPhotoUrl(): string {
-    return 'https://via.placeholder.com/150x150/CCCCCC/FFFFFF?text=Player'
+  private async fetchPlayerPhotoFromDatabase(playerId: string, sport?: string): Promise<string | null> {
+    try {
+      // Import MCP database service
+      const { mcpDatabaseService } = await import('./mcp-database-service')
+      
+      const query = `
+        SELECT photo_url 
+        FROM players 
+        WHERE id = $1 
+        AND ($2::text IS NULL OR sport = $2)
+        LIMIT 1
+      `
+      
+      const result = await mcpDatabaseService.executeSQL(query, [playerId, sport])
+      
+      if (result.success && result.data && result.data.length > 0) {
+        return result.data[0].photo_url
+      }
+      
+      return null
+    } catch (error) {
+      structuredLogger.error('Failed to fetch player photo from database', {
+        playerId,
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      return null
+    }
   }
 
   async optimizeImage(url: string, width?: number, height?: number): Promise<ImageResult> {
@@ -207,27 +242,16 @@ export interface TeamLogoConfig { teamName: string; league?: string; sport?: str
 export interface PlayerPhotoConfig { playerId: string; sport?: string }
 
 export const IMAGE_SOURCES = {
-  teamLogos: 'placeholder',
-  playerPhotos: 'placeholder'
+  teamLogos: 'database',
+  playerPhotos: 'database'
 }
 
-export function getSportsImageUrl(category: string, options?: { width?: number; height?: number }): string {
-  const width = options?.width || 200
-  const height = options?.height || 200
-  const map: Record<string, string> = {
-    team: `https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=${width}&h=${height}&auto=format&fit=crop`,
-    player: `https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=${width}&h=${height}&auto=format&fit=crop`,
-    sports: `https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=${width}&h=${height}&auto=format&fit=crop`
-  }
-  return map[category] || `https://via.placeholder.com/${width}x${height}/CCCCCC/FFFFFF?text=Image`
+export function getSportsImageUrl(_category: string, _options?: { width?: number; height?: number }): string {
+  // No mock data - return empty string per compliance rules
+  return ''
 }
 
-export function getFallbackImageUrl(type: 'team' | 'player' | 'sports' = 'sports'): string {
-  if (type === 'team') {
-    return 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop'
-  }
-  if (type === 'player') {
-    return 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop'
-  }
-  return 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=400&h=250&auto=format&fit=crop'
+export function getFallbackImageUrl(_type: 'team' | 'player' | 'sports' = 'sports'): string {
+  // No mock data - return empty string per compliance rules
+  return ''
 }

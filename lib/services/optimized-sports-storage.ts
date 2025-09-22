@@ -4,6 +4,7 @@
  */
 
 import { supabaseMCPClient } from '../supabase/mcp-client'
+import { databaseCacheService } from '../services/database-cache-service'
 // import { enhancedRateLimiter } from './enhanced-rate-limiter'
 
 export interface SportsDataConfig {
@@ -71,6 +72,11 @@ export class OptimizedSportsStorage {
         await supabaseMCPClient.executeSQL(insertQuery)
       }
 
+      // Invalidate cache keys related to this sport after writes
+      try {
+        await databaseCacheService.clearBySport(sport)
+      } catch {}
+
       console.log(`✅ Stored ${games.length} games for ${sport}/${league}`)
     } catch (error) {
       console.error('Failed to store games:', error)
@@ -118,6 +124,11 @@ export class OptimizedSportsStorage {
         await supabaseMCPClient.executeSQL(insertQuery)
       }
 
+      // Invalidate cache keys related to this sport after writes
+      try {
+        await databaseCacheService.clearBySport(sport)
+      } catch {}
+
       console.log(`✅ Stored ${teams.length} teams for ${sport}/${league}`)
     } catch (error) {
       console.error('Failed to store teams:', error)
@@ -163,6 +174,11 @@ export class OptimizedSportsStorage {
 
         await supabaseMCPClient.executeSQL(insertQuery)
       }
+
+      // Invalidate cache keys related to this sport after writes
+      try {
+        await databaseCacheService.clearBySport(sport)
+      } catch {}
 
       console.log(`✅ Stored ${players.length} players for ${sport}/${league}`)
     } catch (error) {

@@ -71,43 +71,51 @@ export class DynamicSportConfigService {
     }
 
     try {
-      // This will be implemented with actual MCP tools in the calling context
-      // For now, we'll use a fallback configuration
+      // Load from database via MCP; no hardcoded defaults
       this.configs.clear()
-      
-      // Generate dynamic configurations from environment or minimal defaults
-      const supportedSports = process.env.SUPPORTED_SPORTS?.split(',') || ['basketball', 'football', 'baseball', 'hockey', 'soccer']
 
-      const defaultConfigs: DynamicSportConfig[] = supportedSports.map(sport => {
-        const sportUpper = sport.toUpperCase()
-        return {
-          id: sport,
-          name: sport,
-          displayName: process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
-          icon: process.env[`${sportUpper}_ICON`] || 'activity',
-          color: process.env[`${sportUpper}_COLOR`] || 'text-gray-500',
-          isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
-          dataSource: process.env[`${sportUpper}_DATA_SOURCE`] || 'sportsdb',
-          playerStatsTable: process.env[`${sportUpper}_STATS_TABLE`] || 'player_stats',
-          positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
-          scoringFields: {
-            primary: process.env[`${sportUpper}_PRIMARY_SCORE`] || 'points',
-            for: process.env[`${sportUpper}_SCORE_FOR`] || 'points',
-            against: process.env[`${sportUpper}_SCORE_AGAINST`] || 'points'
-          },
-          bettingMarkets: [
-            { id: 'moneyline', name: 'Moneyline', description: 'Win/Loss' },
-            { id: 'spread', name: 'Spread', description: 'Point/Goal difference' },
-            { id: 'total', name: 'Total', description: 'Over/Under total score' }
-          ],
-          seasonConfig: { startMonth: 9, endMonth: 5, seasonYearOffset: 0 },
-          rateLimits: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000, burstLimit: 5 },
-          updateFrequency: 30
+      const { supabaseMCPClient } = await import('../../supabase/mcp-client')
+      const sql = `
+        SELECT id,
+               name,
+               display_name,
+               icon,
+               color,
+               is_active,
+               data_source,
+               api_key,
+               player_stats_table,
+               positions,
+               scoring_fields,
+               betting_markets,
+               season_config,
+               rate_limits,
+               update_frequency
+        FROM sport_configurations
+        WHERE is_active = true
+        ORDER BY display_name
+      `
+      const rows = await supabaseMCPClient.executeSQL(sql)
+
+      for (const row of rows) {
+        const cfg: DynamicSportConfig = {
+          id: row.id,
+          name: row.name,
+          displayName: row.display_name,
+          icon: row.icon,
+          color: row.color,
+          isActive: row.is_active,
+          dataSource: row.data_source,
+          apiKey: row.api_key || undefined,
+          playerStatsTable: row.player_stats_table,
+          positions: Array.isArray(row.positions) ? row.positions : [],
+          scoringFields: row.scoring_fields,
+          bettingMarkets: Array.isArray(row.betting_markets) ? row.betting_markets : [],
+          seasonConfig: row.season_config,
+          rateLimits: row.rate_limits,
+          updateFrequency: typeof row.update_frequency === 'number' ? row.update_frequency : 30
         }
-      })
-
-      for (const config of defaultConfigs) {
-        this.configs.set(config.name, config)
+        this.configs.set(cfg.name, cfg)
       }
     } catch (error) {
       console.error('Failed to load sport configurations:', error)
@@ -165,75 +173,8 @@ export class DynamicSportConfigService {
     if (!config) {
       return {}
     }
-
-    // Return sport-specific stat field mappings
-    switch (sport) {
-      case 'basketball':
-        return {
-          points: 'points',
-          rebounds: 'rebounds',
-          assists: 'assists',
-          steals: 'steals',
-          blocks: 'blocks',
-          fgm: 'field_goals_made',
-          fga: 'field_goals_attempted',
-          fg3m: 'three_pointers_made',
-          fg3a: 'three_pointers_attempted',
-          ftm: 'free_throws_made',
-          fta: 'free_throws_attempted',
-          minutes: 'minutes_played'
-        }
-      case 'football':
-        return {
-          passingYards: 'passing_yards',
-          passingTDs: 'passing_touchdowns',
-          rushingYards: 'rushing_yards',
-          rushingTDs: 'rushing_touchdowns',
-          receivingYards: 'receiving_yards',
-          receivingTDs: 'receiving_touchdowns',
-          receptions: 'receptions',
-          tackles: 'tackles',
-          sacks: 'sacks',
-          interceptions: 'interceptions'
-        }
-      case 'baseball':
-        return {
-          atBats: 'at_bats',
-          hits: 'hits',
-          runs: 'runs',
-          rbi: 'rbi',
-          homeRuns: 'home_runs',
-          doubles: 'doubles',
-          triples: 'triples',
-          walks: 'walks',
-          strikeouts: 'strikeouts',
-          battingAvg: 'batting_average'
-        }
-      case 'hockey':
-        return {
-          goals: 'goals',
-          assists: 'assists',
-          points: 'points',
-          plusMinus: 'plus_minus',
-          penaltyMinutes: 'penalty_minutes',
-          shots: 'shots',
-          hits: 'hits',
-          blockedShots: 'blocked_shots'
-        }
-      case 'soccer':
-        return {
-          goals: 'goals',
-          assists: 'assists',
-          shots: 'shots',
-          shotsOnTarget: 'shots_on_target',
-          passes: 'passes',
-          passesCompleted: 'passes_completed',
-          tackles: 'tackles',
-          interceptions: 'interceptions'
-        }
-      default:
-        return {}
-    }
+    // Use dynamic stat fields from configuration; no hardcoded mappings
+    return config.scoringFields ? { [config.scoringFields.primary]: config.scoringFields.primary } : {}
   }
 
   /**

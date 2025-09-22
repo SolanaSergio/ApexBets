@@ -8,6 +8,8 @@ import { enhancedRateLimiter } from '@/lib/services/enhanced-rate-limiter'
 import { optimizedSportsStorage } from '@/lib/services/optimized-sports-storage'
 import { apiFallbackStrategy } from '@/lib/services/api-fallback-strategy'
 import { schemaMigrations } from '@/lib/database/schema-migrations'
+import { supabaseMCPClient } from '@/lib/supabase/mcp-client'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now()
@@ -246,7 +248,10 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json()
-    const { action, data: requestData } = body
+    const { action, data: requestData, ...directData } = body
+
+    // Use directData if requestData is not provided (for backward compatibility)
+    const data = requestData || directData
 
     // Check rate limits
     const rateLimitResult = await enhancedRateLimiter.checkRateLimit('optimized-api', action)
@@ -269,35 +274,53 @@ export async function POST(request: NextRequest) {
 
     switch (action) {
       case 'store-games':
-        const { sport, league, games } = requestData
+        const { sport, league, games } = data
         await optimizedSportsStorage.storeGames(sport, league, games)
         result = { message: `Stored ${games.length} games for ${sport}/${league}` }
         break
 
       case 'store-teams':
-        const { sport: teamSport, league: teamLeague, teams } = requestData
+        const { sport: teamSport, league: teamLeague, teams } = data
         await optimizedSportsStorage.storeTeams(teamSport, teamLeague, teams)
         result = { message: `Stored ${teams.length} teams for ${teamSport}/${teamLeague}` }
         break
 
       case 'store-players':
-        const { sport: playerSport, league: playerLeague, players } = requestData
+        const { sport: playerSport, league: playerLeague, players } = data
         await optimizedSportsStorage.storePlayers(playerSport, playerLeague, players)
         result = { message: `Stored ${players.length} players for ${playerSport}/${playerLeague}` }
         break
 
       case 'clear-cache':
-        const { sport: clearSport } = requestData
+        const { sport: clearSport } = data
         if (clearSport) {
           await optimizedSportsStorage.clearOldData(clearSport, 7) // Clear data older than 7 days
           result = { message: `Cleared old data for ${clearSport}` }
         } else {
-          // Clear all old data
-          const sports = ['basketball', 'football', 'baseball', 'hockey', 'soccer']
-          for (const sport of sports) {
-            await optimizedSportsStorage.clearOldData(sport, 7)
+          // Clear all old data using dynamic sports list
+          let sports: string[] = []
+          try {
+            const rows = await supabaseMCPClient.executeSQL("SELECT name FROM sports WHERE is_active = true")
+            if (Array.isArray(rows) && rows.length > 0) {
+              sports = rows.map((r: any) => r.name).filter((n: unknown): n is string => typeof n === 'string' && n.length > 0)
+            }
+          } catch (_) {
+            // Ignore and fallback
           }
-          result = { message: 'Cleared old data for all sports' }
+
+          if (sports.length === 0) {
+            // Fallback to config manager list (env/config driven)
+            try {
+              sports = SportConfigManager.getSupportedSports()
+            } catch (_) {
+              sports = []
+            }
+          }
+
+          for (const s of sports) {
+            await optimizedSportsStorage.clearOldData(s, 7)
+          }
+          result = { message: `Cleared old data for ${sports.length > 0 ? sports.join(', ') : 'no sports (none configured)'}` }
         }
         break
 

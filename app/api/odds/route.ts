@@ -10,13 +10,14 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport")
+    const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
     const limit = parseInt(searchParams.get("limit") || "10")
     const gameId = searchParams.get("gameId")
 
     // If sport is provided, try sport-specific endpoint first, fallback to general query
-    if (sport) {
+    if (sport && externalAllowed) {
       try {
-        // Try to get odds from sport-specific endpoint
+        // Try to get odds from sport-specific endpoint (external)
         const sportResponse = await fetch(`${request.url.replace('/api/odds', `/api/odds/${sport}`)}`)
         if (sportResponse.ok) {
           const sportData = await sportResponse.json()

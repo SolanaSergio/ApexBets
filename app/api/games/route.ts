@@ -14,7 +14,8 @@ function filterLiveGamesLocal(games: Array<{ id: string; game_date?: string; sta
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const useExternalApi = searchParams.get("external") === "true"
+    const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
+    const useExternalApi = externalAllowed && searchParams.get("external") === "true"
     
     if (useExternalApi) {
       // Use API fallback strategy for real-time data
@@ -38,137 +39,16 @@ export async function GET(request: NextRequest) {
         
         if (fallbackResult.success && fallbackResult.data) {
           // Normalize the data to our expected format - use real team data
-          const normalizedGames = await Promise.all(
-            Array.isArray(fallbackResult.data) 
-            ? fallbackResult.data.map(async (game: any) => {
-                // Extract real team names from API response - no hardcoded fallbacks
-                // Handle different API response structures including nested teams object
-                let homeTeamName, awayTeamName;
-                
-                // Check if teams data is in a nested object structure
-                if (game.teams && typeof game.teams === 'object') {
-                  // Handle teams object with home/away properties
-                  if (game.teams.home && game.teams.away) {
-                    homeTeamName = game.teams.home.name || 
-                                 game.teams.home.team?.name || 
-                                 game.teams.home.teamName ||
-                                 game.teams.home.displayName ||
-                                 game.teams.home.full_name;
-                    awayTeamName = game.teams.away.name || 
-                                 game.teams.away.team?.name || 
-                                 game.teams.away.teamName ||
-                                 game.teams.away.displayName ||
-                                 game.teams.away.full_name;
-                  }
-                  // Handle teams array structure
-                  else if (Array.isArray(game.teams) && game.teams.length >= 2) {
-                    homeTeamName = game.teams[0]?.name || 
-                                 game.teams[0]?.team?.name || 
-                                 game.teams[0]?.teamName ||
-                                 game.teams[0]?.displayName ||
-                                 game.teams[0]?.full_name;
-                    awayTeamName = game.teams[1]?.name || 
-                                 game.teams[1]?.team?.name || 
-                                 game.teams[1]?.teamName ||
-                                 game.teams[1]?.displayName ||
-                                 game.teams[1]?.full_name;
-                  }
-                }
-                
-                // Fallback to direct field access if teams object didn't work
-                if (!homeTeamName || !awayTeamName) {
-                  homeTeamName = game.home_team?.name || 
-                               game.strHomeTeam || 
-                               game.homeTeam?.name || 
-                               game.homeTeam || 
-                               game.homeTeamName ||
-                               game.home_team?.displayName ||
-                               game.home_team?.full_name ||
-                               game.home_team?.teamName;
-                                
-                  awayTeamName = game.away_team?.name || 
-                               game.strAwayTeam || 
-                               game.awayTeam?.name || 
-                               game.awayTeam || 
-                               game.awayTeamName ||
-                               game.away_team?.displayName ||
-                               game.away_team?.full_name ||
-                               game.away_team?.teamName;
-                }
-                
-                // If we still don't have team names, log the structure and return null
-                if (!homeTeamName || !awayTeamName) {
-                  console.warn('Missing team names in API response:', { 
-                    homeTeamName, 
-                    awayTeamName, 
-                    availableFields: Object.keys(game),
-                    homeTeamFields: game.home_team ? Object.keys(game.home_team) : 'no home_team',
-                    awayTeamFields: game.away_team ? Object.keys(game.away_team) : 'no away_team'
-                  });
-                  return null; // Skip this game if team names are missing
-                }
-                
-                // Use dynamic abbreviation generation
-                const generateAbbreviation = (teamName: string): string => {
-                  if (!teamName) return 'TBD';
-                  const words = teamName.split(' ').filter(word => word.length > 0);
-                  if (words.length === 1) return words[0].substring(0, 3).toUpperCase();
-                  return words.map(word => word.charAt(0)).join('').toUpperCase().substring(0, 3);
-                };
-                
-                // Use fallback values instead of async calls in map
-                const currentYear = new Date().getFullYear()
-                const season = game.season || `${currentYear}-${(currentYear + 1).toString().slice(-2)}`
-                const status = game.status || 'scheduled'
-                const league = game.league || game.strLeague || 'Unknown'
-                
-                // Create a truly unique ID by combining multiple identifiers
-                const createUniqueGameId = (game: any): string => {
-                  const homeTeam = game.home_team?.name || game.strHomeTeam || game.homeTeam?.name || game.homeTeam || 'home';
-                  const awayTeam = game.away_team?.name || game.strAwayTeam || game.awayTeam?.name || game.awayTeam || 'away';
-                  const gameDate = game.date || game.dateEvent || game.game_date || new Date().toISOString();
-                  const baseId = String(game.id || `${homeTeam}-${awayTeam}`);
-                  const input = `${baseId}-${homeTeam}-${awayTeam}-${gameDate}`;
-                  let hash = 0;
-                  for (let i = 0; i < input.length; i++) {
-                    const chr = input.charCodeAt(i);
-                    hash = (hash << 5) - hash + chr;
-                    hash |= 0;
-                  }
-                  return `${baseId}_${Math.abs(hash).toString(36).slice(0, 8)}`;
-                };
-                
-                return {
-                  id: createUniqueGameId(game),
-                  home_team_id: `external_home_${game.id || Math.random().toString(36).substr(2, 9)}`,
-                  away_team_id: `external_away_${game.id || Math.random().toString(36).substr(2, 9)}`,
-                  game_date: game.date || game.dateEvent || game.game_date || new Date().toISOString(),
-                  season,
-                  home_score: game.home_score || game.intHomeScore || null,
-                  away_score: game.away_score || game.intAwayScore || null,
-                  status,
-                  venue: game.venue || game.strVenue || null,
-                  league,
-                  home_team: {
-                    name: homeTeamName,
-                    abbreviation: game.home_team?.abbreviation || generateAbbreviation(homeTeamName),
-                    logo_url: game.home_team?.logoUrl || game.home_team?.logo || undefined
-                  },
-                  away_team: {
-                    name: awayTeamName,
-                    abbreviation: game.away_team?.abbreviation || generateAbbreviation(awayTeamName),
-                    logo_url: game.away_team?.logoUrl || game.away_team?.logo || undefined
-                  }
-                }
-              })
+          const { normalizeGameData, deduplicateGames } = await import("@/lib/utils/data-utils")
+          const normalizedGames = Array.isArray(fallbackResult.data)
+            ? fallbackResult.data
+                .filter((g: any) => g)
+                .map((g: any) => normalizeGameData(g, sport as string))
             : []
-          )
           
           // Filter out null games (games with missing team names) and remove duplicates
-          const validGames = normalizedGames.filter(game => game !== null)
-          const deduplicatedGames = validGames.filter((game, index, array) => 
-            array.findIndex(g => g.id === game.id) === index
-          )
+          const validGames = normalizedGames.filter((game: any) => game && game.home_team && game.away_team)
+          const deduplicatedGames = deduplicateGames(validGames)
           
           // If requesting live games, filter to only show actually live ones
           let finalGames = deduplicatedGames

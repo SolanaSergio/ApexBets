@@ -157,11 +157,11 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       console.log(`Loading teams for ${sport}...`)
       
-      // Use external API first for real-time data
+      // Prefer database-first; only external if DB empty and allowed via server
       let teams: TeamData[] = []
       try {
-        teams = await simpleApiClient.getTeams({ sport, external: true })
-        console.log(`External API: Loaded ${teams.length} teams for ${sport}`)
+        teams = await simpleApiClient.getTeams({ sport })
+        console.log(`Database: Loaded ${teams.length} teams for ${sport}`)
         
         // Normalize team data to ensure consistency with error handling
         teams = teams
@@ -179,10 +179,10 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
         // Deduplicate teams
         teams = deduplicateTeams(teams)
         
-        // Fallback to database if external API fails
+        // If empty, request server-managed external fallback (no client forcing external)
         if (teams.length === 0) {
           try {
-            teams = await simpleApiClient.getTeams({ sport, external: false })
+            teams = await simpleApiClient.getTeams({ sport })
             teams = teams
               .filter(team => team && typeof team === 'object') // Filter out invalid teams
               .map(team => {
@@ -555,31 +555,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
         } else {
-          // ========================================================================
-          // CRITICAL FALLBACK: HARDCODED DEFAULT SPORT FOR DASHBOARD INITIALIZATION
-          // ========================================================================
-          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads.
-          // 
-          // WHEN THIS OCCURS: Only when SportConfigManager fails to load any supported sports
-          // 
-          // DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
-          // - Dynamic data loading (all data is loaded dynamically based on selected sport)
-          // - User sport selection changes (users can still select any sport)
-          // - API data fetching (all APIs are called with the selected sport parameter)
-          // - Real-time updates (all updates are sport-agnostic)
-          // - Multi-sport support (dashboard supports all configured sports)
-          //
-          // This is purely for initial component state - all subsequent behavior is dynamic.
-          // ========================================================================
-          // Use environment configuration instead of hardcoded sports
-          const envSports = (process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || '').split(',').filter(Boolean)
-          if (envSports.length > 0) {
-            console.warn('No supported sports found in configuration, using environment fallback:', envSports[0])
-            setSelectedSupportedSport(envSports[0] as SupportedSport)
-          } else {
-            console.warn('No supported sports found in configuration or environment, showing sport selection UI')
-            setSelectedSupportedSport(null)
-          }
+          // No supported sports found - show sport selection UI
+          console.warn('No supported sports found in configuration, showing sport selection UI')
+          setSelectedSupportedSport(null)
         }
       }
     } catch (error) {
@@ -594,31 +572,9 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
         } else {
-          // ========================================================================
-          // CRITICAL FALLBACK: HARDCODED DEFAULT SPORT FOR DASHBOARD INITIALIZATION
-          // ========================================================================
-          // This is the ONLY case where we hardcode a sport value to ensure the dashboard loads.
-          // 
-          // WHEN THIS OCCURS: Only when SportConfigManager fails to load any supported sports
-          // 
-          // DYNAMIC GUARANTEE: This hardcoded value does NOT affect:
-          // - Dynamic data loading (all data is loaded dynamically based on selected sport)
-          // - User sport selection changes (users can still select any sport)
-          // - API data fetching (all APIs are called with the selected sport parameter)
-          // - Real-time updates (all updates are sport-agnostic)
-          // - Multi-sport support (dashboard supports all configured sports)
-          //
-          // This is purely for initial component state - all subsequent behavior is dynamic.
-          // ========================================================================
-          // Use environment configuration instead of hardcoded sports
-          const envSports = (process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || '').split(',').filter(Boolean)
-          if (envSports.length > 0) {
-            console.warn('No supported sports found in configuration, using environment fallback:', envSports[0])
-            setSelectedSupportedSport(envSports[0] as SupportedSport)
-          } else {
-            console.warn('No supported sports found in configuration or environment, showing sport selection UI')
-            setSelectedSupportedSport(null)
-          }
+          // No supported sports found - show sport selection UI
+          console.warn('No supported sports found in configuration, showing sport selection UI')
+          setSelectedSupportedSport(null)
         }
       }
     }

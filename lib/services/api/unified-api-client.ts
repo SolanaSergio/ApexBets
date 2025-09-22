@@ -118,8 +118,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizeGameData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizeGameData)
       }
 
       return []
@@ -143,8 +143,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizeTeamData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizeTeamData)
       }
 
       return []
@@ -165,8 +165,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizePlayerData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizePlayerData)
       }
 
       return []
@@ -186,8 +186,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizeStandingsData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizeStandingsData)
       }
 
       return []
@@ -207,8 +207,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizeOddsData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizeOddsData)
       }
 
       return []
@@ -228,8 +228,8 @@ export class UnifiedApiClient {
         ...options
       })
 
-      if (result.success && Array.isArray(result.data)) {
-        return result.data.map(this.normalizePredictionData)
+      if (Array.isArray(result)) {
+        return result.map(this.normalizePredictionData)
       }
 
       return []

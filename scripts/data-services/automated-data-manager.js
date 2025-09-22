@@ -100,37 +100,29 @@ class AutomatedDataManager {
   loadDefaultSportsConfiguration() {
     console.log('📊 Loading default sports configuration...');
 
-    // Minimal fallback configuration - will be populated from environment or API
+    // Load sports configuration dynamically from environment
+    const supportedSports = (process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || '').split(',').filter(Boolean);
+    
+    if (supportedSports.length === 0) {
+      console.warn('No supported sports configured in environment');
+      this.sports = {};
+      return;
+    }
+
     const currentYear = new Date().getFullYear();
     const currentSeason = `${currentYear}-${(currentYear + 1).toString().slice(-2)}`;
 
-    this.sports = {
-      basketball: {
-        leagues: process.env.BASKETBALL_LEAGUES?.split(',') || ['NBA'],
+    this.sports = {};
+
+    // Load configuration for each supported sport
+    supportedSports.forEach(sport => {
+      const sportUpper = sport.toUpperCase();
+      this.sports[sport] = {
+        leagues: process.env[`${sportUpper}_LEAGUES`]?.split(',') || [],
         seasons: [currentSeason],
-        updateFrequency: parseInt(process.env.BASKETBALL_UPDATE_FREQUENCY) || 15
-      },
-      football: {
-        leagues: process.env.FOOTBALL_LEAGUES?.split(',') || ['NFL'],
-        seasons: [currentSeason],
-        updateFrequency: parseInt(process.env.FOOTBALL_UPDATE_FREQUENCY) || 30
-      },
-      baseball: {
-        leagues: process.env.BASEBALL_LEAGUES?.split(',') || ['MLB'],
-        seasons: [currentYear.toString()],
-        updateFrequency: parseInt(process.env.BASEBALL_UPDATE_FREQUENCY) || 60
-      },
-      hockey: {
-        leagues: process.env.HOCKEY_LEAGUES?.split(',') || ['NHL'],
-        seasons: [currentSeason],
-        updateFrequency: parseInt(process.env.HOCKEY_UPDATE_FREQUENCY) || 30
-      },
-      soccer: {
-        leagues: process.env.SOCCER_LEAGUES?.split(',') || ['Premier League'],
-        seasons: [currentSeason],
-        updateFrequency: parseInt(process.env.SOCCER_UPDATE_FREQUENCY) || 60
-      }
-    };
+        updateFrequency: parseInt(process.env[`${sportUpper}_UPDATE_FREQUENCY`]) || 30
+      };
+    });
   }
 
   async start() {

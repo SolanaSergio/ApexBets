@@ -52,8 +52,18 @@ export function DynamicQuickAccessPanel() {
         }
       }
       
-      // Calculate accuracy rate based on recent predictions (placeholder logic)
-      const accuracyRate = Math.min(95, Math.max(75, 85 + Math.random() * 10))
+      // Calculate accuracy rate based on real prediction data
+      let accuracyRate = 0
+      try {
+        const predictionsResponse = await simpleApiClient.getPredictions({ limit: 100 })
+        if (predictionsResponse && predictionsResponse.length > 0) {
+          const correctPredictions = predictionsResponse.filter(p => p.accuracy === true).length
+          accuracyRate = Math.round((correctPredictions / predictionsResponse.length) * 100)
+        }
+      } catch (error) {
+        console.warn('Could not calculate accuracy rate from real data:', error)
+        // Keep accuracy rate at 0 if no real data available
+      }
       
       setStats({
         liveGames: totalLiveGames,

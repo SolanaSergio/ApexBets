@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
-import { SupportedSport } from "@/lib/services/core/service-factory"
+import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,17 +12,11 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport")
     
-    if (!sport) {
+    // Validate sport parameter dynamically
+    const supportedSports: SupportedSport[] = SportConfigManager.getSupportedSports()
+    if (!sport || !supportedSports.includes(sport as SupportedSport)) {
       return NextResponse.json({ 
-        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer" 
-      }, { status: 400 })
-    }
-
-    // Validate sport parameter
-    const supportedSports: SupportedSport[] = ['basketball', 'football', 'baseball', 'hockey', 'soccer']
-    if (!supportedSports.includes(sport as SupportedSport)) {
-      return NextResponse.json({ 
-        error: `Unsupported sport: ${sport}. Supported sports: ${supportedSports.join(', ')}` 
+        error: `Sport parameter is required and must be one of: ${supportedSports.join(', ')}` 
       }, { status: 400 })
     }
     const limit = Number.parseInt(searchParams.get("limit") || "10")
@@ -59,19 +53,10 @@ export async function GET(request: NextRequest) {
     // Generate predictions for each upcoming game
     const predictions = []
     
-    // Set default league based on sport
-    const getDefaultLeague = (sport: string) => {
-      const leagueMap: Record<string, string> = {
-        'basketball': 'NBA',
-        'football': 'NFL',
-        'baseball': 'MLB',
-        'hockey': 'NHL',
-        'soccer': 'Premier League'
-      }
-      return leagueMap[sport] || sport.charAt(0).toUpperCase() + sport.slice(1) + ' League'
-    }
-    
-    const predictionService = new SportPredictionService(sport as SupportedSport, getDefaultLeague(sport))
+    // Set default league dynamically from config
+    const sportConfig = SportConfigManager.getSportConfig(sport as SupportedSport)
+    const defaultLeague = (sportConfig?.leagues && sportConfig.leagues.length > 0) ? sportConfig.leagues[0] : ''
+    const predictionService = new SportPredictionService(sport as SupportedSport, defaultLeague)
     
     // Limit to first 3 games to prevent timeout
     const limitedGames = upcomingGames.slice(0, 3)

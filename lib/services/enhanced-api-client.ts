@@ -116,14 +116,14 @@ export class EnhancedApiClient {
       const testResult = await apiFallbackStrategy.fetchData('health', {})
       const responseTime = Date.now() - startTime
 
-      const healthy = testResult.success && responseTime < 5000
+      const healthy = Array.isArray(testResult) && responseTime < 5000
 
       const healthDetails = {
         healthy,
         responseTime,
         lastCheck: new Date().toISOString(),
-        testResult: testResult.success ? 'passed' : 'failed',
-        error: testResult.error
+        testResult: healthy ? 'passed' : 'failed',
+        error: healthy ? undefined : 'Health check failed'
       }
 
       structuredLogger.info('Health check completed', healthDetails)

@@ -4,29 +4,40 @@
  */
 
 import { autoStartupService } from './services/auto-startup-service'
+import { envValidator } from './config/env-validator'
+import { sportServiceFactory } from './services/sports/sport-service-factory'
 
 // Configuration for automatic startup
 const STARTUP_CONFIG = {
-  enableMonitoring: true,
-  monitoringIntervalMinutes: 5,
-  enableDataQualityChecks: true,
+  enableDataSync: true,
+  enableDatabaseAudit: true,
   enableHealthChecks: true,
-  enableAutoCleanup: false, // Keep false for safety in production
-  startupDelay: 5000 // 5 seconds delay to let the server fully start
+  syncInterval: 5 // 5 minutes
 };
 
 // Initialize services automatically
 async function initializeApp() {
   try {
     console.log('🚀 ApexBets Application Starting...');
-    console.log('📋 Auto-startup configuration:', STARTUP_CONFIG);
     
+    // Validate environment variables first (no fallbacks allowed)
+    console.log('🔍 Validating environment variables...');
+    envValidator.validate();
+    console.log('✅ Environment validation passed');
+    
+    // Initialize sport service factory (dynamic, no hardcoded sports)
+    console.log('🏈 Initializing sport services...');
+    await sportServiceFactory.initialize();
+    console.log('✅ Sport services initialized');
+    
+    console.log('📋 Auto-startup configuration:', STARTUP_CONFIG);
     await autoStartupService.initialize(STARTUP_CONFIG);
     
     console.log('🎉 ApexBets Application Ready!');
     console.log('📊 Monitoring: Active');
     console.log('🔍 Data Quality: Active');
     console.log('🏥 Health Checks: Active');
+    console.log(`🏈 Supported Sports: ${envValidator.getSupportedSports().join(', ')}`);
     
   } catch (error) {
     console.error('❌ Application startup failed:', error);

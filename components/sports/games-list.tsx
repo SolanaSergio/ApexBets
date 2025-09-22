@@ -48,13 +48,13 @@ export function GamesList({ sport, className = "" }: GamesListProps) {
     try {
       setLoading(true)
       const today = new Date().toISOString().split('T')[0]
-      const params: any = { sport, date: dateFilter || today, external: true, real: true }
+      const params: any = { sport, date: dateFilter || today }
 
       // Use Promise.all for parallel data fetching
       const [liveGames, scheduledGames, finishedGames] = await Promise.all([
-        simpleApiClient.getGames({ sport, status: 'in_progress', external: true }).catch(() => []),
-        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20, external: true }).catch(() => []),
-        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10, external: true }).catch(() => [])
+        simpleApiClient.getGames({ sport, status: 'in_progress' }).catch(() => []),
+        simpleApiClient.getGames({ sport, dateFrom: params.date, status: 'scheduled', limit: 20 }).catch(() => []),
+        simpleApiClient.getGames({ sport, dateTo: params.date, status: 'completed', limit: 10 }).catch(() => [])
       ])
 
       // Normalize and filter out games that don't meet live criteria

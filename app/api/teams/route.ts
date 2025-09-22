@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server"
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const useExternalApi = searchParams.get("external") === "true"
+    const externalAllowed = process.env.ALLOW_EXTERNAL_FETCH === 'true'
+    const useExternalApi = externalAllowed && searchParams.get("external") === "true"
     
     if (useExternalApi) {
       // Use external APIs for real-time team data
@@ -21,21 +22,18 @@ export async function GET(request: NextRequest) {
       try {
         // Use the unified API client for all sports
         const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-        
+        const { normalizeTeamData, deduplicateTeams } = await import("@/lib/utils/data-utils")
+
         // Get teams for the specified sport
         const sportTeams = await cachedUnifiedApiClient.getTeams(sport as any, { limit: 100 })
-        
-        teams.push(...sportTeams.map((team: any) => ({
-          id: team.id?.toString() || team.teamId?.toString() || Math.random().toString(),
-          name: team.name || team.full_name || team.teamName,
-          city: team.city || team.homeTeam || '',
-          league: team.league || 'Unknown',
-          sport: sport,
-          abbreviation: team.abbreviation || team.abbr || team.teamAbbreviation || '',
-          logo_url: team.logo_url || team.logoUrl || null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })))
+
+        // Normalize and deduplicate with consistent IDs and no mock data
+        const normalized = sportTeams
+          .filter((t: any) => t)
+          .map((t: any) => normalizeTeamData(t, sport as string))
+        const uniqueTeams = deduplicateTeams(normalized)
+
+        teams.push(...uniqueTeams)
       } catch (error) {
         console.error('External API error:', error)
         // Fall through to database fallback

@@ -1,3 +1,5 @@
+'use client'
+
 import { Navigation } from "@/components/navigation/navigation"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { RealTimeProvider } from "@/components/data/real-time-provider"

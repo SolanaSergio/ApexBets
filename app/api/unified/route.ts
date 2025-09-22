@@ -283,10 +283,14 @@ export async function POST(request: NextRequest) {
         break
 
       case 'warmup':
-        // Warm up services
-        const sports = requestData?.sports || ['basketball', 'football']
-        await unifiedApiClient.warmupServices(sports)
-        result = { message: 'Services warmed up successfully', sports }
+        // Warm up services for provided sports or for dynamically supported sports
+        {
+          const sports = (requestData?.sports && Array.isArray(requestData.sports) && requestData.sports.length > 0)
+            ? requestData.sports
+            : unifiedApiClient.getSupportedSports()
+          await unifiedApiClient.warmupServices(sports)
+          result = { message: 'Services warmed up successfully', sports }
+        }
         break
 
       case 'clear-cache':

@@ -74,24 +74,36 @@ export class ServiceRegistry {
    * Register all sport services
    */
   private static registerSportServices(): void {
-    // Register core sport services
-    this.serviceMap.set('basketball', BasketballService)
-    this.serviceMap.set('soccer', SoccerService)
-    this.serviceMap.set('football', FootballService)
-    this.serviceMap.set('baseball', BaseballService)
-    this.serviceMap.set('hockey', HockeyService)
+    // Get supported sports from environment validator
+    const { envValidator } = require('../../config/env-validator')
+    const supportedSports = envValidator.getSupportedSports()
+    
+    if (supportedSports.length === 0) {
+      throw new Error('No supported sports configured in environment')
+    }
 
-    // Register additional sports that may be requested
-    const additionalSports = [
-      'golf', 'tennis', 'mma', 'boxing', 'cricket', 'rugby',
-      'volleyball', 'motorsport', 'cycling', 'swimming', 'athletics'
-    ]
-
-    additionalSports.forEach(sport => {
-      if (!this.serviceMap.has(sport)) {
-        this.serviceMap.set(sport, GenericSportService)
-      }
+    // Register services for each supported sport
+    supportedSports.forEach((sport: string) => {
+      // Use specific service if available, otherwise use generic service
+      const serviceClass = this.getServiceClassForSport(sport)
+      this.serviceMap.set(sport, serviceClass)
     })
+  }
+
+  /**
+   * Get the appropriate service class for a sport
+   */
+  private static getServiceClassForSport(sport: string): any {
+    // Map sport names to their specific service classes
+    const serviceMap: Record<string, any> = {
+      'basketball': BasketballService,
+      'soccer': SoccerService,
+      'football': FootballService,
+      'baseball': BaseballService,
+      'hockey': HockeyService
+    }
+
+    return serviceMap[sport] || GenericSportService
   }
 
   /**

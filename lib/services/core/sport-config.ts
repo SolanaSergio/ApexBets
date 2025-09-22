@@ -46,77 +46,53 @@ class SportConfigManagerImpl {
   }
 
   private initializeConfigs(): void {
-    // Basketball config
-    this.configs.set('basketball', {
-      name: 'basketball',
-      displayName: 'Basketball',
-      icon: '🏀',
-      color: '#FF6B35',
-      isActive: true,
-      dataSource: 'rapidapi',
-      playerStatsTable: 'player_stats',
-      positions: ['PG', 'SG', 'SF', 'PF', 'C'],
-      scoringFields: ['points', 'assists', 'rebounds', 'steals', 'blocks'],
-      bettingMarkets: ['h2h', 'spread', 'totals', 'props'],
-      seasonConfig: {
-        startMonth: 10,
-        endMonth: 6,
-        currentSeason: '2024-25'
-      },
-      rateLimits: {
-        requests: 100,
-        interval: '1m'
-      },
-      updateFrequency: '5m'
-    })
+    // Load sport configurations dynamically from environment or database
+    this.loadDynamicConfigs()
+  }
 
-    // Football config
-    this.configs.set('football', {
-      name: 'football',
-      displayName: 'Football',
-      icon: '🏈',
-      color: '#4A90E2',
-      isActive: true,
-      dataSource: 'rapidapi',
-      playerStatsTable: 'player_stats',
-      positions: ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'],
-      scoringFields: ['passing_yards', 'rushing_yards', 'receiving_yards', 'touchdowns'],
-      bettingMarkets: ['h2h', 'spread', 'totals', 'props'],
-      seasonConfig: {
-        startMonth: 9,
-        endMonth: 2,
-        currentSeason: '2024-25'
-      },
-      rateLimits: {
-        requests: 100,
-        interval: '1m'
-      },
-      updateFrequency: '5m'
-    })
+  private loadDynamicConfigs(): void {
+    // Get supported sports from environment validator
+    const { envValidator } = require('../../config/env-validator')
+    const supportedSports = envValidator.getSupportedSports()
+    
+    if (supportedSports.length === 0) {
+      throw new Error('No supported sports configured in environment')
+    }
 
-    // Soccer config
-    this.configs.set('soccer', {
-      name: 'soccer',
-      displayName: 'Soccer',
-      icon: '⚽',
-      color: '#2ECC71',
-      isActive: true,
-      dataSource: 'rapidapi',
-      playerStatsTable: 'player_stats',
-      positions: ['GK', 'DEF', 'MID', 'FWD'],
-      scoringFields: ['goals', 'assists', 'yellow_cards', 'red_cards'],
-      bettingMarkets: ['h2h', 'spread', 'totals', 'both_teams_score'],
+    // Load configuration for each sport dynamically
+    supportedSports.forEach((sport: SupportedSport) => {
+      this.loadSportConfig(sport)
+    })
+  }
+
+  private loadSportConfig(sport: SupportedSport): void {
+    const sportUpper = sport.toUpperCase()
+    
+    // Load configuration from environment variables
+    const config: SportConfig = {
+      name: sport,
+      displayName: process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
+      icon: process.env[`${sportUpper}_ICON`] || '⚽',
+      color: process.env[`${sportUpper}_COLOR`] || '#6B7280',
+      isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
+      dataSource: process.env[`${sportUpper}_DATA_SOURCE`] || 'rapidapi',
+      playerStatsTable: process.env[`${sportUpper}_STATS_TABLE`] || 'player_stats',
+      positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
+      scoringFields: process.env[`${sportUpper}_SCORING_FIELDS`]?.split(',') || ['points'],
+      bettingMarkets: process.env[`${sportUpper}_BETTING_MARKETS`]?.split(',') || ['h2h', 'spread', 'totals'],
       seasonConfig: {
-        startMonth: 8,
-        endMonth: 5,
-        currentSeason: '2024-25'
+        startMonth: parseInt(process.env[`${sportUpper}_START_MONTH`] || '9'),
+        endMonth: parseInt(process.env[`${sportUpper}_END_MONTH`] || '5'),
+        currentSeason: process.env[`${sportUpper}_CURRENT_SEASON`] || new Date().getFullYear().toString()
       },
       rateLimits: {
-        requests: 100,
-        interval: '1m'
+        requests: parseInt(process.env[`${sportUpper}_RATE_LIMIT`] || '100'),
+        interval: process.env[`${sportUpper}_RATE_INTERVAL`] || '1m'
       },
-      updateFrequency: '5m'
-    })
+      updateFrequency: process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '5m'
+    }
+
+    this.configs.set(sport, config)
   }
 
   getSportConfig(sport: SupportedSport): SportConfig | undefined {

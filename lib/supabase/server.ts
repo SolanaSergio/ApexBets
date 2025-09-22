@@ -1,12 +1,22 @@
+/**
+ * Server-side Supabase client - MCP COMPLIANCE REQUIRED
+ * All database operations must go through MCP tools
+ * This file is kept for Next.js SSR compatibility but should not be used for data operations
+ */
+
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { envValidator } from '../config/env-validator'
 
 export async function createClient() {
+  // Validate environment variables first
+  const config = envValidator.getConfig()
+  
   const cookieStore = await cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    config.NEXT_PUBLIC_SUPABASE_URL,
+    config.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
         getAll() {
@@ -27,3 +37,6 @@ export async function createClient() {
     }
   )
 }
+
+// WARNING: This client should only be used for authentication
+// All data operations must use MCP tools via mcpDatabaseService

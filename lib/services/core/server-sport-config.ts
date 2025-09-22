@@ -3,7 +3,7 @@
  * Loads sport configuration directly from database on server side
  */
 
-import { createClient } from "../../supabase/server"
+// MCP-only approach - no direct Supabase client imports
 import { SportConfig } from "./sport-config"
 
 export class ServerSportConfigManager {
@@ -17,15 +17,11 @@ export class ServerSportConfigManager {
     if (this.initialized) return
 
     try {
-      const supabase = await createClient()
+      // MCP-only approach - use MCP database service
+      const { mcpDatabaseService } = await import('../mcp-database-service')
       
-      if (!supabase) {
-        throw new Error('Supabase client not available')
-      }
-
-      const { data: sports, error } = await supabase
-        .from("sports")
-        .select(`
+      const result = await mcpDatabaseService.executeSQL(`
+        SELECT 
           name,
           display_name,
           icon,
@@ -40,13 +36,16 @@ export class ServerSportConfigManager {
           season_config,
           rate_limits,
           update_frequency
-        `)
-        .eq("is_active", true)
-        .order("name")
+        FROM sports
+        WHERE is_active = true
+        ORDER BY name
+      `)
 
-      if (error) {
-        throw new Error(`Failed to fetch sports: ${error.message}`)
+      if (!result.success) {
+        throw new Error(`Failed to fetch sports: ${result.error}`)
       }
+
+      const sports = result.data
 
       if (sports && sports.length > 0) {
         for (const sport of sports) {

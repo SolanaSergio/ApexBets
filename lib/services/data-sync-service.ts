@@ -6,7 +6,7 @@
 import { structuredLogger } from './structured-logger'
 import { optimizedSportsStorage } from './optimized-sports-storage'
 import { apiFallbackStrategy } from './api-fallback-strategy'
-import { SupportedSport } from './core/sport-config'
+import { SupportedSport, SportConfigManager } from './core/sport-config'
 
 export interface SyncStats {
   totalSyncs: number
@@ -34,7 +34,7 @@ export class DataSyncService {
   }
   private config: DataSyncConfig = {
     intervalMinutes: 30,
-    sports: ['basketball', 'football', 'soccer'] as SupportedSport[]
+    sports: [] as SupportedSport[]
   }
 
   public static getInstance(): DataSyncService {
@@ -55,9 +55,9 @@ export class DataSyncService {
       if (sport) {
         await this.syncSportData(sport)
       } else {
-        // Sync all active sports
-        const sports: SupportedSport[] = ['basketball', 'football', 'soccer']
-        for (const sportToSync of sports) {
+        // Load supported sports dynamically from configuration
+        const activeSports: SupportedSport[] = SportConfigManager.getSupportedSports()
+        for (const sportToSync of activeSports) {
           await this.syncSportData(sportToSync)
         }
       }
@@ -102,26 +102,26 @@ export class DataSyncService {
   private async syncSportData(sport: SupportedSport): Promise<void> {
     // Sync games
     const gamesResult = await apiFallbackStrategy.fetchData('games', { sport })
-    if (gamesResult.success && Array.isArray(gamesResult.data)) {
-      await optimizedSportsStorage.storeGames(sport, 'default', gamesResult.data)
+    if (Array.isArray(gamesResult)) {
+      await optimizedSportsStorage.storeGames(sport, 'default', gamesResult)
     }
 
     // Sync teams
     const teamsResult = await apiFallbackStrategy.fetchData('teams', { sport })
-    if (teamsResult.success && Array.isArray(teamsResult.data)) {
-      await optimizedSportsStorage.storeTeams(sport, 'default', teamsResult.data)
+    if (Array.isArray(teamsResult)) {
+      await optimizedSportsStorage.storeTeams(sport, 'default', teamsResult)
     }
 
     // Sync players
     const playersResult = await apiFallbackStrategy.fetchData('players', { sport })
-    if (playersResult.success && Array.isArray(playersResult.data)) {
-      await optimizedSportsStorage.storePlayers(sport, 'default', playersResult.data)
+    if (Array.isArray(playersResult)) {
+      await optimizedSportsStorage.storePlayers(sport, 'default', playersResult)
     }
 
     // Sync standings
     const standingsResult = await apiFallbackStrategy.fetchData('standings', { sport })
-    if (standingsResult.success && Array.isArray(standingsResult.data)) {
-      await optimizedSportsStorage.storeStandings(sport, 'default', standingsResult.data)
+    if (Array.isArray(standingsResult)) {
+      await optimizedSportsStorage.storeStandings(sport, 'default', standingsResult)
     }
   }
 
@@ -144,7 +144,9 @@ export class DataSyncService {
   }
 
   updateConfig(updates: Partial<DataSyncConfig>): void {
-    this.config = { ...this.config, ...updates }
+    // If sports not provided, refresh dynamically from config to avoid hardcodes
+    const dynamicSports = SportConfigManager.getSupportedSports()
+    this.config = { ...this.config, sports: dynamicSports, ...updates }
     structuredLogger.info('Data sync config updated', { config: this.config })
   }
 

@@ -25,22 +25,48 @@ export class SupabaseMCPClient {
   }
 
   async executeSQL(query: string): Promise<any[]> {
-    return await mcpExecuteSql({ query })
+    try {
+      return await mcpExecuteSql({ query })
+    } catch (error) {
+      // Enforce MCP usage; do not fabricate data
+      if (error instanceof Error && error.message.includes('MCP')) {
+        throw new Error(`MCP execution failed: ${error.message}`)
+      }
+      throw error
+    }
   }
 
   async listTables(schemas: string[] = ['public']): Promise<any[]> {
-    return await mcpListTables({ schemas })
+    try {
+      return await mcpListTables({ schemas })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MCP')) {
+        throw new Error(`MCP listTables failed: ${error.message}`)
+      }
+      throw error
+    }
   }
 
   async applyMigration(name: string, query: string): Promise<any> {
-    return await mcpApplyMigration({ name, query })
+    try {
+      return await mcpApplyMigration({ name, query })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MCP')) {
+        throw new Error(`MCP applyMigration failed: ${error.message}`)
+      }
+      throw error
+    }
   }
 
   async getProjectUrl(): Promise<string> {
     try {
       const url = await mcpGetProjectUrl({ random_string: 'x' })
       if (typeof url === 'string' && url.length > 0) return url
-    } catch {}
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MCP')) {
+        // Fall back to env only if present, per rules not to use placeholders
+      }
+    }
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
       throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set')
     }
@@ -55,11 +81,25 @@ export class SupabaseMCPClient {
   }
 
   async getLogs(service: string): Promise<any[]> {
-    return await mcpGetLogs({ service })
+    try {
+      return await mcpGetLogs({ service })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MCP')) {
+        throw new Error(`MCP getLogs failed: ${error.message}`)
+      }
+      throw error
+    }
   }
 
   async listMigrations(): Promise<any[]> {
-    return await mcpListMigrations({ random_string: 'x' })
+    try {
+      return await mcpListMigrations({ random_string: 'x' })
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('MCP')) {
+        throw new Error(`MCP listMigrations failed: ${error.message}`)
+      }
+      throw error
+    }
   }
 
   isConnected(): boolean {

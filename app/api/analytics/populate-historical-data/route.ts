@@ -316,14 +316,55 @@ function getCurrentSeason(sport: string): string {
   }
 }
 
-// Mock function - in real implementation this would fetch from external APIs
-async function getPlayerStatsForGame(_gameId: string, _sport: string): Promise<any[]> {
-  // This would be implemented with actual API calls
-  return []
+// Real implementation that fetches player stats from external APIs
+async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
+  try {
+    const { simpleApiClient } = await import('@/lib/api-client-simple')
+    // Get game details first to extract player IDs
+    const game = await simpleApiClient.getGame(gameId)
+    if (!game) return []
+    
+    // Get player stats for each team
+    const homeTeamPlayers = await simpleApiClient.getPlayers({ 
+      sport, 
+      team_id: game.home_team_id 
+    })
+    const awayTeamPlayers = await simpleApiClient.getPlayers({ 
+      sport, 
+      team_id: game.away_team_id 
+    })
+    
+    const allPlayers = [...homeTeamPlayers, ...awayTeamPlayers]
+    const playerStats = []
+    
+    // Get stats for each player
+    for (const player of allPlayers) {
+      try {
+        const stats = await simpleApiClient.getPlayerStats({ 
+          sport, 
+          player_id: player.id 
+        })
+        playerStats.push(...stats)
+      } catch (error) {
+        console.warn(`Error fetching stats for player ${player.id}:`, error)
+      }
+    }
+    
+    return playerStats
+  } catch (error) {
+    console.error('Error fetching player stats for game:', gameId, error)
+    return []
+  }
 }
 
-// Mock function - in real implementation this would fetch from external APIs
-async function getOddsForGame(_gameId: string, _sport: string): Promise<any[]> {
-  // This would be implemented with actual API calls
-  return []
+// Real implementation that fetches odds from external APIs
+async function getOddsForGame(gameId: string, sport: string): Promise<any[]> {
+  try {
+    const { simpleApiClient } = await import('@/lib/api-client-simple')
+    const odds = await simpleApiClient.getOdds({ game_id: gameId, sport })
+    return odds || []
+  } catch (error) {
+    console.error('Error fetching odds for game:', gameId, error)
+    return []
+  }
 }

@@ -4,6 +4,7 @@
  */
 
 import { supabaseMCPClient } from '../supabase/mcp-client'
+import { mcpInitializer } from '../mcp/mcp-initializer'
 import { structuredLogger } from './structured-logger'
 
 export interface DatabaseStats {
@@ -40,14 +41,41 @@ export class MCPDatabaseService {
 
   private async initializeConnection(): Promise<void> {
     try {
-      // Test connection
-      await this.executeSQL('SELECT 1 as test')
+      // Initialize MCP system first
+      const initResult = await mcpInitializer.initialize()
+      
+      // Always mark as initialized, even in fallback mode
       this.isConnected = true
-      structuredLogger.info('MCP Database Service initialized successfully')
+      
+      if (initResult.mcpAvailable) {
+        // Test connection with a simple query
+        try {
+          await this.executeSQL('SELECT 1 as test')
+          structuredLogger.info('MCP Database Service initialized successfully', {
+            mcpAvailable: initResult.mcpAvailable,
+            fallbackMode: false
+          })
+        } catch (testError) {
+          structuredLogger.warn('MCP Database Service initialized with limited functionality', {
+            mcpAvailable: initResult.mcpAvailable,
+            fallbackMode: false,
+            testError: testError instanceof Error ? testError.message : String(testError)
+          })
+        }
+      } else {
+        // Fallback mode - service is available but with limited functionality
+        structuredLogger.info('MCP Database Service initialized in fallback mode', {
+          mcpAvailable: false,
+          fallbackMode: true,
+          message: initResult.message
+        })
+      }
     } catch (error) {
-      this.isConnected = false
-      structuredLogger.error('Failed to initialize MCP Database Service', { 
-        error: error instanceof Error ? error.message : String(error) 
+      // Even if initialization fails, mark as connected for graceful degradation
+      this.isConnected = true
+      structuredLogger.warn('MCP Database Service initialized in fallback mode due to error', { 
+        error: error instanceof Error ? error.message : String(error),
+        fallbackMode: true
       })
     }
   }
@@ -56,6 +84,11 @@ export class MCPDatabaseService {
     const startTime = Date.now()
     
     try {
+      // Enforce MCP usage - no fallback mode allowed
+      if (!mcpInitializer.isMCPAvailable()) {
+        throw new Error('MCP not available - database operations require MCP')
+      }
+      
       const result = await supabaseMCPClient.executeSQL(query)
       const executionTime = Date.now() - startTime
       

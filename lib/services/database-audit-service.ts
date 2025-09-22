@@ -4,6 +4,8 @@
  */
 
 import { supabaseMCPClient } from '../supabase/mcp-client'
+import { mcpInitializer } from '../mcp/mcp-initializer'
+import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
 
 export interface DatabaseAuditReport {
@@ -34,6 +36,7 @@ export interface PerformanceMetrics {
 
 export class DatabaseAuditService {
   private static instance: DatabaseAuditService
+  private adminClient: SupabaseClient | null = null
 
   public static getInstance(): DatabaseAuditService {
     if (!DatabaseAuditService.instance) {
@@ -96,6 +99,18 @@ export class DatabaseAuditService {
     }
   }
 
+  private getAdminClient(): SupabaseClient {
+    if (this.adminClient) return this.adminClient
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set')
+    if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
+    this.adminClient = createSupabaseClient(url, serviceKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
+    return this.adminClient
+  }
+
   /**
    * Test database connection
    */
@@ -103,13 +118,19 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const result = await supabaseMCPClient.executeSQL('SELECT 1 as test')
+      const supabase = this.getAdminClient()
+      
+      const { data, error } = await supabase
+        .from('sports')
+        .select('*', { count: 'estimated', head: true })
+      
       const executionTime = Date.now() - startTime
+      const isValid = !error && data !== null
       
       return {
         testName: 'Database Connection',
-        status: result && result.length > 0 ? 'PASS' : 'FAIL',
-        message: result && result.length > 0 ? 'Database connection successful' : 'Database connection failed',
+        status: isValid ? 'PASS' : 'FAIL',
+        message: isValid ? 'Database connection successful' : `Database connection failed: ${error?.message || 'Unknown error'}`,
         executionTime
       }
     } catch (error) {
@@ -129,13 +150,30 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const requiredTables = ['sports', 'teams', 'players', 'games', 'odds', 'predictions', 'standings', 'cache_entries']
-      const tablesResult = await supabaseMCPClient.listTables()
-      const existingTables = Array.isArray((tablesResult as any).tables)
-        ? (tablesResult as any).tables.map((t: any) => t.name)
-        : []
+      const supabase = this.getAdminClient()
       
-      const missingTables = requiredTables.filter(table => !existingTables.includes(table))
+      const requiredTables = ['teams', 'players', 'games', 'odds', 'standings', 'cache_entries', 'api_rate_limits', 'sports_config', 'player_stats', 'api_error_logs']
+      
+      // Test each table by trying to query it
+      const existingTables: string[] = []
+      const missingTables: string[] = []
+      
+      for (const table of requiredTables) {
+        try {
+          const { error } = await supabase
+            .from(table)
+            .select('*')
+            .limit(1)
+          
+          if (!error) {
+            existingTables.push(table)
+          } else {
+            missingTables.push(table)
+          }
+        } catch (err) {
+          missingTables.push(table)
+        }
+      }
       
       return {
         testName: 'Table Structure',
@@ -163,19 +201,41 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const integrityChecks = [
-        'SELECT COUNT(*) as count FROM teams WHERE sport IS NULL',
-        'SELECT COUNT(*) as count FROM games WHERE home_team_id IS NULL OR away_team_id IS NULL',
-        'SELECT COUNT(*) as count FROM players WHERE sport IS NULL',
-        'SELECT COUNT(*) as count FROM odds WHERE game_id IS NULL'
-      ]
-      
-      const issues = []
-      for (const check of integrityChecks) {
-        const result = await supabaseMCPClient.executeSQL(check)
-        if (result && result[0] && result[0].count > 0) {
-          issues.push(check)
+      const issues: string[] = []
+
+      if (mcpInitializer.isMCPAvailable()) {
+        const integrityChecks = [
+          'SELECT COUNT(*) as count FROM teams WHERE sport IS NULL',
+          'SELECT COUNT(*) as count FROM games WHERE home_team_id IS NULL OR away_team_id IS NULL',
+          'SELECT COUNT(*) as count FROM players WHERE sport IS NULL',
+          'SELECT COUNT(*) as count FROM odds WHERE game_id IS NULL'
+        ]
+        for (const check of integrityChecks) {
+          const result = await supabaseMCPClient.executeSQL(check)
+          if (result && result[0] && Number(result[0].count) > 0) {
+            issues.push(check)
+          }
         }
+      } else {
+        // Fallback-safe integrity checks using Supabase client
+        const supabase = this.getAdminClient()
+
+        const addIf = (cond: boolean, msg: string) => { if (cond) issues.push(msg) }
+
+        const teamsNullSport = await supabase.from('teams').select('*', { count: 'exact', head: true }).is('sport', null)
+        addIf((teamsNullSport.count || 0) > 0, 'teams.sport IS NULL')
+
+        const gamesNullTeams = await supabase
+          .from('games')
+          .select('*', { count: 'exact', head: true })
+          .or('home_team_id.is.null,away_team_id.is.null')
+        addIf((gamesNullTeams.count || 0) > 0, 'games.home_team_id OR away_team_id IS NULL')
+
+        const playersNullSport = await supabase.from('players').select('*', { count: 'exact', head: true }).is('sport', null)
+        addIf((playersNullSport.count || 0) > 0, 'players.sport IS NULL')
+
+        const oddsNullGameId = await supabase.from('odds').select('*', { count: 'exact', head: true }).is('game_id', null)
+        addIf((oddsNullGameId.count || 0) > 0, 'odds.game_id IS NULL')
       }
       
       return {
@@ -202,23 +262,24 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const performanceQueries = [
-        'SELECT COUNT(*) FROM games WHERE game_date > NOW() - INTERVAL \'7 days\'',
-        'SELECT COUNT(*) FROM teams WHERE is_active = true',
-        'SELECT COUNT(*) FROM players WHERE is_active = true',
-        'SELECT COUNT(*) FROM odds WHERE last_updated > NOW() - INTERVAL \'1 hour\''
-      ]
-      
-      const queryTimes = []
-      for (const query of performanceQueries) {
-        const queryStart = Date.now()
-        await supabaseMCPClient.executeSQL(query)
-        queryTimes.push(Date.now() - queryStart)
+      // Fallback-safe performance sampling using Supabase client
+      const supabase = this.getAdminClient()
+      const queryTimes: number[] = []
+
+      const timed = async (fn: () => Promise<void>) => {
+        const t0 = Date.now();
+        await fn();
+        queryTimes.push(Date.now() - t0);
       }
-      
-      const averageTime = queryTimes.reduce((a, b) => a + b, 0) / queryTimes.length
+
+      await timed(async () => { await supabase.from('games').select('*', { count: 'exact', head: true }) })
+      await timed(async () => { await supabase.from('teams').select('*', { count: 'exact', head: true }).eq('is_active', true) })
+      await timed(async () => { await supabase.from('players').select('*', { count: 'exact', head: true }).eq('is_active', true) })
+      await timed(async () => { await supabase.from('odds').select('*', { count: 'exact', head: true }) })
+
+      const averageTime = queryTimes.reduce((a, b) => a + b, 0) / Math.max(queryTimes.length, 1)
       const slowQueries = queryTimes.filter(time => time > 1000).length
-      
+
       return {
         testName: 'Performance',
         status: slowQueries === 0 ? 'PASS' : 'WARNING',
@@ -243,15 +304,25 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const indexQuery = `
-        SELECT schemaname, tablename, indexname, indexdef
-        FROM pg_indexes 
-        WHERE schemaname = 'public'
-        ORDER BY tablename, indexname
-      `
+      let indexes: any[] = []
       
-      const result = await supabaseMCPClient.executeSQL(indexQuery)
-      const indexes = result || []
+      if (mcpInitializer.isMCPAvailable()) {
+        const indexQuery = `
+          SELECT schemaname, tablename, indexname, indexdef
+          FROM pg_indexes 
+          WHERE schemaname = 'public'
+          ORDER BY tablename, indexname
+        `
+        indexes = await supabaseMCPClient.executeSQL(indexQuery)
+      } else {
+        // Use RPC function when MCP not available
+        const supabase = this.getAdminClient()
+        const { data, error } = await supabase.rpc('get_public_indexes')
+        if (error) {
+          throw new Error(`Failed to get indexes: ${error.message}`)
+        }
+        indexes = data || []
+      }
       
       const criticalIndexes = [
         'idx_games_date_status',
@@ -288,23 +359,33 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
-      const fkQuery = `
-        SELECT
-          tc.table_name,
-          kcu.column_name,
-          ccu.table_name AS foreign_table_name,
-          ccu.column_name AS foreign_column_name
-        FROM information_schema.table_constraints AS tc
-        JOIN information_schema.key_column_usage AS kcu
-          ON tc.constraint_name = kcu.constraint_name
-        JOIN information_schema.constraint_column_usage AS ccu
-          ON ccu.constraint_name = tc.constraint_name
-        WHERE tc.constraint_type = 'FOREIGN KEY'
-        AND tc.table_schema = 'public'
-      `
+      let foreignKeys: any[] = []
       
-      const result = await supabaseMCPClient.executeSQL(fkQuery)
-      const foreignKeys = result || []
+      if (mcpInitializer.isMCPAvailable()) {
+        const fkQuery = `
+          SELECT
+            tc.table_name,
+            kcu.column_name,
+            ccu.table_name AS foreign_table_name,
+            ccu.column_name AS foreign_column_name
+          FROM information_schema.table_constraints AS tc
+          JOIN information_schema.key_column_usage AS kcu
+            ON tc.constraint_name = kcu.constraint_name
+          JOIN information_schema.constraint_column_usage AS ccu
+            ON ccu.constraint_name = tc.constraint_name
+          WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_schema = 'public'
+        `
+        foreignKeys = await supabaseMCPClient.executeSQL(fkQuery)
+      } else {
+        // Use RPC function when MCP not available
+        const supabase = this.getAdminClient()
+        const { data, error } = await supabase.rpc('get_public_foreign_keys')
+        if (error) {
+          throw new Error(`Failed to get foreign keys: ${error.message}`)
+        }
+        foreignKeys = data || []
+      }
       
       return {
         testName: 'Foreign Key Constraints',
@@ -330,16 +411,25 @@ export class DatabaseAuditService {
     const startTime = Date.now()
     
     try {
+      if (!mcpInitializer.isMCPAvailable()) {
+        return {
+          testName: 'Data Consistency',
+          status: 'WARNING',
+          message: 'Consistency checks skipped (MCP unavailable for join queries)',
+          executionTime: Date.now() - startTime
+        }
+      }
+
       const consistencyChecks = [
         'SELECT COUNT(*) as count FROM games g LEFT JOIN teams ht ON g.home_team_id = ht.id WHERE ht.id IS NULL',
         'SELECT COUNT(*) as count FROM games g LEFT JOIN teams at ON g.away_team_id = at.id WHERE at.id IS NULL',
         'SELECT COUNT(*) as count FROM players p LEFT JOIN teams t ON p.team_id = t.id WHERE p.team_id IS NOT NULL AND t.id IS NULL'
       ]
       
-      const issues = []
+      const issues: string[] = []
       for (const check of consistencyChecks) {
         const result = await supabaseMCPClient.executeSQL(check)
-        if (result && result[0] && result[0].count > 0) {
+        if (result && result[0] && Number(result[0].count) > 0) {
           issues.push(check)
         }
       }
@@ -394,6 +484,8 @@ export class DatabaseAuditService {
    */
   private async getPerformanceMetrics(): Promise<PerformanceMetrics> {
     try {
+      let tableSizes: Array<{ table: string; size: string; rowCount: number }> = []
+      
       const tableSizesQuery = `
         SELECT 
           schemaname,
@@ -404,9 +496,8 @@ export class DatabaseAuditService {
         WHERE schemaname = 'public'
         ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
       `
-      
       const result = await supabaseMCPClient.executeSQL(tableSizesQuery)
-      const tableSizes = (result || []).map((t: any) => ({
+      tableSizes = (result || []).map((t: any) => ({
         table: t.tablename,
         size: t.size,
         rowCount: t.row_count || 0

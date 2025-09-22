@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { SupportedSport } from "@/lib/services/core/service-factory"
+import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,17 +9,11 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get("sport")
     const league = searchParams.get("league")
     
-    if (!sport) {
+    // Validate sport parameter dynamically
+    const supportedSports: SupportedSport[] = SportConfigManager.getSupportedSports()
+    if (!sport || !supportedSports.includes(sport as SupportedSport)) {
       return NextResponse.json({ 
-        error: "Sport parameter is required. Supported sports: basketball, football, baseball, hockey, soccer" 
-      }, { status: 400 })
-    }
-
-    // Validate sport parameter
-    const supportedSports: SupportedSport[] = ['basketball', 'football', 'baseball', 'hockey', 'soccer']
-    if (!supportedSports.includes(sport as SupportedSport)) {
-      return NextResponse.json({ 
-        error: `Unsupported sport: ${sport}. Supported sports: ${supportedSports.join(', ')}` 
+        error: `Sport parameter is required and must be one of: ${supportedSports.join(', ')}` 
       }, { status: 400 })
     }
     const finalSport = sport as SupportedSport

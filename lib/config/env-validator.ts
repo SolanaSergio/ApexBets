@@ -1,193 +1,220 @@
 /**
- * Environment Variables Validator
- * Uses strict rules enforcement - no placeholders, no fallbacks
+ * Central Environment Variable Validation
+ * Enforces strict validation with no fallbacks or placeholders
  */
 
-import { environmentRules } from '../rules'
-
-interface EnvConfig {
-  // Database
-  supabaseUrl: string
-  supabaseAnonKey: string
-  supabaseServiceRoleKey: string
+export interface EnvConfig {
+  // Supabase
+  NEXT_PUBLIC_SUPABASE_URL: string
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: string
+  SUPABASE_SERVICE_ROLE_KEY: string
   
-  // Sports APIs
-  rapidApiKey: string
-  oddsApiKey: string
-  sportsDbApiKey: string
-  ballDontLieApiKey: string
+  // API Configuration
+  NEXT_PUBLIC_API_URL: string
   
-  // Security
-  webhookSecret: string
+  // API Keys (no placeholders allowed)
+  RAPIDAPI_KEY?: string
+  NEXT_PUBLIC_RAPIDAPI_KEY?: string
+  ODDS_API_KEY?: string
+  NEXT_PUBLIC_ODDS_API_KEY?: string
+  SPORTSDB_API_KEY?: string
+  NEXT_PUBLIC_SPORTSDB_API_KEY?: string
+  BALLDONTLIE_API_KEY?: string
+  NEXT_PUBLIC_BALLDONTLIE_API_KEY?: string
   
   // App Configuration
-  apiUrl: string
-  appName: string
-  appVersion: string
+  NODE_ENV: string
+  NEXT_PUBLIC_APP_VERSION?: string
+  HOSTNAME?: string
+  PORT?: string
   
-  // Feature Flags
-  enableLiveUpdates: boolean
-  enableValueBetting: boolean
-  enableMlPredictions: boolean
-}
-
-interface ApiKeyStatus {
-  key: string
-  isValid: boolean
-  hasValue: boolean
-  rateLimit?: {
-    requestsPerMinute: number
-    requestsPerDay: number
-    burstLimit: number
-  }
+  // Sports Configuration (dynamic, no hardcoded sports)
+  SUPPORTED_SPORTS?: string
+  NEXT_PUBLIC_SUPPORTED_SPORTS?: string
 }
 
 class EnvValidator {
-  private config: EnvConfig
-  private apiKeyStatuses: Map<string, ApiKeyStatus> = new Map()
+  private static instance: EnvValidator
+  private config: EnvConfig | null = null
+  private validationErrors: string[] = []
+  private supportedSports: string[] = []
 
-  constructor() {
-    // Enforce environment rules first
-    environmentRules.enforceEnvironmentRules()
-    this.config = environmentRules.getValidatedConfig()
-    this.validateApiKeys()
+  public static getInstance(): EnvValidator {
+    if (!EnvValidator.instance) {
+      EnvValidator.instance = new EnvValidator()
+    }
+    return EnvValidator.instance
   }
 
-  // loadConfig removed - now using environmentRules.getValidatedConfig()
+  /**
+   * Validate all required environment variables
+   * Throws error if any required vars are missing or contain placeholders
+   */
+  public validate(): EnvConfig {
+    if (this.config) {
+      return this.config
+    }
 
-  private validateApiKeys(): void {
-    // RapidAPI (API-SPORTS)
-    this.apiKeyStatuses.set('rapidapi', {
-      key: 'NEXT_PUBLIC_RAPIDAPI_KEY',
-      isValid: this.isValidApiKey(this.config.rapidApiKey),
-      hasValue: !!this.config.rapidApiKey,
-      rateLimit: {
-        requestsPerMinute: 100,
-        requestsPerDay: 10000,
-        burstLimit: 10
-      }
-    })
+    this.validationErrors = []
+    const config: Partial<EnvConfig> = {}
 
-    // The Odds API
-    this.apiKeyStatuses.set('odds', {
-      key: 'NEXT_PUBLIC_ODDS_API_KEY',
-      isValid: this.isValidApiKey(this.config.oddsApiKey),
-      hasValue: !!this.config.oddsApiKey,
-      rateLimit: {
-        requestsPerMinute: 10,
-        requestsPerDay: 100,
-        burstLimit: 5
-      }
-    })
+    // Required Supabase variables
+    this.validateRequired('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL, config)
+    this.validateRequired('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, config)
+    this.validateRequired('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY, config)
 
-    // TheSportsDB (Free)
-    this.apiKeyStatuses.set('sportsdb', {
-      key: 'NEXT_PUBLIC_SPORTSDB_API_KEY',
-      isValid: true, // Always valid, uses '123' as default
-      hasValue: true,
-      rateLimit: {
-        requestsPerMinute: 30,
-        requestsPerDay: 10000,
-        burstLimit: 5
-      }
-    })
+    // Optional API keys (but validate format if present)
+    this.validateOptional('RAPIDAPI_KEY', process.env.RAPIDAPI_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_RAPIDAPI_KEY', process.env.NEXT_PUBLIC_RAPIDAPI_KEY, config)
+    this.validateOptional('ODDS_API_KEY', process.env.ODDS_API_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_ODDS_API_KEY', process.env.NEXT_PUBLIC_ODDS_API_KEY, config)
+    this.validateOptional('SPORTSDB_API_KEY', process.env.SPORTSDB_API_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_SPORTSDB_API_KEY', process.env.NEXT_PUBLIC_SPORTSDB_API_KEY, config)
+    this.validateOptional('BALLDONTLIE_API_KEY', process.env.BALLDONTLIE_API_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_BALLDONTLIE_API_KEY', process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY, config)
 
-    // BALLDONTLIE (Requires API key for all requests)
-    this.apiKeyStatuses.set('balldontlie', {
-      key: 'NEXT_PUBLIC_BALLDONTLIE_API_KEY',
-      isValid: this.isValidApiKey(this.config.ballDontLieApiKey),
-      hasValue: !!this.config.ballDontLieApiKey,
-      rateLimit: {
-        requestsPerMinute: 5, // Free tier: 5 requests per minute (strict limit)
-        requestsPerDay: 7200, // 5 req/min * 60 min * 24 hours
-        burstLimit: 1 // No burst allowed on free tier
-      }
-    })
+    // App configuration
+    this.validateRequired('NODE_ENV', process.env.NODE_ENV, config)
+    this.validateOptional('NEXT_PUBLIC_APP_VERSION', process.env.NEXT_PUBLIC_APP_VERSION, config)
+    this.validateOptional('HOSTNAME', process.env.HOSTNAME, config)
+    this.validateOptional('PORT', process.env.PORT, config)
 
-    // Supabase
-    this.apiKeyStatuses.set('supabase', {
-      key: 'NEXT_PUBLIC_SUPABASE_URL',
-      isValid: this.isValidSupabaseUrl(this.config.supabaseUrl),
-      hasValue: !!this.config.supabaseUrl
-    })
-  }
+    // Sports configuration (dynamic)
+    this.validateOptional('SUPPORTED_SPORTS', process.env.SUPPORTED_SPORTS, config)
+    this.validateOptional('NEXT_PUBLIC_SUPPORTED_SPORTS', process.env.NEXT_PUBLIC_SUPPORTED_SPORTS, config)
 
-  private isValidApiKey(key: string): boolean {
-    if (!key) return false
-    return key.length >= 10
-  }
+    if (this.validationErrors.length > 0) {
+      throw new Error(`Environment validation failed:\n${this.validationErrors.join('\n')}`)
+    }
 
-  private isValidSupabaseUrl(url: string): boolean {
-    if (!url) return false
-    return url.includes('supabase.co') && url.startsWith('https://')
-  }
-
-  getConfig(): EnvConfig {
+    this.config = config as EnvConfig
     return this.config
   }
 
-  getApiKeyStatus(service: string): ApiKeyStatus | undefined {
-    return this.apiKeyStatuses.get(service)
+  private validateRequired(key: string, value: string | undefined, config: Partial<EnvConfig>): void {
+    if (!value) {
+      this.validationErrors.push(`Missing required environment variable: ${key}`)
+      return
+    }
+
+    if (this.containsPlaceholder(value)) {
+      this.validationErrors.push(`Environment variable ${key} contains placeholder value: ${value}`)
+      return
+    }
+
+    (config as any)[key] = value
   }
 
-  getAllApiKeyStatuses(): Map<string, ApiKeyStatus> {
-    return this.apiKeyStatuses
+  private validateOptional(key: string, value: string | undefined, config: Partial<EnvConfig>): void {
+    if (!value) {
+      return
+    }
+
+    if (this.containsPlaceholder(value)) {
+      this.validationErrors.push(`Environment variable ${key} contains placeholder value: ${value}`)
+      return
+    }
+
+    (config as any)[key] = value
   }
 
-  getMissingRequiredKeys(): string[] {
-    return environmentRules.getValidationErrors()
+  private containsPlaceholder(value: string): boolean {
+    const placeholders = [
+      'your_api_key',
+      'placeholder',
+      'example',
+      'your-',
+      'replace_me',
+      'changeme',
+      'TODO',
+      'FIXME'
+    ]
+    
+    return placeholders.some(placeholder => 
+      value.toLowerCase().includes(placeholder.toLowerCase())
+    )
   }
 
-  getInvalidKeys(): string[] {
-    return environmentRules.getValidationErrors()
+  /**
+   * Get validated configuration
+   * Always enforces validation; no build-time fallbacks allowed
+   */
+  public getConfig(): EnvConfig {
+    if (!this.config) {
+      // Enforce validation immediately to comply with repo rules
+      return this.validate()
+    }
+    return this.config
   }
 
-  isFullyConfigured(): boolean {
-    return environmentRules.isConfigured()
+  /**
+   * Get supported sports from environment (dynamic, no hardcoded sports)
+   */
+  public getSupportedSports(): string[] {
+    if (this.supportedSports.length > 0) {
+      return this.supportedSports
+    }
+    const config = this.getConfig()
+    const sports = config.SUPPORTED_SPORTS || config.NEXT_PUBLIC_SUPPORTED_SPORTS || ''
+    this.supportedSports = sports.split(',').map(s => s.trim()).filter(Boolean)
+    return this.supportedSports
   }
 
-  getConfigurationReport(): {
-    isConfigured: boolean
-    missingKeys: string[]
-    invalidKeys: string[]
-    apiStatuses: Record<string, ApiKeyStatus>
-    recommendations: string[]
+  /**
+   * Check if a specific sport is supported
+   */
+  public isSportSupported(sport: string): boolean {
+    const supportedSports = this.getSupportedSports()
+    // If no sports are configured, nothing is supported
+    if (supportedSports.length === 0) return false
+    return supportedSports.includes(sport)
+  }
+
+  /**
+   * Get configuration report for health checks
+   */
+  public getConfigurationReport(): { 
+    isConfigured: boolean; 
+    missingKeys: string[]; 
+    invalidKeys: string[]; 
+    apiStatuses: Record<string, any>; 
+    recommendations: string[];
+    valid: boolean; 
+    errors: string[]; 
+    config: Partial<EnvConfig> 
   } {
-    const missingKeys = this.getMissingRequiredKeys()
-    const invalidKeys = this.getInvalidKeys()
-    const isConfigured = this.isFullyConfigured()
-    
-    const recommendations: string[] = []
-    
-    if (missingKeys.length > 0) {
-      recommendations.push(`Set up missing environment variables: ${missingKeys.join(', ')}`)
-    }
-    
-    if (invalidKeys.length > 0) {
-      recommendations.push(`Fix invalid API keys: ${invalidKeys.join(', ')}`)
-    }
-    
-    if (!this.config.rapidApiKey) {
-      recommendations.push('Consider adding RapidAPI key for enhanced sports data (API-SPORTS)')
-    }
-    
-    if (!this.config.oddsApiKey) {
-      recommendations.push('Consider adding Odds API key for betting odds data')
-    }
-    
-    if (this.config.rapidApiKey && this.config.oddsApiKey) {
-      recommendations.push('All API keys configured! You have access to premium features.')
-    }
-
-    return {
-      isConfigured,
-      missingKeys,
-      invalidKeys,
-      apiStatuses: Object.fromEntries(this.apiKeyStatuses),
-      recommendations
+    try {
+      const config = this.validate()
+      return {
+        isConfigured: true,
+        missingKeys: [],
+        invalidKeys: [],
+        apiStatuses: {},
+        recommendations: [],
+        valid: true,
+        errors: [],
+        config
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      return {
+        isConfigured: false,
+        missingKeys: [],
+        invalidKeys: [],
+        apiStatuses: {},
+        recommendations: ['Fix environment variable configuration'],
+        valid: false,
+        errors: [errorMessage],
+        config: {}
+      }
     }
   }
 }
 
-export const envValidator = new EnvValidator()
-export type { EnvConfig, ApiKeyStatus }
+export const envValidator = EnvValidator.getInstance()
+
+// Export convenience function
+export const validateEnv = () => envValidator.validate()
+export const getEnvConfig = () => envValidator.getConfig()
+export const getSupportedSports = () => envValidator.getSupportedSports()
+export const isSportSupported = (sport: string) => envValidator.isSportSupported(sport)

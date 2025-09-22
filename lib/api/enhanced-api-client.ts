@@ -358,7 +358,7 @@ export const sportsApi = {
   },
 
   async getOdds(sport: string, options?: RequestOptions) {
-    return enhancedApiClient.get(`/odds`, { sport, external: true }, {
+    return enhancedApiClient.get(`/odds`, { sport }, {
       ...options,
       sport,
       priority: 'medium',
