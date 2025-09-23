@@ -2,6 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useErrorHandler } from '@/components/error/enhanced-error-boundary'
+
+// Debounce utility to prevent rapid successive calls
+function debounce<T extends (...args: any[]) => any>(func: T, delay: number): T {
+  let timeoutId: NodeJS.Timeout
+  return ((...args: Parameters<T>) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => func(...args), delay)
+  }) as T
+}
 interface UseApiDataOptions<T> {
   initialData?: T
   enabled?: boolean
@@ -54,7 +63,7 @@ export function useApiData<T>(
     errorHandlerRef.current = errorHandler
   }, [errorHandler])
 
-  const fetchData = useCallback(async () => {
+  const fetchDataInternal = useCallback(async () => {
     if (!enabled) return
 
     try {
@@ -64,6 +73,11 @@ export function useApiData<T>(
 
       // Only update state if data has actually changed
       setData(prevData => {
+        // Use a more efficient comparison for large objects
+        if (prevData === result) {
+          return prevData // Same reference, no change
+        }
+        
         const prevDataStr = JSON.stringify(prevData)
         const newDataStr = JSON.stringify(result)
 
@@ -84,6 +98,9 @@ export function useApiData<T>(
       setLoading(false)
     }
   }, [fetchFn, enabled])
+
+  // Debounced version to prevent rapid successive calls
+  const fetchData = useCallback(debounce(fetchDataInternal, 100), [fetchDataInternal])
 
   const mutate = useCallback((newData: T) => {
     setData(newData)

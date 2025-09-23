@@ -148,9 +148,18 @@ class DatabaseFirstApiClient {
   private baseUrl: string
   private cache: Map<string, { data: any; timestamp: number }> = new Map()
   private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+  private detectedTimezone: string | null = null
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl
+    // Detect browser timezone when available (client-side only)
+    if (typeof window !== 'undefined' && typeof Intl !== 'undefined') {
+      try {
+        this.detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null
+      } catch {
+        this.detectedTimezone = null
+      }
+    }
   }
 
   private getCacheKey(endpoint: string, params?: Record<string, any>): string {
@@ -173,6 +182,19 @@ class DatabaseFirstApiClient {
     })
   }
 
+  private ensureTimezoneOnEndpoint(endpoint: string): string {
+    // If endpoint already specifies a timezone, respect it
+    if (endpoint.includes('timezone=')) return endpoint
+    // Only append when we have a detected timezone (client-side)
+    const tz = this.detectedTimezone
+    if (!tz) return endpoint
+
+    // Append using ? or & depending on presence of other params
+    const hasQuery = endpoint.includes('?')
+    const separator = hasQuery ? '&' : '?'
+    return `${endpoint}${separator}timezone=${encodeURIComponent(tz)}`
+  }
+
   public clearCache(): void {
     this.cache.clear()
   }
@@ -185,7 +207,9 @@ class DatabaseFirstApiClient {
   }
 
   private async request<T>(endpoint: string, options?: RequestInit, retries: number = 3): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
+    // Always include user's timezone (client) unless caller explicitly provided one
+    const endpointWithTz = this.ensureTimezoneOnEndpoint(endpoint)
+    const url = `${this.baseUrl}${endpointWithTz}`
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {

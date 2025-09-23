@@ -273,7 +273,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 </Alert>
               )}
 
-              {loading && liveGames.length === 0 ? (
+              {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
@@ -286,12 +286,24 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                   ))}
                 </div>
               ) : liveGames.length === 0 ? (
-                <div className="text-center py-8">
-                  <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Live Games</h3>
-                  <p className="text-muted-foreground">
-                    No games are currently in progress. Check back later or enable live updates.
-                  </p>
+                <div className="text-center py-12">
+                  <div className="glass-card p-8 rounded-lg max-w-md mx-auto">
+                    <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Live Games</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {sport ? `No ${sport} games are currently in progress.` : 'No games are currently in progress.'}
+                    </p>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>• Check back later for live action</p>
+                      <p>• Switch to a different sport</p>
+                      <p>• Enable live updates to get real-time notifications</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-muted">
+                      <p className="text-xs text-muted-foreground">
+                        Last checked: {new Date().toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -386,7 +398,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
               <CardTitle>Live Betting Odds</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading && liveOdds.length === 0 ? (
+              {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="p-4 border rounded-lg">
@@ -396,12 +408,24 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                   ))}
                 </div>
               ) : liveOdds.length === 0 ? (
-                <div className="text-center py-8">
-                  <DollarSign className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Live Odds</h3>
-                  <p className="text-muted-foreground">
-                    No odds data available. Check back later or enable live updates.
-                  </p>
+                <div className="text-center py-12">
+                  <div className="glass-card p-8 rounded-lg max-w-md mx-auto">
+                    <DollarSign className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Live Odds</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {sport ? `No ${sport} odds data available at the moment.` : 'No odds data available at the moment.'}
+                    </p>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>• Odds update frequently during games</p>
+                      <p>• Check back when games are live</p>
+                      <p>• Try switching to a different sport</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-muted">
+                      <p className="text-xs text-muted-foreground">
+                        Last checked: {new Date().toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -453,7 +477,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
               <CardTitle>Live Value Betting Opportunities</CardTitle>
             </CardHeader>
             <CardContent>
-              {loading && valueBets.length === 0 ? (
+              {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="p-4 border rounded-lg">
@@ -463,12 +487,24 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                   ))}
                 </div>
               ) : valueBets.length === 0 ? (
-                <div className="text-center py-8">
-                  <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Value Bets</h3>
-                  <p className="text-muted-foreground">
-                    No value betting opportunities found. Check back later or adjust your filters.
-                  </p>
+                <div className="text-center py-12">
+                  <div className="glass-card p-8 rounded-lg max-w-md mx-auto">
+                    <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold mb-2">No Value Bets</h3>
+                    <p className="text-muted-foreground mb-4">
+                      {sport ? `No ${sport} value betting opportunities found.` : 'No value betting opportunities found.'}
+                    </p>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <p>• Value bets appear when odds are favorable</p>
+                      <p>• Check back during live games</p>
+                      <p>• Adjust your filters for more opportunities</p>
+                    </div>
+                    <div className="mt-4 pt-4 border-t border-muted">
+                      <p className="text-xs text-muted-foreground">
+                        Last checked: {new Date().toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">

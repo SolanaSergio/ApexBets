@@ -5,7 +5,7 @@ import Image from "next/image"
 import { CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Clock, TrendingUp, Star, Eye, Heart, Zap, Activity, Target, Trophy, Gamepad2 } from "lucide-react"
+import { Clock, TrendingUp, Star, Eye, Heart, Trophy } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Team {
@@ -114,26 +114,14 @@ export function ModernGameCard({
     )
   }
 
-  const getSportIcon = (sport: string) => {
-    // Dynamic icon selection based on sport name
-    const sportLower = sport.toLowerCase()
-    if (sportLower.includes('basketball')) return Zap
-    if (sportLower.includes('football')) return Activity
-    if (sportLower.includes('baseball')) return Target
-    if (sportLower.includes('hockey')) return Gamepad2
-    if (sportLower.includes('soccer')) return Trophy
-    return Trophy // Default fallback
+  const getSportIcon = () => {
+    // Use a generic sport icon - no hardcoded sport-specific logic
+    return Trophy // Default fallback for all sports
   }
 
-  const getSportGradient = (sport: string) => {
-    // Dynamic gradient selection based on sport name
-    const sportLower = sport.toLowerCase()
-    if (sportLower.includes('basketball')) return "from-cyan-500 to-blue-500"
-    if (sportLower.includes('football')) return "from-purple-500 to-indigo-500"
-    if (sportLower.includes('baseball')) return "from-green-500 to-emerald-500"
-    if (sportLower.includes('hockey')) return "from-blue-500 to-cyan-500"
-    if (sportLower.includes('soccer')) return "from-emerald-500 to-green-500"
-    return "from-gray-500 to-gray-600" // Default fallback
+  const getSportGradient = () => {
+    // Use a generic gradient - no hardcoded sport-specific logic
+    return "from-gray-500 to-gray-600" // Default fallback for all sports
   }
 
   return (
@@ -142,7 +130,7 @@ export function ModernGameCard({
       liveUpdate && isLive && "animate-pulse"
     )}>
       {/* Background Gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${getSportGradient(game.sport)} opacity-5 group-hover:opacity-10 transition-opacity duration-500`} />
+      <div className={`absolute inset-0 bg-gradient-to-br ${getSportGradient()} opacity-5 group-hover:opacity-10 transition-opacity duration-500`} />
       
       {/* Live Indicator */}
       {isLive && (
@@ -153,9 +141,9 @@ export function ModernGameCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 bg-gradient-to-br ${getSportGradient(game.sport)} rounded-lg flex items-center justify-center premium-glow`}>
+            <div className={`w-10 h-10 bg-gradient-to-br ${getSportGradient()} rounded-lg flex items-center justify-center premium-glow`}>
               {(() => {
-                const SportIcon = getSportIcon(game.sport)
+                const SportIcon = getSportIcon()
                 return <SportIcon className="w-5 h-5 text-white" />
               })()}
             </div>

@@ -7,8 +7,6 @@ import {
   Users, 
   Trophy, 
   Target,
-  BarChart3,
-  Zap,
   Loader2
 } from "lucide-react"
 
@@ -214,13 +212,11 @@ export function LoadingDashboard() {
 
 // Enhanced spinner with sport-specific animations
 export function SportLoadingSpinner({ 
-  sport = 'all', 
   size = 'default',
   message = 'Loading...'
 }: { 
-  sport?: string
   size?: 'sm' | 'default' | 'lg'
-  message?: string 
+  message?: string
 }) {
   const sizeClasses = {
     sm: 'h-4 w-4',
@@ -229,13 +225,8 @@ export function SportLoadingSpinner({
   }
 
   const getSportIcon = () => {
-    // Dynamic icon selection based on sport name
-    const sportLower = sport.toLowerCase()
-    if (sportLower.includes('basketball')) return Zap
-    if (sportLower.includes('football')) return Activity
-    if (sportLower.includes('soccer')) return Target
-    if (sportLower.includes('hockey')) return BarChart3
-    return Loader2 // Default fallback
+    // Use a generic sport icon - no hardcoded sport-specific logic
+    return Loader2 // Default fallback for all sports
   }
 
   const Icon = getSportIcon()
@@ -263,11 +254,9 @@ export function ShimmerEffect({ className = "" }: { className?: string }) {
 
 // Loading overlay with sport context
 export function SportLoadingOverlay({ 
-  sport = 'all',
   message = 'Loading sports data...',
   progress = 0
 }: { 
-  sport?: string
   message?: string
   progress?: number
 }) {
@@ -275,7 +264,7 @@ export function SportLoadingOverlay({
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
       <Card className="w-full max-w-sm">
         <CardContent className="p-6">
-          <SportLoadingSpinner sport={sport} size="lg" message={message} />
+          <SportLoadingSpinner size="lg" message={message} />
           {progress > 0 && (
             <div className="mt-4">
               <div className="flex justify-between text-xs text-muted-foreground mb-1">

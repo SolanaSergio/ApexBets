@@ -313,44 +313,78 @@ export function ComprehensiveSportsDashboard() {
       </div>
 
       {/* Enhanced Live Games Section - Better Layout */}
-      {liveGames && liveGames.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <Activity className="h-5 w-5 text-accent animate-pulse" />
-                Live Games
-              </CardTitle>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <Activity className="h-5 w-5 text-accent animate-pulse" />
+              Live Games
+            </CardTitle>
+            {liveGames && liveGames.length > 0 && (
               <Badge variant="secondary" className="text-xs bg-accent/10 text-accent border-accent/20">
                 {liveGames.length} Active
               </Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {gamesLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-32 bg-muted rounded-lg animate-pulse" />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
+          ) : liveGames && liveGames.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
               {liveGames.slice(0, 6).map((game: LiveGameData) => (
                 <LiveGameCard key={game.id} game={game} />
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-12">
+              <div className="glass-card p-8 rounded-lg max-w-md mx-auto">
+                <Activity className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Live Games</h3>
+                <p className="text-muted-foreground mb-4">
+                  {selectedSport ? `No ${selectedSport} games are currently in progress.` : 'No games are currently in progress.'}
+                </p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>• Check back later for live action</p>
+                  <p>• Switch to a different sport</p>
+                  <p>• Enable live updates for notifications</p>
+                </div>
+                <div className="mt-4 pt-4 border-t border-muted">
+                  <p className="text-xs text-muted-foreground">
+                    Last checked: {new Date().toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Enhanced Predictions Section - Compact Layout */}
-      {predictions && predictions.length > 0 && (
-        <Card className="overflow-hidden">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-xl font-bold flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                Recent Predictions
-              </CardTitle>
-              <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
-                AI-Powered
-              </Badge>
+      <Card className="overflow-hidden">
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl font-bold flex items-center gap-2">
+              <Target className="h-5 w-5 text-primary" />
+              Recent Predictions
+            </CardTitle>
+            <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+              AI-Powered
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {predictionsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="h-32 bg-muted rounded-lg animate-pulse" />
+              ))}
             </div>
-          </CardHeader>
-          <CardContent>
+          ) : predictions && predictions.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 lg:gap-4">
               {predictions.slice(0, 6).map((prediction: any, index: number) => (
                 <Card key={index} className="relative overflow-hidden border-muted/50 hover:border-primary/30 transition-colors">
@@ -381,9 +415,29 @@ export function ComprehensiveSportsDashboard() {
                 </Card>
               ))}
             </div>
-          </CardContent>
-        </Card>
-      )}
+          ) : (
+            <div className="text-center py-12">
+              <div className="glass-card p-8 rounded-lg max-w-md mx-auto">
+                <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-xl font-semibold mb-2">No Predictions Available</h3>
+                <p className="text-muted-foreground mb-4">
+                  {selectedSport ? `No ${selectedSport} predictions available at the moment.` : 'No predictions available at the moment.'}
+                </p>
+                <div className="space-y-2 text-sm text-muted-foreground">
+                  <p>• Predictions are generated for upcoming games</p>
+                  <p>• Check back when games are scheduled</p>
+                  <p>• Try switching to a different sport</p>
+                </div>
+                <div className="mt-4 pt-4 border-t border-muted">
+                  <p className="text-xs text-muted-foreground">
+                    Last checked: {new Date().toLocaleTimeString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Compact Stats Overview - Better Space Utilization */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 lg:gap-4">
