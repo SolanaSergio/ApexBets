@@ -43,8 +43,19 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { action } = body
+    let body: { action?: string } = {}
+    let action = 'force_sync' // Default action
+    
+    try {
+      const text = await request.text()
+      if (text && text.trim()) {
+        body = JSON.parse(text)
+        action = body.action || 'force_sync'
+      }
+    } catch (parseError) {
+      console.warn('Failed to parse request body, using default action:', parseError)
+      // Continue with default action
+    }
 
     switch (action) {
       case "force_sync":
@@ -61,7 +72,8 @@ export async function POST(request: NextRequest) {
     console.error("Sync API error:", error)
     return NextResponse.json({
       success: false,
-      error: "Internal server error"
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

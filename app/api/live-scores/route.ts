@@ -17,14 +17,7 @@ async function getDefaultLeagueFromDatabase(sport: string): Promise<string | und
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
-    
-    if (!sport) {
-      return NextResponse.json({
-        success: false,
-        error: "Sport parameter is required"
-      }, { status: 400 })
-    }
+    const sport = searchParams.get("sport") || "all"
     const finalSport = sport
     const status = searchParams.get("status") || "live"
     

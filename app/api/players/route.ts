@@ -1,26 +1,145 @@
-import { NextResponse } from 'next/server'
-import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
-import { SupportedSport } from '@/lib/services/core/service-factory'
+/**
+ * PLAYERS API - DATABASE-FIRST APPROACH
+ * Get players data from database with proper filtering
+ */
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const sport = searchParams.get('sport') as SupportedSport
-  const teamId = searchParams.get('teamId')
-  const limit = searchParams.get('limit')
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { structuredLogger } from '@/lib/services/structured-logger'
 
-  if (!sport) {
-    return NextResponse.json({ error: 'Sport is required' }, { status: 400 })
-  }
-
+export async function GET(request: NextRequest) {
   try {
-    const params: Parameters<typeof cachedUnifiedApiClient.getPlayers>[1] = {
-      limit: limit ? parseInt(limit) : 100,
+    const { searchParams } = new URL(request.url)
+    const sport = searchParams.get('sport')
+    const teamId = searchParams.get('team_id')
+    const league = searchParams.get('league')
+    const position = searchParams.get('position')
+    const isActive = searchParams.get('is_active')
+    const limit = Number.parseInt(searchParams.get('limit') || '100')
+
+    const supabase = await createClient()
+    
+    if (!supabase) {
+      return NextResponse.json({ 
+        success: false,
+        error: "Database connection failed" 
+      }, { status: 500 })
     }
-    if (teamId) params.teamId = teamId
-    const players = await cachedUnifiedApiClient.getPlayers(sport, params)
-    return NextResponse.json(players)
+
+    // Build query with proper filtering
+    let query = supabase
+      .from('players')
+      .select(`
+        *,
+        team:teams!players_team_id_fkey(
+          id, name, abbreviation, logo_url, city, league, sport
+        )
+      `)
+      .order('name', { ascending: true })
+
+    // Apply filters
+    if (sport) {
+      query = query.eq('sport', sport)
+    }
+
+    if (teamId) {
+      query = query.eq('team_id', teamId)
+    }
+
+    if (league) {
+      query = query.eq('team.league', league)
+    }
+
+    if (position) {
+      query = query.eq('position', position)
+    }
+
+    if (isActive !== null) {
+      query = query.eq('is_active', isActive === 'true')
+    }
+
+    if (limit > 0) {
+      query = query.limit(limit)
+    }
+
+    const { data: players, error } = await query
+
+    if (error) {
+      structuredLogger.error('Players API database error', {
+        error: error.message,
+        sport,
+        teamId,
+        league,
+        position
+      })
+      return NextResponse.json({ 
+        success: false,
+        error: "Failed to fetch players from database" 
+      }, { status: 500 })
+    }
+
+    // Process and format players data
+    const processedPlayers = (players || []).map(player => ({
+      ...player,
+      team_name: player.team?.name || 'Free Agent',
+      team_abbreviation: player.team?.abbreviation || '',
+      team_logo: player.team?.logo_url || null,
+      team_city: player.team?.city || '',
+      team_league: player.team?.league || '',
+      team_sport: player.team?.sport || sport
+    }))
+
+    // Calculate summary statistics
+    const summary = {
+      total: processedPlayers.length,
+      byTeam: processedPlayers.reduce((acc, player) => {
+        const teamName = player.team_name
+        acc[teamName] = (acc[teamName] || 0) + 1
+        return acc
+      }, {} as Record<string, number>),
+      byPosition: processedPlayers.reduce((acc, player) => {
+        const pos = player.position || 'Unknown'
+        acc[pos] = (acc[pos] || 0) + 1
+        return acc
+      }, {} as Record<string, number>),
+      active: processedPlayers.filter(p => p.is_active).length,
+      inactive: processedPlayers.filter(p => !p.is_active).length
+    }
+
+    structuredLogger.info('Players API request processed', {
+      sport,
+      teamId,
+      league,
+      position,
+      count: processedPlayers.length,
+      source: 'database'
+    })
+
+    return NextResponse.json({
+      success: true,
+      data: processedPlayers,
+      meta: {
+        timestamp: new Date().toISOString(),
+        sport: sport || 'all',
+        league: league || 'all',
+        count: processedPlayers.length,
+        summary,
+        source: 'database'
+      }
+    })
+
   } catch (error) {
-    console.error(`Error fetching players for ${sport}:`, error)
-    return NextResponse.json({ error: 'Failed to fetch players' }, { status: 500 })
+    structuredLogger.error('Players API error', {
+      error: error instanceof Error ? error.message : String(error)
+    })
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
   }
 }

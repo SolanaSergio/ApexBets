@@ -10,13 +10,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
     }
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
+    const sport = searchParams.get("sport") || "all"
     
-    // Validate sport parameter dynamically
+    // Validate sport parameter dynamically if provided
     const supportedSports: SupportedSport[] = SportConfigManager.getSupportedSports()
-    if (!sport || !supportedSports.includes(sport as SupportedSport)) {
+    if (sport !== "all" && !supportedSports.includes(sport as SupportedSport)) {
       return NextResponse.json({ 
-        error: `Sport parameter is required and must be one of: ${supportedSports.join(', ')}` 
+        error: `Invalid sport: ${sport}. Supported sports: ${supportedSports.join(', ')}` 
       }, { status: 400 })
     }
     const limit = Number.parseInt(searchParams.get("limit") || "10")

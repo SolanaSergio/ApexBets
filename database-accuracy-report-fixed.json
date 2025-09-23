@@ -1,0 +1,427 @@
+{
+  "sports": {
+    "total": 7,
+    "active": 7,
+    "expected": 7,
+    "missing": [],
+    "sports": [
+      {
+        "name": "baseball",
+        "display_name": "Baseball",
+        "data_source": "sportsdb",
+        "player_stats_table": "baseball_player_stats",
+        "positions": 10,
+        "betting_markets": 3
+      },
+      {
+        "name": "basketball",
+        "display_name": "Basketball",
+        "data_source": "sportsdb",
+        "player_stats_table": "player_stats",
+        "positions": 5,
+        "betting_markets": 3
+      },
+      {
+        "name": "football",
+        "display_name": "American Football",
+        "data_source": "sportsdb",
+        "player_stats_table": "football_player_stats",
+        "positions": 11,
+        "betting_markets": 3
+      },
+      {
+        "name": "golf",
+        "display_name": "Golf",
+        "data_source": "sportsdb",
+        "player_stats_table": "golf_tournament_stats",
+        "positions": 2,
+        "betting_markets": 3
+      },
+      {
+        "name": "hockey",
+        "display_name": "Ice Hockey",
+        "data_source": "sportsdb",
+        "player_stats_table": "hockey_player_stats",
+        "positions": 5,
+        "betting_markets": 3
+      },
+      {
+        "name": "soccer",
+        "display_name": "Soccer",
+        "data_source": "sportsdb",
+        "player_stats_table": "soccer_player_stats",
+        "positions": 10,
+        "betting_markets": 3
+      },
+      {
+        "name": "tennis",
+        "display_name": "Tennis",
+        "data_source": "sportsdb",
+        "player_stats_table": "tennis_match_stats",
+        "positions": 2,
+        "betting_markets": 3
+      }
+    ]
+  },
+  "teams": {
+    "total": 1631,
+    "active": 1631,
+    "bySport": {
+      "basketball": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "football": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "baseball": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "hockey": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "soccer": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "tennis": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      },
+      "golf": {
+        "total": 233,
+        "active": 233,
+        "hasLogos": 0,
+        "hasLeagues": 233,
+        "hasConferences": 161,
+        "hasDivisions": 147
+      }
+    }
+  },
+  "games": {
+    "total": 1806,
+    "live": 7,
+    "recent": 294,
+    "bySport": {
+      "basketball": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "football": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "baseball": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "hockey": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "soccer": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "tennis": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      },
+      "golf": {
+        "total": 258,
+        "live": 1,
+        "recent": 42,
+        "completed": 206,
+        "scheduled": 51,
+        "hasScores": 213
+      }
+    }
+  },
+  "players": {
+    "total": 329,
+    "bySport": {
+      "basketball": {
+        "total": 25,
+        "hasGameData": 0,
+        "hasTeamData": 0
+      },
+      "football": {
+        "total": 100,
+        "hasGameData": 100,
+        "hasTeamData": 100
+      },
+      "baseball": {
+        "total": 100,
+        "hasGameData": 100,
+        "hasTeamData": 100
+      },
+      "hockey": {
+        "total": 60,
+        "hasGameData": 60,
+        "hasTeamData": 60
+      },
+      "soccer": {
+        "total": 44,
+        "hasGameData": 44,
+        "hasTeamData": 44
+      },
+      "tennis": {
+        "total": 0,
+        "hasGameData": 0,
+        "hasTeamData": 0
+      },
+      "golf": {
+        "total": 0,
+        "hasGameData": 0,
+        "hasTeamData": 0
+      }
+    }
+  },
+  "standings": {
+    "total": 50,
+    "bySport": {
+      "basketball": {
+        "total": 29,
+        "hasWins": 29,
+        "hasLosses": 29,
+        "hasWinPercentage": 29,
+        "hasStreak": 29
+      },
+      "football": {
+        "total": 21,
+        "hasWins": 21,
+        "hasLosses": 21,
+        "hasWinPercentage": 21,
+        "hasStreak": 21
+      }
+    }
+  },
+  "predictions": {
+    "total": 14,
+    "bySport": {
+      "basketball": {
+        "total": 10,
+        "withConfidence": 10,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "football": {
+        "total": 0,
+        "withConfidence": 0,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "baseball": {
+        "total": 0,
+        "withConfidence": 0,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "hockey": {
+        "total": 4,
+        "withConfidence": 4,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "soccer": {
+        "total": 0,
+        "withConfidence": 0,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "tennis": {
+        "total": 0,
+        "withConfidence": 0,
+        "withReasoning": 0,
+        "hasGameData": 0
+      },
+      "golf": {
+        "total": 0,
+        "withConfidence": 0,
+        "withReasoning": 0,
+        "hasGameData": 0
+      }
+    }
+  },
+  "odds": {
+    "total": 0,
+    "bySport": {
+      "basketball": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "football": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "baseball": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "hockey": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "soccer": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "tennis": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      },
+      "golf": {
+        "total": 0,
+        "live": 0,
+        "withSpread": 0,
+        "withTotal": 0,
+        "hasHomeOdds": 0,
+        "hasAwayOdds": 0
+      }
+    }
+  },
+  "dataConsistency": {
+    "issues": [],
+    "isConsistent": true
+  },
+  "apiEndpoints": {
+    "total": 10,
+    "healthy": 5,
+    "results": {
+      "/api/sports": {
+        "status": 200,
+        "healthy": true,
+        "responseTime": 1758599034898
+      },
+      "/api/teams": {
+        "status": 200,
+        "healthy": true,
+        "responseTime": 1758599035183
+      },
+      "/api/database-first/games": {
+        "status": 200,
+        "healthy": true,
+        "responseTime": 1758599035398
+      },
+      "/api/standings": {
+        "status": 200,
+        "healthy": true,
+        "responseTime": 1758599035664
+      },
+      "/api/players": {
+        "status": 400,
+        "healthy": false,
+        "responseTime": 1758599035750
+      },
+      "/api/live-updates": {
+        "status": 200,
+        "healthy": true,
+        "responseTime": 1758599036677
+      },
+      "/api/analytics/trends": {
+        "status": 400,
+        "healthy": false,
+        "responseTime": 1758599037255
+      },
+      "/api/value-bets": {
+        "status": 400,
+        "healthy": false,
+        "responseTime": 1758599038039
+      },
+      "/api/live-scores": {
+        "status": 400,
+        "healthy": false,
+        "responseTime": 1758599039340
+      },
+      "/api/predictions/upcoming": {
+        "status": 400,
+        "healthy": false,
+        "responseTime": 1758599040083
+      }
+    }
+  },
+  "summary": {
+    "totalTests": 10,
+    "passedTests": 8,
+    "failedTests": 2,
+    "errors": [
+      "Odds Data: No odds found",
+      "API Endpoints Health: 5 endpoints unhealthy"
+    ]
+  }
+}

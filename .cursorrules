@@ -6,6 +6,8 @@
 - ALWAYS use real environment variables from process.env
 - ALWAYS validate environment variables before use
 - If environment variable is missing, throw error - never use fallbacks
+- ALWAYS use `node -e "require('dotenv').config(); console.log(process.env)"` to check env vars
+- ALWAYS use `node -e "require('dotenv').config(); console.log('API Keys:', Object.keys(process.env).filter(k => k.includes('API') || k.includes('KEY')).map(k => k + ':' + (process.env[k] ? 'SET' : 'NOT SET')))"` to check API keys
 
 ## Data Handling - NO MOCK DATA
 - NEVER use mock data, sample data, or placeholder data

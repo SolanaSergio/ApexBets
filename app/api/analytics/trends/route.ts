@@ -10,14 +10,7 @@ import { SeasonManager } from '@/lib/services/core/season-manager'
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get('sport')
-    
-    if (!sport) {
-      return NextResponse.json({
-        success: false,
-        error: "Sport parameter is required"
-      }, { status: 400 })
-    }
+    const sport = searchParams.get('sport') || 'all'
     const league = searchParams.get('league') || undefined
     const season = searchParams.get('season') || await SeasonManager.getCurrentSeason(sport)
     
