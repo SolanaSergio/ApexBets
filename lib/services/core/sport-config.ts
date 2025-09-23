@@ -47,31 +47,40 @@ class SportConfigManagerImpl {
 
   private initializeConfigs(): void {
     // Load sport configurations dynamically from environment or database
-    this.loadDynamicConfigs()
+    this.loadDynamicConfigs().catch(error => {
+      console.warn('Failed to initialize sport configurations:', error)
+    })
   }
 
-  private loadDynamicConfigs(): void {
-    // Get supported sports from environment validator (lazy loading)
-    let supportedSports: string[] = []
-    
+  private async loadDynamicConfigs(): Promise<void> {
+    // Load sports from database instead of hardcoded fallbacks
     try {
-      const { envValidator } = require('../../config/env-validator')
-      supportedSports = envValidator.getSupportedSports()
+      const { productionSupabaseClient } = require('../../supabase/production-client')
+      const client = productionSupabaseClient
+      const supabase = client.supabase
+      
+      const { data: sports, error } = await supabase
+        .from('sports')
+        .select('name, display_name, is_active')
+        .eq('is_active', true)
+        .order('name')
+      
+      if (error) {
+        console.warn('Failed to load sports from database:', error)
+        return
+      }
+      
+      const supportedSports = sports?.map((sport: any) => sport.name) || []
+      
+      // Load configuration for each sport dynamically
+      supportedSports.forEach((sport: SupportedSport) => {
+        this.loadSportConfig(sport)
+      })
+      
     } catch (error) {
-      console.warn('Environment validation failed, using fallback sports configuration:', error)
-      // Fallback to basic sports if environment validation fails
-      supportedSports = ['basketball', 'football', 'soccer']
+      console.warn('Failed to load sports configuration from database:', error)
+      // Don't use hardcoded fallbacks - let the system handle missing sports gracefully
     }
-    
-    if (supportedSports.length === 0) {
-      // Use fallback sports if none configured
-      supportedSports = ['basketball', 'football', 'soccer']
-    }
-
-    // Load configuration for each sport dynamically
-    supportedSports.forEach((sport: SupportedSport) => {
-      this.loadSportConfig(sport)
-    })
   }
 
   private loadSportConfig(sport: SupportedSport): void {

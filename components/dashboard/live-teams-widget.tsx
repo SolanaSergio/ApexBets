@@ -94,7 +94,7 @@ function TeamCard({ team, rank }: TeamCardProps) {
 
 export function LiveTeamsWidget() {
   const { selectedSport } = useRealTimeData()
-  const { data: teams, loading, error, refetch } = useTeams(selectedSport === "all" ? undefined : selectedSport)
+  const { data: teams, loading, error, refetch } = useTeams(selectedSport)
   const [viewMode, setViewMode] = useState<"standings" | "performance">("standings")
 
   // Enhanced team data processing - fully dynamic
@@ -166,7 +166,7 @@ export function LiveTeamsWidget() {
           <div className="text-center py-8">
             <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
-              {error ? 'Failed to load teams data' : `No teams data available${selectedSport !== "all" ? ` for ${selectedSport}` : ''}`}
+              {error ? 'Failed to load teams data' : `No teams data available${selectedSport ? ` for ${selectedSport}` : ''}`}
             </p>
             <Button onClick={refetch} variant="outline" size="sm" className="mt-4 hover:scale-105 transition-transform">
               Try Again
@@ -177,7 +177,7 @@ export function LiveTeamsWidget() {
     )
   }
 
-  const sportDisplayName = selectedSport !== "all" ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
+  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "No Sport Selected"
 
   return (
     <Card className="h-fit">

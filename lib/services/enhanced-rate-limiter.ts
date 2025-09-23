@@ -83,9 +83,9 @@ export class EnhancedRateLimiter {
       },
       {
         provider: 'api-sports',
-        requestsPerMinute: 2, // Very conservative for free tier
-        requestsPerDay: 50, // Reduced daily limit
-        burstLimit: 1,
+        requestsPerMinute: parseInt(process.env.API_SPORTS_REQUESTS_PER_MINUTE || '10'), // More reasonable default
+        requestsPerDay: parseInt(process.env.API_SPORTS_REQUESTS_PER_DAY || '1000'), // More reasonable daily limit
+        burstLimit: parseInt(process.env.API_SPORTS_BURST_LIMIT || '2'),
         windowSizeMs: 60000
       },
       {

@@ -229,13 +229,13 @@ export function SportLoadingSpinner({
   }
 
   const getSportIcon = () => {
-    switch (sport) {
-      case 'basketball': return Zap
-      case 'football': return Activity
-      case 'soccer': return Target
-      case 'hockey': return BarChart3
-      default: return Loader2
-    }
+    // Dynamic icon selection based on sport name
+    const sportLower = sport.toLowerCase()
+    if (sportLower.includes('basketball')) return Zap
+    if (sportLower.includes('football')) return Activity
+    if (sportLower.includes('soccer')) return Target
+    if (sportLower.includes('hockey')) return BarChart3
+    return Loader2 // Default fallback
   }
 
   const Icon = getSportIcon()

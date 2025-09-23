@@ -12,6 +12,7 @@ export async function GET() {
     const { data: sports, error } = await supabase
       .from("sports")
       .select(`
+        id,
         name,
         display_name,
         icon,
@@ -25,7 +26,9 @@ export async function GET() {
         betting_markets,
         season_config,
         rate_limits,
-        update_frequency
+        update_frequency,
+        created_at,
+        updated_at
       `)
       .eq("is_active", true)
       .order("name")
@@ -36,6 +39,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      success: true,
       data: sports || [],
       meta: {
         fromCache: false,

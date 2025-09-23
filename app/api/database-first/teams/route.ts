@@ -39,10 +39,11 @@ export async function GET(request: NextRequest) {
     } else {
       const freshnessResult = await staleDataDetector.checkDataFreshness(
         'teams',
-        teams
+        teams,
+        sport
       )
 
-      if (freshnessResult.isStale) {
+      if (freshnessResult.isStale && staleDataDetector.shouldAllowRefresh('teams', sport)) {
         needsRefresh = true
         structuredLogger.info('Database data needs refresh', {
           sport,

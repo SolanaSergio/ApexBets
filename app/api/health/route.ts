@@ -19,7 +19,7 @@ export async function GET() {
   try {
     // Test database connection
     try {
-      const dbTest = await productionSupabaseClient.executeSQL('SELECT 1 as test')
+      const dbTest = await productionSupabaseClient.executeSQL('SELECT 1')
       healthChecks.database = dbTest.success
     } catch (error) {
       structuredLogger.error('Database health check failed', { error: error instanceof Error ? error.message : String(error) })

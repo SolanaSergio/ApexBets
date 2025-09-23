@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useErrorHandler } from '@/components/error/enhanced-error-boundary'
 interface UseApiDataOptions<T> {
   initialData?: T
@@ -35,6 +35,19 @@ export function useApiData<T>(
   const [error, setError] = useState<Error | null>(null)
   const errorHandler = useErrorHandler()
 
+  // Use useRef to store stable references to callbacks
+  const onErrorRef = useRef(onError)
+  const onSuccessRef = useRef(onSuccess)
+  
+  // Update refs when callbacks change
+  useEffect(() => {
+    onErrorRef.current = onError
+  }, [onError])
+  
+  useEffect(() => {
+    onSuccessRef.current = onSuccess
+  }, [onSuccess])
+
   const fetchData = useCallback(async () => {
     if (!enabled) return
 
@@ -55,16 +68,16 @@ export function useApiData<T>(
         return result
       })
 
-      onSuccess?.(result)
+      onSuccessRef.current?.(result)
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred')
       setError(error)
       errorHandler(error)
-      onError?.(error)
+      onErrorRef.current?.(error)
     } finally {
       setLoading(false)
     }
-  }, [fetchFn, enabled, onError, onSuccess, errorHandler])
+  }, [fetchFn, enabled, errorHandler])
 
   const mutate = useCallback((newData: T) => {
     setData(newData)
@@ -93,46 +106,42 @@ export function useApiData<T>(
 
 // Specialized hooks for common data types
 export function useGames(sport?: string, options?: UseApiDataOptions<any[]>) {
-  return useApiData(
-    async () => {
-      if (!sport) throw new Error('Sport is required for games data')
-      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      return databaseFirstApiClient.getGames({ sport, limit: 50 })
-    },
-    { enabled: !!sport, ...options }
-  )
+  const fetchFn = useCallback(async () => {
+    if (!sport) throw new Error('Sport is required for games data')
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    return databaseFirstApiClient.getGames({ sport, limit: 50 })
+  }, [sport])
+
+  return useApiData(fetchFn, { enabled: !!sport, ...options })
 }
 
 export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
-  return useApiData(
-    async () => {
-      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      const params: { sport?: string; league?: string } = {}
-      if (sport) params.sport = sport
-      return databaseFirstApiClient.getTeams(params)
-    },
-    { enabled: !!sport, ...options }
-  )
+  const fetchFn = useCallback(async () => {
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    const params: { sport?: string; league?: string } = {}
+    if (sport) params.sport = sport
+    return databaseFirstApiClient.getTeams(params)
+  }, [sport])
+
+  return useApiData(fetchFn, { enabled: !!sport, ...options })
 }
 
 export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {
-  return useApiData(
-    async () => {
-      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      const params: { sport?: string; limit?: number; search?: string } = { limit: 50 }
-      if (sport) params.sport = sport
-      return databaseFirstApiClient.getPlayers(params)
-    },
-    { enabled: !!sport, ...options }
-  )
+  const fetchFn = useCallback(async () => {
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    const params: { sport?: string; limit?: number; search?: string } = { limit: 50 }
+    if (sport) params.sport = sport
+    return databaseFirstApiClient.getPlayers(params)
+  }, [sport])
+
+  return useApiData(fetchFn, { enabled: !!sport, ...options })
 }
 
 export function useHealthStatus(options?: UseApiDataOptions<Record<string, boolean>>) {
-  return useApiData(
-    async () => {
-      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      return databaseFirstApiClient.getHealthStatus()
-    },
-    { refetchInterval: 30000, ...options } // Refetch every 30 seconds
-  )
+  const fetchFn = useCallback(async () => {
+    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    return databaseFirstApiClient.getHealthStatus()
+  }, [])
+
+  return useApiData(fetchFn, { refetchInterval: 30000, ...options }) // Refetch every 30 seconds
 }

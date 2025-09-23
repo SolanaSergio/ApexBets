@@ -20,8 +20,7 @@ import {
   Gamepad2
 } from "lucide-react"
 import { useRealTimeData, useLiveGames, usePredictions, useOdds } from "@/components/data/real-time-provider"
-// API data hooks removed - using real-time provider instead
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { useSports, Sport } from "@/hooks/use-sports"
 import { LiveTeamsWidget } from "./live-teams-widget"
 import { LiveStandingsWidget } from "./live-standings-widget"
 import { EnhancedErrorBoundary } from "@/components/error/enhanced-error-boundary"
@@ -112,68 +111,61 @@ function SportSelector({
   selectedSport,
   onSportChange
 }: {
-  sports: SupportedSport[]
+  sports: Sport[]
   selectedSport: string
   onSportChange: (sport: string) => void
 }) {
-  // Dynamic icon mapping based on sport configuration
-  const getSportIcon = (sport: SupportedSport) => {
-    const config = SportConfigManager.getSportConfig(sport)
-    // Use icon from config if available, otherwise default to Trophy
-    if (config?.icon) {
+  // Dynamic icon mapping based on sport data from database
+  const getSportIcon = (sport: Sport) => {
+    if (sport.icon) {
       // Map common icon names to Lucide icons
       const iconMap: Record<string, any> = {
         'zap': Zap,
         'activity': Activity,
         'target': Target,
         'gamepad2': Gamepad2,
-        'trophy': Trophy
+        'trophy': Trophy,
+        '⚽': Gamepad2,
+        '🏀': Gamepad2,
+        '🏈': Gamepad2,
+        '⚾': Gamepad2,
+        '🏒': Gamepad2,
+        '🎾': Gamepad2,
+        '⛳': Gamepad2
       }
-      return iconMap[config.icon.toLowerCase()] || Trophy
+      return iconMap[sport.icon.toLowerCase()] || Trophy
     }
     return Trophy
   }
 
-  // Dynamic color mapping based on sport configuration
-  const getSportColor = (sport: SupportedSport) => {
-    const config = SportConfigManager.getSportConfig(sport)
-    if (config?.color) {
-      // Use color from config, fallback to default gradient
-      return config.color.includes('gradient') ? config.color : "from-primary to-primary/80"
+  // Dynamic color mapping based on sport data from database
+  const getSportColor = (sport: Sport) => {
+    if (sport.color) {
+      // Use color from database, fallback to default gradient
+      return sport.color.includes('gradient') ? sport.color : `from-[${sport.color}] to-[${sport.color}]/80`
     }
-    return "from-muted to-muted/80"
+    return "from-primary to-primary/80"
   }
 
   return (
     <div className="flex flex-wrap gap-2 sm:gap-3 justify-center lg:justify-start">
-      <Button
-        onClick={() => onSportChange("all")}
-        variant={selectedSport === "all" ? "default" : "outline"}
-        className="px-3 sm:px-4 py-2 text-sm hover:scale-105 transition-transform"
-      >
-        <Trophy className="w-4 h-4 mr-1 sm:mr-2" />
-        <span className="hidden sm:inline">All Sports</span>
-        <span className="sm:hidden">All</span>
-      </Button>
       {sports.map((sport) => {
         const SportIcon = getSportIcon(sport)
         const sportColor = getSportColor(sport)
-        const config = SportConfigManager.getSportConfig(sport)
-        const isSelected = selectedSport === sport
-        const displayName = config?.name || sport.charAt(0).toUpperCase() + sport.slice(1)
+        const isSelected = selectedSport === sport.name
 
         return (
           <Button
-            key={sport}
-            onClick={() => onSportChange(sport)}
+            key={sport.id}
+            onClick={() => onSportChange(sport.name)}
             variant={isSelected ? "default" : "outline"}
             className={`px-3 sm:px-4 py-2 text-sm hover:scale-105 transition-transform ${
               isSelected ? `bg-gradient-to-r ${sportColor} text-white` : ''
             }`}
           >
             <SportIcon className="w-4 h-4 mr-1 sm:mr-2" />
-            <span className="hidden sm:inline">{displayName}</span>
-            <span className="sm:hidden">{displayName.slice(0, 3)}</span>
+            <span className="hidden sm:inline">{sport.display_name}</span>
+            <span className="sm:hidden">{sport.display_name.slice(0, 3)}</span>
           </Button>
         )
       })}
@@ -187,29 +179,15 @@ export function ComprehensiveSportsDashboard() {
   const { predictions, loading: predictionsLoading } = usePredictions()
   useOdds() // Load odds data in background
   
-  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
-  const [sportsLoading, setSportsLoading] = useState(true)
+  const { sports, loading: sportsLoading, error: sportsError } = useSports()
   const [refreshing, setRefreshing] = useState(false)
 
-  // Load supported sports
+  // Set default sport to first available sport if none selected
   useEffect(() => {
-    const loadSports = async () => {
-      try {
-        setSportsLoading(true)
-        await SportConfigManager.initialize()
-        const sports = SportConfigManager.getSupportedSports()
-        setSupportedSports(sports)
-      } catch (error) {
-        console.error('Error loading sports:', error)
-        SportConfigManager.initializeSync()
-        const sports = SportConfigManager.getSupportedSports()
-        setSupportedSports(sports)
-      } finally {
-        setSportsLoading(false)
-      }
+    if (sports.length > 0 && (!selectedSport || selectedSport === "all")) {
+      setSelectedSport(sports[0].name)
     }
-    loadSports()
-  }, [])
+  }, [sports, selectedSport, setSelectedSport])
 
   // Handle refresh
   const handleRefresh = async () => {
@@ -233,6 +211,27 @@ export function ComprehensiveSportsDashboard() {
     )
   }
 
+  if (sportsError) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <div className="text-destructive mb-4">Failed to load sports: {sportsError}</div>
+          <Button onClick={() => window.location.reload()}>Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  if (sports.length === 0) {
+    return (
+      <div className="space-y-8">
+        <div className="text-center">
+          <div className="text-muted-foreground mb-4">No sports available</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4 lg:space-y-6">
       {/* Compact Header with Sport Selector and Controls */}
@@ -240,7 +239,7 @@ export function ComprehensiveSportsDashboard() {
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex-1">
             <SportSelector
-              sports={supportedSports}
+              sports={sports}
               selectedSport={selectedSport}
               onSportChange={setSelectedSport}
             />

@@ -197,7 +197,7 @@ export class ApiSportsClient {
       
       // Get current API key from rotation service
       const apiKey = this.getApiKey()
-      if (!apiKey || apiKey === '') {
+      if (!apiKey || apiKey === '' || apiKey === 'your_rapidapi_key_here') {
         structuredLogger.warn('API-SPORTS API key not configured, returning empty data', {
           provider: this.provider,
           endpoint
@@ -252,13 +252,10 @@ export class ApiSportsClient {
             provider: this.provider,
             status: response.status
           })
-          if (retryAttempt < this.maxRetries) {
-            const delay = errorResult.retryAfterMs || 5000
-            await new Promise(resolve => setTimeout(resolve, delay))
-            return this.request<T>(endpoint, retryAttempt + 1)
-          } else {
-            return { response: [] } as T
-          }
+          // 403 errors typically mean the API key doesn't have access to this endpoint
+          // Don't retry as it won't help - return empty data instead
+          apiKeyRotation.rotateToNextKey('api-sports', 'invalid')
+          return { response: [] } as T
         } else if (response.status === 429) {
           structuredLogger.rateLimitExceeded(this.provider, 2, {
             endpoint,

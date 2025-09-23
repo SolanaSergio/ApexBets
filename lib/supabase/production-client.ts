@@ -29,9 +29,6 @@ class ProductionSupabaseClient {
 
   async executeSQL(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
-      // Mark params as intentionally unused for now while implementing specific handlers
-      void params
-      
       const trimmedQuery = query.trim().toUpperCase()
       
       // Handle simple health check queries
@@ -40,6 +37,36 @@ class ProductionSupabaseClient {
           success: true,
           data: [{ health_check: 1 }]
         }
+      }
+      
+      // Handle dynamic sports manager queries
+      if (query.includes('FROM sports s') && query.includes('WHERE s.is_active = true')) {
+        const { data, error } = await this.supabase
+          .from('sports')
+          .select('id, name, display_name, is_active, data_types, refresh_intervals, api_providers, default_league, season_format, current_season')
+          .eq('is_active', true)
+          .order('display_name')
+        
+        if (error) throw error
+        return { success: true, data: data || [] }
+      }
+      
+      // Handle leagues queries for dynamic sports manager
+      if (query.includes('FROM leagues l') && query.includes('WHERE l.sport = $1')) {
+        const sport = params?.[0]
+        if (!sport) {
+          return { success: true, data: [] }
+        }
+        
+        const { data, error } = await this.supabase
+          .from('leagues')
+          .select('id, name, display_name, sport, is_active, country, season, api_mapping')
+          .eq('sport', sport)
+          .eq('is_active', true)
+          .order('display_name')
+        
+        if (error) throw error
+        return { success: true, data: data || [] }
       }
       
       // Handle queries without FROM clause (system queries)
@@ -65,12 +92,46 @@ class ProductionSupabaseClient {
         }
       }
 
-      // For SELECT queries with FROM clause, use Supabase's select method
+      // For SELECT queries with FROM clause, parse WHERE conditions and apply them
       if (trimmedQuery.startsWith('SELECT')) {
-        const { data, error } = await this.supabase
-          .from(tableName)
-          .select('*')
-          .limit(1000) // Safety limit
+        let queryBuilder = this.supabase.from(tableName).select('*')
+        
+        // Parse WHERE conditions from the query
+        const whereMatch = query.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s+LIMIT|$)/i)
+        if (whereMatch && params) {
+          const whereClause = whereMatch[1]
+          
+          // Handle sport filtering
+          if (whereClause.includes('sport = $1') && params[0]) {
+            queryBuilder = queryBuilder.eq('sport', params[0])
+          }
+          
+          // Handle league filtering
+          if (whereClause.includes('league = $2') && params[1]) {
+            queryBuilder = queryBuilder.eq('league', params[1])
+          }
+          
+          // Handle is_active filtering
+          if (whereClause.includes('is_active = $3') && params[2] !== undefined) {
+            queryBuilder = queryBuilder.eq('is_active', params[2])
+          }
+        }
+        
+        // Parse ORDER BY clause
+        const orderMatch = query.match(/ORDER\s+BY\s+(\w+)/i)
+        if (orderMatch) {
+          queryBuilder = queryBuilder.order(orderMatch[1])
+        }
+        
+        // Parse LIMIT clause
+        const limitMatch = query.match(/LIMIT\s+(\d+)/i)
+        if (limitMatch) {
+          queryBuilder = queryBuilder.limit(parseInt(limitMatch[1]))
+        } else {
+          queryBuilder = queryBuilder.limit(1000) // Safety limit
+        }
+
+        const { data, error } = await queryBuilder
 
         if (error) throw error
 

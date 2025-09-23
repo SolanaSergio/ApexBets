@@ -20,6 +20,7 @@ export interface DataFreshnessResult {
 export class StaleDataDetector {
   private static instance: StaleDataDetector
   private configs: Map<string, StaleDataConfig> = new Map()
+  private lastRefreshAttempts: Map<string, number> = new Map()
 
   private constructor() {
     this.initializeConfigs()
@@ -66,23 +67,40 @@ export class StaleDataDetector {
   }
 
   /**
+   * Check if we should allow a refresh based on cooldown period
+   */
+  shouldAllowRefresh(dataType: string, sport?: string): boolean {
+    const key = `${dataType}-${sport || 'all'}`
+    const now = Date.now()
+    const lastAttempt = this.lastRefreshAttempts.get(key) || 0
+    const cooldownMs = 5 * 60 * 1000 // 5 minutes cooldown
+    
+    if (now - lastAttempt < cooldownMs) {
+      return false
+    }
+    
+    this.lastRefreshAttempts.set(key, now)
+    return true
+  }
+
+  /**
    * Check if data is stale based on its last update time
    */
   async checkDataFreshness(
     dataType: string,
     data: any[],
-    // Removed unused sport parameter
+    sport?: string
   ): Promise<DataFreshnessResult> {
     const config = this.configs.get(dataType) || this.configs.get('games')!
     const now = new Date()
     
-    // If no data, consider it stale
+    // If no data, consider it stale but don't trigger immediate refresh
     if (!data || data.length === 0) {
       return {
         isStale: true,
         isWarning: true,
-        ageMinutes: Infinity,
-        lastUpdated: new Date(0),
+        ageMinutes: config.maxAgeMinutes + 1,
+        lastUpdated: new Date(now.getTime() - (config.maxAgeMinutes + 1) * 60000),
         nextCheck: new Date(now.getTime() + config.checkIntervalMinutes * 60000)
       }
     }
@@ -110,8 +128,11 @@ export class StaleDataDetector {
     }
 
     const ageMinutes = (now.getTime() - lastUpdated.getTime()) / (1000 * 60)
-    const isStale = ageMinutes > config.maxAgeMinutes
-    const isWarning = ageMinutes > config.warningThresholdMinutes
+    
+    // Handle case where lastUpdated is from 1970 (no real data)
+    const isEpochDate = lastUpdated.getFullYear() === 1970
+    const isStale = isEpochDate ? false : ageMinutes > config.maxAgeMinutes
+    const isWarning = isEpochDate ? false : ageMinutes > config.warningThresholdMinutes
 
     return {
       isStale,

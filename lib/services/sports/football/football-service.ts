@@ -255,11 +255,21 @@ export class FootballService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get NFL teams from RapidAPI
-      const teams = await apiSportsClient.getTeams(1, new Date().getFullYear()) // NFL league ID
-      if (teams?.response && Array.isArray(teams.response)) {
-        const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
-        return mappedTeams
+      // Get NFL teams from RapidAPI - try multiple league IDs if needed
+      const currentYear = new Date().getFullYear()
+      const leagueIds = [1, 2, 3] // Try multiple NFL league IDs
+      
+      for (const leagueId of leagueIds) {
+        try {
+          const teams = await apiSportsClient.getTeams(leagueId, currentYear)
+          if (teams?.response && Array.isArray(teams.response) && teams.response.length > 0) {
+            const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
+            return mappedTeams
+          }
+        } catch (leagueError) {
+          console.warn(`Failed to get teams for league ${leagueId}:`, leagueError)
+          continue // Try next league ID
+        }
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request

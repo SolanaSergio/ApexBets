@@ -94,16 +94,18 @@ export class ServiceRegistry {
    * Get the appropriate service class for a sport
    */
   private static getServiceClassForSport(sport: string): any {
-    // Map sport names to their specific service classes
-    const serviceMap: Record<string, any> = {
-      'basketball': BasketballService,
-      'soccer': SoccerService,
-      'football': FootballService,
-      'baseball': BaseballService,
-      'hockey': HockeyService
-    }
-
-    return serviceMap[sport] || GenericSportService
+    // Dynamic service mapping based on sport name
+    const sportLower = sport.toLowerCase()
+    
+    // Try to match sport names dynamically
+    if (sportLower.includes('basketball')) return BasketballService
+    if (sportLower.includes('soccer')) return SoccerService
+    if (sportLower.includes('football')) return FootballService
+    if (sportLower.includes('baseball')) return BaseballService
+    if (sportLower.includes('hockey')) return HockeyService
+    
+    // Fallback to generic service for unknown sports
+    return GenericSportService
   }
 
   /**

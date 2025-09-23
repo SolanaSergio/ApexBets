@@ -115,25 +115,25 @@ export function ModernGameCard({
   }
 
   const getSportIcon = (sport: string) => {
-    const icons: Record<string, React.ComponentType<any>> = {
-      basketball: Zap,
-      football: Activity,
-      baseball: Target,
-      hockey: Gamepad2,
-      soccer: Trophy
-    }
-    return icons[sport] || Trophy
+    // Dynamic icon selection based on sport name
+    const sportLower = sport.toLowerCase()
+    if (sportLower.includes('basketball')) return Zap
+    if (sportLower.includes('football')) return Activity
+    if (sportLower.includes('baseball')) return Target
+    if (sportLower.includes('hockey')) return Gamepad2
+    if (sportLower.includes('soccer')) return Trophy
+    return Trophy // Default fallback
   }
 
   const getSportGradient = (sport: string) => {
-    const gradients: Record<string, string> = {
-      basketball: "from-cyan-500 to-blue-500",
-      football: "from-purple-500 to-indigo-500",
-      baseball: "from-green-500 to-emerald-500",
-      hockey: "from-blue-500 to-cyan-500",
-      soccer: "from-emerald-500 to-green-500"
-    }
-    return gradients[sport] || "from-gray-500 to-gray-600"
+    // Dynamic gradient selection based on sport name
+    const sportLower = sport.toLowerCase()
+    if (sportLower.includes('basketball')) return "from-cyan-500 to-blue-500"
+    if (sportLower.includes('football')) return "from-purple-500 to-indigo-500"
+    if (sportLower.includes('baseball')) return "from-green-500 to-emerald-500"
+    if (sportLower.includes('hockey')) return "from-blue-500 to-cyan-500"
+    if (sportLower.includes('soccer')) return "from-emerald-500 to-green-500"
+    return "from-gray-500 to-gray-600" // Default fallback
   }
 
   return (

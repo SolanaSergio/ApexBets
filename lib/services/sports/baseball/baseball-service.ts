@@ -280,10 +280,20 @@ export class BaseballService extends SportSpecificService {
     if (!apiSportsClient.isConfigured) return []
     
     try {
-      // Get MLB teams from RapidAPI
-      const teams = await apiSportsClient.getTeams(1, new Date().getFullYear()) // MLB league ID
-      if (teams?.response && Array.isArray(teams.response)) {
-        return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+      // Get MLB teams from RapidAPI - try multiple league IDs if needed
+      const currentYear = new Date().getFullYear()
+      const leagueIds = [1, 2, 3] // Try multiple MLB league IDs
+      
+      for (const leagueId of leagueIds) {
+        try {
+          const teams = await apiSportsClient.getTeams(leagueId, currentYear)
+          if (teams?.response && Array.isArray(teams.response) && teams.response.length > 0) {
+            return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+          }
+        } catch (leagueError) {
+          console.warn(`Failed to get teams for league ${leagueId}:`, leagueError)
+          continue // Try next league ID
+        }
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request

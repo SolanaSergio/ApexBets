@@ -47,14 +47,14 @@ interface StandingsRowProps {
 function StandingsRow({ team, isPlayoffPosition, sportType }: StandingsRowProps) {
   // Dynamic display based on sport type
   const getSecondaryStats = () => {
-    switch (sportType) {
-      case 'soccer':
-        return `${team.points || 0} pts | GD: ${team.goalDifference || 0}`
-      case 'hockey':
-        return `${team.points || 0} pts | ${team.goalsFor || 0}-${team.goalsAgainst || 0}`
-      default:
-        return `${team.wins}-${team.losses} | ${team.winPercentage.toFixed(1)}%`
+    const sportLower = sportType.toLowerCase()
+    if (sportLower.includes('soccer')) {
+      return `${team.points || 0} pts | GD: ${team.goalDifference || 0}`
     }
+    if (sportLower.includes('hockey')) {
+      return `${team.points || 0} pts | ${team.goalsFor || 0}-${team.goalsAgainst || 0}`
+    }
+    return `${team.wins}-${team.losses} | ${team.winPercentage.toFixed(1)}%`
   }
 
   return (
@@ -89,13 +89,13 @@ function StandingsRow({ team, isPlayoffPosition, sportType }: StandingsRowProps)
           <div className="font-bold">{team.losses}</div>
           <div className="text-muted-foreground">L</div>
         </div>
-        {sportType === 'soccer' && team.draws !== undefined && (
+        {sportType.toLowerCase().includes('soccer') && team.draws !== undefined && (
           <div>
             <div className="font-bold">{team.draws}</div>
             <div className="text-muted-foreground">D</div>
           </div>
         )}
-        {(sportType === 'soccer' || sportType === 'hockey') && team.points !== undefined ? (
+        {(sportType.toLowerCase().includes('soccer') || sportType.toLowerCase().includes('hockey')) && team.points !== undefined ? (
           <div className="hidden lg:block">
             <div className="font-bold">{team.points}</div>
             <div className="text-muted-foreground">PTS</div>
@@ -134,7 +134,7 @@ export function LiveStandingsWidget() {
   // Use database-first API client for standings
   const { data: standings, loading, error, refetch } = useApiData(
     async () => {
-      if (!selectedSport || selectedSport === "all") return []
+      if (!selectedSport) return []
 
       const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
       const params: { sport: string; league?: string } = { sport: selectedSport }
@@ -144,7 +144,7 @@ export function LiveStandingsWidget() {
       return databaseFirstApiClient.getStandings(params)
     },
     {
-      enabled: selectedSport !== "all",
+      enabled: !!selectedSport,
       refetchInterval: 600000 // Refresh every 10 minutes
     }
   )
@@ -169,7 +169,7 @@ export function LiveStandingsWidget() {
         wins,
         losses,
         draws,
-        points: team.points || team.pts || (selectedSport === 'soccer' ? (wins * 3 + draws) : 0),
+        points: team.points || team.pts || (selectedSport.toLowerCase().includes('soccer') ? (wins * 3 + draws) : 0),
         winPercentage,
         gamesBack: team.games_back || team.gb || 0,
         streak: team.streak || team.current_streak || team.form || '',
@@ -186,7 +186,8 @@ export function LiveStandingsWidget() {
     })
     .sort((a: StandingTeam, b: StandingTeam) => {
       // Dynamic sorting based on sport
-      if (selectedSport === 'soccer' || selectedSport === 'hockey') {
+      const sportLower = selectedSport.toLowerCase()
+      if (sportLower.includes('soccer') || sportLower.includes('hockey')) {
         return (b.points || 0) - (a.points || 0) || a.position - b.position
       }
       return a.position - b.position || b.winPercentage - a.winPercentage
@@ -200,20 +201,18 @@ export function LiveStandingsWidget() {
 
   // Dynamic playoff positions based on sport
   const getPlayoffPositions = (sport: string) => {
-    const playoffMap: Record<string, number> = {
-      'basketball': 8,
-      'hockey': 8,
-      'football': 7,
-      'baseball': 6,
-      'soccer': 4 // Top 4 for Champions League
-    }
-    return playoffMap[sport] || 6
+    const sportLower = sport.toLowerCase()
+    if (sportLower.includes('basketball') || sportLower.includes('hockey')) return 8
+    if (sportLower.includes('football')) return 7
+    if (sportLower.includes('baseball')) return 6
+    if (sportLower.includes('soccer')) return 4 // Top 4 for Champions League
+    return 6 // Default fallback
   }
 
   const playoffPositions = getPlayoffPositions(selectedSport)
   const sportDisplayName = selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)
 
-  if (selectedSport === "all") {
+  if (!selectedSport) {
     return (
       <Card className="h-fit">
         <CardHeader className="pb-4">
@@ -225,7 +224,7 @@ export function LiveStandingsWidget() {
         <CardContent>
           <div className="text-center py-8">
             <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Select a specific sport to view standings</p>
+            <p className="text-muted-foreground">Select a sport to view standings</p>
           </div>
         </CardContent>
       </Card>
@@ -285,7 +284,7 @@ export function LiveStandingsWidget() {
             Standings - {sportDisplayName}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {selectedSport !== 'soccer' && (
+            {!selectedSport.toLowerCase().includes('soccer') && (
               <select
                 value={conference}
                 onChange={(e) => setConference(e.target.value as any)}
@@ -322,9 +321,9 @@ export function LiveStandingsWidget() {
             <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 text-center">
               <div>W</div>
               <div>L</div>
-              {selectedSport === 'soccer' && <div className="hidden lg:block">D</div>}
+              {selectedSport.toLowerCase().includes('soccer') && <div className="hidden lg:block">D</div>}
               <div className="hidden lg:block">
-                {selectedSport === 'soccer' || selectedSport === 'hockey' ? 'PTS' : 'PCT'}
+                {selectedSport.toLowerCase().includes('soccer') || selectedSport.toLowerCase().includes('hockey') ? 'PTS' : 'PCT'}
               </div>
             </div>
             <div className="w-12">Form</div>

@@ -39,7 +39,7 @@ interface RealTimeProviderProps {
 }
 
 export function RealTimeProvider({ children }: RealTimeProviderProps) {
-  const [selectedSport, setSelectedSport] = useState("all")
+  const [selectedSport, setSelectedSport] = useState("")
   const [data, setData] = useState<RealTimeData>({
     liveGames: [],
     predictions: [],
@@ -103,6 +103,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     }
 
     const fetchLiveGames = async () => {
+      if (!selectedSport) return // Don't fetch if no sport selected
+      
       try {
         liveGamesController = new AbortController()
         const result = await fetchWithCache(`/api/database-first/games?sport=${selectedSport}&status=live`, {
@@ -166,6 +168,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     }
 
     const fetchPredictions = async () => {
+      if (!selectedSport) return // Don't fetch if no sport selected
+      
       try {
         predictionsController = new AbortController()
         const result = await fetchWithCache(`/api/database-first/predictions?sport=${selectedSport}&limit=10`, {
@@ -207,6 +211,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     }
 
     const fetchOdds = async () => {
+      if (!selectedSport) return // Don't fetch if no sport selected
+      
       try {
         oddsController = new AbortController()
         const result = await fetchWithCache(`/api/database-first/odds?sport=${selectedSport}`, {
@@ -253,10 +259,10 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     fetchAllData()
 
     // Set up intervals with different frequencies for optimal performance
-    // Optimized intervals to balance real-time updates with performance
-    const liveGamesInterval = setInterval(fetchLiveGames, 60000) // Every 1 minute for live data
-    const predictionsInterval = setInterval(fetchPredictions, 180000) // Every 3 minutes for predictions
-    const oddsInterval = setInterval(fetchOdds, 120000) // Every 2 minutes for odds
+    // Reduced intervals to prevent excessive API calls
+    const liveGamesInterval = setInterval(fetchLiveGames, 300000) // Every 5 minutes for live data
+    const predictionsInterval = setInterval(fetchPredictions, 600000) // Every 10 minutes for predictions
+    const oddsInterval = setInterval(fetchOdds, 300000) // Every 5 minutes for odds
 
     // Cleanup function
     return () => {
@@ -325,6 +331,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     }
 
     const fetchStats = async () => {
+      if (!selectedSport) return // Don't fetch if no sport selected
+      
       try {
         statsController = new AbortController()
         const result = await fetchStatsWithCache(`/api/analytics/stats?sport=${selectedSport}`)
@@ -356,8 +364,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
     }
 
     fetchStats()
-    // Optimized interval for stats updates
-    const interval = setInterval(fetchStats, 300000) // Refresh every 5 minutes
+    // Reduced interval for stats updates to prevent excessive calls
+    const interval = setInterval(fetchStats, 900000) // Refresh every 15 minutes
 
     return () => {
       clearInterval(interval)
@@ -388,6 +396,8 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
   }, [gameUpdates, isConnected, lastUpdate, error])
 
   const refreshData = async () => {
+    if (!selectedSport) return // Don't refresh if no sport selected
+    
     // Force refresh all data using database-first endpoints
     try {
       const [gamesRes, predictionsRes, oddsRes, statsRes] = await Promise.all([
