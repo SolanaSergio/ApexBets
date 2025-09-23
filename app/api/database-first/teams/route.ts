@@ -39,19 +39,16 @@ export async function GET(request: NextRequest) {
     } else {
       const freshnessResult = await staleDataDetector.checkDataFreshness(
         'teams',
-        teams,
-        sport || undefined,
-        { league }
+        teams
       )
 
-      if (freshnessResult.needsRefresh) {
+      if (freshnessResult.isStale) {
         needsRefresh = true
         structuredLogger.info('Database data needs refresh', {
           sport,
           league,
-          reason: freshnessResult.reason,
-          dataAgeMinutes: Math.round(freshnessResult.dataAge / 60000),
-          maxAgeMinutes: Math.round(freshnessResult.maxAge / 60000)
+          ageMinutes: freshnessResult.ageMinutes,
+          lastUpdated: freshnessResult.lastUpdated
         })
       }
     }

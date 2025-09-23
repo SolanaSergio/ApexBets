@@ -68,7 +68,7 @@ export abstract class BaseService {
       }
 
       // Make request with error handling and retry
-      const startTime = Date.now()
+      // Removed unused startTime variable
       try {
         const data = await errorHandlingService.withCircuitBreaker(
           () => errorHandlingService.withRetry(
@@ -88,7 +88,7 @@ export abstract class BaseService {
           }
         )
 
-        const responseTime = Date.now() - startTime
+        // Removed unused responseTime variable
         // Rate limiting tracking is now handled by the centralized enhanced rate limiter
 
         // Cache the result in both memory and database
@@ -106,7 +106,7 @@ export abstract class BaseService {
 
         return data
       } catch (error) {
-        const responseTime = Date.now() - startTime
+        // Removed unused responseTime variable
         // Rate limiting tracking is now handled by the centralized enhanced rate limiter
 
         console.warn(`Error fetching data for ${this.config.name}:`, error)

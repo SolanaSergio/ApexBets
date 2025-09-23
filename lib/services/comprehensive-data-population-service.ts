@@ -4,7 +4,7 @@
  */
 
 import { structuredLogger } from './structured-logger'
-import { dataSyncService } from './data-sync-service'
+// Removed data-sync-service import - service was deleted as unnecessary
 import { SupportedSport } from './core/sport-config'
 
 export interface PopulationResult {
@@ -44,7 +44,8 @@ export class ComprehensiveDataPopulationService {
           structuredLogger.info(`Populating data for ${sport}`)
 
           // Use data sync service to populate data
-          const syncResult = await dataSyncService.performSync(sport)
+          // Data sync service was removed
+          const syncResult = { success: false, message: 'Data sync service was removed' }
           
           if (syncResult.success) {
             sportsProcessed++
@@ -97,9 +98,10 @@ export class ComprehensiveDataPopulationService {
 
   private async getRecordCount(sport: SupportedSport): Promise<number> {
     try {
-      if (typeof (dataSyncService as any).getRecordCounts === 'function') {
-        const result = await (dataSyncService as any).getRecordCounts(sport)
-        if (result && typeof result.total === 'number') return result.total
+      // Data sync service was removed
+      if (false) {
+        const result = { message: 'Data sync service was removed' }
+        if (result && typeof (result as any).total === 'number') return (result as any).total
       }
       return 0
     } catch (error) {
@@ -113,10 +115,11 @@ export class ComprehensiveDataPopulationService {
 
   private async getSupportedSportsFromDb(): Promise<SupportedSport[]> {
     try {
-      if (typeof (dataSyncService as any).getSupportedSports === 'function') {
-        const res = await (dataSyncService as any).getSupportedSports()
-        if (Array.isArray(res) && res.length > 0) {
-          return res as SupportedSport[]
+      // Data sync service was removed
+      if (false) {
+        const res = { message: 'Data sync service was removed' }
+        if (Array.isArray(res) && (res as any).length > 0) {
+          return (res as any) as SupportedSport[]
         }
       }
       return []
@@ -132,7 +135,8 @@ export class ComprehensiveDataPopulationService {
     try {
       structuredLogger.info(`Populating data for ${sport}`)
 
-      const syncResult = await dataSyncService.performSync(sport)
+      // Data sync service was removed
+      const syncResult = { success: false, message: 'Data sync service was removed' }
       const executionTime = Date.now() - startTime
 
       if (syncResult.success) {

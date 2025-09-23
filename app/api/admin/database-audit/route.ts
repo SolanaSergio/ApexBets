@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
       body = { action: 'audit', options: {} }
     }
     
-    const { action = 'audit', options = {} } = body
+    const { action = 'audit', options = {} } = body as { action?: string; options?: any }
 
     console.log(`🔧 Running database ${action} with options:`, options)
 

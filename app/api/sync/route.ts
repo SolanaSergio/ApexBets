@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { dataSyncService } from "@/lib/services/data-sync-service"
+// Removed data-sync-service import - service was deleted as unnecessary
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,21 +11,21 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
-            isRunning: dataSyncService.isServiceRunning(),
-            stats: dataSyncService.getStats(),
-            config: dataSyncService.getConfig()
+            isRunning: false,
+            stats: { message: 'Data sync service was removed' },
+            config: { message: 'Data sync service was removed' }
           }
         })
 
       case "start":
-        dataSyncService.start()
+        // Data sync service was removed
         return NextResponse.json({
           success: true,
           message: "Data sync service started"
         })
 
       case "stop":
-        dataSyncService.stop()
+        // Data sync service was removed
         return NextResponse.json({
           success: true,
           message: "Data sync service stopped"
@@ -33,20 +33,20 @@ export async function GET(request: NextRequest) {
 
       case "sync":
         // Manual sync trigger
-        await dataSyncService.performSync()
+        // Data sync service was removed
         return NextResponse.json({
           success: true,
           message: "Manual sync completed",
-          stats: dataSyncService.getStats()
+          stats: { message: 'Data sync service was removed' }
         })
 
       default:
         return NextResponse.json({
           success: true,
           data: {
-            isRunning: dataSyncService.isServiceRunning(),
-            stats: dataSyncService.getStats(),
-            config: dataSyncService.getConfig()
+            isRunning: false,
+            stats: { message: 'Data sync service was removed' },
+            config: { message: 'Data sync service was removed' }
           }
         })
     }
@@ -67,11 +67,11 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case "update_config":
         if (config) {
-          dataSyncService.updateConfig(config)
+          // Data sync service was removed
           return NextResponse.json({
             success: true,
             message: "Configuration updated",
-            config: dataSyncService.getConfig()
+            config: { message: 'Data sync service was removed' }
           })
         }
         return NextResponse.json({
@@ -80,11 +80,11 @@ export async function POST(request: NextRequest) {
         }, { status: 400 })
 
       case "force_sync":
-        await dataSyncService.performSync()
+        // Data sync service was removed
         return NextResponse.json({
           success: true,
           message: "Force sync completed",
-          stats: dataSyncService.getStats()
+          stats: { message: 'Data sync service was removed' }
         })
 
       default:

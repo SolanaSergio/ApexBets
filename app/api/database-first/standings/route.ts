@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { staleDataDetector } from '@/lib/services/stale-data-detector'
+// Removed stale-data-detector import - service was deleted as unnecessary
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -39,22 +39,13 @@ export async function GET(request: NextRequest) {
         standingsCount: standings.length
       })
     } else {
-      const freshnessResult = await staleDataDetector.checkDataFreshness(
-        'standings',
-        standings,
-        sport || undefined,
-        { league, season }
-      )
-
-      if (freshnessResult.needsRefresh) {
+      // Simple check: if no standings data, needs refresh
+      if (standings.length === 0) {
         needsRefresh = true
-        structuredLogger.info('Database data needs refresh', {
+        structuredLogger.info('Database data needs refresh - no standings found', {
           sport,
           league,
-          season,
-          reason: freshnessResult.reason,
-          dataAgeMinutes: Math.round(freshnessResult.dataAge / 60000),
-          maxAgeMinutes: Math.round(freshnessResult.maxAge / 60000)
+          season
         })
       }
     }

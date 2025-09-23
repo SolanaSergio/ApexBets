@@ -6,7 +6,7 @@
 import { productionSupabaseClient } from '../supabase/production-client'
 import { databaseCacheService } from '../services/database-cache-service'
 import { structuredLogger } from './structured-logger'
-import { enhancedRateLimiter } from './enhanced-rate-limiter'
+// Removed unused enhancedRateLimiter import
 
 export interface SportsDataConfig {
   sport: string

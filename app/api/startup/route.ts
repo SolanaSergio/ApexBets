@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { autoStartupService } from '@/lib/services/auto-startup-service';
+// Removed auto-startup-service import - service was deleted as unnecessary
 
 // Production startup route - no auto-initialization needed
 
@@ -14,15 +14,10 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action') || 'status';
 
     if (action === 'status') {
-      const status = {
-        initialized: autoStartupService.getInitializationStatus(),
-        config: autoStartupService.getConfig()
-      };
-      
       return NextResponse.json({
         success: true,
         action: 'status',
-        status,
+        status: { initialized: false, message: 'Auto-startup service was removed' },
         timestamp: new Date().toISOString()
       });
     }
@@ -39,26 +34,19 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === 'restart') {
-      await autoStartupService.stop();
-      await autoStartupService.start();
-      
       return NextResponse.json({
-        success: true,
-        action: 'restart',
-        message: 'Services restarted successfully',
+        success: false,
+        error: 'Auto-startup service was removed',
         timestamp: new Date().toISOString()
-      });
+      }, { status: 410 });
     }
 
     if (action === 'stop') {
-      await autoStartupService.stop();
-      
       return NextResponse.json({
-        success: true,
-        action: 'stop',
-        message: 'Services stopped successfully',
+        success: false,
+        error: 'Auto-startup service was removed',
         timestamp: new Date().toISOString()
-      });
+      }, { status: 410 });
     }
 
     return NextResponse.json({
@@ -81,31 +69,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, config } = body;
+    const { action } = body;
 
     if (action === 'start') {
-      await autoStartupService.initialize(config || {});
-      await autoStartupService.start();
-      
       return NextResponse.json({
-        success: true,
-        action: 'start',
-        message: 'Services started with custom configuration',
-        config: autoStartupService.getConfig(),
+        success: false,
+        error: 'Auto-startup service was removed',
         timestamp: new Date().toISOString()
-      });
+      }, { status: 410 });
     }
 
     if (action === 'update-config') {
-      autoStartupService.updateConfig(config);
-      
       return NextResponse.json({
-        success: true,
-        action: 'update-config',
-        message: 'Configuration updated',
-        config: autoStartupService.getConfig(),
+        success: false,
+        error: 'Auto-startup service was removed - configuration not available',
         timestamp: new Date().toISOString()
-      });
+      }, { status: 400 });
     }
 
     return NextResponse.json({

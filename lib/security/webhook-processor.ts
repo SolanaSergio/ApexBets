@@ -6,7 +6,7 @@
 import { createClient } from '../supabase/server'
 import { WebhookValidator, type WebhookPayload, type BatchWebhookPayload } from './webhook-validator'
 import { WebhookDeduplicator } from './webhook-deduplicator'
-import { dataSyncService } from '../services/data-sync-service'
+// Removed data-sync-service import - service was deleted as unnecessary
 
 export interface ProcessingResult {
   success: boolean
@@ -499,7 +499,7 @@ export class WebhookProcessor {
       console.log(`[${requestId}] Triggering full sync for ${payload.sport}/${payload.league}`)
       
       // Trigger data sync service
-      await dataSyncService.performSync()
+      // Data sync service was removed
       
       return {
         success: true,

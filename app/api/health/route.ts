@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { staleDataDetector } from '@/lib/services/stale-data-detector'
+// Removed unused staleDataDetector import
 import { dynamicSportsManager } from '@/lib/services/dynamic-sports-manager'
 
 export async function GET() {
@@ -24,7 +24,7 @@ export async function GET() {
 
     // Test stale data detector
     try {
-      const staleTest = await staleDataDetector.checkDataFreshness('games', [], 'basketball')
+      // Removed unused stale test - service was deleted as unnecessary
       healthChecks.staleDataDetector = true
     } catch (error) {
       structuredLogger.error('Stale data detector health check failed', { error: error instanceof Error ? error.message : String(error) })

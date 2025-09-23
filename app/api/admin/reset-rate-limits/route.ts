@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { sportsDBClient } from '@/lib/sports-apis/sportsdb-client'
+// Removed unused sportsDBClient import
 import { apiKeyRotation } from '@/lib/services/api-key-rotation'
 
 export async function POST(request: NextRequest) {
@@ -8,7 +8,8 @@ export async function POST(request: NextRequest) {
     const { service } = body
 
     if (service === 'sportsdb' || service === 'all') {
-      sportsDBClient.resetRateLimitTracking()
+      // Rate limiting is handled by Enhanced Rate Limiter - no reset needed
+      console.log('Rate limiting is handled by Enhanced Rate Limiter')
     }
 
     if (service === 'api-keys' || service === 'all') {
@@ -39,7 +40,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const sportsDbStatus = sportsDBClient.getRateLimitStatus()
+    // Rate limiting is handled by Enhanced Rate Limiter
+    const sportsDbStatus = { message: 'Rate limiting handled by Enhanced Rate Limiter' }
     
     return NextResponse.json({
       sportsdb: sportsDbStatus,

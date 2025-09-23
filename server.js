@@ -21,14 +21,14 @@ let autoStartupService = null;
 app.prepare().then(async () => {
   console.log('🚀 Next.js server preparing...');
   
-  // Import and initialize auto-startup service
+  // Import and initialize background sync service
   try {
-    const { autoStartupService: startupService } = require('./dist/server/startup.js');
-    autoStartupService = startupService;
-    console.log('✅ Auto-startup service loaded');
+    const { backgroundSyncService } = require('./dist/server/background-sync-service.js');
+    autoStartupService = backgroundSyncService;
+    console.log('✅ Background sync service loaded');
   } catch (error) {
-    console.error('❌ Failed to load auto-startup service:', error);
-    console.log('⚠️ Continuing without auto-startup services...');
+    console.error('❌ Failed to load background sync service:', error);
+    console.log('⚠️ Continuing without background sync services...');
   }
 
   // Create HTTP server
@@ -58,28 +58,21 @@ app.prepare().then(async () => {
       console.log(`> Ready on http://${hostname}:${attemptPort}`);
       console.log('🎉 Server started successfully!');
       
-      // Initialize services after server is ready
+      // Initialize background sync service after server is ready
       const isVercel = !!process.env.VERCEL
-      const allowAutoStartup = !isVercel
-      if (autoStartupService && allowAutoStartup) {
+      const allowBackgroundSync = !isVercel
+      if (autoStartupService && allowBackgroundSync) {
         setTimeout(async () => {
           try {
-            console.log('🚀 Starting auto-startup services...');
-            await autoStartupService.initialize({
-              enableMonitoring: true,
-              monitoringIntervalMinutes: 5,
-              enableDataQualityChecks: true,
-              enableHealthChecks: true,
-              enableAutoCleanup: false,
-              startupDelay: 2000
-            });
-            console.log('✅ All services started automatically!');
+            console.log('🚀 Starting background sync service...');
+            await autoStartupService.start();
+            console.log('✅ Background sync service started successfully!');
           } catch (error) {
-            console.error('❌ Auto-startup failed:', error);
+            console.error('❌ Background sync startup failed:', error);
           }
         }, 3000); // Wait 3 seconds after server starts
       } else if (isVercel) {
-        console.log('ℹ️ Auto-startup disabled on Vercel environment')
+        console.log('ℹ️ Background sync disabled on Vercel environment')
       }
     });
   };

@@ -1,130 +1,41 @@
 /**
  * DATABASE-FIRST GAMES API
- * Always checks database first, only uses external APIs when database is stale/empty
+ * Serves data exclusively from database - no external API calls during user requests
+ * Background sync service handles external API updates
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
-import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
+import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { staleDataDetector } from '@/lib/services/stale-data-detector'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport")
-    const status = searchParams.get("status") as "scheduled" | "live" | "finished" | "in_progress" | undefined
+    const sport = searchParams.get("sport") || "all"
+    const status = searchParams.get("status") as "scheduled" | "live" | "completed" | "postponed" | "cancelled" | undefined
     const dateFrom = searchParams.get("date_from")
     const dateTo = searchParams.get("date_to")
-    const limit = Number.parseInt(searchParams.get("limit") || "50")
-    const forceRefresh = searchParams.get("forceRefresh") === "true"
+    const limit = Number.parseInt(searchParams.get("limit") || "100")
+    const league = searchParams.get("league")
 
-    if (!sport) {
-      return NextResponse.json({
-        success: false,
-        error: "Sport parameter is required"
-      }, { status: 400 })
-    }
-
-    // STEP 1: Check database first
-    let games = await productionSupabaseClient.getGames(sport, undefined, dateFrom || undefined, status)
-    let dataSource = 'database'
-    let needsRefresh = false
-
-    // Apply additional filters
-    if (dateTo) {
-      games = games.filter((game: any) => new Date(game.game_date) <= new Date(dateTo))
-    }
-
-    // Apply limit
-    games = games.slice(0, limit)
-
-    // STEP 2: Check if data is stale or empty using centralized detector
-    if (forceRefresh) {
-      needsRefresh = true
-      structuredLogger.info('Force refresh requested', {
-        sport,
-        status,
-        gameCount: games.length
-      })
-    } else {
-      const freshnessResult = await staleDataDetector.checkDataFreshness(
-        'games',
-        games,
-        sport || undefined,
-        { status, dateFrom, dateTo }
-      )
-
-      if (freshnessResult.needsRefresh) {
-        needsRefresh = true
-        structuredLogger.info('Database data needs refresh', {
-          sport,
-          status,
-          reason: freshnessResult.reason,
-          dataAgeMinutes: Math.round(freshnessResult.dataAge / 60000),
-          maxAgeMinutes: Math.round(freshnessResult.maxAge / 60000)
-        })
-      }
-    }
-
-    // STEP 3: Fetch from external API if needed
-    if (needsRefresh) {
-      try {
-        const externalGames = await cachedUnifiedApiClient.getGames(sport as any, { 
-          limit: 100,
-          ...(status && { status }),
-          ...(dateFrom && { date: dateFrom })
-        })
-
-        if (externalGames && externalGames.length > 0) {
-          // Update database with fresh data
-          await updateDatabaseWithExternalData(sport, externalGames)
-          
-          // Get updated data from database
-          games = await productionSupabaseClient.getGames(sport, undefined, dateFrom || undefined, status)
-          
-          // Apply filters again
-          if (dateTo) {
-            games = games.filter((game: any) => new Date(game.game_date) <= new Date(dateTo))
-          }
-          games = games.slice(0, limit)
-          
-          dataSource = 'external_api_refreshed'
-          
-          structuredLogger.info('Successfully refreshed data from external API', {
-            sport,
-            status,
-            gameCount: games.length
-          })
-        } else {
-          structuredLogger.warn('External API returned no data, using database fallback', {
-            sport,
-            status
-          })
-          dataSource = 'database_fallback'
-        }
-      } catch (error) {
-        structuredLogger.error('Failed to fetch from external API, using database fallback', {
-          sport,
-          status,
-          error: error instanceof Error ? error.message : String(error)
-        })
-        dataSource = 'database_fallback'
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: games,
-      meta: {
-        source: dataSource,
-        count: games.length,
-        sport,
-        status,
-        refreshed: needsRefresh,
-        timestamp: new Date().toISOString()
-      }
+    // Use database-first API client - no external API calls
+    const result = await databaseFirstApiClient.getGames({
+      sport,
+      ...(status && { status }),
+      ...(dateFrom && { dateFrom }),
+      ...(dateTo && { dateTo }),
+      limit,
+      ...(league && { league })
     })
+
+    structuredLogger.info('Games API request processed', {
+      sport,
+      status,
+      count: result.data.length,
+      source: result.meta.source
+    })
+
+    return NextResponse.json(result)
 
   } catch (error) {
     structuredLogger.error('Database-first games API error', {
@@ -142,49 +53,3 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * Update database with external API data
- */
-async function updateDatabaseWithExternalData(sport: string, externalGames: any[]): Promise<void> {
-  try {
-    // Get existing games to avoid duplicates
-    const existingGames = await productionSupabaseClient.getGames(sport)
-    const existingGameMap = new Map(existingGames.map((g: any) => [g.id, g]))
-
-    const gamesToUpsert = externalGames.map(externalGame => {
-      const existingGame = existingGameMap.get(externalGame.id)
-      
-      return {
-        id: (existingGame as any)?.id || externalGame.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        home_team_id: externalGame.home_team_id || null,
-        away_team_id: externalGame.away_team_id || null,
-        game_date: externalGame.game_date || new Date().toISOString(),
-        season: externalGame.season || '2024-25',
-        status: externalGame.status || 'scheduled',
-        home_score: externalGame.home_score || null,
-        away_score: externalGame.away_score || null,
-        venue: externalGame.venue || null,
-        sport: sport,
-        league: externalGame.league || 'default',
-        last_updated: new Date().toISOString()
-      }
-    })
-
-    // Upsert games
-    await productionSupabaseClient.supabase
-      .from('games')
-      .upsert(gamesToUpsert, { onConflict: 'id' })
-
-    structuredLogger.info('Successfully updated database with external data', {
-      sport,
-      gameCount: gamesToUpsert.length
-    })
-
-  } catch (error) {
-    structuredLogger.error('Failed to update database with external data', {
-      sport,
-      error: error instanceof Error ? error.message : String(error)
-    })
-    throw error
-  }
-}

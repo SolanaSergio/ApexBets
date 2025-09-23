@@ -5,11 +5,11 @@ import { AuthGuard } from "@/components/auth/auth-guard"
 import { RealTimeProvider } from "@/components/data/real-time-provider"
 import { ComprehensiveSportsDashboardWithErrorBoundary } from "@/components/dashboard/comprehensive-sports-dashboard"
 import { useEffect } from "react"
-import { autoStartupService } from "@/lib/services/auto-startup-service"
+// Removed auto-startup-service import - service was deleted as unnecessary
 
 function SyncInitializer() {
   useEffect(() => {
-    autoStartupService.initialize().catch(() => {})
+    // Removed auto-startup-service call - service was deleted as unnecessary
   }, [])
   return null
 }

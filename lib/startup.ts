@@ -3,7 +3,7 @@
  * This file is imported by Next.js to automatically initialize services
  */
 
-import { autoStartupService } from './services/auto-startup-service'
+// Removed auto-startup-service import - service was deleted as unnecessary
 import { envValidator } from './config/env-validator'
 import { sportServiceFactory } from './services/sports/sport-service-factory'
 
@@ -31,7 +31,7 @@ async function initializeApp() {
     console.log('✅ Sport services initialized');
     
     console.log('📋 Auto-startup configuration:', STARTUP_CONFIG);
-    await autoStartupService.initialize(STARTUP_CONFIG);
+    // Removed auto-startup-service call - service was deleted as unnecessary
     
     console.log('🎉 ApexBets Application Ready!');
     console.log('📊 Monitoring: Active');
@@ -49,4 +49,4 @@ async function initializeApp() {
 initializeApp();
 
 // Export for manual control if needed
-export { autoStartupService, STARTUP_CONFIG };
+export { STARTUP_CONFIG };
