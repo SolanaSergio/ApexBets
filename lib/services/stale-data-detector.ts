@@ -91,7 +91,8 @@ export class StaleDataDetector {
     data: any[],
     sport?: string
   ): Promise<DataFreshnessResult> {
-    const config = this.configs.get(dataType) || this.configs.get('games')!
+    const configKey = sport ? `${dataType}:${sport}` : dataType
+    const config = this.configs.get(configKey) || this.configs.get(dataType) || this.configs.get('games')!
     const now = new Date()
     
     // If no data, consider it stale but don't trigger immediate refresh
@@ -178,8 +179,8 @@ export class StaleDataDetector {
   ): Promise<Map<string, DataFreshnessResult>> {
     const results = new Map<string, DataFreshnessResult>()
     
-    for (const [dataType, { data }] of dataMap) {
-      const result = await this.checkDataFreshness(dataType, data)
+    for (const [dataType, { data, sport }] of dataMap) {
+      const result = await this.checkDataFreshness(dataType, data, sport)
       results.set(dataType, result)
     }
     
