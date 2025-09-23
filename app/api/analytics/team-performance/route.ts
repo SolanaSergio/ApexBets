@@ -25,124 +25,60 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
     }
     
-    // Get team performance data - use external APIs for better data
-    let teamData = null
+    // Get team performance data from database
+    let teamQuery = supabase
+      .from('teams')
+      .select('*')
+      .eq('sport', finalSport)
     
-    try {
-      // Try to get team data from external APIs first
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const teams = await cachedUnifiedApiClient.getTeams(finalSport, { limit: 100 })
-      
-      if (team && team !== 'all') {
-        teamData = teams.find(t => t.name === team || t.id === team)
-      } else {
-        teamData = teams[0] // Use first team if no specific team requested
-      }
-    } catch (error) {
-      console.error('External API error, falling back to database:', error)
-      
-      // Fallback to database
-      let teamQuery = supabase
-        .from('teams')
-        .select('*')
-        .eq('sport', finalSport)
-      
-      if (team && team !== 'all') {
-        teamQuery = teamQuery.eq('name', team)
-      }
-      
-      if (league) {
-        teamQuery = teamQuery.eq('league', league)
-      }
-
-      const { data: dbTeamData, error: teamError } = await teamQuery.single()
-      
-      if (teamError || !dbTeamData) {
-        return NextResponse.json({ error: "Team not found" }, { status: 404 })
-      }
-      
-      teamData = dbTeamData
+    if (team && team !== 'all') {
+      teamQuery = teamQuery.eq('name', team)
+    }
+    
+    if (league) {
+      teamQuery = teamQuery.eq('league', league)
     }
 
-    if (!teamData) {
+    const { data: teamData, error: teamError } = await teamQuery.single()
+    
+    if (teamError || !teamData) {
       return NextResponse.json({ error: "Team not found" }, { status: 404 })
     }
 
-    // Get recent games for this team - use external APIs for better data
-    let games = []
+    // Get recent games for this team from database
+    let gamesQuery = supabase
+      .from('games')
+      .select('*')
+      .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
+      .eq('sport', finalSport)
+      .order('game_date', { ascending: false })
+      .limit(parseInt(timeRange))
     
-    try {
-      // Try to get games from external APIs first
-      const { cachedUnifiedApiClient } = await import("@/lib/services/api/cached-unified-api-client")
-      const allGames = await cachedUnifiedApiClient.getGames(finalSport, { 
-        limit: parseInt(timeRange),
-        date: new Date().toISOString().split('T')[0]
-      })
-      
-      // Filter games for this team
-      games = allGames.filter(game => 
-        game.homeTeam === teamData.name || 
-        game.awayTeam === teamData.name
-      )
-    } catch (error) {
-      console.error('External API error, falling back to database:', error)
-      
-      // Fallback to database
-      let gamesQuery = supabase
-        .from('games')
-        .select('*')
-        .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
-        .eq('sport', finalSport)
-        .order('game_date', { ascending: false })
-        .limit(parseInt(timeRange))
-      
-      if (league) {
-        gamesQuery = gamesQuery.eq('league', league)
-      }
-
-      const { data: dbGames, error: gamesError } = await gamesQuery
-
-      if (gamesError) {
-        return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
-      }
-      
-      games = dbGames || []
+    if (league) {
+      gamesQuery = gamesQuery.eq('league', league)
     }
 
-    // Calculate performance metrics - handle both external API and database data
+    const { data: games, error: gamesError } = await gamesQuery
+
+    if (gamesError) {
+      return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
+    }
+
+    // Calculate performance metrics from database data
     const performance = games?.map(game => {
-      // Handle external API data format
-      if (game.homeTeam && game.awayTeam) {
-        const isHome = game.homeTeam === teamData.name
-        const teamScore = isHome ? (game.homeScore || 0) : (game.awayScore || 0)
-        const opponentScore = isHome ? (game.awayScore || 0) : (game.homeScore || 0)
-        const won = teamScore > opponentScore
-        
-        return {
-          date: game.date || new Date().toISOString(),
-          opponent: isHome ? game.awayTeam : game.homeTeam,
-          score: `${teamScore}-${opponentScore}`,
-          won,
-          points: teamScore,
-          opponentPoints: opponentScore,
-          margin: teamScore - opponentScore
-        }
-      } else {
-        // Handle database data format
-        const isHome = game.home_team_id === teamData.id
-        const teamScore = isHome ? game.home_score : game.away_score
-        const opponentScore = isHome ? game.away_score : game.home_score
-        const won = teamScore > opponentScore
-        
-        return {
-          date: game.date || game.game_date || new Date().toISOString(),
-          opponent: isHome ? (game.away_team?.name || 'Away Team') : (game.home_team?.name || 'Home Team'),
-          score: `${teamScore}-${opponentScore}`,
-          won,
-          points: teamScore,
-          opponentPoints: opponentScore,
-          margin: teamScore - opponentScore
-        }
+      const isHome = game.home_team_id === teamData.id
+      const teamScore = isHome ? (game.home_score || 0) : (game.away_score || 0)
+      const opponentScore = isHome ? (game.away_score || 0) : (game.home_score || 0)
+      const won = teamScore > opponentScore
+      
+      return {
+        date: game.game_date || new Date().toISOString(),
+        opponent: isHome ? (game.away_team?.name || 'Away Team') : (game.home_team?.name || 'Home Team'),
+        score: `${teamScore}-${opponentScore}`,
+        won,
+        points: teamScore,
+        opponentPoints: opponentScore,
+        margin: teamScore - opponentScore
       }
     }) || []
 

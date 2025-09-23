@@ -15,14 +15,14 @@ type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
 
 // Helper functions to safely access properties across different player types
 function getPlayerName(player: PlayerUnion | null): string {
-  if (!player) return 'Unknown Player';
+  if (!player) return null;
   if ('name' in player) {
     return player.name;
   }
   if ('first_name' in player && 'last_name' in player) {
     return `${player.first_name} ${player.last_name}`;
   }
-  return 'Unknown Player';
+  return null;
 }
 
 function getPlayerTeamName(player: PlayerUnion | null): string | undefined {

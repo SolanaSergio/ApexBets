@@ -15,6 +15,14 @@ export interface DatabaseApiResponse<T> {
     count: number
     sport?: string
     status?: string
+    league?: string
+    betType?: string
+    recommendation?: string
+    minValue?: number
+    activeOnly?: boolean
+    newsSource?: string
+    limit?: number
+    hours?: number
     refreshed: boolean
     timestamp: string
   }
@@ -527,55 +535,61 @@ export class DatabaseFirstApiClient {
         limit = 50
       } = params
 
-      let query = `
-        SELECT 
-          ls.*,
-          t.name as team_name
-        FROM league_standings ls
-        LEFT JOIN teams t ON ls.team_id = t.id
-        WHERE 1=1
-      `
-      const queryParams: any[] = []
-      let paramIndex = 1
+      // Use the production Supabase client's dedicated getStandings method
+      const { productionSupabaseClient } = await import('../../supabase/production-client')
+      
+      const standings = await productionSupabaseClient.getStandings(
+        sport !== 'all' ? sport : undefined,
+        league,
+        season
+      )
 
-      if (sport !== 'all') {
-        query += ` AND ls.sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
-      }
+      // Transform the data to match our interface
+      const transformedStandings = standings.map((standing: any) => ({
+        id: standing.id,
+        team_id: standing.team_id,
+        team_name: standing.team?.name ?? null,
+        season: standing.season,
+        league: standing.league,
+        sport: standing.sport,
+        wins: standing.wins || 0,
+        losses: standing.losses || 0,
+        ties: standing.ties || 0,
+        win_percentage: standing.win_percentage,
+        games_back: standing.games_back,
+        streak: standing.streak,
+        home_wins: standing.home_wins || 0,
+        home_losses: standing.home_losses || 0,
+        away_wins: standing.away_wins || 0,
+        away_losses: standing.away_losses || 0,
+        division_wins: standing.division_wins || 0,
+        division_losses: standing.division_losses || 0,
+        conference_wins: standing.conference_wins || 0,
+        conference_losses: standing.conference_losses || 0,
+        points_for: standing.points_for || 0,
+        points_against: standing.points_against || 0,
+        point_differential: standing.point_differential || 0,
+        last_updated: standing.last_updated,
+        created_at: standing.created_at
+      }))
 
-      if (league) {
-        query += ` AND ls.league = $${paramIndex}`
-        queryParams.push(league)
-        paramIndex++
-      }
-
-      if (season) {
-        query += ` AND ls.season = $${paramIndex}`
-        queryParams.push(season)
-        paramIndex++
-      }
-
-      query += ` ORDER BY ls.win_percentage DESC, ls.wins DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
-
-      const result = await databaseService.executeSQL(query, queryParams)
-      const standings = result.data || []
+      // Apply limit
+      const limitedStandings = transformedStandings.slice(0, limit)
 
       structuredLogger.info('Standings fetched from database', {
         sport,
         league,
         season,
-        count: standings.length,
+        count: limitedStandings.length,
         source: 'database'
       })
 
       return {
         success: true,
-        data: standings,
+        data: limitedStandings,
         meta: {
           source: 'database',
-          count: standings.length,
+          count: limitedStandings.length,
           ...(sport !== 'all' && { sport }),
           refreshed: false,
           timestamp: new Date().toISOString()
@@ -711,6 +725,246 @@ export class DatabaseFirstApiClient {
             daily_stats: []
           }
         },
+        meta: {
+          source: 'database',
+          count: 0,
+          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+          refreshed: false,
+          timestamp: new Date().toISOString()
+        },
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+
+  // Value Betting Opportunities
+  async getValueBets(params: {
+    sport?: string
+    league?: string
+    betType?: string
+    recommendation?: string
+    minValue?: number
+    limit?: number
+    activeOnly?: boolean
+  } = {}): Promise<DatabaseApiResponse<any[]>> {
+    try {
+      const {
+        sport = 'all',
+        league,
+        betType,
+        recommendation,
+        minValue,
+        limit = 50,
+        activeOnly = true
+      } = params
+
+      let query = `SELECT * FROM value_betting_opportunities WHERE 1=1`
+      const queryParams: any[] = []
+      let paramIndex = 1
+
+      if (sport !== 'all') {
+        query += ` AND sport = $${paramIndex}`
+        queryParams.push(sport)
+        paramIndex++
+      }
+
+      if (league) {
+        query += ` AND league = $${paramIndex}`
+        queryParams.push(league)
+        paramIndex++
+      }
+
+      if (betType) {
+        query += ` AND bet_type = $${paramIndex}`
+        queryParams.push(betType)
+        paramIndex++
+      }
+
+      if (recommendation) {
+        query += ` AND recommendation = $${paramIndex}`
+        queryParams.push(recommendation)
+        paramIndex++
+      }
+
+      if (minValue !== undefined) {
+        query += ` AND value >= $${paramIndex}`
+        queryParams.push(minValue)
+        paramIndex++
+      }
+
+      if (activeOnly) {
+        query += ` AND expires_at > NOW()`
+      }
+
+      query += ` ORDER BY value DESC, confidence_score DESC LIMIT $${paramIndex}`
+      queryParams.push(limit)
+
+      const result = await databaseService.executeSQL(query, queryParams)
+      const valueBets = result.data || []
+
+      structuredLogger.info('Value bets fetched from database', {
+        sport,
+        league,
+        betType,
+        recommendation,
+        minValue,
+        limit,
+        activeOnly,
+        count: valueBets.length
+      })
+
+      return {
+        success: true,
+        data: valueBets,
+        meta: {
+          source: 'database',
+          count: valueBets.length,
+          ...(sport && sport !== 'all' && { sport }),
+          ...(league && { league }),
+          ...(betType && { betType }),
+          ...(recommendation && { recommendation }),
+          ...(minValue !== undefined && { minValue }),
+          activeOnly,
+          refreshed: false,
+          timestamp: new Date().toISOString()
+        }
+      }
+
+    } catch (error) {
+      structuredLogger.error('Failed to fetch value bets from database', {
+        error: error instanceof Error ? error.message : String(error),
+        params
+      })
+
+      return {
+        success: false,
+        data: [],
+        meta: {
+          source: 'database',
+          count: 0,
+          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+          refreshed: false,
+          timestamp: new Date().toISOString()
+        },
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+
+  // Sports News
+  async getSportsNews(params: {
+    sport?: string | undefined
+    league?: string | undefined
+    teamId?: string | undefined
+    playerId?: string | undefined
+    newsType?: string | undefined
+    source?: string | undefined
+    limit?: number | undefined
+    hours?: number | undefined
+  } = {}): Promise<DatabaseApiResponse<any[]>> {
+    try {
+      const {
+        sport = 'all',
+        league,
+        teamId,
+        playerId,
+        newsType,
+        source,
+        limit = 20,
+        hours = 24
+      } = params
+
+      let query = `SELECT * FROM sports_news WHERE 1=1`
+      const queryParams: any[] = []
+      let paramIndex = 1
+
+      if (sport !== 'all') {
+        query += ` AND sport = $${paramIndex}`
+        queryParams.push(sport)
+        paramIndex++
+      }
+
+      if (league) {
+        query += ` AND league = $${paramIndex}`
+        queryParams.push(league)
+        paramIndex++
+      }
+
+      if (teamId) {
+        query += ` AND team_id = $${paramIndex}`
+        queryParams.push(teamId)
+        paramIndex++
+      }
+
+      if (playerId) {
+        query += ` AND player_id = $${paramIndex}`
+        queryParams.push(playerId)
+        paramIndex++
+      }
+
+      if (newsType) {
+        query += ` AND news_type = $${paramIndex}`
+        queryParams.push(newsType)
+        paramIndex++
+      }
+
+      if (source) {
+        query += ` AND source = $${paramIndex}`
+        queryParams.push(source)
+        paramIndex++
+      }
+
+      // Use make_interval to parameterize hours
+      query += ` AND published_at > NOW() - make_interval(hours => $${paramIndex})`
+      queryParams.push(hours)
+      paramIndex++
+
+      query += ` ORDER BY published_at DESC LIMIT $${paramIndex}`
+      queryParams.push(limit)
+
+      const result = await databaseService.executeSQL(query, queryParams)
+      const news = result.data || []
+
+      structuredLogger.info('Sports news fetched from database', {
+        sport,
+        league,
+        teamId,
+        playerId,
+        newsType,
+        source,
+        limit,
+        hours,
+        count: news.length
+      })
+
+      return {
+        success: true,
+        data: news,
+        meta: {
+          source: 'database',
+          count: news.length,
+          ...(sport && sport !== 'all' && { sport }),
+          ...(league && { league }),
+          ...(teamId && { teamId }),
+          ...(playerId && { playerId }),
+          ...(newsType && { newsType }),
+          ...(source && { newsSource: source }),
+          limit,
+          hours,
+          refreshed: false,
+          timestamp: new Date().toISOString()
+        }
+      }
+
+    } catch (error) {
+      structuredLogger.error('Failed to fetch sports news from database', {
+        error: error instanceof Error ? error.message : String(error),
+        params
+      })
+
+      return {
+        success: false,
+        data: [],
         meta: {
           source: 'database',
           count: 0,

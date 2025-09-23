@@ -278,7 +278,7 @@ export function ComprehensiveSportsDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         <StatsCard
           title="Live Games"
-          value={data.stats.totalGames}
+          value={data.stats.totalGames || 0}
           icon={Activity}
           color="from-primary to-primary/80"
           trend="up"
@@ -287,7 +287,7 @@ export function ComprehensiveSportsDashboard() {
         />
         <StatsCard
           title="Predictions"
-          value={data.stats.dataPoints}
+          value={data.stats.dataPoints || 0}
           icon={Target}
           color="from-secondary to-secondary/80"
           trend="up"
@@ -296,7 +296,7 @@ export function ComprehensiveSportsDashboard() {
         />
         <StatsCard
           title="Accuracy Rate"
-          value={`${data.stats.accuracy}%`}
+          value={`${data.stats.accuracy || 0}%`}
           icon={TrendingUp}
           color="from-accent to-accent/80"
           trend="up"
@@ -304,11 +304,11 @@ export function ComprehensiveSportsDashboard() {
         />
         <StatsCard
           title="Teams Tracked"
-          value={data.stats.teamsTracked}
+          value={data.stats.teamsTracked || 0}
           icon={Users}
           color="from-primary to-accent"
           trend="neutral"
-          subtitle="Across all sports"
+          subtitle={`For ${selectedSport}`}
         />
       </div>
 
@@ -398,15 +398,15 @@ export function ComprehensiveSportsDashboard() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Scheduled Games</span>
-                <span className="font-bold">{liveGames.length + 5}</span>
+                <span className="font-bold">{data.stats.scheduledGames || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Live Now</span>
-                <span className="font-bold text-accent">{liveGames.length}</span>
+                <span className="font-bold text-accent">{data.stats.liveGames || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Completed</span>
-                <span className="font-bold">3</span>
+                <span className="font-bold">{data.stats.completedGames || 0}</span>
               </div>
             </div>
           </CardContent>
@@ -423,15 +423,15 @@ export function ComprehensiveSportsDashboard() {
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Win Rate</span>
-                <span className="font-bold text-accent">{data.stats.accuracy}%</span>
+                <span className="font-bold text-accent">{data.stats.accuracy || 0}%</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Total Predictions</span>
-                <span className="font-bold">{data.stats.dataPoints}</span>
+                <span className="font-bold">{data.stats.dataPoints || 0}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span>Success Streak</span>
-                <span className="font-bold">7</span>
+                <span>Correct Predictions</span>
+                <span className="font-bold">{data.stats.correctPredictions || 0}</span>
               </div>
             </div>
           </CardContent>

@@ -38,6 +38,7 @@ export function useApiData<T>(
   // Use useRef to store stable references to callbacks
   const onErrorRef = useRef(onError)
   const onSuccessRef = useRef(onSuccess)
+  const errorHandlerRef = useRef(errorHandler)
   
   // Update refs when callbacks change
   useEffect(() => {
@@ -47,6 +48,11 @@ export function useApiData<T>(
   useEffect(() => {
     onSuccessRef.current = onSuccess
   }, [onSuccess])
+
+  // Keep a stable reference to the error handler to avoid re-creating fetchData on each render
+  useEffect(() => {
+    errorHandlerRef.current = errorHandler
+  }, [errorHandler])
 
   const fetchData = useCallback(async () => {
     if (!enabled) return
@@ -72,12 +78,12 @@ export function useApiData<T>(
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error occurred')
       setError(error)
-      errorHandler(error)
+      errorHandlerRef.current?.(error)
       onErrorRef.current?.(error)
     } finally {
       setLoading(false)
     }
-  }, [fetchFn, enabled, errorHandler])
+  }, [fetchFn, enabled])
 
   const mutate = useCallback((newData: T) => {
     setData(newData)
@@ -119,11 +125,11 @@ export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
   const fetchFn = useCallback(async () => {
     const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
     const params: { sport?: string; league?: string } = {}
-    if (sport) params.sport = sport
+    if (sport && sport !== 'all') params.sport = sport
     return databaseFirstApiClient.getTeams(params)
   }, [sport])
 
-  return useApiData(fetchFn, { enabled: !!sport, ...options })
+  return useApiData(fetchFn, { enabled: true, ...options })
 }
 
 export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {

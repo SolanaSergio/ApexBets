@@ -83,8 +83,8 @@ export async function GET(request: NextRequest) {
     // Process and format games data
     const processedGames = (games || []).map(game => ({
       ...game,
-      home_team_name: game.home_team?.name || 'Unknown',
-      away_team_name: game.away_team?.name || 'Unknown',
+      home_team_name: game.home_team?.name ?? null,
+      away_team_name: game.away_team?.name ?? null,
       home_team_abbreviation: game.home_team?.abbreviation || '',
       away_team_abbreviation: game.away_team?.abbreviation || '',
       home_team_logo: game.home_team?.logo_url || null,

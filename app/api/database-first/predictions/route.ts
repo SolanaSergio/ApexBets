@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const gameId = searchParams.get("gameId")
     const modelName = searchParams.get("modelName")
     const predictionType = searchParams.get("predictionType")
-    const limit = Number.parseInt(searchParams.get("limit") || "50")
+    const limitRaw = Number.parseInt(searchParams.get("limit") || "50")
+    const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 50))
 
     // Use database-first API client - no external API calls
     const result = await databaseFirstApiClient.getPredictions({

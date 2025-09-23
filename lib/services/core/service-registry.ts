@@ -94,15 +94,34 @@ export class ServiceRegistry {
    * Get the appropriate service class for a sport
    */
   private static getServiceClassForSport(sport: string): any {
-    // Dynamic service mapping based on sport name
+    // Dynamic service mapping based on sport name from database configuration
     const sportLower = sport.toLowerCase()
     
-    // Try to match sport names dynamically
-    if (sportLower.includes('basketball')) return BasketballService
-    if (sportLower.includes('soccer')) return SoccerService
-    if (sportLower.includes('football')) return FootballService
-    if (sportLower.includes('baseball')) return BaseballService
-    if (sportLower.includes('hockey')) return HockeyService
+    // Try to dynamically import sport-specific services based on database configuration
+    try {
+      // Check if sport has a dedicated service by attempting dynamic import
+      const sportServiceMap: Record<string, any> = {
+        'basketball': BasketballService,
+        'soccer': SoccerService,
+        'football': FootballService,
+        'baseball': BaseballService,
+        'hockey': HockeyService
+      }
+      
+      // Use exact match first, then fallback to contains check
+      if (sportServiceMap[sportLower]) {
+        return sportServiceMap[sportLower]
+      }
+      
+      // Check for partial matches (for variations like 'american football')
+      for (const [serviceSport, serviceClass] of Object.entries(sportServiceMap)) {
+        if (sportLower.includes(serviceSport) || serviceSport.includes(sportLower)) {
+          return serviceClass
+        }
+      }
+    } catch (error) {
+      console.warn(`Failed to load specific service for sport: ${sport}`, error)
+    }
     
     // Fallback to generic service for unknown sports
     return GenericSportService

@@ -4,6 +4,9 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get("action")
+    const sport = searchParams.get('sport') || undefined
+    const dataTypesParam = searchParams.get('dataTypes') || undefined
+    const dataTypes = dataTypesParam ? dataTypesParam.split(',').map(s => s.trim()).filter(Boolean) : undefined
 
     switch (action) {
       case "status":
@@ -18,8 +21,13 @@ export async function GET(request: NextRequest) {
         })
 
       case "sync":
-        // Manual sync trigger - call Supabase Edge Function
-        return await triggerSupabaseSync()
+        // Manual sync trigger - call Supabase Edge Function with optional targeting
+        {
+          const params: { sport?: string; dataTypes?: string[] } = {}
+          if (sport) params.sport = sport
+          if (dataTypes && dataTypes.length > 0) params.dataTypes = dataTypes
+          return await triggerSupabaseSync(params)
+        }
 
       default:
         return NextResponse.json({
@@ -43,30 +51,60 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    let body: { action?: string } = {}
-    let action = 'force_sync' // Default action
-    
-    try {
-      const text = await request.text()
-      if (text && text.trim()) {
-        body = JSON.parse(text)
-        action = body.action || 'force_sync'
+    const url = new URL(request.url)
+    const actionFromQuery = url.searchParams.get('action') || undefined
+    const sportFromQuery = url.searchParams.get('sport') || undefined
+    const dataTypesFromQuery = url.searchParams.get('dataTypes') || undefined
+
+    let action: string | undefined = actionFromQuery
+    let sport: string | undefined = sportFromQuery
+    let dataTypes: string[] | undefined = dataTypesFromQuery ? dataTypesFromQuery.split(',').map(s => s.trim()).filter(Boolean) : undefined
+
+    // Parse JSON body only when content-type is JSON
+    const contentType = request.headers.get('content-type') || ''
+    if (contentType.includes('application/json')) {
+      try {
+        const raw = await request.text()
+        if (raw && raw.trim()) {
+          const parsed = JSON.parse(raw) as { action?: string; sport?: string; dataTypes?: string[] }
+          action = parsed.action || action
+          sport = parsed.sport || sport
+          dataTypes = Array.isArray(parsed.dataTypes) && parsed.dataTypes.length > 0 ? parsed.dataTypes : dataTypes
+        }
+      } catch (parseError) {
+        return NextResponse.json({
+          success: false,
+          error: 'Invalid JSON body',
+          details: parseError instanceof Error ? parseError.message : String(parseError)
+        }, { status: 400 })
       }
-    } catch (parseError) {
-      console.warn('Failed to parse request body, using default action:', parseError)
-      // Continue with default action
+    }
+
+    // Default action when none provided
+    action = action || 'force_sync'
+
+    // Validate action
+    const allowedActions = new Set(['force_sync'])
+    if (!allowedActions.has(action)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid action. Use "force_sync" to trigger manual sync.'
+      }, { status: 400 })
     }
 
     switch (action) {
       case "force_sync":
         // Manual sync trigger - call Supabase Edge Function
-        return await triggerSupabaseSync()
+        {
+          const params: { sport?: string; dataTypes?: string[] } = {}
+          if (sport) params.sport = sport
+          if (dataTypes && dataTypes.length > 0) params.dataTypes = dataTypes
+          return await triggerSupabaseSync(params)
+        }
 
       default:
-        return NextResponse.json({
-          success: false,
-          error: "Invalid action. Use 'force_sync' to trigger manual sync."
-        }, { status: 400 })
+        // Should never hit due to validation above
+        return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
     }
   } catch (error) {
     console.error("Sync API error:", error)
@@ -78,7 +116,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function triggerSupabaseSync() {
+async function triggerSupabaseSync(params?: { sport?: string; dataTypes?: string[] }) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -96,7 +134,8 @@ async function triggerSupabaseSync() {
         'Authorization': `Bearer ${supabaseAnonKey}`,
       },
       body: JSON.stringify({
-        dataTypes: ['games', 'teams', 'players', 'standings']
+        ...(params?.sport ? { sport: params.sport } : {}),
+        dataTypes: params?.dataTypes && params.dataTypes.length > 0 ? params.dataTypes : ['games', 'teams', 'players', 'standings']
       })
     })
 

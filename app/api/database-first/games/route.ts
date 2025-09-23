@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") as "scheduled" | "live" | "completed" | "postponed" | "cancelled" | undefined
     const dateFrom = searchParams.get("date_from")
     const dateTo = searchParams.get("date_to")
-    const limit = Number.parseInt(searchParams.get("limit") || "100")
+    const limitRaw = Number.parseInt(searchParams.get("limit") || "100")
+    const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
     const league = searchParams.get("league")
 
     // Use database-first API client - no external API calls

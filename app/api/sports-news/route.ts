@@ -1,7 +1,7 @@
 /**
- * VALUE BETTING OPPORTUNITIES API
- * Serves value betting opportunities exclusively from database - no external API calls during user requests
- * Background ML service handles value calculations and updates
+ * SPORTS NEWS API
+ * Serves sports news exclusively from database - no external API calls during user requests
+ * Background news service handles external news aggregation
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -12,49 +12,55 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league")
-    const betType = searchParams.get("betType")
-    const recommendation = searchParams.get("recommendation")
-    const minValue = searchParams.get("minValue")
-    const limit = Number.parseInt(searchParams.get("limit") || "50")
-    const activeOnly = searchParams.get("activeOnly") !== "false"
+    const league = searchParams.get("league") ?? undefined
+    const teamId = searchParams.get("teamId") ?? undefined
+    const playerId = searchParams.get("playerId") ?? undefined
+    const newsType = searchParams.get("newsType") ?? undefined
+    const source = searchParams.get("source") ?? undefined
+    const limit = Number.parseInt(searchParams.get("limit") || "20")
+    const hours = Number.parseInt(searchParams.get("hours") || "24")
 
     // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getValueBets({
+    const result = await databaseFirstApiClient.getSportsNews({
       sport,
       league,
-      betType,
-      recommendation,
-      minValue: minValue ? Number.parseFloat(minValue) : undefined,
+      teamId,
+      playerId,
+      newsType,
+      source,
       limit,
-      activeOnly
+      hours
     })
 
     if (!result.success) {
-      structuredLogger.error('Value bets API error', {
+      structuredLogger.error('Sports news API error', {
         error: result.error,
         sport,
         league,
-        betType,
-        recommendation,
-        minValue,
-        limit
+        teamId,
+        playerId,
+        newsType,
+        source,
+        limit,
+        hours
       })
       
       return NextResponse.json({
         success: false,
-        error: 'Failed to fetch value betting opportunities',
+        error: 'Failed to fetch sports news',
         details: result.error
       }, { status: 500 })
     }
 
-    structuredLogger.info('Value bets API success', {
+    structuredLogger.info('Sports news API success', {
       sport,
       league,
-      betType,
-      recommendation,
-      minValue,
+      teamId,
+      playerId,
+      newsType,
+      source,
       limit,
+      hours,
       count: result.data?.length || 0
     })
 
@@ -66,17 +72,19 @@ export async function GET(request: NextRequest) {
         count: result.data?.length || 0,
         sport,
         league,
-        betType,
-        recommendation,
-        minValue,
-        activeOnly,
+        teamId,
+        playerId,
+        newsType,
+        newsSource: source,
+        limit,
+        hours,
         refreshed: false,
         timestamp: new Date().toISOString()
       }
     })
 
   } catch (error) {
-    structuredLogger.error('Value bets API unexpected error', {
+    structuredLogger.error('Sports news API unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined
     })

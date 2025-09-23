@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get("sport") || "all"
     const gameId = searchParams.get("gameId")
     const source = searchParams.get("source")
-    const limit = Number.parseInt(searchParams.get("limit") || "100")
+    const limitRaw = Number.parseInt(searchParams.get("limit") || "100")
+    const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
     const liveOnly = searchParams.get("liveOnly") === "true"
 
     // Use database-first API client - no external API calls

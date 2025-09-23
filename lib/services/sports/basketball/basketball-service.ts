@@ -861,7 +861,7 @@ export class BasketballService extends SportSpecificService {
       sport: this.sport,
       league: this.league,
       name: `${rawData.first_name} ${rawData.last_name}`,
-      team: rawData.team?.full_name || 'Unknown',
+      team: rawData.team?.full_name ?? null,
       position: rawData.position,
       stats: {
         height_feet: rawData.height_feet,

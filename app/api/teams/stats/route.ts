@@ -130,7 +130,7 @@ export async function GET(request: NextRequest) {
         game.home_team_id === team.id || game.away_team_id === team.id
       )
 
-      const teamSport = team.sport || sport || 'unknown'
+      const teamSport = team.sport || sport ?? null
       const stats = calculateTeamStats(team, teamGames, teamSport)
 
       // Calculate total score for display

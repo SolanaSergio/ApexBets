@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
           isRivalry: false, // Could be enhanced with rivalry detection
           restDays: calculateRestDays(game.game_date),
           travelDistance: 0, // Could be calculated
-          venue: game.venue || 'Unknown',
+          venue: game.venue ?? null,
           weather: game.weather_conditions,
           sport: game.sport
         };
@@ -161,8 +161,8 @@ export async function POST(request: NextRequest) {
         // Add to results
         predictions.push({
           gameId: game.id,
-          homeTeam: game.home_team_data?.name || 'Unknown',
-          awayTeam: game.away_team_data?.name || 'Unknown',
+          homeTeam: game.home_team_data?.name ?? null,
+          awayTeam: game.away_team_data?.name ?? null,
           prediction: mlPrediction,
           game: {
             date: game.game_date,

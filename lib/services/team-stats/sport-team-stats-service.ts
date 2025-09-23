@@ -278,7 +278,7 @@ export class SportTeamStatsService extends BaseService {
       // Convert to TeamStats format
       const teamStats: TeamStats[] = (data || []).map(standing => ({
         teamId: standing.team_id,
-        name: standing.team?.name || 'Unknown',
+        name: standing.team?.name ?? null,
         abbreviation: standing.team?.abbreviation || 'UNK',
         sport: this.sport,
         league: this.league,

@@ -346,7 +346,7 @@ export class CachedUnifiedApiClient {
         const unifiedGames: UnifiedGameData[] = games.map(game => ({
           id: game.id || `${game.homeTeam}-${game.awayTeam}-${game.date}`,
           sport: game.sport || sport,
-          league: game.league || 'Unknown',
+          league: game.league ?? null,
           homeTeam: game.homeTeam,
           awayTeam: game.awayTeam,
           date: game.date,

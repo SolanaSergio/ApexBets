@@ -26,15 +26,15 @@ import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
 type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
 
 // Helper functions to safely access properties across different player types
-function getPlayerName(player: PlayerUnion | null): string {
-  if (!player) return 'Unknown Player';
+function getPlayerName(player: PlayerUnion | null): string | null {
+  if (!player) return null;
   if ('name' in player) {
     return player.name;
   }
   if ('first_name' in player && 'last_name' in player) {
     return `${player.first_name} ${player.last_name}`;
   }
-  return 'Unknown Player';
+  return null;
 }
 
 function getPlayerTeamName(player: PlayerUnion | null): string | undefined {
@@ -201,7 +201,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
             <div className="flex items-center space-x-4">
               <PlayerPhoto 
                 playerId={getPlayerId(selectedPlayer)}
-                alt={getPlayerName(selectedPlayer)}
+                alt={getPlayerName(selectedPlayer) || 'Player'}
                 width={64}
                 height={64}
                 className="h-16 w-16 rounded-full"

@@ -212,7 +212,7 @@ export class SportAnalyticsService extends BaseService {
           playerId: player.id,
           playerName: player.name,
           team: player.team,
-          position: player.position || 'Unknown',
+          position: player.position || '',
           gamesPlayed: 0, // Would calculate from actual data
           averageStats: player.stats || {},
           seasonHighs: {}, // Would calculate from actual data

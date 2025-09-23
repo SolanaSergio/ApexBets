@@ -12,6 +12,10 @@ interface RealTimeData {
     accuracy: number
     teamsTracked: number
     dataPoints: number
+    liveGames: number
+    scheduledGames: number
+    completedGames: number
+    correctPredictions: number
   }
   lastUpdate: Date | null
   isConnected: boolean
@@ -48,7 +52,11 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
       totalGames: 0,
       accuracy: 0,
       teamsTracked: 0,
-      dataPoints: 0
+      dataPoints: 0,
+      liveGames: 0,
+      scheduledGames: 0,
+      completedGames: 0,
+      correctPredictions: 0
     },
     lastUpdate: null,
     isConnected: false,
@@ -351,7 +359,11 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
               totalGames: result.data?.total_games || prev.liveGames.length,
               accuracy: Math.round((result.data?.accuracy_rate || 0) * 100),
               teamsTracked: result.data?.total_teams || 0,
-              dataPoints: result.data?.total_predictions || prev.predictions.length
+              dataPoints: result.data?.total_predictions || prev.predictions.length,
+              liveGames: result.data?.live_games || 0,
+              scheduledGames: result.data?.scheduled_games || 0,
+              completedGames: result.data?.completed_games || 0,
+              correctPredictions: result.data?.correct_predictions || 0
             }
           }))
         }
@@ -423,7 +435,11 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
           totalGames: stats.data?.total_games || (Array.isArray(games.data) ? games.data.length : 0),
           accuracy: Math.round((stats.data?.accuracy_rate || 0) * 100),
           teamsTracked: stats.data?.total_teams || 0,
-          dataPoints: stats.data?.total_predictions || 0
+          dataPoints: stats.data?.total_predictions || 0,
+          liveGames: stats.data?.live_games || 0,
+          scheduledGames: stats.data?.scheduled_games || 0,
+          completedGames: stats.data?.completed_games || 0,
+          correctPredictions: stats.data?.correct_predictions || 0
         },
         lastUpdate: new Date(),
         error: null

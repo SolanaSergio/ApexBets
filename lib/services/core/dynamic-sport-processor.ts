@@ -56,7 +56,7 @@ export class DynamicSportProcessor {
           position: stat.position,
           games: 0,
           stats: {},
-          team: stat.games?.home_team?.name || stat.games?.away_team?.name || 'Unknown'
+          team: (stat.games?.home_team?.name || stat.games?.away_team?.name) ?? null
         }
       }
       
@@ -156,7 +156,7 @@ export class DynamicSportProcessor {
           changePercentage < -5 ? 'down' : 'stable'
         
         trends.push({
-          playerName: recentGames[0]?.player_name || 'Unknown',
+          playerName: recentGames[0]?.player_name ?? null,
           stat: displayName,
           currentValue: recentAvg,
           previousValue: previousAvg,

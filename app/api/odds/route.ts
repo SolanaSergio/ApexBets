@@ -1,6 +1,6 @@
 /**
- * DATABASE-FIRST TEAMS API
- * Serves data exclusively from database - no external API calls during user requests
+ * ODDS API
+ * Serves odds data exclusively from database - no external API calls during user requests
  * Background sync service handles external API updates
  */
 
@@ -12,35 +12,39 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league")
-    const limitRaw = Number.parseInt(searchParams.get("limit") || "100")
-    const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
+    const gameId = searchParams.get("gameId")
+    const source = searchParams.get("source")
+    const limit = Number.parseInt(searchParams.get("limit") || "100")
+    const liveOnly = searchParams.get("liveOnly") === "true"
 
     // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getTeams({
+    const result = await databaseFirstApiClient.getOdds({
       sport,
-      ...(league && { league }),
-      limit
+      ...(gameId && { gameId }),
+      ...(source && { source }),
+      limit,
+      liveOnly
     })
 
-    structuredLogger.info('Teams API request processed', {
+    structuredLogger.info('Odds API request processed', {
       sport,
-      league,
+      gameId,
+      source,
       count: result.data.length,
-      source: result.meta.source
+      dataSource: result.meta.source
     })
 
     return NextResponse.json(result)
 
   } catch (error) {
-    structuredLogger.error('Database-first teams API error', {
+    structuredLogger.error('Odds API error', {
       error: error instanceof Error ? error.message : String(error)
     })
     
     return NextResponse.json(
       { 
         success: false, 
-        error: 'Failed to fetch teams',
+        error: 'Failed to fetch odds',
         details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }

@@ -74,11 +74,12 @@ const getSportsAPIConfig = (): Record<string, SportAPIConfig> => {
                    Deno.env.get('SPORTSDB_API_KEY') ||
                    Deno.env.get('NEXT_PUBLIC_SPORTSDB_API_KEY') ||
                    Deno.env.get('BALLDONTLIE_API_KEY') ||
-                   Deno.env.get('NEXT_PUBLIC_BALLDONTLIE_API_KEY')
-    
-    if (!apiKey || apiKey === 'your_api_key_here' || apiKey === '') {
-      console.warn(`No valid API key found for ${sport}, skipping...`)
-      continue
+                   Deno.env.get('NEXT_PUBLIC_BALLDONTLIE_API_KEY') || ''
+
+    // Only require API key for providers that actually need it (RapidAPI-based)
+    const providerRequiresKey = (provider: string | undefined) => {
+      if (!provider) return false
+      return ['api-sports', 'nfl-rapidapi', 'tennis-rapidapi', 'golf-rapidapi'].includes(provider)
     }
     
     // Sport-specific API configurations
@@ -202,6 +203,10 @@ const getSportsAPIConfig = (): Record<string, SportAPIConfig> => {
     const sportConfig = sportConfigs[sport]
     if (!sportConfig) {
       console.warn(`No configuration found for sport: ${sport}`)
+      continue
+    }
+    if (providerRequiresKey(sportConfig.apiProvider as string) && (!apiKey || apiKey === 'your_api_key_here')) {
+      console.warn(`Missing API key for provider ${sportConfig.apiProvider} (${sport}), skipping...`)
       continue
     }
     
@@ -705,7 +710,7 @@ function normalizeGameData(game: any, config: SportAPIConfig): any {
       return {
         id: `soccer_${game.fixture?.id || game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sport: 'soccer',
-        league: game.league?.name || 'Unknown League',
+        league: game.league?.name ?? null,
         season: game.league?.season?.toString() || getCurrentSeason('soccer'),
         home_team_id: game.teams?.home?.id,
         away_team_id: game.teams?.away?.id,
@@ -724,7 +729,7 @@ function normalizeGameData(game: any, config: SportAPIConfig): any {
       return {
         id: `${config.name}_${game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sport: config.name,
-        league: game.league || 'Unknown League',
+        league: game.league ?? null,
         season: getCurrentSeason(config.name),
         home_team_id: game.home_team?.id || game.homeTeam?.id,
         away_team_id: game.away_team?.id || game.awayTeam?.id,
@@ -748,7 +753,7 @@ function normalizeTeamData(team: any, config: SportAPIConfig): any {
       // NBA Stats API format
       return {
         id: `nba_team_${team.TEAM_ID || team.teamId || Date.now()}`,
-        name: team.TEAM_NAME || team.teamName || 'Unknown Team',
+        name: (team.TEAM_NAME || team.teamName) ?? null,
         sport: 'basketball',
         league: 'NBA',
         abbreviation: team.TEAM_ABBREVIATION || team.abbreviation,
@@ -764,7 +769,7 @@ function normalizeTeamData(team: any, config: SportAPIConfig): any {
       // MLB Stats API format
       return {
         id: `mlb_team_${team.id || Date.now()}`,
-        name: team.name || 'Unknown Team',
+        name: team.name ?? null,
         sport: 'baseball',
         league: 'MLB',
         abbreviation: team.abbreviation,
@@ -780,7 +785,7 @@ function normalizeTeamData(team: any, config: SportAPIConfig): any {
       // NHL Stats API format
       return {
         id: `nhl_team_${team.id || Date.now()}`,
-        name: team.name || 'Unknown Team',
+        name: team.name ?? null,
         sport: 'hockey',
         league: 'NHL',
         abbreviation: team.abbreviation,
@@ -796,9 +801,9 @@ function normalizeTeamData(team: any, config: SportAPIConfig): any {
       // Generic format
       return {
         id: `${config.name}_team_${team.id || team.name?.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
-        name: team.name || team.full_name || team.display_name || 'Unknown Team',
+        name: (team.name || team.full_name || team.display_name) ?? null,
         sport: config.name,
-        league: team.league || 'Unknown League',
+        league: team.league ?? null,
         abbreviation: team.abbreviation || team.abbr || team.code,
         city: team.city || team.location,
         logo_url: team.logo || team.logo_url || team.image,
@@ -818,7 +823,7 @@ function normalizePlayerData(player: any, config: SportAPIConfig): any {
       // NBA Stats API format
       return {
         id: `nba_player_${player.PERSON_ID || player.personId || Date.now()}`,
-        name: player.DISPLAY_FIRST_LAST || player.displayName || 'Unknown Player',
+        name: (player.DISPLAY_FIRST_LAST || player.displayName) ?? null,
         sport: 'basketball',
         position: player.POSITION || player.position,
         team_id: player.TEAM_ID || player.teamId,
@@ -839,7 +844,7 @@ function normalizePlayerData(player: any, config: SportAPIConfig): any {
       // MLB Stats API format
       return {
         id: `mlb_player_${player.id || Date.now()}`,
-        name: player.fullName || player.name || 'Unknown Player',
+        name: (player.fullName || player.name) ?? null,
         sport: 'baseball',
         position: player.primaryPosition?.name || player.position,
         team_id: player.teamId,
@@ -860,7 +865,7 @@ function normalizePlayerData(player: any, config: SportAPIConfig): any {
       // NHL Stats API format
       return {
         id: `nhl_player_${player.id || Date.now()}`,
-        name: player.fullName || player.name || 'Unknown Player',
+        name: (player.fullName || player.name) ?? null,
         sport: 'hockey',
         position: player.primaryPosition?.name || player.position,
         team_id: player.teamId,
@@ -881,7 +886,7 @@ function normalizePlayerData(player: any, config: SportAPIConfig): any {
       // Generic format
       return {
         id: `${config.name}_player_${player.id || player.name?.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
-        name: player.name || player.full_name || player.display_name || 'Unknown Player',
+        name: (player.name || player.full_name || player.display_name) ?? null,
         sport: config.name,
         position: player.position || player.pos,
         team_id: player.team_id || player.team?.id,
@@ -912,7 +917,7 @@ function normalizeStandingsData(standing: any, config: SportAPIConfig, index: nu
         league: 'NBA',
         season: getCurrentSeason('basketball'),
         team_id: standing.TEAM_ID || standing.teamId,
-        team_name: standing.TEAM_NAME || standing.teamName || 'Unknown Team',
+        team_name: (standing.TEAM_NAME || standing.teamName) ?? null,
         position: standing.PLAYOFF_RANK || standing.rank || index + 1,
         wins: standing.W || standing.wins || 0,
         losses: standing.L || standing.losses || 0,
@@ -932,7 +937,7 @@ function normalizeStandingsData(standing: any, config: SportAPIConfig, index: nu
         league: standing.league?.name || 'MLB',
         season: getCurrentSeason('baseball'),
         team_id: standing.team?.id,
-        team_name: standing.team?.name || 'Unknown Team',
+        team_name: standing.team?.name ?? null,
         position: standing.divisionRank || index + 1,
         wins: standing.wins || 0,
         losses: standing.losses || 0,
@@ -952,7 +957,7 @@ function normalizeStandingsData(standing: any, config: SportAPIConfig, index: nu
         league: 'NHL',
         season: getCurrentSeason('hockey'),
         team_id: standing.team?.id,
-        team_name: standing.teamName?.default || standing.team?.name || 'Unknown Team',
+        team_name: (standing.teamName?.default || standing.team?.name) ?? null,
         position: standing.divisionSequence || index + 1,
         wins: standing.wins || 0,
         losses: standing.losses || 0,
@@ -969,10 +974,10 @@ function normalizeStandingsData(standing: any, config: SportAPIConfig, index: nu
       return {
         id: `${config.name}_standings_${standing.team?.id || standing.team_id || index}_${Date.now()}`,
         sport: config.name,
-        league: standing.league || 'Unknown League',
+        league: standing.league ?? null,
         season: getCurrentSeason(config.name),
         team_id: standing.team?.id || standing.team_id,
-        team_name: standing.team?.name || standing.team_name || standing.name || 'Unknown Team',
+        team_name: (standing.team?.name || standing.team_name || standing.name) ?? null,
         position: standing.position || standing.rank || standing.place || index + 1,
         wins: standing.wins || standing.w || standing.victories || 0,
         losses: standing.losses || standing.l || standing.defeats || 0,

@@ -192,7 +192,7 @@ export class SportPlayerStatsService extends BaseService {
 
         return {
           teamId,
-          teamName: playerStats[0]?.team || 'Unknown',
+          teamName: playerStats[0]?.team || '',
           players: playerStats,
           teamTotals,
           teamAverages,
@@ -255,8 +255,8 @@ export class SportPlayerStatsService extends BaseService {
           playerStatsMap.set(playerName, {
             playerId: stat.id,
             name: playerName,
-            team: 'Unknown', // Will be resolved separately if needed
-            position: stat.position || 'Unknown',
+            team: null, // Will be resolved separately if needed
+            position: stat.position || '',
             sport: this.sport,
             league: this.league,
             season: params.season || await this.getCurrentSeason(),
@@ -346,7 +346,7 @@ export class SportPlayerStatsService extends BaseService {
         playerId: player.id,
         name: player.name,
         team: player.team,
-        position: player.position || 'Unknown',
+        position: player.position || '',
         sport: this.sport,
         league: this.league,
         season: season || await this.getCurrentSeason(),

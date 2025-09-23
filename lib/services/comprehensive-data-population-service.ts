@@ -43,9 +43,8 @@ export class ComprehensiveDataPopulationService {
         try {
           structuredLogger.info(`Populating data for ${sport}`)
 
-          // Use data sync service to populate data
-          // Data sync service was removed
-          const syncResult = { success: false, message: 'Data sync service was removed' }
+          // Invoke Supabase Edge Function for data sync (authoritative source)
+          const syncResult = await this.invokeEdgeFunction(sport)
           
           if (syncResult.success) {
             sportsProcessed++
@@ -96,13 +95,45 @@ export class ComprehensiveDataPopulationService {
     }
   }
 
+  private getEdgeFunctionConfig(): { url: string; key: string } {
+    const supabaseUrl = process.env.SUPABASE_URL
+    const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+    if (!supabaseUrl) {
+      throw new Error('Missing SUPABASE_URL environment variable')
+    }
+    if (!serviceRoleKey) {
+      throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable')
+    }
+
+    return { url: `${supabaseUrl}/functions/v1/sync-sports-data`, key: serviceRoleKey }
+  }
+
+  private async invokeEdgeFunction(sport: SupportedSport): Promise<{ success: boolean; message?: string }> {
+    const { url, key } = this.getEdgeFunctionConfig()
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ sport, dataTypes: ['games', 'teams', 'players', 'standings'] })
+    })
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      return { success: false, message: `Edge function failed (${response.status}): ${text}` }
+    }
+
+    const result = await response.json().catch(() => ({}))
+    const success = !!result?.success
+    return { success, message: result?.message }
+  }
+
   private async getRecordCount(sport: SupportedSport): Promise<number> {
     try {
-      // Data sync service was removed
-      if (false) {
-        const result = { message: 'Data sync service was removed' }
-        if (result && typeof (result as any).total === 'number') return (result as any).total
-      }
+      // Optionally aggregate counts by sport from key tables (kept lightweight)
       return 0
     } catch (error) {
       structuredLogger.error('Failed to get record count', {
@@ -115,13 +146,12 @@ export class ComprehensiveDataPopulationService {
 
   private async getSupportedSportsFromDb(): Promise<SupportedSport[]> {
     try {
-      // Data sync service was removed
-      if (false) {
-        const res = { message: 'Data sync service was removed' }
-        if (Array.isArray(res) && (res as any).length > 0) {
-          return (res as any) as SupportedSport[]
-        }
+      // Prefer explicit environment configuration to remain sport-agnostic
+      const configured = process.env.SUPPORTED_SPORTS
+      if (configured && configured.trim().length > 0) {
+        return configured.split(',').map(s => s.trim()).filter(Boolean) as SupportedSport[]
       }
+      // If not configured, return empty to let caller decide per-request
       return []
     } catch (error) {
       structuredLogger.error('Failed to load supported sports', { error: error instanceof Error ? error.message : String(error) })
@@ -135,8 +165,7 @@ export class ComprehensiveDataPopulationService {
     try {
       structuredLogger.info(`Populating data for ${sport}`)
 
-      // Data sync service was removed
-      const syncResult = { success: false, message: 'Data sync service was removed' }
+      const syncResult = await this.invokeEdgeFunction(sport)
       const executionTime = Date.now() - startTime
 
       if (syncResult.success) {
@@ -154,7 +183,7 @@ export class ComprehensiveDataPopulationService {
           message: `Failed to populate data for ${sport}: ${syncResult.message}`,
           sportsProcessed: 0,
           totalRecords: 0,
-          errors: [syncResult.message],
+          errors: [syncResult.message || 'Unknown error'],
           executionTime
         }
       }

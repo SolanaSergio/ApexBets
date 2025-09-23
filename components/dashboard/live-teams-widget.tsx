@@ -100,6 +100,7 @@ export function LiveTeamsWidget() {
   // Enhanced team data processing - fully dynamic
   const processedTeams = teams ? teams
     .filter((team: any) => team && (team.name || team.full_name))
+    .filter((team: any) => !selectedSport || team.sport === selectedSport)
     .map((team: any, index: number) => {
       // Calculate win percentage dynamically
       const wins = team.wins || team.record?.wins || team.w || 0
@@ -109,7 +110,7 @@ export function LiveTeamsWidget() {
 
       return {
         id: team.id || team.team_id || `team-${index}`,
-        name: team.name || team.full_name || team.team_name || 'Unknown Team',
+        name: (team.name || team.full_name || team.team_name) ?? null,
         city: team.city || team.market || team.location || '',
         abbreviation: team.abbreviation || team.alias || team.abbr || team.name?.slice(0, 3).toUpperCase() || '',
         logo: team.logo || team.logo_url || team.image || team.team_logo || '',
@@ -117,7 +118,7 @@ export function LiveTeamsWidget() {
         losses,
         winPercentage,
         streak: team.streak || team.current_streak || team.win_streak || '',
-        sport: team.sport || selectedSport || 'unknown',
+        sport: (team.sport || selectedSport) ?? null,
         // Additional dynamic fields
         points: team.points || team.pts || 0,
         goalsFor: team.goals_for || team.gf || 0,
@@ -177,7 +178,7 @@ export function LiveTeamsWidget() {
     )
   }
 
-  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "No Sport Selected"
+  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
 
   return (
     <Card className="h-fit">

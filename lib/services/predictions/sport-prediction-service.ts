@@ -89,8 +89,8 @@ export class SportPredictionService {
       return {
         id: game.id,
         sport: game.sport,
-        homeTeam: game.home_team?.name || 'Unknown',
-        awayTeam: game.away_team?.name || 'Unknown',
+        homeTeam: game.home_team?.name ?? null,
+        awayTeam: game.away_team?.name ?? null,
         homeTeamId: game.home_team_id,
         awayTeamId: game.away_team_id,
         date: game.game_date,
@@ -246,7 +246,7 @@ export class SportPredictionService {
         isRivalry: false, // Could be enhanced with rivalry detection
         restDays: 2, // Default rest days, could be calculated from schedule
         travelDistance: 0, // Could be calculated from team locations
-        venue: gameData.venue || 'Unknown',
+        venue: gameData.venue ?? null,
         sport: this.sport
       }
       
@@ -382,8 +382,8 @@ export class SportPredictionService {
         predictedSpread: pred.prediction_type === 'spread' ? pred.predicted_value : 0,
         predictedTotal: pred.prediction_type === 'total_points' ? pred.predicted_value : 0,
         factors: pred.reasoning ? [pred.reasoning] : ['Historical analysis'],
-        homeTeam: pred.game?.home_team?.name || 'Unknown',
-        awayTeam: pred.game?.away_team?.name || 'Unknown',
+        homeTeam: pred.game?.home_team?.name ?? null,
+        awayTeam: pred.game?.away_team?.name ?? null,
         gameDate: pred.game?.game_date,
         status: pred.game?.status,
         actualValue: pred.actual_value,
@@ -434,8 +434,8 @@ export class SportPredictionService {
       // Transform to expected format
       return opportunities.map(opp => ({
         gameId: opp.game_id,
-        homeTeam: opp.game?.home_team?.name || 'Unknown',
-        awayTeam: opp.game?.away_team?.name || 'Unknown',
+        homeTeam: opp.game?.home_team?.name ?? null,
+        awayTeam: opp.game?.away_team?.name ?? null,
         market: opp.bet_type,
         selection: opp.side,
         odds: opp.odds,

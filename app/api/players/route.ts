@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 export async function GET(request: NextRequest) {
@@ -78,8 +79,7 @@ export async function GET(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // Process and format players data
-    const processedPlayers = (players || []).map(player => ({
+    let processedPlayers = (players || []).map(player => ({
       ...player,
       team_name: player.team?.name || 'Free Agent',
       team_abbreviation: player.team?.abbreviation || '',
@@ -88,6 +88,51 @@ export async function GET(request: NextRequest) {
       team_league: player.team?.league || '',
       team_sport: player.team?.sport || sport
     }))
+
+    // Fallback: if no rows in players table, derive from sport-specific stats tables
+    if (processedPlayers.length === 0) {
+      try {
+        // If sport provided, try sport-specific tables; else iterate active sports
+        const results: any[] = []
+        if (sport) {
+          const bySport = await productionSupabaseClient.getPlayers(sport, teamId || undefined, limit)
+          results.push(...bySport)
+        } else {
+          const sportsRes = await productionSupabaseClient.executeSQL(`
+            SELECT name FROM sports WHERE is_active = true ORDER BY display_name
+          `)
+          const sportNames: string[] = (sportsRes.success && Array.isArray(sportsRes.data))
+            ? sportsRes.data.map((r: any) => r.name).filter(Boolean)
+            : []
+          for (const sName of sportNames) {
+            if (results.length >= limit) break
+            const chunk = await productionSupabaseClient.getPlayers(sName, teamId || undefined, Math.max(0, limit - results.length))
+            results.push(...chunk)
+          }
+        }
+
+        processedPlayers = results.slice(0, limit).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          sport: p.sport,
+          position: p.position || null,
+          team_id: p.team_id || null,
+          is_active: p.is_active ?? true,
+          team_name: p.team_name ?? null,
+          team_abbreviation: p.team_abbreviation || '',
+          team_logo: p.team_logo || null,
+          team_city: p.team_city || '',
+          team_league: p.team_league || '',
+          team_sport: p.sport || 'all'
+        }))
+      } catch (fallbackError) {
+        structuredLogger.warn?.('Players API fallback failed', {
+          error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+          sport,
+          teamId
+        })
+      }
+    }
 
     // Calculate summary statistics
     const summary = {
@@ -98,7 +143,7 @@ export async function GET(request: NextRequest) {
         return acc
       }, {} as Record<string, number>),
       byPosition: processedPlayers.reduce((acc, player) => {
-        const pos = player.position || 'Unknown'
+        const pos = player.position ?? null
         acc[pos] = (acc[pos] || 0) + 1
         return acc
       }, {} as Record<string, number>),

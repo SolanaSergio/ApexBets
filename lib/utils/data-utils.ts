@@ -13,11 +13,11 @@ const cacheTimestamps = new Map<string, number>()
  * Generate a unique game ID based on game details to prevent duplicates
  */
 export function generateGameId(gameData: {
-  homeTeam: string;
-  awayTeam: string;
+  homeTeam: string | null;
+  awayTeam: string | null;
   date: string;
   sport: string;
-  league?: string;
+  league?: string | null;
 }): string {
   // Create a more robust hash of the game details to ensure uniqueness
   const gameString = `${gameData.homeTeam}-${gameData.awayTeam}-${gameData.date}-${gameData.sport}-${gameData.league || ''}`;
@@ -35,9 +35,9 @@ export function generateGameId(gameData: {
  * Generate a unique team ID based on team details
  */
 export function generateTeamId(teamData: {
-  name: string;
+  name: string | null;
   sport: string;
-  league?: string;
+  league?: string | null;
 }): string {
   // Create a more robust hash of the team details to ensure uniqueness
   const teamString = `${teamData.name}-${teamData.sport}-${teamData.league || ''}`;
@@ -63,28 +63,12 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
   }
   
   // Handle different data sources and normalize team names
-  // If team is null/undefined, return a default structure
+  // If team is null/undefined, return null instead of placeholder data
   if (!team || (typeof team === 'object' && Object.keys(team).length === 0)) {
-    const result = {
-      id: generateTeamId({ name: 'Unknown Team', sport, league: league || 'Unknown' }),
-      name: 'Unknown Team',
-      city: null,
-      league: league || 'Unknown',
-      sport: sport,
-      abbreviation: null,
-      logo_url: null,
-      founded: null,
-      venue: null,
-      capacity: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    }
-    normalizationCache.set(cacheKey, result)
-    cacheTimestamps.set(cacheKey, Date.now())
-    return result
+    return null
   }
   
-  const teamName = team.name || team.displayName || team.full_name || team.teamName || 'Unknown Team';
+  const teamName = (team.name || team.displayName || team.full_name || team.teamName) ?? null;
   
   // Special handling for common naming inconsistencies
   const normalizedTeamName = teamName
@@ -102,10 +86,10 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
     .trim();
 
   const result = {
-    id: team.id || generateTeamId({ name: normalizedTeamName, sport, league: league || 'Unknown' }),
+    id: team.id || generateTeamId({ name: normalizedTeamName || 'team', sport, league: league ?? null }),
     name: normalizedTeamName,
     city: team.city || team.location || team.venueCity || null,
-    league: team.league || league || 'Unknown',
+    league: (team.league || league) ?? null,
     sport: team.sport || sport,
     abbreviation: team.abbreviation || team.abbrev || team.shortName || null,
     logo_url: team.logo_url || team.logo || team.teamLogo || team.crest || team.badge || null,
@@ -166,11 +150,11 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
 
   const result = {
     id: game.id || generateGameId({
-      homeTeam: normalizedHomeTeam.name,
-      awayTeam: normalizedAwayTeam.name,
+      homeTeam: normalizedHomeTeam?.name || 'home',
+      awayTeam: normalizedAwayTeam?.name || 'away',
       date: gameDate,
       sport,
-      league: league || 'Unknown'
+      league: league ?? null
     }),
     home_team_id: normalizedHomeTeam.id,
     away_team_id: normalizedAwayTeam.id,
@@ -185,7 +169,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
                game.score?.away !== undefined ? game.score.away : null,
     status: status,
     venue: game.venue || game.location || game.stadium || game.arena || null,
-    league: game.league || league || 'Unknown',
+    league: (game.league || league) ?? null,
     sport: game.sport || sport,
     broadcast: game.broadcast || game.tv || game.channel || null,
     attendance: game.attendance || game.attendees || null,

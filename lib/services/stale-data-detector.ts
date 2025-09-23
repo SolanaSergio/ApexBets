@@ -89,7 +89,7 @@ export class StaleDataDetector {
   async checkDataFreshness(
     dataType: string,
     data: any[],
-    _sport?: string
+    sport?: string
   ): Promise<DataFreshnessResult> {
     const configKey = sport ? `${dataType}:${sport}` : dataType
     const config = this.configs.get(configKey) || this.configs.get(dataType) || this.configs.get('games')!

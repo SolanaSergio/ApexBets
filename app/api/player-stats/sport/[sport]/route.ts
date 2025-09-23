@@ -104,7 +104,7 @@ export async function GET(
     // Process and format player stats data
     const processedStats = (playerStats || []).map(stat => ({
       ...stat,
-      team_name: stat.team?.name || 'Unknown',
+      team_name: stat.team?.name ?? null,
       team_abbreviation: stat.team?.abbreviation || '',
       team_logo: stat.team?.logo_url || null,
       team_city: stat.team?.city || '',

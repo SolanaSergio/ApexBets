@@ -47,7 +47,7 @@ interface StandingsRowProps {
 function StandingsRow({ team, isPlayoffPosition, sportType }: StandingsRowProps) {
   // Dynamic display based on sport type
   const getSecondaryStats = () => {
-    const sportLower = sportType.toLowerCase()
+    const sportLower = (sportType || 'basketball').toLowerCase()
     if (sportLower.includes('soccer')) {
       return `${team.points || 0} pts | GD: ${team.goalDifference || 0}`
     }
@@ -89,13 +89,13 @@ function StandingsRow({ team, isPlayoffPosition, sportType }: StandingsRowProps)
           <div className="font-bold">{team.losses}</div>
           <div className="text-muted-foreground">L</div>
         </div>
-        {sportType.toLowerCase().includes('soccer') && team.draws !== undefined && (
+        {(sportType || 'basketball').toLowerCase().includes('soccer') && team.draws !== undefined && (
           <div>
             <div className="font-bold">{team.draws}</div>
             <div className="text-muted-foreground">D</div>
           </div>
         )}
-        {(sportType.toLowerCase().includes('soccer') || sportType.toLowerCase().includes('hockey')) && team.points !== undefined ? (
+        {((sportType || 'basketball').toLowerCase().includes('soccer') || (sportType || 'basketball').toLowerCase().includes('hockey')) && team.points !== undefined ? (
           <div className="hidden lg:block">
             <div className="font-bold">{team.points}</div>
             <div className="text-muted-foreground">PTS</div>
@@ -134,17 +134,18 @@ export function LiveStandingsWidget() {
   // Use database-first API client for standings
   const { data: standings, loading, error, refetch } = useApiData(
     async () => {
-      if (!selectedSport) return []
-
       const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      const params: { sport: string; league?: string } = { sport: selectedSport }
+      const params: { sport?: string; league?: string } = {}
+      if (selectedSport && selectedSport !== 'all') {
+        params.sport = selectedSport
+      }
       if (conference !== "all") {
         params.league = conference
       }
       return databaseFirstApiClient.getStandings(params)
     },
     {
-      enabled: !!selectedSport,
+      enabled: true,
       refetchInterval: 600000 // Refresh every 10 minutes
     }
   )
@@ -152,6 +153,7 @@ export function LiveStandingsWidget() {
   // Enhanced dynamic standings data transformation
   const processedStandings = standings ? standings
     .filter((team: any) => team && (team.name || team.full_name))
+    .filter((team: any) => !selectedSport || team.sport === selectedSport)
     .map((team: any, index: number) => {
       // Calculate win percentage dynamically
       const wins = team.wins || team.record?.wins || team.w || 0
@@ -162,21 +164,21 @@ export function LiveStandingsWidget() {
 
       return {
         id: team.id || team.team_id || `standing-${index}`,
-        name: team.name || team.full_name || team.team_name || 'Unknown Team',
+        name: (team.name || team.full_name || team.team_name) ?? null,
         abbreviation: team.abbreviation || team.alias || team.abbr || team.name?.slice(0, 3).toUpperCase() || '',
         logo: team.logo || team.logo_url || team.image || team.team_logo || '',
         position: team.position || team.rank || team.standing || index + 1,
         wins,
         losses,
         draws,
-        points: team.points || team.pts || (selectedSport.toLowerCase().includes('soccer') ? (wins * 3 + draws) : 0),
+        points: team.points || team.pts || ((selectedSport || 'basketball').toLowerCase().includes('soccer') ? (wins * 3 + draws) : 0),
         winPercentage,
         gamesBack: team.games_back || team.gb || 0,
         streak: team.streak || team.current_streak || team.form || '',
         lastTen: team.last_ten || team.recent_form || '',
         conference: team.conference || team.group || '',
         division: team.division || team.league || '',
-        sport: team.sport || selectedSport,
+        sport: team.sport || selectedSport || 'basketball',
         // Sport-specific fields
         goalsFor: team.goals_for || team.gf || team.scored || 0,
         goalsAgainst: team.goals_against || team.ga || team.conceded || 0,
@@ -186,7 +188,7 @@ export function LiveStandingsWidget() {
     })
     .sort((a: StandingTeam, b: StandingTeam) => {
       // Dynamic sorting based on sport
-      const sportLower = selectedSport.toLowerCase()
+      const sportLower = (selectedSport || 'basketball').toLowerCase()
       if (sportLower.includes('soccer') || sportLower.includes('hockey')) {
         return (b.points || 0) - (a.points || 0) || a.position - b.position
       }
@@ -209,27 +211,8 @@ export function LiveStandingsWidget() {
     return 6 // Default fallback
   }
 
-  const playoffPositions = getPlayoffPositions(selectedSport)
-  const sportDisplayName = selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)
-
-  if (!selectedSport) {
-    return (
-      <Card className="h-fit">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" />
-            Standings
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Select a sport to view standings</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
+  const playoffPositions = getPlayoffPositions(selectedSport || 'basketball')
+  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
 
   if (loading) {
     return (
@@ -284,7 +267,7 @@ export function LiveStandingsWidget() {
             Standings - {sportDisplayName}
           </CardTitle>
           <div className="flex items-center gap-2">
-            {!selectedSport.toLowerCase().includes('soccer') && (
+            {!(selectedSport || 'basketball').toLowerCase().includes('soccer') && (
               <select
                 value={conference}
                 onChange={(e) => setConference(e.target.value as any)}
@@ -321,9 +304,9 @@ export function LiveStandingsWidget() {
             <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 text-center">
               <div>W</div>
               <div>L</div>
-              {selectedSport.toLowerCase().includes('soccer') && <div className="hidden lg:block">D</div>}
+              {(selectedSport || 'basketball').toLowerCase().includes('soccer') && <div className="hidden lg:block">D</div>}
               <div className="hidden lg:block">
-                {selectedSport.toLowerCase().includes('soccer') || selectedSport.toLowerCase().includes('hockey') ? 'PTS' : 'PCT'}
+                {(selectedSport || 'basketball').toLowerCase().includes('soccer') || (selectedSport || 'basketball').toLowerCase().includes('hockey') ? 'PTS' : 'PCT'}
               </div>
             </div>
             <div className="w-12">Form</div>
@@ -335,7 +318,7 @@ export function LiveStandingsWidget() {
               key={team.id}
               team={team}
               isPlayoffPosition={team.position <= playoffPositions}
-              sportType={selectedSport}
+              sportType={selectedSport || 'basketball'}
             />
           ))}
         </div>
