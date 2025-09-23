@@ -8,6 +8,25 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
+// Helper functions for timezone-aware date comparison
+function isToday(date: Date, timezone: string): boolean {
+  const now = new Date()
+  const todayInTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
+  const gameDateInTimezone = new Date(date.toLocaleString("en-US", { timeZone: timezone }))
+  
+  return todayInTimezone.toDateString() === gameDateInTimezone.toDateString()
+}
+
+function isTomorrow(date: Date, timezone: string): boolean {
+  const now = new Date()
+  const tomorrowInTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
+  tomorrowInTimezone.setDate(tomorrowInTimezone.getDate() + 1)
+  
+  const gameDateInTimezone = new Date(date.toLocaleString("en-US", { timeZone: timezone }))
+  
+  return tomorrowInTimezone.toDateString() === gameDateInTimezone.toDateString()
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -18,6 +37,7 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number.parseInt(searchParams.get("limit") || "100")
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
     const league = searchParams.get("league")
+    const timezone = searchParams.get("timezone") || "UTC"
 
     // Use database-first API client - no external API calls
     const result = await databaseFirstApiClient.getGames({
@@ -29,11 +49,40 @@ export async function GET(request: NextRequest) {
       ...(league && { league })
     })
 
+    // Convert game dates to user's timezone
+    if (result.success && result.data) {
+      result.data = result.data.map((game: any) => {
+        if (game.game_date) {
+          const utcDate = new Date(game.game_date)
+          const localDate = new Date(utcDate.toLocaleString("en-US", { timeZone: timezone }))
+          
+          return {
+            ...game,
+            game_date: game.game_date, // Keep original UTC date
+            game_date_local: localDate.toISOString(), // Add local timezone date
+            game_date_formatted: localDate.toLocaleString("en-US", {
+              timeZone: timezone,
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+              hour12: true
+            }),
+            is_today: isToday(utcDate, timezone),
+            is_tomorrow: isTomorrow(utcDate, timezone)
+          }
+        }
+        return game
+      })
+    }
+
     structuredLogger.info('Games API request processed', {
       sport,
       status,
       count: result.data.length,
-      source: result.meta.source
+      source: result.meta.source,
+      timezone
     })
 
     return NextResponse.json(result)

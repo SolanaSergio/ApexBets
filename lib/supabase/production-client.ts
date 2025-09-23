@@ -29,6 +29,8 @@ class ProductionSupabaseClient {
 
   async executeSQL(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
+      console.log('executeSQL called with query:', query.substring(0, 200) + '...')
+      console.log('executeSQL called with params:', params)
       const trimmedQuery = query.trim().toUpperCase()
       
       // Handle simple health check queries
@@ -79,6 +81,198 @@ class ProductionSupabaseClient {
         }
       }
       
+      // Handle analytics queries with COUNT(CASE WHEN...)
+      if (query.includes('COUNT(CASE WHEN status =') && query.includes('FROM games')) {
+        const sport = params?.[0]
+        const dateFrom = params?.[1]
+        const dateTo = params?.[2]
+
+        let queryBuilder = this.supabase.from('games').select('status, sport, game_date')
+
+        if (sport && sport !== 'all') {
+          queryBuilder = queryBuilder.eq('sport', sport)
+        }
+        if (dateFrom) {
+          queryBuilder = queryBuilder.gte('game_date', dateFrom)
+        }
+        if (dateTo) {
+          queryBuilder = queryBuilder.lte('game_date', dateTo)
+        }
+
+        const { data, error } = await queryBuilder
+
+        if (error) throw error
+
+        // Calculate stats manually
+        type GameRow = { status?: string | null }
+        const games: GameRow[] = Array.isArray(data) ? (data as GameRow[]) : []
+        const totalGames = games.length
+        const completedGames = games.filter((g: GameRow) => g.status === 'completed').length
+        const liveGames = games.filter((g: GameRow) => g.status === 'live').length
+        const scheduledGames = games.filter((g: GameRow) => g.status === 'scheduled').length
+
+        return {
+          success: true,
+          data: [{
+            total_games: totalGames,
+            completed_games: completedGames,
+            live_games: liveGames,
+            scheduled_games: scheduledGames
+          }]
+        }
+      }
+
+      // Handle predictions analytics queries
+      if (query.includes('COUNT(CASE WHEN is_correct =') && query.includes('FROM predictions')) {
+        const sport = params?.[0]
+
+        let queryBuilder = this.supabase.from('predictions').select('is_correct, confidence, sport')
+
+        if (sport && sport !== 'all') {
+          queryBuilder = queryBuilder.eq('sport', sport)
+        }
+
+        const { data, error } = await queryBuilder
+
+        if (error) throw error
+
+        // Calculate stats manually
+        type PredictionRow = { is_correct?: boolean | null; confidence?: number | null }
+        const predictions: PredictionRow[] = Array.isArray(data) ? (data as PredictionRow[]) : []
+        const totalPredictions = predictions.length
+        const correctPredictions = predictions.filter((p: PredictionRow) => p.is_correct === true).length
+        const avgConfidence = predictions.length > 0 
+          ? predictions.reduce((sum: number, p: PredictionRow) => sum + (p.confidence || 0), 0) / predictions.length 
+          : 0
+
+        return {
+          success: true,
+          data: [{
+            total_predictions: totalPredictions,
+            correct_predictions: correctPredictions,
+            avg_confidence: avgConfidence
+          }]
+        }
+      }
+
+      // Handle teams count queries
+      if (query.includes('COUNT(*) as total_teams') && query.includes('FROM teams')) {
+        const sport = params?.[0]
+
+        let queryBuilder = this.supabase.from('teams').select('sport, is_active')
+
+        if (sport && sport !== 'all') {
+          queryBuilder = queryBuilder.eq('sport', sport)
+        }
+        queryBuilder = queryBuilder.eq('is_active', true)
+
+        const { data, error } = await queryBuilder
+
+        if (error) throw error
+
+        return {
+          success: true,
+          data: [{
+            total_teams: (data || []).length
+          }]
+        }
+      }
+
+      // Handle games queries with JOINs
+      if (query.includes('FROM games g') && query.includes('LEFT JOIN teams')) {
+        // Parse parameters dynamically based on the SQL query structure
+        // The SQL query is built conditionally, so we need to count the actual parameters
+        let paramIndex = 0
+        const sport = params?.[paramIndex++]
+        const status = params?.[paramIndex++]
+        
+        // Check if dateFrom parameter exists in the query
+        let dateFrom = undefined
+        if (query.includes('g.game_date >=')) {
+          dateFrom = params?.[paramIndex++]
+        }
+        
+        // Check if dateTo parameter exists in the query  
+        let dateTo = undefined
+        if (query.includes('g.game_date <=')) {
+          dateTo = params?.[paramIndex++]
+        }
+        
+        // Check if league parameter exists in the query
+        let league = undefined
+        if (query.includes('g.league =')) {
+          league = params?.[paramIndex++]
+        }
+        
+        // Limit is always the last parameter
+        const limit = params?.[paramIndex] || 100
+
+        // Fetch games first
+        let gamesQuery = this.supabase.from('games').select('*')
+
+        if (sport && sport !== 'all') {
+          gamesQuery = gamesQuery.eq('sport', sport)
+        }
+        if (status) {
+          gamesQuery = gamesQuery.eq('status', status)
+        }
+        if (dateFrom) {
+          gamesQuery = gamesQuery.gte('game_date', dateFrom)
+        }
+        if (dateTo) {
+          gamesQuery = gamesQuery.lte('game_date', dateTo)
+        }
+        if (league) {
+          gamesQuery = gamesQuery.eq('league', league)
+        }
+
+        const { data: games, error: gamesError } = await gamesQuery
+          .order('game_date', { ascending: false })
+          .limit(limit)
+
+        if (gamesError) throw gamesError
+
+        if (!games || games.length === 0) {
+          return {
+            success: true,
+            data: []
+          }
+        }
+
+        // Get unique team IDs
+        const teamIds = new Set<string>()
+        games.forEach((game: any) => {
+          if (game.home_team_id) teamIds.add(game.home_team_id)
+          if (game.away_team_id) teamIds.add(game.away_team_id)
+        })
+
+        // Fetch teams
+        const { data: teams, error: teamsError } = await this.supabase
+          .from('teams')
+          .select('id, name, abbreviation, logo_url')
+          .in('id', Array.from(teamIds))
+
+        if (teamsError) throw teamsError
+
+        // Create team lookup map
+        const teamMap = new Map<string, any>()
+        teams?.forEach((team: any) => {
+          teamMap.set(team.id, team)
+        })
+
+        // Transform data to match the expected format
+        const transformedData = games.map((game: any) => ({
+          ...game,
+          home_team_name: teamMap.get(game.home_team_id)?.name || '',
+          away_team_name: teamMap.get(game.away_team_id)?.name || ''
+        }))
+
+        return {
+          success: true,
+          data: transformedData
+        }
+      }
+
       // Extract table name from query for basic routing
       const tableMatch = query.match(/FROM\s+(\w+)/i)
       const tableName = tableMatch?.[1]?.toLowerCase()
