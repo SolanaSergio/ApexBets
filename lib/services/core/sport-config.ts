@@ -144,7 +144,7 @@ class SportConfigManagerImpl {
 
   getCurrentSeason(sport: SupportedSport): string {
     const config = this.configs.get(sport)
-    return config?.seasonConfig.currentSeason || '2024'
+    return config?.seasonConfig.currentSeason || new Date().getFullYear().toString()
   }
 
   isSportActive(sport: SupportedSport): boolean {
@@ -192,9 +192,9 @@ class SportConfigManagerImpl {
     return config?.leagues || []
   }
 
-  async getDefaultLeague(sport: SupportedSport): Promise<string> {
+  async getDefaultLeague(sport: SupportedSport): Promise<string | null> {
     const leagues = await this.getLeaguesForSport(sport)
-    return leagues[0] || 'default'
+    return leagues[0] || null
   }
 
   async isSportSupported(sport: SupportedSport): Promise<boolean> {
@@ -246,7 +246,7 @@ export class SportConfigManagerProxy {
     return sportConfigManager.getLeaguesForSport(sport)
   }
 
-  static async getDefaultLeague(sport: SupportedSport): Promise<string> {
+  static async getDefaultLeague(sport: SupportedSport): Promise<string | null> {
     return sportConfigManager.getDefaultLeague(sport)
   }
 

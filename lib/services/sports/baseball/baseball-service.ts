@@ -413,9 +413,66 @@ export class BaseballService extends SportSpecificService {
     return this.getCachedOrFetch(key, () => this.fetchStandings(season), ttl)
   }
 
-  private async fetchStandings(_season?: string): Promise<any[]> {
+  private async fetchStandings(season?: string): Promise<any[]> {
     try {
-      // Would integrate with appropriate API
+      // Prefer ESPN standings (free, no key) for MLB
+      const { espnClient } = await import('../../../sports-apis')
+      const entries = await espnClient.getStandings('baseball', 'mlb')
+
+      if (Array.isArray(entries) && entries.length > 0) {
+        const currentSeason = season || new Date().getFullYear().toString()
+
+        const mapped = entries.map((entry: any) => {
+          const teamName: string = entry?.team?.displayName || entry?.team?.name || ''
+
+          const findStat = (keys: string[]): number | undefined => {
+            const stats: any[] = Array.isArray(entry?.stats) ? entry.stats : []
+            for (const s of stats) {
+              const name = String(s?.name || s?.abbreviation || s?.shortDisplayName || '').toLowerCase()
+              if (keys.some(k => name === k.toLowerCase())) {
+                const val = s?.value ?? s?.displayValue
+                const num = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : undefined)
+                if (!Number.isNaN(num as number)) return num as number
+              }
+            }
+            return undefined
+          }
+
+          const wins = findStat(['wins','w']) || 0
+          const losses = findStat(['losses','l']) || 0
+          const ties = findStat(['ties','t']) || 0
+          const winPct = findStat(['pct','win_percentage','winpercent','winpct']) || 0
+          const gamesBehind = findStat(['gb','games_behind']) || 0
+          const runsFor = findStat(['pf','points_for','runs_for','rf']) || 0
+          const runsAgainst = findStat(['pa','points_against','runs_against','ra']) || 0
+
+          return {
+            sport: 'baseball',
+            league: this.league,
+            season: currentSeason,
+            teamName,
+            wins,
+            losses,
+            ties,
+            winPercentage: winPct,
+            gamesBehind,
+            pointsFor: runsFor,
+            pointsAgainst: runsAgainst,
+            lastUpdated: new Date().toISOString()
+          }
+        })
+
+        return mapped
+      }
+
+      // Fallback: try TheSportsDB group standings if available (may be limited)
+      try {
+        const { sportsDBClient } = await import('../../../sports-apis')
+        // SportsDB has league tables primarily for soccer; for MLB likely empty
+        // Return empty to allow other providers or DB fallback
+        void sportsDBClient
+      } catch {}
+
       return []
     } catch (error) {
       console.error('Error fetching baseball standings:', error)

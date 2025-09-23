@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import crypto from 'crypto'
 // Removed stale-data-detector import - service was deleted as unnecessary
 
 export async function GET(request: NextRequest) {
@@ -60,7 +61,14 @@ export async function GET(request: NextRequest) {
 
         if (externalStandings && externalStandings.length > 0) {
           // Update database with fresh data
-          await updateDatabaseWithExternalData(sport, externalStandings)
+          await updateDatabaseWithExternalData(
+            sport,
+            externalStandings,
+            {
+              ...(league && { league }),
+              ...(season && { season })
+            }
+          )
           
           // Get updated data from database
           standings = await productionSupabaseClient.getStandings(sport, league || undefined, season || undefined)
@@ -134,7 +142,11 @@ export async function GET(request: NextRequest) {
 /**
  * Update database with external API data
  */
-async function updateDatabaseWithExternalData(sport: string, externalStandings: any[]): Promise<void> {
+async function updateDatabaseWithExternalData(
+  sport: string,
+  externalStandings: any[],
+  options: { league?: string; season?: string } = {}
+): Promise<void> {
   try {
     // Get existing standings to avoid duplicates
     const existingStandings = await productionSupabaseClient.getStandings(sport)
@@ -144,26 +156,50 @@ async function updateDatabaseWithExternalData(sport: string, externalStandings: 
     const teams = await productionSupabaseClient.getTeams(sport)
     const teamMap = new Map(teams.map((team: any) => [team.name, team.id]))
 
-    const standingsToUpsert = externalStandings.map(externalStanding => {
-      const existingStanding = existingStandingMap.get(externalStanding.teamName)
-      const teamId = teamMap.get(externalStanding.teamName) || externalStanding.teamId
-      
-      return {
-        id: (existingStanding as any)?.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: sport,
-        league: externalStanding.league || 'default',
-        season: externalStanding.season || '2024-25',
-        team_id: teamId || null,
-        wins: externalStanding.wins || 0,
-        losses: externalStanding.losses || 0,
-        ties: externalStanding.ties || 0,
-        win_percentage: externalStanding.winPercentage || 0,
-        games_back: externalStanding.gamesBehind || 0,
-        points_for: externalStanding.pointsFor || 0,
-        points_against: externalStanding.pointsAgainst || 0,
-        last_updated: new Date().toISOString()
-      }
-    })
+    const normalized = externalStandings
+      .map(externalStanding => {
+        const teamName: string | undefined = externalStanding.teamName || externalStanding.team?.name || externalStanding.name
+        if (!teamName) {
+          return null
+        }
+
+        const existingStanding = existingStandingMap.get(teamName)
+        const teamId = teamMap.get(teamName) || externalStanding.teamId || null
+
+        const leagueValue: string | undefined = externalStanding.league || options.league
+        const seasonValue: string | undefined = externalStanding.season || options.season || new Date().getFullYear().toString()
+
+        if (!leagueValue || !seasonValue) {
+          return null
+        }
+
+        const stableKey = `${sport}::${leagueValue}::${seasonValue}::${teamId || teamName}`
+        const deterministicId = (existingStanding as any)?.id || crypto.createHash('sha1').update(stableKey).digest('hex').slice(0, 24)
+
+        return {
+          id: deterministicId,
+          sport: sport,
+          league: leagueValue,
+          season: seasonValue,
+          team_id: teamId,
+          wins: Number(externalStanding.wins || 0),
+          losses: Number(externalStanding.losses || 0),
+          ties: Number(externalStanding.ties || 0),
+          win_percentage: Number(externalStanding.winPercentage || 0),
+          games_back: externalStanding.gamesBehind !== undefined ? Number(externalStanding.gamesBehind) : null,
+          points_for: Number(externalStanding.pointsFor || 0),
+          points_against: Number(externalStanding.pointsAgainst || 0),
+          last_updated: new Date().toISOString()
+        }
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null)
+
+    if (normalized.length === 0) {
+      structuredLogger.warn('No valid standings to upsert after normalization', { sport })
+      return
+    }
+
+    const standingsToUpsert = normalized
 
     // Upsert standings
     await productionSupabaseClient.supabase
