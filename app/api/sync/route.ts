@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server"
-// Removed data-sync-service import - service was deleted as unnecessary
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,42 +10,25 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           success: true,
           data: {
-            isRunning: false,
-            stats: { message: 'Data sync service was removed' },
-            config: { message: 'Data sync service was removed' }
+            isRunning: true,
+            message: 'Using Supabase Edge Functions for data sync',
+            stats: { message: 'Data sync handled by Supabase Edge Functions' },
+            config: { message: 'No local sync service - using Supabase Edge Functions' }
           }
         })
 
-      case "start":
-        // Data sync service was removed
-        return NextResponse.json({
-          success: true,
-          message: "Data sync service started"
-        })
-
-      case "stop":
-        // Data sync service was removed
-        return NextResponse.json({
-          success: true,
-          message: "Data sync service stopped"
-        })
-
       case "sync":
-        // Manual sync trigger
-        // Data sync service was removed
-        return NextResponse.json({
-          success: true,
-          message: "Manual sync completed",
-          stats: { message: 'Data sync service was removed' }
-        })
+        // Manual sync trigger - call Supabase Edge Function
+        return await triggerSupabaseSync()
 
       default:
         return NextResponse.json({
           success: true,
           data: {
-            isRunning: false,
-            stats: { message: 'Data sync service was removed' },
-            config: { message: 'Data sync service was removed' }
+            isRunning: true,
+            message: 'Using Supabase Edge Functions for data sync',
+            stats: { message: 'Data sync handled by Supabase Edge Functions' },
+            config: { message: 'No local sync service - using Supabase Edge Functions' }
           }
         })
     }
@@ -62,35 +44,17 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { action, config } = body
+    const { action } = body
 
     switch (action) {
-      case "update_config":
-        if (config) {
-          // Data sync service was removed
-          return NextResponse.json({
-            success: true,
-            message: "Configuration updated",
-            config: { message: 'Data sync service was removed' }
-          })
-        }
-        return NextResponse.json({
-          success: false,
-          error: "Configuration required"
-        }, { status: 400 })
-
       case "force_sync":
-        // Data sync service was removed
-        return NextResponse.json({
-          success: true,
-          message: "Force sync completed",
-          stats: { message: 'Data sync service was removed' }
-        })
+        // Manual sync trigger - call Supabase Edge Function
+        return await triggerSupabaseSync()
 
       default:
         return NextResponse.json({
           success: false,
-          error: "Invalid action"
+          error: "Invalid action. Use 'force_sync' to trigger manual sync."
         }, { status: 400 })
     }
   } catch (error) {
@@ -98,6 +62,51 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: false,
       error: "Internal server error"
+    }, { status: 500 })
+  }
+}
+
+async function triggerSupabaseSync() {
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Missing Supabase configuration')
+    }
+
+    const edgeFunctionUrl = `${supabaseUrl}/functions/v1/sync-sports-data`
+    
+    const response = await fetch(edgeFunctionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({
+        dataTypes: ['games', 'teams', 'players', 'standings']
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`Edge Function failed: ${response.status} ${response.statusText}`)
+    }
+
+    const result = await response.json()
+    
+    return NextResponse.json({
+      success: result.success,
+      message: 'Manual sync completed via Supabase Edge Function',
+      stats: result.stats,
+      edgeFunctionResult: result
+    })
+
+  } catch (error) {
+    console.error('Manual sync error:', error)
+    return NextResponse.json({
+      success: false,
+      error: 'Manual sync failed',
+      details: error instanceof Error ? error.message : String(error)
     }, { status: 500 })
   }
 }

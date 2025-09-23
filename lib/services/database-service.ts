@@ -25,6 +25,7 @@ export interface QueryResult {
 
 export class DatabaseService {
   private static instance: DatabaseService
+  private static initialized = false
   private isConnected: boolean = false
   private lastHealthCheck: Date = new Date()
 
@@ -36,7 +37,11 @@ export class DatabaseService {
   }
 
   constructor() {
-    this.initializeConnection()
+    // Only initialize once, and not during build phase
+    if (!DatabaseService.initialized && process.env.NEXT_PHASE !== 'phase-production-build') {
+      this.initializeConnection()
+      DatabaseService.initialized = true
+    }
   }
 
   private async initializeConnection(): Promise<void> {

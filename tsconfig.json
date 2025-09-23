@@ -25,9 +25,13 @@
     "noEmit": true,
     "jsx": "preserve",
     "incremental": true,
+    "tsBuildInfoFile": ".next/tsconfig.tsbuildinfo",
     
     // Interop Constraints
     "forceConsistentCasingInFileNames": true,
+    
+    // Performance optimizations
+    "assumeChangesOnlyAffectDirectDependencies": true,
     
     "plugins": [
       {

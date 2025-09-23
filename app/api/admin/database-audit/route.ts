@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseAuditService } from '@/lib/services/database-audit-service'
 import { databaseCleanupService } from '@/lib/services/database-cleanup-service'
 import { enhancedApiClient } from '@/lib/services/enhanced-api-client'
-import { automatedMonitoringService } from '@/lib/services/automated-monitoring-service'
+// Removed automatedMonitoringService import - service was deleted
 import { dataIntegrityService } from '@/lib/services/data-integrity-service'
 
 export async function GET(request: NextRequest) {
@@ -66,9 +66,10 @@ export async function GET(request: NextRequest) {
 
     } else if (action === 'monitoring') {
       // Get monitoring metrics and alerts
-      const metrics = automatedMonitoringService.getMetrics()
-      const alerts = automatedMonitoringService.getActiveAlerts()
-      const status = automatedMonitoringService.getStatus()
+      // Monitoring service removed - using Supabase Edge Functions
+      const metrics: any[] = []
+      const alerts: any[] = []
+      const status = { running: false, totalAlerts: 0, activeAlerts: 0 }
       
       return NextResponse.json({
         success: true,
@@ -170,25 +171,24 @@ export async function POST(request: NextRequest) {
       })
 
     } else if (action === 'start-monitoring') {
-      // Start automated monitoring
-      const intervalMinutes = options.intervalMinutes || 5
-      await automatedMonitoringService.start()
+      // Monitoring service removed - using Supabase Edge Functions
+      console.log('ℹ️ Monitoring service removed - using Supabase Edge Functions')
       
       return NextResponse.json({
         success: true,
         action: 'start-monitoring',
-        message: `Monitoring started with ${intervalMinutes} minute intervals`,
+        message: 'Monitoring service removed - using Supabase Edge Functions',
         timestamp: new Date().toISOString()
       })
 
     } else if (action === 'stop-monitoring') {
-      // Stop automated monitoring
-      automatedMonitoringService.stop()
+      // Monitoring service removed - using Supabase Edge Functions
+      console.log('ℹ️ Monitoring service removed - using Supabase Edge Functions')
       
       return NextResponse.json({
         success: true,
         action: 'stop-monitoring',
-        message: 'Monitoring stopped',
+        message: 'Monitoring service removed - using Supabase Edge Functions',
         timestamp: new Date().toISOString()
       })
 

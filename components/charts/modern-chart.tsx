@@ -12,6 +12,7 @@ interface ChartDataPoint {
   trend?: "up" | "down" | "neutral"
   color?: string
   timestamp?: string
+  [key: string]: any // Add index signature for Recharts compatibility
 }
 
 interface ModernChartProps {

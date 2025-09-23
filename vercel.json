@@ -5,11 +5,5 @@
   ],
   "env": {
     "NODE_ENV": "production"
-  },
-  "crons": [
-    {
-      "path": "/api/cron/sync",
-      "schedule": "*/5 * * * *"
-    }
-  ]
+  }
 }

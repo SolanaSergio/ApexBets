@@ -1,6 +1,10 @@
+import { Suspense, lazy } from "react"
 import { Navigation } from "@/components/navigation/navigation"
-import AnalyticsDashboard from "@/components/categories/analytics/analytics-dashboard"
 import { BarChart3 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+
+// Lazy load the analytics dashboard
+const AnalyticsDashboard = lazy(() => import("@/components/categories/analytics/analytics-dashboard"))
 
 export default function AnalyticsPage() {
   return (
@@ -28,7 +32,19 @@ export default function AnalyticsPage() {
           </div>
         </div>
 
-        <AnalyticsDashboard />
+        <Suspense fallback={
+          <Card>
+            <CardContent className="p-8">
+              <div className="text-center text-muted-foreground">
+                <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                <h3 className="text-lg font-semibold mb-2">Loading Analytics Dashboard...</h3>
+                <p className="text-sm">Please wait while we load the analytics interface</p>
+              </div>
+            </CardContent>
+          </Card>
+        }>
+          <AnalyticsDashboard />
+        </Suspense>
       </main>
     </div>
   )

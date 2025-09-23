@@ -23,9 +23,8 @@ app.prepare().then(async () => {
   
   // Import and initialize background sync service
   try {
-    const { backgroundSyncService } = require('./dist/server/background-sync-service.js');
-    autoStartupService = backgroundSyncService;
-    console.log('✅ Background sync service loaded');
+    // Background sync service removed - using Supabase Edge Functions
+    console.log('ℹ️ Using Supabase Edge Functions for data sync');
   } catch (error) {
     console.error('❌ Failed to load background sync service:', error);
     console.log('⚠️ Continuing without background sync services...');

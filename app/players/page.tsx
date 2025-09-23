@@ -1,10 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import PlayerSearch from "@/components/categories/sports/player-search"
-import PlayerStats from "@/components/categories/sports/player-stats"
-import PlayerComparison from "@/components/categories/sports/player-comparison"
-import PlayerTrends from "@/components/categories/sports/player-trends"
+import { useState, useEffect, Suspense, lazy } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -12,6 +8,12 @@ import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
 import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
 import { Player } from "@/lib/api-client-database-first"
+
+// Lazy load heavy components
+const PlayerSearch = lazy(() => import("@/components/categories/sports/player-search"))
+const PlayerStats = lazy(() => import("@/components/categories/sports/player-stats"))
+const PlayerComparison = lazy(() => import("@/components/categories/sports/player-comparison"))
+const PlayerTrends = lazy(() => import("@/components/categories/sports/player-trends"))
 
 export default function PlayersPage() {
   const [selectedPlayer, setSelectedPlayer] = useState<BallDontLiePlayer | Player | null>(null)
@@ -60,7 +62,19 @@ export default function PlayersPage() {
 
         {/* Search Section */}
         {selectedSport ? (
-          <PlayerSearch onPlayerSelect={(p) => setSelectedPlayer(p as any)} selectedPlayer={selectedPlayer as any} sport={selectedSport} />
+          <Suspense fallback={
+            <Card>
+              <CardContent className="p-8">
+                <div className="text-center text-muted-foreground">
+                  <Users className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                  <h3 className="text-lg font-semibold mb-2">Loading Player Search...</h3>
+                  <p className="text-sm">Please wait while we load the search interface</p>
+                </div>
+              </CardContent>
+            </Card>
+          }>
+            <PlayerSearch onPlayerSelect={(p) => setSelectedPlayer(p as any)} selectedPlayer={selectedPlayer as any} sport={selectedSport} />
+          </Suspense>
         ) : (
           <Card>
             <CardContent className="p-8">
@@ -96,20 +110,56 @@ export default function PlayersPage() {
             </TabsList>
 
             <TabsContent value="stats" className="space-y-6">
-              <PlayerStats selectedPlayer={selectedPlayer} />
+              <Suspense fallback={
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-muted-foreground">
+                      <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                      <h3 className="text-lg font-semibold mb-2">Loading Statistics...</h3>
+                      <p className="text-sm">Please wait while we load player statistics</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }>
+                <PlayerStats selectedPlayer={selectedPlayer} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="trends" className="space-y-6">
-              <PlayerTrends 
-                playerName={selectedPlayer ? ('first_name' in selectedPlayer ? `${selectedPlayer.first_name} ${selectedPlayer.last_name}` : selectedPlayer.name) : ''}
-                timeRange="30d"
-                sport={selectedSport}
-                league=""
-              />
+              <Suspense fallback={
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-muted-foreground">
+                      <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                      <h3 className="text-lg font-semibold mb-2">Loading Trends...</h3>
+                      <p className="text-sm">Please wait while we load player trends</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }>
+                <PlayerTrends 
+                  playerName={selectedPlayer ? ('first_name' in selectedPlayer ? `${selectedPlayer.first_name} ${selectedPlayer.last_name}` : selectedPlayer.name) : ''}
+                  timeRange="30d"
+                  sport={selectedSport}
+                  league=""
+                />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="comparison" className="space-y-6">
-              <PlayerComparison selectedPlayer={selectedPlayer as BallDontLiePlayer | null} />
+              <Suspense fallback={
+                <Card>
+                  <CardContent className="p-8">
+                    <div className="text-center text-muted-foreground">
+                      <Users className="h-12 w-12 mx-auto mb-4 opacity-50 animate-pulse" />
+                      <h3 className="text-lg font-semibold mb-2">Loading Comparison...</h3>
+                      <p className="text-sm">Please wait while we load comparison tools</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              }>
+                <PlayerComparison selectedPlayer={selectedPlayer as BallDontLiePlayer | null} />
+              </Suspense>
             </TabsContent>
 
             <TabsContent value="predictions" className="space-y-6">

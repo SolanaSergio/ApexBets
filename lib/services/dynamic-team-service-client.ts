@@ -28,7 +28,34 @@ export class DynamicTeamServiceClient {
 
   async getTeamLogoData(teamName: string, league?: string, sport?: string): Promise<TeamLogoData> {
     try {
-      // Default team logo data
+      // Try to fetch from database first using client-side client
+      const { createClient } = await import('@/lib/supabase/client')
+      const supabase = createClient()
+      
+      if (supabase) {
+        const { data: teamData } = await supabase
+          .from('teams')
+          .select('logo_url, colors')
+          .eq('name', teamName)
+          .eq('sport', sport || '')
+          .eq('league', league || '')
+          .single()
+
+        if (teamData) {
+          return {
+            logoUrl: teamData.logo_url || '',
+            colors: teamData.colors ? JSON.parse(teamData.colors) : {
+              primary: '#000000',
+              secondary: '#ffffff'
+            },
+            teamName,
+            league: league || 'unknown',
+            sport: sport || 'unknown'
+          }
+        }
+      }
+
+      // Fallback to default data
       const defaultData: TeamLogoData = {
         logoUrl: '',
         colors: {
@@ -40,10 +67,7 @@ export class DynamicTeamServiceClient {
         sport: sport || 'unknown'
       }
 
-      // In a real implementation, this would fetch from an API or database
-      // For now, return default data
-      structuredLogger.debug('Getting team logo data', { teamName, league, sport })
-
+      structuredLogger.debug('Using default team logo data', { teamName, league, sport })
       return defaultData
 
     } catch (error) {

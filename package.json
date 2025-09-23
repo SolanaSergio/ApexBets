@@ -11,6 +11,7 @@
     "type": "git",
     "url": "https://github.com/projectapex/apex.git"
   },
+  "packageManager": "pnpm@8.0.0",
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
@@ -51,7 +52,11 @@
     "startup:status": "curl http://localhost:3000/api/startup?action=status",
     "startup:health": "curl http://localhost:3000/api/startup?action=health",
     "startup:restart": "curl -X GET http://localhost:3000/api/startup?action=restart",
-    "startup:stop": "curl -X GET http://localhost:3000/api/startup?action=stop"
+    "startup:stop": "curl -X GET http://localhost:3000/api/startup?action=stop",
+    "sync:data": "pnpm run build:server && node scripts/sync-sports-data.js",
+    "sync:test": "pnpm run build:server && node scripts/sync-sports-data.js",
+    "deploy:edge-function": "node scripts/deploy-edge-function.js",
+    "test:system": "node scripts/test-complete-system.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
