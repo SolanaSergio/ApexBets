@@ -77,8 +77,7 @@ const nextConfig = {
     
     return config
   },
-  // Reduce bundle size
-  output: 'standalone',
+  // Reduce bundle size - removed standalone output for Vercel compatibility
 }
 
 export default nextConfig
