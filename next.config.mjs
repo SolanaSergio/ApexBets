@@ -8,6 +8,10 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
+  // Optimize build performance
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   images: {
     unoptimized: true,
     domains: ['localhost'],
@@ -64,6 +68,13 @@ const nextConfig = {
         },
       }
     }
+    
+    // Optimize cache serialization to avoid large string warnings
+    if (config.cache && config.cache.type === 'filesystem') {
+      config.cache.maxMemoryGenerations = 1
+      config.cache.maxAge = 1000 * 60 * 60 * 24 * 7 // 7 days
+    }
+    
     return config
   },
   // Reduce bundle size

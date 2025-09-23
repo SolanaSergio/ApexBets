@@ -4,6 +4,9 @@ import { structuredLogger } from '@/lib/services/structured-logger'
 // Removed unused staleDataDetector import
 import { dynamicSportsManager } from '@/lib/services/dynamic-sports-manager'
 
+// Force Node.js runtime to avoid Edge Runtime compatibility issues
+export const runtime = 'nodejs'
+
 export async function GET() {
   const startTime = Date.now()
   const healthChecks = {
