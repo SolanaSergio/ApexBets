@@ -53,7 +53,6 @@ export async function POST() {
     })
 
     let gamesSynced = 0
-    let teamsSynced = 0
     
     // Sync games
     if (games.length > 0) {
@@ -111,14 +110,13 @@ export async function POST() {
       console.log('No games found to sync')
     }
     
-    console.log(`Successfully synced ${gamesSynced} games and ${teamsSynced} teams`)
+    console.log(`Successfully synced ${gamesSynced} games`)
     
     return NextResponse.json({
       success: true,
       message: 'MLB data sync completed successfully',
       stats: {
-        games: gamesSynced,
-        teams: teamsSynced
+        games: gamesSynced
       }
     })
     
