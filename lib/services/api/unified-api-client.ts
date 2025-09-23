@@ -348,7 +348,7 @@ export class UnifiedApiClient {
       id: data.id || `${Date.now()}_${Math.random()}`,
       sport: data.sport || '',
       league: data.league || data.competition || '',
-      season: data.season || data.seasonYear || '2024',
+      season: data.season || data.seasonYear || new Date().getFullYear().toString(),
       teamName: data.teamName || data.team || data.name || '',
       position: data.position || data.rank || data.standing || 0,
       wins: data.wins || data.w || data.victories || 0,

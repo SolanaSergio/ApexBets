@@ -130,24 +130,31 @@ async function updateDatabaseWithExternalData(sport: string, externalTeams: any[
     const existingTeams = await productionSupabaseClient.getTeams(sport)
     const existingTeamMap = new Map(existingTeams.map((t: any) => [t.name, t]))
 
-    const teamsToUpsert = externalTeams.map(externalTeam => {
-      const existingTeam = existingTeamMap.get(externalTeam.name)
-      
-      return {
-        id: (existingTeam as any)?.id || `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: externalTeam.name,
-        sport: sport,
-        league: externalTeam.league || 'default',
-        abbreviation: externalTeam.abbreviation || '',
-        city: externalTeam.city || '',
-        logo_url: externalTeam.logo_url || null,
-        conference: externalTeam.conference || null,
-        division: externalTeam.division || null,
-        country: externalTeam.country || null,
-        is_active: true,
-        last_updated: new Date().toISOString()
-      }
-    })
+    const teamsToUpsert = externalTeams
+      .map(externalTeam => {
+        const teamName: string | undefined = externalTeam.name || externalTeam.teamName || externalTeam.team?.name
+        if (!teamName) return null
+        const existingTeam = existingTeamMap.get(teamName)
+        const leagueValue: string | null = externalTeam.league || null
+        const stableKey = `${sport}::${leagueValue || ''}::${teamName}`
+        const deterministicId = (existingTeam as any)?.id || require('crypto').createHash('sha1').update(stableKey).digest('hex').slice(0, 24)
+
+        return {
+          id: deterministicId,
+          name: teamName,
+          sport: sport,
+          league: leagueValue,
+          abbreviation: externalTeam.abbreviation || null,
+          city: externalTeam.city || null,
+          logo_url: externalTeam.logo || externalTeam.logo_url || null,
+          conference: externalTeam.conference || null,
+          division: externalTeam.division || null,
+          country: externalTeam.country || null,
+          is_active: true,
+          last_updated: new Date().toISOString()
+        }
+      })
+      .filter(Boolean) as any[]
 
     // Upsert teams
     await productionSupabaseClient.supabase

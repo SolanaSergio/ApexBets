@@ -14,7 +14,8 @@ export async function GET(request: NextRequest) {
     const teamId = searchParams.get("team_id")
     const league = searchParams.get("league")
     const sport = searchParams.get("sport")
-    const season = searchParams.get("season") || (sport ? SeasonManager.getCurrentSeason(sport) : '2024-25')
+    const requestedSeason = searchParams.get("season")
+    const season = requestedSeason || (sport ? await SeasonManager.getCurrentSeason(sport) : new Date().getFullYear().toString())
 
     // Get games for the team or league
     let query = supabase

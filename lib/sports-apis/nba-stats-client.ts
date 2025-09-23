@@ -103,8 +103,13 @@ export class NBAStatsClient {
     try {
       const searchParams = new URLSearchParams()
 
-      // Add default parameters
-      searchParams.set('Season', params.Season || '2024-25')
+      // Add default parameters (compute season dynamically if not provided)
+      if (!params.Season) {
+        const season = await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball')
+        searchParams.set('Season', season)
+      } else {
+        searchParams.set('Season', params.Season)
+      }
       searchParams.set('SeasonType', params.SeasonType || 'Regular Season')
 
       // Add custom parameters
@@ -210,11 +215,11 @@ export class NBAStatsClient {
   }
 
   // Common Info endpoints
-  async getCommonAllPlayers(season: string = '2024-25'): Promise<NBAStatsPlayer[]> {
+  async getCommonAllPlayers(season?: string): Promise<NBAStatsPlayer[]> {
     const data = await this.request('/commonallplayers', {
       IsOnlyCurrentSeason: '1',
       LeagueID: '00',
-      Season: season
+      Season: season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball')
     })
     
     const resultSet = data.resultSets.find((rs: any) => rs.name === 'CommonAllPlayers')
@@ -236,10 +241,10 @@ export class NBAStatsClient {
     return this.transformRowSetToObjects<NBAStatsGame>(resultSet.headers, resultSet.rowSet)
   }
 
-  async getPlayerGameLog(playerId: number, season: string = '2024-25'): Promise<NBAStatsGame[]> {
+  async getPlayerGameLog(playerId: number, season?: string): Promise<NBAStatsGame[]> {
     const data = await this.request('/playergamelog', {
       PlayerID: playerId,
-      Season: season,
+      Season: season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball'),
       SeasonType: 'Regular Season'
     })
     
@@ -250,10 +255,10 @@ export class NBAStatsClient {
   }
 
   // Team endpoints
-  async getTeamGameLog(teamId: number, season: string = '2024-25'): Promise<any[]> {
+  async getTeamGameLog(teamId: number, season?: string): Promise<any[]> {
     const data = await this.request('/teamgamelog', {
       TeamID: teamId,
-      Season: season,
+      Season: season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball'),
       SeasonType: 'Regular Season'
     })
     
@@ -263,10 +268,10 @@ export class NBAStatsClient {
     return this.transformRowSetToObjects(resultSet.headers, resultSet.rowSet)
   }
 
-  async getTeamRoster(teamId: number, season: string = '2024-25'): Promise<any[]> {
+  async getTeamRoster(teamId: number, season?: string): Promise<any[]> {
     const data = await this.request('/commonteamroster', {
       TeamID: teamId,
-      Season: season
+      Season: season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball')
     })
     
     const resultSet = data.resultSets.find((rs: any) => rs.name === 'CommonTeamRoster')
@@ -276,10 +281,10 @@ export class NBAStatsClient {
   }
 
   // League endpoints
-  async getLeagueStandings(season: string = '2024-25'): Promise<any[]> {
+  async getLeagueStandings(season?: string): Promise<any[]> {
     const data = await this.request('/leaguestandingsv3', {
       LeagueID: '00',
-      Season: season,
+      Season: season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball'),
       SeasonType: 'Regular Season'
     })
     
@@ -298,7 +303,7 @@ export class NBAStatsClient {
   } = {}): Promise<any[]> {
     const data = await this.request('/leaguegamefinder', {
       LeagueID: '00',
-      Season: params.season || '2024-25',
+      Season: params.season || await (await import('@/lib/services/core/season-manager')).SeasonManager.getCurrentSeason('basketball'),
       SeasonType: params.seasonType || 'Regular Season',
       TeamID: params.teamId,
       PlayerID: params.playerId,
