@@ -12,23 +12,33 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league")
-    const betType = searchParams.get("betType")
-    const recommendation = searchParams.get("recommendation")
+    const league = searchParams.get("league") ?? undefined
+    const betType = searchParams.get("betType") ?? undefined
+    const recommendation = searchParams.get("recommendation") ?? undefined
     const minValue = searchParams.get("minValue")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const activeOnly = searchParams.get("activeOnly") !== "false"
 
     // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getValueBets({
-      sport,
-      league,
-      betType,
-      recommendation,
-      minValue: minValue ? Number.parseFloat(minValue) : undefined,
-      limit,
-      activeOnly
-    })
+    const valueBetsParams: {
+      sport?: string
+      league?: string
+      betType?: string
+      recommendation?: string
+      minValue?: number
+      limit?: number
+      activeOnly?: boolean
+    } = {}
+
+    if (sport) valueBetsParams.sport = sport
+    if (league) valueBetsParams.league = league
+    if (betType) valueBetsParams.betType = betType
+    if (recommendation) valueBetsParams.recommendation = recommendation
+    if (minValue) valueBetsParams.minValue = Number.parseFloat(minValue)
+    if (limit) valueBetsParams.limit = limit
+    if (typeof activeOnly === 'boolean') valueBetsParams.activeOnly = activeOnly
+
+    const result = await databaseFirstApiClient.getValueBets(valueBetsParams)
 
     if (!result.success) {
       structuredLogger.error('Value bets API error', {

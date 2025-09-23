@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     console.log('Starting automatic NHL data sync...')
     
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    let gamesData = { events: [] }
+    let gamesData: { events: unknown[] } = { events: [] }
     if (gamesResponse.ok) {
       gamesData = await gamesResponse.json()
     } else {
@@ -40,10 +40,10 @@ export async function POST(request: NextRequest) {
       throw new Error(`ESPN NHL Teams API error: ${teamsResponse.status}`)
     }
 
-    const teamsData = await teamsResponse.json()
+    const teamsData: any = await teamsResponse.json()
 
     // Process games data from ESPN
-    const games = gamesData.events || []
+    const games = (gamesData.events || []) as any[]
     
     // Process teams data from ESPN
     const teams = teamsData.sports?.[0]?.leagues?.[0]?.teams?.map((t: any) => t.team) || []
@@ -63,8 +63,10 @@ export async function POST(request: NextRequest) {
     }
 
     const teamNameToIdMap = new Map<string, string>()
-    existingTeams.forEach(team => {
-      teamNameToIdMap.set(team.name, team.id)
+    ;(existingTeams || []).forEach((team: any) => {
+      if (team?.name && team?.id) {
+        teamNameToIdMap.set(team.name, team.id)
+      }
     })
 
     let teamsSynced = 0
@@ -72,7 +74,7 @@ export async function POST(request: NextRequest) {
 
     // Sync teams first
     if (teams.length > 0) {
-      for (const team of teams) {
+      for (const team of teams as any[]) {
         try {
           const teamName = team.displayName || team.name
           const teamCity = team.location
@@ -128,9 +130,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync games
-    if (games.length > 0) {
+    if ((games as any[]).length > 0) {
       console.log(`Processing ${games.length} games...`)
-      for (const game of games) {
+      for (const game of games as any[]) {
         try {
           const gameId = game.gamePk
           const homeTeam = game.teams?.home?.team
@@ -154,7 +156,7 @@ export async function POST(request: NextRequest) {
 
           // Map NHL status to our database status
           let gameStatusMapped = 'scheduled'
-          const statusType = game.status?.abstractGameState
+          const statusType: string | undefined = game.status?.abstractGameState
           if (statusType === 'Final') {
             gameStatusMapped = 'completed'
           } else if (statusType === 'Live') {
@@ -193,7 +195,7 @@ export async function POST(request: NextRequest) {
             console.log(`Successfully synced game ${gameId}`)
           }
         } catch (error) {
-          console.error(`Error processing game ${game.gamePk}:`, error)
+          console.error(`Error processing game ${String((game as any)?.gamePk)}:`, error)
         }
       }
     } else {

@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { createClient } from '@supabase/supabase-js'
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('Starting automatic MLB data sync...')
     
@@ -71,9 +71,6 @@ export async function POST(request: NextRequest) {
             continue
           }
 
-          // Create UUID for the game row
-          const gameUuid = crypto.randomUUID()
-          
           console.log(`Processing game ${game.gamePk}: ${game.teams.away.team.name} vs ${game.teams.home.team.name}`)
           
           const { error } = await supabase
@@ -135,7 +132,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   return NextResponse.json({
     message: 'MLB Auto Sync API - Use POST to trigger sync',
     endpoints: {

@@ -7,13 +7,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
-// Helper function to get timezone offset in minutes
-function getTimezoneOffset(timezone: string): number {
-  const now = new Date()
-  const utc = new Date(now.toLocaleString("en-US", { timeZone: "UTC" }))
-  const local = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
-  return (local.getTime() - utc.getTime()) / (1000 * 60)
-}
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,21 +16,31 @@ export async function GET(request: NextRequest) {
     const limitRaw = Number.parseInt(searchParams.get("limit") || "50")
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 50))
 
-    // Get today's date range in the user's timezone
+    // Get today's date range in the user's timezone and convert to UTC
     const now = new Date()
-    
-    // Get today's date in the user's timezone (YYYY-MM-DD format)
-    const todayInUserTimezone = new Intl.DateTimeFormat('en-CA', { 
+
+    // Get today's date in target timezone (YYYY-MM-DD)
+    const todayInUserTimezone = new Intl.DateTimeFormat('en-CA', {
       timeZone: timezone,
       year: 'numeric',
-      month: '2-digit', 
+      month: '2-digit',
       day: '2-digit'
     }).format(now)
-    
-    // For now, let's use a simpler approach - just get all games for today
-    // and filter them in the response based on timezone
-    const todayStartUTC = new Date(`${todayInUserTimezone}T00:00:00Z`)
-    const todayEndUTC = new Date(`${todayInUserTimezone}T23:59:59Z`)
+
+    const [yearStr, monthStr, dayStr] = todayInUserTimezone.split('-')
+    const year = Number.parseInt(yearStr, 10)
+    const month = Number.parseInt(monthStr, 10)
+    const day = Number.parseInt(dayStr, 10)
+
+    // Construct UTC instants that correspond to midnight and end-of-day in the user's timezone
+    const baseStartUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0))
+    const baseEndUtc = new Date(Date.UTC(year, month - 1, day, 23, 59, 59, 999))
+
+    const offsetMinutesAtStart = getTimezoneOffsetMinutes(baseStartUtc, timezone)
+    const offsetMinutesAtEnd = getTimezoneOffsetMinutes(baseEndUtc, timezone)
+
+    const todayStartUTC = new Date(baseStartUtc.getTime() - offsetMinutesAtStart * 60 * 1000)
+    const todayEndUTC = new Date(baseEndUtc.getTime() - offsetMinutesAtEnd * 60 * 1000)
 
     // Fetch games for today (only scheduled games)
     const result = await databaseFirstApiClient.getGames({
@@ -110,6 +113,13 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+// Returns the offset in minutes between the provided timezone and UTC at the given date
+function getTimezoneOffsetMinutes(date: Date, timezone: string): number {
+  const utc = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }))
+  const zoned = new Date(date.toLocaleString('en-US', { timeZone: timezone }))
+  return (zoned.getTime() - utc.getTime()) / (1000 * 60)
 }
 
 function getTimeUntilGame(gameDate: Date, timezone: string): string {
