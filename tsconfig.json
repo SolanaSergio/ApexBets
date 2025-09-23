@@ -61,7 +61,8 @@
     "dist",
     "build",
     "scripts/**/*.py",
-    "tests/e2e",
-    "supabase/functions/**"
+    "tests/**/*",
+    "supabase/functions/**",
+    "playwright.config.ts"
   ]
 }

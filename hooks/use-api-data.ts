@@ -72,10 +72,14 @@ export function useApiData<T>(
       const result = await fetchFn()
 
       // Only update state if data has actually changed
-      setData(prevData => {
+      setData((prevData: T | null) => {
         // Use a more efficient comparison for large objects
         if (prevData === result) {
           return prevData // Same reference, no change
+        }
+        
+        if (prevData === null) {
+          return result // No previous data, set new data
         }
         
         const prevDataStr = JSON.stringify(prevData)
