@@ -41,16 +41,16 @@ export class EnhancedRateLimiter {
     const configs: RateLimitConfig[] = [
       {
         provider: 'thesportsdb',
-        requestsPerMinute: 30,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 10,
+        requestsPerMinute: 30, // Official limit: 30 requests per minute
+        requestsPerDay: 10000, // Official limit: 10,000 requests per day
+        burstLimit: 5,
         windowSizeMs: 60000
       },
       {
         provider: 'nba-stats',
-        requestsPerMinute: 60,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 20,
+        requestsPerMinute: 20, // More conservative due to server errors
+        requestsPerDay: 10000, // Reasonable daily limit
+        burstLimit: 5, // Reduced burst limit
         windowSizeMs: 60000
       },
       {
@@ -76,16 +76,23 @@ export class EnhancedRateLimiter {
       },
       {
         provider: 'balldontlie',
-        requestsPerMinute: 5,
-        requestsPerDay: 7200,
-        burstLimit: 1,
+        requestsPerMinute: 5, // Official limit: 5 requests per minute
+        requestsPerDay: 7200, // 5 * 60 * 24 hours
+        burstLimit: 1, // No burst allowed on free tier
         windowSizeMs: 60000
       },
       {
         provider: 'api-sports',
-        requestsPerMinute: 100,
-        requestsPerDay: 100,
-        burstLimit: 10,
+        requestsPerMinute: 2, // Very conservative for free tier
+        requestsPerDay: 50, // Reduced daily limit
+        burstLimit: 1,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'odds-api',
+        requestsPerMinute: 10, // Official limit: 10 requests per minute
+        requestsPerDay: 100, // Official limit: 100 requests per day
+        burstLimit: 5,
         windowSizeMs: 60000
       },
       {
@@ -93,6 +100,55 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 1000,
         requestsPerDay: Number.MAX_SAFE_INTEGER,
         burstLimit: 100,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'rapidapi',
+        requestsPerMinute: 100,
+        requestsPerDay: 10000,
+        burstLimit: 10,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'player-stats',
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'team-stats',
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'predictions',
+        requestsPerMinute: 20,
+        requestsPerDay: 500,
+        burstLimit: 3,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'analytics',
+        requestsPerMinute: 60,
+        requestsPerDay: 2000,
+        burstLimit: 10,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'tennis',
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5,
+        windowSizeMs: 60000
+      },
+      {
+        provider: 'golf',
+        requestsPerMinute: 30,
+        requestsPerDay: 1000,
+        burstLimit: 5,
         windowSizeMs: 60000
       }
     ]

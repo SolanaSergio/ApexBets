@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { staleDataDetector } from '@/lib/services/stale-data-detector'
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,35 +23,32 @@ export async function GET(request: NextRequest) {
     let dataSource = 'database'
     let needsRefresh = false
 
-    // STEP 2: Check if data is stale or empty
-    if (predictions.length === 0 || forceRefresh) {
+    // STEP 2: Check if data is stale or empty using centralized detector
+    if (forceRefresh) {
       needsRefresh = true
-      structuredLogger.info('Database data is stale or empty, fetching from external API', {
+      structuredLogger.info('Force refresh requested', {
         gameId,
         predictionType,
         modelName,
-        predictionsCount: predictions.length,
-        forceRefresh
+        predictionsCount: predictions.length
       })
     } else {
-      // Check if data is stale (older than 10 minutes for predictions)
-      const oldestPrediction = predictions.reduce((oldest: any, prediction: any) => {
-        const predictionTime = new Date(prediction.last_updated || prediction.updated_at || 0).getTime()
-        const oldestTime = new Date(oldest.last_updated || oldest.updated_at || 0).getTime()
-        return predictionTime < oldestTime ? prediction : oldest
-      })
+      const freshnessResult = await staleDataDetector.checkDataFreshness(
+        'predictions',
+        predictions,
+        undefined,
+        { gameId, predictionType, modelName }
+      )
 
-      const dataAge = Date.now() - new Date(oldestPrediction.last_updated || oldestPrediction.updated_at || 0).getTime()
-      const maxAge = 10 * 60 * 1000 // 10 minutes for predictions
-
-      if (dataAge > maxAge) {
+      if (freshnessResult.needsRefresh) {
         needsRefresh = true
-        structuredLogger.info('Database data is stale, refreshing from external API', {
+        structuredLogger.info('Database data needs refresh', {
           gameId,
           predictionType,
           modelName,
-          dataAgeMinutes: Math.round(dataAge / 60000),
-          maxAgeMinutes: Math.round(maxAge / 60000)
+          reason: freshnessResult.reason,
+          dataAgeMinutes: Math.round(freshnessResult.dataAge / 60000),
+          maxAgeMinutes: Math.round(freshnessResult.maxAge / 60000)
         })
       }
     }

@@ -1,7 +1,12 @@
 /**
  * API-SPORTS Client
  * Fast real-time sports data with 15-second updates
+ * Integrated with enhanced rate limiter and proper error handling
  */
+
+import { enhancedRateLimiter } from '../services/enhanced-rate-limiter'
+import { structuredLogger } from '../services/structured-logger'
+import { apiSpecificErrorHandler } from '../services/api-specific-error-handlers'
 
 export interface ApiSportsFixture {
   fixture: {
@@ -142,9 +147,8 @@ import { apiKeyRotation } from '../services/api-key-rotation'
 
 export class ApiSportsClient {
   private baseUrl = 'https://api-football-v1.p.rapidapi.com/v3'
-  private rateLimitDelay = 600 // 0.6 seconds between requests (100 requests/minute = 0.6 seconds)
-  private lastRequestTime = 0
   private maxRetries = 3
+  private provider = 'api-sports'
 
   constructor() {
     // API key is now managed by the rotation service
@@ -153,7 +157,9 @@ export class ApiSportsClient {
   private getApiKey(): string | null {
     const key = apiKeyRotation.getCurrentKey('api-sports')
     if (!key || key === 'your_rapidapi_key_here') {
-      console.warn('API-Sports: No valid RapidAPI key configured')
+      structuredLogger.warn('API-Sports: No valid RapidAPI key configured', {
+        provider: this.provider
+      })
       return null
     }
     return key
@@ -164,103 +170,151 @@ export class ApiSportsClient {
     return !!key && key !== 'your_rapidapi_key_here'
   }
 
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
-    }
-    this.lastRequestTime = Date.now()
-  }
-
-  private async exponentialBackoff(attempt: number): Promise<void> {
-    const baseDelay = 1000 // 1 second
-    const maxDelay = 60000 // 60 seconds
-    const delay = Math.min(baseDelay * Math.pow(2, attempt) + Math.random() * 1000, maxDelay)
-    console.log(`API-SPORTS: Retrying in ${delay}ms (attempt ${attempt + 1}/${this.maxRetries})`)
-    await new Promise(resolve => setTimeout(resolve, delay))
-  }
-
   private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
-    await this.rateLimit()
-    
-    // Get current API key from rotation service
-    const apiKey = this.getApiKey()
-    if (!apiKey || apiKey === '') {
-      console.warn('API-SPORTS API key not configured, returning empty data')
-      return { response: [] } as T
-    }
-    
     try {
+      // Check rate limits before making request
+      const rateLimitResult = await enhancedRateLimiter.checkRateLimit(this.provider, endpoint)
+      
+      if (!rateLimitResult.allowed) {
+        const retryAfter = rateLimitResult.retryAfter || 60
+        structuredLogger.warn('API-Sports rate limit exceeded', {
+          provider: this.provider,
+          endpoint,
+          retryAfter,
+          remaining: rateLimitResult.remaining
+        })
+        
+        // Wait for the retry period
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
+        
+        // Retry once after waiting
+        if (retryAttempt < 1) {
+          return this.request<T>(endpoint, retryAttempt + 1)
+        }
+        
+        throw new Error(`Rate limit exceeded. Retry after ${retryAfter} seconds.`)
+      }
+      
+      // Get current API key from rotation service
+      const apiKey = this.getApiKey()
+      if (!apiKey || apiKey === '') {
+        structuredLogger.warn('API-SPORTS API key not configured, returning empty data', {
+          provider: this.provider,
+          endpoint
+        })
+        return { response: [] } as T
+      }
+    
+      const startTime = Date.now()
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+      
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
           'X-RapidAPI-Key': apiKey,
-          'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com'
-        }
+          'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
+          'User-Agent': 'ApexBets/1.0'
+        },
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      const duration = Date.now() - startTime
+      
+      // Log API call for monitoring
+      structuredLogger.apiCall('GET', endpoint, response.status, duration, {
+        provider: this.provider,
+        remaining: rateLimitResult.remaining
       })
       
       if (!response.ok) {
-        const errorMessage = await response.text().catch(() => response.statusText)
+        const errorResult = apiSpecificErrorHandler.handleError(
+          this.provider,
+          new Error(`HTTP ${response.status}: ${response.statusText}`),
+          response.status
+        )
         
         if (response.status === 401) {
-          console.warn('API-SPORTS API: 401 Unauthorized - Invalid API key. Rotating to next key.')
+          structuredLogger.error('API-SPORTS authentication failed', {
+            endpoint,
+            provider: this.provider,
+            status: response.status
+          })
           apiKeyRotation.rotateToNextKey('api-sports', 'invalid')
           if (retryAttempt < this.maxRetries) {
             return this.request<T>(endpoint, retryAttempt + 1)
           }
           return { response: [] } as T
         } else if (response.status === 403) {
+          structuredLogger.warn('API-SPORTS access denied', {
+            endpoint,
+            provider: this.provider,
+            status: response.status
+          })
           if (retryAttempt < this.maxRetries) {
-            console.warn('API-SPORTS API: 403 Forbidden - Access denied. Retrying with exponential backoff.')
-            await this.exponentialBackoff(retryAttempt)
+            const delay = errorResult.retryAfterMs || 5000
+            await new Promise(resolve => setTimeout(resolve, delay))
             return this.request<T>(endpoint, retryAttempt + 1)
           } else {
-            console.warn('API-SPORTS API: 403 Forbidden - Access denied. Max retries exceeded. Returning empty data.')
             return { response: [] } as T
           }
         } else if (response.status === 429) {
-          // Rate limit exceeded - rotate to next key
+          structuredLogger.rateLimitExceeded(this.provider, 2, {
+            endpoint,
+            retryAfter: errorResult.retryAfterMs
+          })
           apiKeyRotation.rotateToNextKey('api-sports', 'rate_limit')
           if (retryAttempt < this.maxRetries) {
-            const retryAfter = response.headers.get('Retry-After')
-            const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // Default 1 minute
-            console.warn(`API-SPORTS API: Rate limit exceeded. Waiting ${delay}ms before retry.`)
+            const delay = errorResult.retryAfterMs || 60000
             await new Promise(resolve => setTimeout(resolve, delay))
             return this.request<T>(endpoint, retryAttempt + 1)
           } else {
             throw new Error(`API-SPORTS API Error: 429 Too Many Requests - Max retries exceeded`)
           }
-        } else if (response.status === 500 || response.status === 502 || response.status === 503) {
-          if (retryAttempt < this.maxRetries) {
-            await this.exponentialBackoff(retryAttempt)
+        } else if (response.status >= 500) {
+          if (errorResult.shouldRetry && retryAttempt < this.maxRetries) {
+            const delay = errorResult.retryAfterMs || 5000
+            await new Promise(resolve => setTimeout(resolve, delay))
             return this.request<T>(endpoint, retryAttempt + 1)
           } else {
-            throw new Error(`API-SPORTS API Error: ${response.status} ${errorMessage}`)
+            throw new Error(`API-SPORTS API Error: ${response.status} ${response.statusText}`)
           }
         } else {
-          throw new Error(`API-SPORTS API Error: ${response.status} ${errorMessage}`)
+          throw new Error(`API-SPORTS API Error: ${response.status} ${response.statusText}`)
         }
       }
 
-      // Reset retry count on successful request
       const data = await response.json()
+      
+      // Log successful response
+      structuredLogger.info('API-SPORTS request successful', {
+        provider: this.provider,
+        endpoint,
+        duration,
+        dataSize: JSON.stringify(data).length
+      })
+      
       return data
     } catch (error) {
-      if (error instanceof SyntaxError) {
-        console.error('API-SPORTS API Error: Invalid JSON response')
-        throw new Error('API-SPORTS API Error: Invalid JSON response from server')
-      } else if (error instanceof TypeError && error.message.includes('fetch')) {
-        if (retryAttempt < this.maxRetries) {
-          await this.exponentialBackoff(retryAttempt)
-          return this.request<T>(endpoint, retryAttempt + 1)
-        } else {
-          console.error('API-SPORTS API Error: Network error')
-          throw new Error('API-SPORTS API Error: Network error - check your internet connection')
-        }
-      } else {
-        console.error('API-SPORTS request failed:', error)
-        throw error
+      const errorResult = apiSpecificErrorHandler.handleError(
+        this.provider,
+        error instanceof Error ? error : new Error(String(error))
+      )
+      
+      structuredLogger.serviceError(this.provider, error instanceof Error ? error : new Error(String(error)), {
+        endpoint,
+        retryAttempt,
+        shouldRetry: errorResult.shouldRetry
+      })
+      
+      if (errorResult.shouldRetry && retryAttempt < this.maxRetries) {
+        const delay = errorResult.retryAfterMs || 5000
+        await new Promise(resolve => setTimeout(resolve, delay))
+        return this.request<T>(endpoint, retryAttempt + 1)
       }
+      
+      throw error
     }
   }
 

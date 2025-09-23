@@ -94,9 +94,7 @@ export interface BallDontLieStats {
 export class BallDontLieClient {
   private baseUrl = 'https://api.balldontlie.io/v1'
   private apiKey: string | null
-  private rateLimitDelay = 12000 // 12 seconds (5 requests/minute for free tier)
-  private lastRequestTime = 0
-  private maxRetries = 1 // Minimal retries for free tier
+  private maxRetries = 2 // Increased retries with better backoff
   private requestQueue: Promise<any> = Promise.resolve()
 
   constructor() {
@@ -111,21 +109,12 @@ export class BallDontLieClient {
     return !!this.apiKey
   }
 
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      const waitTime = this.rateLimitDelay - timeSinceLastRequest
-      console.log(`BallDontLie API: Rate limiting - waiting ${waitTime}ms (5 req/min limit)`)
-      await new Promise(resolve => setTimeout(resolve, waitTime))
-    }
-    this.lastRequestTime = Date.now()
-  }
+  // Rate limiting is now handled by the centralized enhanced rate limiter
 
   private async request<T>(endpoint: string, params: Record<string, string | number> = {}, retryAttempt: number = 0): Promise<T> {
     // Queue requests to prevent overwhelming the API
     return this.requestQueue = this.requestQueue.then(async () => {
-      await this.rateLimit()
+      // Rate limiting is handled by the centralized enhanced rate limiter
       
       const url = new URL(`${this.baseUrl}${endpoint}`)
       Object.entries(params).forEach(([key, value]) => {
@@ -156,14 +145,14 @@ export class BallDontLieClient {
           }
           if (response.status === 429) {
             const retryAfter = response.headers.get('Retry-After')
-            const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000 // 1 minute default
-            console.warn(`BallDontLie API: Rate limit exceeded (5 req/min), backing off for ${delay}ms`)
+            const delay = retryAfter ? parseInt(retryAfter) * 1000 : 90000 // 1.5 minutes default
+            console.warn(`BallDontLie API: Rate limit exceeded (4 req/min), backing off for ${delay}ms`)
             
             if (retryAttempt < this.maxRetries) {
               await new Promise(resolve => setTimeout(resolve, delay))
               return this.request<T>(endpoint, params, retryAttempt + 1)
             } else {
-              throw new Error(`BallDontLie API: Rate limit exceeded after ${this.maxRetries} retries. Free tier: 5 requests/minute limit.`)
+              throw new Error(`BallDontLie API: Rate limit exceeded after ${this.maxRetries} retries. Free tier: 4 requests/minute limit.`)
             }
           }
           

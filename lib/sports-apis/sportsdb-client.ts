@@ -39,47 +39,16 @@ export interface SportsDBPlayer {
 export class SportsDBClient {
   private baseUrl = 'https://www.thesportsdb.com/api/v1/json'
   private apiKey: string
-  private rateLimitDelay = 3000 // 3 seconds between requests (more conservative)
-  private lastRequestTime = 0
-  private consecutiveRateLimitErrors = 0
-  private maxConsecutiveErrors = 5 // Increased from 3 to 5
-  private backoffMultiplier = 1.5 // Reduced from 2 to 1.5 for gentler backoff
-  private lastResetTime = 0
-  private resetInterval = 300000 // Reset error count every 5 minutes
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   constructor(apiKey: string = '123') {
     this.apiKey = apiKey
   }
 
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-
-    // Reset consecutive errors periodically
-    if (now - this.lastResetTime > this.resetInterval) {
-      this.consecutiveRateLimitErrors = 0
-      this.lastResetTime = now
-      console.log('SportsDB: Rate limit error count reset')
-    }
-
-    const timeSinceLastRequest = now - this.lastRequestTime
-
-    // Apply exponential backoff if we've hit rate limits recently
-    let effectiveDelay = this.rateLimitDelay
-    if (this.consecutiveRateLimitErrors > 0) {
-      effectiveDelay = this.rateLimitDelay * Math.pow(this.backoffMultiplier, this.consecutiveRateLimitErrors)
-      effectiveDelay = Math.min(effectiveDelay, 30000) // Cap at 30 seconds instead of 1 minute
-    }
-
-    if (timeSinceLastRequest < effectiveDelay) {
-      const waitTime = effectiveDelay - timeSinceLastRequest
-      console.log(`SportsDB: Rate limiting, waiting ${waitTime}ms`)
-      await new Promise(resolve => setTimeout(resolve, waitTime))
-    }
-    this.lastRequestTime = Date.now()
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   private async request<T>(endpoint: string): Promise<T> {
-    await this.rateLimit()
+    // Rate limiting is now handled by the centralized Enhanced Rate Limiter
     
     try {
       // TheSportsDB uses the API key in the URL path, not as a header
@@ -104,22 +73,8 @@ export class SportsDBClient {
       
       if (!response.ok) {
         if (response.status === 429) {
-          this.consecutiveRateLimitErrors++
-          console.warn(`SportsDB: Rate limit hit (${this.consecutiveRateLimitErrors}/${this.maxConsecutiveErrors})`)
-
-          // Instead of throwing immediately, wait and retry for single requests
-          if (this.consecutiveRateLimitErrors < this.maxConsecutiveErrors) {
-            const retryDelay = this.rateLimitDelay * Math.pow(this.backoffMultiplier, this.consecutiveRateLimitErrors)
-            console.log(`SportsDB: Waiting ${retryDelay}ms before retry`)
-            await new Promise(resolve => setTimeout(resolve, retryDelay))
-            // Don't throw, let the caller handle the retry
-          }
-
-          if (this.consecutiveRateLimitErrors >= this.maxConsecutiveErrors) {
-            throw new Error('SportsDB API: Too many consecutive rate limit errors. Service temporarily unavailable.')
-          }
-
-          throw new Error('Rate limit exceeded. Please wait before making more requests.')
+          console.warn('SportsDB: Rate limit hit - this should be handled by Enhanced Rate Limiter')
+          throw new Error('SportsDB API: Rate limit exceeded')
         }
         if (response.status === 404) {
           // Don't count 404s as rate limit errors
@@ -132,8 +87,7 @@ export class SportsDBClient {
         throw new Error(`SportsDB API Error: ${response.status} ${response.statusText}`)
       }
 
-      // Reset consecutive errors on successful request
-      this.consecutiveRateLimitErrors = 0
+      // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
       // Some SportsDB endpoints may return empty body on errors; guard parsing
       const text = await response.text()
@@ -284,25 +238,12 @@ export class SportsDBClient {
     }
   }
 
-  /**
-   * Reset rate limit error tracking (call this periodically or on service restart)
-   */
-  resetRateLimitTracking(): void {
-    this.consecutiveRateLimitErrors = 0
-    this.lastResetTime = Date.now()
-    console.log('SportsDB: Rate limit tracking reset')
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   /**
    * Get current rate limit status
    */
-  getRateLimitStatus(): { consecutiveErrors: number, maxErrors: number, isAvailable: boolean } {
-    return {
-      consecutiveErrors: this.consecutiveRateLimitErrors,
-      maxErrors: this.maxConsecutiveErrors,
-      isAvailable: this.consecutiveRateLimitErrors < this.maxConsecutiveErrors
-    }
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 }
 
 // Create instance with API key from environment or use free key

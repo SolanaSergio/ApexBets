@@ -6,7 +6,6 @@
 import { environmentRules } from './environment-rules'
 
 export { environmentRules, EnvironmentRules } from './environment-rules'
-export { apiRateLimiter, ApiRateLimiter } from './api-rate-limiter'
 export { dataValidator, DataValidator } from './data-validator'
 export { securityEnforcer, SecurityEnforcer } from './security-enforcer'
 

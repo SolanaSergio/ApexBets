@@ -22,7 +22,7 @@ interface ApiResponse<T = any> {
 
 class OptimizedApiClient {
   private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
-  private rateLimiters = new Map<string, { count: number, resetTime: number }>()
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
   private requestQueue = new Map<string, Promise<any>>()
 
   // Clean up expired cache entries every 5 minutes
@@ -86,8 +86,7 @@ class OptimizedApiClient {
   }
 
   private async executeRequest<T>(url: string, options: RequestInit, retries: number): Promise<T> {
-    const domain = new URL(url).hostname
-    await this.rateLimit(domain)
+      // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
     try {
       const response = await fetch(url, {
@@ -116,41 +115,7 @@ class OptimizedApiClient {
     }
   }
 
-  private async rateLimit(domain: string): Promise<void> {
-    const now = Date.now()
-    const limiter = this.rateLimiters.get(domain) || { count: 0, resetTime: now + 60000 }
-    
-    if (now > limiter.resetTime) {
-      limiter.count = 0
-      limiter.resetTime = now + 60000
-    }
-
-    // Rate limit based on domain
-    const maxRequests = this.getMaxRequests(domain)
-    if (limiter.count >= maxRequests) {
-      const waitTime = limiter.resetTime - now
-      if (waitTime > 0) {
-        await this.sleep(waitTime)
-        limiter.count = 0
-        limiter.resetTime = Date.now() + 60000
-      }
-    }
-
-    limiter.count++
-    this.rateLimiters.set(domain, limiter)
-  }
-
-  private getMaxRequests(domain: string): number {
-    // Conservative rate limits based on domain
-    if (domain.includes('api-sports')) return 8 // 8 requests per minute
-    if (domain.includes('odds-api')) return 2 // 2 requests per minute
-    if (domain.includes('thesportsdb')) return 30 // 30 requests per minute
-    if (domain.includes('balldontlie')) return 10 // 10 requests per minute
-    if (domain.includes('nba.com')) return 20 // 20 requests per minute
-    if (domain.includes('nhl.com')) return 20 // 20 requests per minute
-    if (domain.includes('mlb.com')) return 20 // 20 requests per minute
-    return 10 // Default conservative limit
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   private async sleep(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms))
@@ -200,7 +165,7 @@ class OptimizedApiClient {
     return {
       size: this.cache.size,
       keys: Array.from(this.cache.keys()),
-      rateLimiters: Array.from(this.rateLimiters.entries())
+      // Rate limiting is now handled by the centralized Enhanced Rate Limiter
     }
   }
 }

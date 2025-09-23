@@ -245,21 +245,11 @@ export interface NHLStandings {
 
 export class NHLClient {
   private baseUrl = 'https://statsapi.web.nhl.com/api/v1'
-  private rateLimitDelay = 1000 // 1 second between requests to be respectful
-  private lastRequestTime = 0
   private maxRetries = 3
-
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
-    }
-    this.lastRequestTime = Date.now()
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   private async request<T>(endpoint: string, retryCount: number = 0): Promise<T> {
-    await this.rateLimit()
+    // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
     try {
       const url = `${this.baseUrl}${endpoint}`

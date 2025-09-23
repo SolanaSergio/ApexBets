@@ -81,21 +81,22 @@ export interface NBAStatsResponse {
 
 export class NBAStatsClient {
   private baseUrl = 'https://stats.nba.com/stats'
-  private rateLimitDelay = 2000 // 2 seconds between requests to be more respectful
-  private lastRequestTime = 0
   private readonly providerName = 'nba-stats'
+  private consecutiveFailures = 0
+  private maxConsecutiveFailures = 3
 
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
-    }
-    this.lastRequestTime = Date.now()
-  }
+  // Rate limiting is now handled by the centralized enhanced rate limiter
 
   private async request(endpoint: string, params: Record<string, any> = {}): Promise<NBAStatsResponse> {
-    await this.rateLimit()
+    // Check if we've hit max consecutive failures
+    if (this.consecutiveFailures >= this.maxConsecutiveFailures) {
+      const backoffTime = Math.min(30000, 5000 * Math.pow(2, this.consecutiveFailures)) // Exponential backoff, max 30s
+      console.warn(`${this.providerName}: Too many consecutive failures, backing off for ${backoffTime}ms`)
+      await new Promise(resolve => setTimeout(resolve, backoffTime))
+      this.consecutiveFailures = 0 // Reset after backoff
+    }
+
+    // Rate limiting is handled by the centralized enhanced rate limiter
 
     let response: Response | undefined
 
@@ -156,6 +157,7 @@ export class NBAStatsClient {
 
       // Reset failure count on successful response
       apiSpecificErrorHandler.resetFailures(this.providerName)
+      this.consecutiveFailures = 0 // Reset consecutive failures on success
 
       const data = await response.json()
       
@@ -171,6 +173,9 @@ export class NBAStatsClient {
       
       return data
     } catch (error) {
+      // Increment consecutive failures
+      this.consecutiveFailures++
+      
       // Don't count network timeouts as circuit breaker failures
       if (error instanceof Error && error.name === 'AbortError') {
         console.warn(`${this.providerName}: Request timeout for ${endpoint}`)

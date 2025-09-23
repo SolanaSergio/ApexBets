@@ -4,8 +4,8 @@
  */
 
 import { SportSpecificService } from './sport-specific-service'
-import { SportConfigManager } from './sport-config'
 import { ServiceRegistry } from './service-registry'
+import { dynamicSportsManager } from '../dynamic-sports-manager'
 
 export type SupportedSport = string
 
@@ -64,28 +64,31 @@ export class ServiceFactory {
    * Get all supported sports
    */
   async getSupportedSports(): Promise<SupportedSport[]> {
-    return await SportConfigManager.getAllSports()
+    await dynamicSportsManager.refreshConfiguration()
+    return dynamicSportsManager.getSupportedSports()
   }
 
   /**
    * Get all supported sports synchronously (for React components)
    */
   getSupportedSportsSync(): SupportedSport[] {
-    return SportConfigManager.getAllSportsSync()
+    return dynamicSportsManager.getSupportedSports()
   }
 
   /**
    * Get leagues for a specific sport
    */
   async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
-    return await SportConfigManager.getLeaguesForSport(sport)
+    await dynamicSportsManager.refreshConfiguration()
+    return dynamicSportsManager.getLeaguesForSport(sport).map(league => league.name)
   }
 
   /**
    * Get default league for a sport
    */
   async getDefaultLeague(sport: SupportedSport): Promise<string> {
-    return await SportConfigManager.getDefaultLeague(sport)
+    await dynamicSportsManager.refreshConfiguration()
+    return dynamicSportsManager.getDefaultLeagueForSport(sport) || 'default'
   }
 
   /**
@@ -96,7 +99,9 @@ export class ServiceFactory {
     if (sport === 'all') {
       return true
     }
-    return await SportConfigManager.isSportSupported(sport)
+    
+    await dynamicSportsManager.refreshConfiguration()
+    return dynamicSportsManager.isSportSupported(sport)
   }
 
   /**

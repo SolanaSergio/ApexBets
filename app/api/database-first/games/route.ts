@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { cachedUnifiedApiClient } from '@/lib/services/api/cached-unified-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { staleDataDetector } from '@/lib/services/stale-data-detector'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,33 +39,30 @@ export async function GET(request: NextRequest) {
     // Apply limit
     games = games.slice(0, limit)
 
-    // STEP 2: Check if data is stale or empty
-    if (games.length === 0 || forceRefresh) {
+    // STEP 2: Check if data is stale or empty using centralized detector
+    if (forceRefresh) {
       needsRefresh = true
-      structuredLogger.info('Database data is stale or empty, fetching from external API', {
+      structuredLogger.info('Force refresh requested', {
         sport,
         status,
-        gameCount: games.length,
-        forceRefresh
+        gameCount: games.length
       })
     } else {
-      // Check if data is stale (older than 15 minutes for games)
-      const oldestGame = games.reduce((oldest: any, game: any) => {
-        const gameTime = new Date(game.last_updated || game.updated_at || 0).getTime()
-        const oldestTime = new Date(oldest.last_updated || oldest.updated_at || 0).getTime()
-        return gameTime < oldestTime ? game : oldest
-      })
+      const freshnessResult = await staleDataDetector.checkDataFreshness(
+        'games',
+        games,
+        sport || undefined,
+        { status, dateFrom, dateTo }
+      )
 
-      const dataAge = Date.now() - new Date(oldestGame.last_updated || oldestGame.updated_at || 0).getTime()
-      const maxAge = 15 * 60 * 1000 // 15 minutes for games (more frequent than teams)
-
-      if (dataAge > maxAge) {
+      if (freshnessResult.needsRefresh) {
         needsRefresh = true
-        structuredLogger.info('Database data is stale, refreshing from external API', {
+        structuredLogger.info('Database data needs refresh', {
           sport,
           status,
-          dataAgeMinutes: Math.round(dataAge / 60000),
-          maxAgeMinutes: Math.round(maxAge / 60000)
+          reason: freshnessResult.reason,
+          dataAgeMinutes: Math.round(freshnessResult.dataAge / 60000),
+          maxAgeMinutes: Math.round(freshnessResult.maxAge / 60000)
         })
       }
     }

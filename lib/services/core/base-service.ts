@@ -4,8 +4,7 @@
  */
 
 import { cacheManager } from '../../cache'
-import { rateLimiter } from '../rate-limiter'
-import { apiRateLimiter } from '../../rules/api-rate-limiter'
+import { enhancedRateLimiter } from '../enhanced-rate-limiter'
 import { errorHandlingService } from '../error-handling-service'
 
 export interface ServiceConfig {
@@ -59,16 +58,13 @@ export abstract class BaseService {
     // Build in-flight promise
     const inFlightPromise = (async () => {
       const isDbOnly = options?.dbOnly === true
+      // Check rate limit before making external requests
       if (!isDbOnly) {
-        // Only enforce external rate limits when external calls may be performed
-        const canProceed = await apiRateLimiter.checkRateLimitWithRetry(this.config.rateLimitService as any)
-        if (!canProceed) {
+        const rateLimitResult = await enhancedRateLimiter.checkRateLimit(this.config.rateLimitService, 'default')
+        if (!rateLimitResult.allowed) {
           console.warn(`Rate limit exceeded for ${this.config.name}: Returning empty data`)
           return [] as T
         }
-
-        // Wait for rate limit
-        await rateLimiter.waitForRateLimit(this.config.rateLimitService)
       }
 
       // Make request with error handling and retry
@@ -93,10 +89,7 @@ export abstract class BaseService {
         )
 
         const responseTime = Date.now() - startTime
-        if (!isDbOnly) {
-          rateLimiter.recordRequest(this.config.rateLimitService, responseTime, false)
-          apiRateLimiter.recordRequest(this.config.rateLimitService as any)
-        }
+        // Rate limiting tracking is now handled by the centralized enhanced rate limiter
 
         // Cache the result in both memory and database
         cacheManager.set(key, data, ttl || this.config.cacheTTL)
@@ -114,9 +107,7 @@ export abstract class BaseService {
         return data
       } catch (error) {
         const responseTime = Date.now() - startTime
-        if (!isDbOnly) {
-          rateLimiter.recordRequest(this.config.rateLimitService, responseTime, true)
-        }
+        // Rate limiting tracking is now handled by the centralized enhanced rate limiter
 
         console.warn(`Error fetching data for ${this.config.name}:`, error)
         return [] as T

@@ -4,6 +4,7 @@
  */
 
 import { apiCostTracker } from './api-cost-tracker'
+import { enhancedRateLimiter } from './enhanced-rate-limiter'
 // Removed unused imports - using only SportsDB for now
 import { sportsDBClient } from '../sports-apis/sportsdb-client'
 import { envValidator } from '../config/env-validator'
@@ -81,7 +82,7 @@ export class APIFallbackStrategy {
         },
         limits: {
           freeRequests: parseInt(process.env.THESPORTSDB_FREE_REQUESTS || String(Number.MAX_SAFE_INTEGER)),
-          rateLimit: parseInt(process.env.THESPORTSDB_RATE_LIMIT || '30')
+          rateLimit: parseInt(process.env.THESPORTSDB_RATE_LIMIT || '20') // Reduced from 30 to be more conservative
         },
         healthStatus: 'healthy',
         lastHealthCheck: new Date().toISOString()
@@ -115,7 +116,7 @@ export class APIFallbackStrategy {
         },
         limits: {
           freeRequests: 1000,
-          rateLimit: 60
+          rateLimit: 4 // 4 requests per minute (15 seconds between requests)
         },
         healthStatus: 'healthy',
         lastHealthCheck: new Date().toISOString()
@@ -220,6 +221,16 @@ export class APIFallbackStrategy {
             continue
           }
 
+          // Check rate limit before making request
+          const rateLimitResult = await enhancedRateLimiter.checkRateLimit(provider.name, request.dataType)
+          if (!rateLimitResult.allowed) {
+            structuredLogger.warn('Rate limit exceeded, skipping provider', {
+              provider: provider.name,
+              retryAfter: rateLimitResult.retryAfter
+            })
+            continue
+          }
+
           const data = await this.executeProviderRequest<T>(provider.name, request)
           const responseTime = Date.now() - startTime
           
@@ -250,6 +261,12 @@ export class APIFallbackStrategy {
             dataType: request.dataType,
             error: error instanceof Error ? error.message : String(error)
           })
+          
+          // If this is a rate limit error, add extra delay before trying next provider
+          if (error instanceof Error && (error.message.includes('rate limit') || error.message.includes('429'))) {
+            const delay = 5000 + (Math.random() * 5000) // 5-10 seconds random delay
+            await new Promise(resolve => setTimeout(resolve, delay))
+          }
         }
       }
 
@@ -352,13 +369,29 @@ export class APIFallbackStrategy {
     if (breaker.isOpen) {
       // Check if enough time has passed to try again
       const timeSinceLastFailure = Date.now() - breaker.lastFailure.getTime()
-      if (timeSinceLastFailure > 60000) { // 1 minute
+      const resetTime = this.getCircuitBreakerResetTime(providerName)
+      
+      if (timeSinceLastFailure > resetTime) {
         breaker.isOpen = false
         breaker.failures = 0
+        structuredLogger.info('Circuit breaker reset', { provider: providerName })
       }
     }
     
     return breaker.isOpen
+  }
+
+  private getCircuitBreakerResetTime(providerName: string): number {
+    // Different reset times based on provider reliability
+    const resetTimes: Record<string, number> = {
+      'thesportsdb': 60000, // 1 minute
+      'balldontlie': 120000, // 2 minutes (more conservative due to rate limits)
+      'nba-stats': 300000, // 5 minutes (server errors)
+      'api-sports': 180000, // 3 minutes
+      'espn': 60000 // 1 minute
+    }
+    
+    return resetTimes[providerName] || 120000 // Default 2 minutes
   }
 
   private recordFailure(providerName: string): void {

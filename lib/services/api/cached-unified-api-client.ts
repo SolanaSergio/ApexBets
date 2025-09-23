@@ -86,8 +86,7 @@ export class CachedUnifiedApiClient {
   private cacheEnabled: boolean = true
   private defaultCacheTtl: number = 300000 // 5 minutes
   private pendingRequests: Map<string, Promise<any>> = new Map()
-  private lastApiCall: number = 0
-  private minDelayBetweenCalls: number = 1000 // 1 second minimum between API calls (reduced from 2s)
+  // Rate limiting is now handled by the centralized enhanced rate limiter
 
   constructor() {
     // Check if database cache is available
@@ -138,8 +137,8 @@ export class CachedUnifiedApiClient {
       return this.pendingRequests.get(cacheKey)!
     }
 
-    // Create new request with rate limiting
-    const request = this.rateLimitedFetch(fetchFn).finally(() => {
+    // Create new request (rate limiting handled by enhanced rate limiter)
+    const request = this.executeRequest(fetchFn).finally(() => {
       this.pendingRequests.delete(cacheKey)
     })
 
@@ -147,16 +146,8 @@ export class CachedUnifiedApiClient {
     return request
   }
 
-  private async rateLimitedFetch<T>(fetchFn: () => Promise<T>): Promise<T> {
-    const now = Date.now()
-    const timeSinceLastCall = now - this.lastApiCall
-    
-    if (timeSinceLastCall < this.minDelayBetweenCalls) {
-      const delay = this.minDelayBetweenCalls - timeSinceLastCall
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-    
-    this.lastApiCall = Date.now()
+  // Rate limiting is now handled by the centralized enhanced rate limiter
+  private async executeRequest<T>(fetchFn: () => Promise<T>): Promise<T> {
     return fetchFn()
   }
 

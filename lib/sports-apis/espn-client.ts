@@ -202,21 +202,11 @@ export interface ESPNStanding {
 
 export class ESPNClient {
   private baseUrl = 'http://site.api.espn.com/apis/site/v2/sports'
-  private rateLimitDelay = 500 // 0.5 seconds between requests (conservative for unofficial API)
-  private lastRequestTime = 0
   private maxRetries = 2 // Fewer retries for free API
-
-  private async rateLimit(): Promise<void> {
-    const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequestTime
-    if (timeSinceLastRequest < this.rateLimitDelay) {
-      await new Promise(resolve => setTimeout(resolve, this.rateLimitDelay - timeSinceLastRequest))
-    }
-    this.lastRequestTime = Date.now()
-  }
+  // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
   private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
-    await this.rateLimit()
+    // Rate limiting is now handled by the centralized Enhanced Rate Limiter
     
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`)

@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { apiRateLimiter } from '../rules/api-rate-limiter'
+import { enhancedRateLimiter } from '../services/enhanced-rate-limiter'
 
 interface RateLimitConfig {
   service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn'
@@ -20,38 +20,37 @@ export function withRateLimit(config: RateLimitConfig) {
     return async function(request: NextRequest): Promise<NextResponse> {
       try {
         // Check rate limit before processing
-        apiRateLimiter.checkRateLimit(config.service)
+        const rateLimitResult = await enhancedRateLimiter.checkRateLimit(config.service, 'api')
+        if (!rateLimitResult.allowed) {
+          throw new Error(`Rate limit exceeded for ${config.service}: ${rateLimitResult.retryAfter ? `retry after ${rateLimitResult.retryAfter}s` : 'limit exceeded'}`)
+        }
         
         // Process the request
         const response = await handler(request)
         
-        // Record successful request
-        apiRateLimiter.recordRequest(config.service)
-        
         // Add rate limit headers to response
-        const usage = apiRateLimiter.getUsage(config.service)
         response.headers.set('X-RateLimit-Limit-Minute', '60') // Will be dynamic based on service
-        response.headers.set('X-RateLimit-Remaining-Minute', (60 - usage.minute).toString())
-        response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString())
+        response.headers.set('X-RateLimit-Remaining-Minute', rateLimitResult.remaining.toString())
+        response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString())
         
         return response
       } catch (error) {
         if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
           // Return rate limit error with proper headers
-          apiRateLimiter.getUsage(config.service)
+          const rateLimitResult = await enhancedRateLimiter.checkRateLimit(config.service, 'api')
           const response = NextResponse.json(
             { 
               error: config.errorMessage || 'Rate limit exceeded',
               message: error.message,
-              retryAfter: 60 // seconds
+              retryAfter: rateLimitResult.retryAfter || 60 // seconds
             },
             { status: 429 }
           )
           
           response.headers.set('X-RateLimit-Limit-Minute', '60')
           response.headers.set('X-RateLimit-Remaining-Minute', '0')
-          response.headers.set('X-RateLimit-Reset', new Date(Date.now() + 60000).toISOString())
-          response.headers.set('Retry-After', '60')
+          response.headers.set('X-RateLimit-Reset', new Date(rateLimitResult.resetTime).toISOString())
+          response.headers.set('Retry-After', (rateLimitResult.retryAfter || 60).toString())
           
           return response
         }
@@ -66,17 +65,17 @@ export function withRateLimit(config: RateLimitConfig) {
 /**
  * Get rate limit status for a service
  */
-export function getRateLimitStatus(service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn') {
-  return apiRateLimiter.getUsage(service)
+export async function getRateLimitStatus(service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn') {
+  return await enhancedRateLimiter.getRateLimitStatus(service)
 }
 
 /**
  * Check if a service is rate limited
  */
-export function isRateLimited(service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn'): boolean {
+export async function isRateLimited(service: 'rapidapi' | 'odds' | 'sportsdb' | 'balldontlie' | 'espn'): Promise<boolean> {
   try {
-    apiRateLimiter.checkRateLimit(service)
-    return false
+    const result = await enhancedRateLimiter.checkRateLimit(service, 'api')
+    return !result.allowed
   } catch {
     return true
   }
