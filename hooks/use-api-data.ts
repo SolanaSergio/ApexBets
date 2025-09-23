@@ -100,7 +100,9 @@ export function useApiData<T>(
   }, [fetchFn, enabled])
 
   // Debounced version to prevent rapid successive calls
-  const fetchData = useCallback(debounce(fetchDataInternal, 100), [fetchDataInternal])
+  const fetchData = useCallback(() => {
+    return debounce(fetchDataInternal, 100)()
+  }, [fetchDataInternal])
 
   const mutate = useCallback((newData: T) => {
     setData(newData)
