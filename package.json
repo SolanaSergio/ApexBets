@@ -17,10 +17,10 @@
     "type": "git",
     "url": "https://github.com/projectapex/apex.git"
   },
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@10.17.1",
   "engines": {
     "node": "22",
-    "pnpm": "9.15.9"
+    "pnpm": "10.17.1"
   },
   "pnpm": {
     "overrides": {
@@ -103,6 +103,12 @@
     "@radix-ui/react-tooltip": "1.1.6",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.57.4",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^22.18.6",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@typescript-eslint/eslint-plugin": "^8.44.1",
+    "@typescript-eslint/parser": "^8.44.1",
     "@vercel/analytics": "latest",
     "@vercel/speed-insights": "^1.2.0",
     "autoprefixer": "^10.4.21",
@@ -112,23 +118,15 @@
     "date-fns": "latest",
     "dotenv": "^17.2.2",
     "embla-carousel-react": "8.5.1",
+    "eslint": "^9.36.0",
+    "eslint-config-next": "^15.5.3",
     "geist": "^1.5.1",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
     "next": "^15.5.3",
     "next-themes": "latest",
-    "eslint-config-next": "^15.5.3",
-    "@tailwindcss/postcss": "^4.1.13",
-    "tailwindcss": "^4.1.13",
-    "@types/react": "^18.3.24",
-    "@types/react-dom": "^18.3.7",
-    "@types/node": "^22.18.6",
     "postcss": "^8.5.6",
-    "eslint": "^9.36.0",
-    "@typescript-eslint/eslint-plugin": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.1",
     "react": "^18.3.1",
-    "tw-animate-css": "1.3.8",
     "react-day-picker": "9.8.0",
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.63.0",
@@ -136,7 +134,9 @@
     "recharts": "latest",
     "sonner": "^1.7.4",
     "tailwind-merge": "^2.6.0",
+    "tailwindcss": "^4.1.13",
     "tailwindcss-animate": "^1.0.7",
+    "tw-animate-css": "1.3.8",
     "uuid": "^13.0.0",
     "vaul": "^0.9.9",
     "zod": "3.25.67"
@@ -158,6 +158,7 @@
     "node-fetch": "^2.7.0",
     "pm2": "^5.4.3",
     "prettier": "^3.6.2",
-    "ts-jest": "^29.4.4"
+    "ts-jest": "^29.4.4",
+    "typescript": "^5.9.2"
   }
 }

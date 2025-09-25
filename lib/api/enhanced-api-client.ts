@@ -253,7 +253,7 @@ export class EnhancedApiClient {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
 
-        const data = await response.json()
+        const data = await response.json() as any
         const responseTime = Date.now() - startTime
 
         return {

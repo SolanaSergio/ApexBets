@@ -284,7 +284,7 @@ export class MLBStatsClient {
       }
 
       const data = await response.json()
-      return data
+      return data as T
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('MLB Stats API: Request timeout')

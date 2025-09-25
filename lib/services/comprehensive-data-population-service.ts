@@ -126,9 +126,9 @@ export class ComprehensiveDataPopulationService {
       return { success: false, message: `Edge function failed (${response.status}): ${text}` }
     }
 
-    const result = await response.json().catch(() => ({}))
+    const result = await response.json().catch(() => ({})) as any
     const success = !!result?.success
-    return { success, message: result?.message }
+    return { success, message: result?.message || 'Unknown error' }
   }
 
   private async getRecordCount(sport: SupportedSport): Promise<number> {

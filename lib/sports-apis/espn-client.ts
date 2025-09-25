@@ -229,7 +229,7 @@ export class ESPNClient {
       }
 
       const data = await response.json()
-      return data
+      return data as T
     } catch (error) {
       if (retryAttempt < this.maxRetries) {
         console.warn(`ESPN API: Network error, retrying... (${retryAttempt + 1}/${this.maxRetries})`)

@@ -168,7 +168,7 @@ export class OddsApiClient {
         dataSize: JSON.stringify(data).length
       })
       
-      return data
+      return data as T
     } catch (error) {
       const errorResult = apiSpecificErrorHandler.handleError(
         this.provider,

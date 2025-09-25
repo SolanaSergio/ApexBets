@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -40,17 +40,51 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
       setLoading(true)
       const standingsData = await unifiedApiClient.getStandings(sport)
       
+      // Transform the data to match our interface
+      const transformedStandings = standingsData.map((team: any, index: number) => {
+        const teamName = team.team_name || team.name || team.full_name || team.team?.name
+        const wins = team.wins || 0
+        const losses = team.losses || 0
+        const ties = team.ties || team.draws || 0
+        const totalGames = wins + losses + ties
+        
+        // Calculate win percentage - handle both decimal and percentage formats
+        let winPercentage = 0
+        if (team.win_percentage !== undefined && team.win_percentage !== null) {
+          // If it's already a percentage (0-1), convert to 0-1 for display
+          winPercentage = typeof team.win_percentage === 'string' 
+            ? parseFloat(team.win_percentage)
+            : team.win_percentage
+        } else if (totalGames > 0) {
+          // Calculate from wins/losses
+          winPercentage = wins / (wins + losses)
+        }
+
+        return {
+          rank: team.position || team.rank || team.standing || index + 1,
+          team: teamName || 'Unknown Team',
+          wins,
+          losses,
+          ties,
+          winRate: winPercentage,
+          gamesBehind: team.games_back || team.gb || 0,
+          conference: team.conference || team.league,
+          division: team.division
+        }
+      })
+      
       // Filter by conference if specified
-      let filteredStandings = standingsData
+      let filteredStandings = transformedStandings
       if (selectedConference !== "all") {
-        filteredStandings = standingsData.filter(team => 
-          (team as any).conference === selectedConference
+        filteredStandings = transformedStandings.filter(team => 
+          team.conference === selectedConference
         )
       }
       
-      setStandings(filteredStandings as any)
+      setStandings(filteredStandings)
     } catch (error) {
       console.error('Error loading standings:', error)
+      setStandings([])
     } finally {
       setLoading(false)
     }
@@ -61,6 +95,25 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
   }, [loadStandings])
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
+
+  // Check if we're in off-season or have insufficient data
+  const isOffSeason = useMemo(() => {
+    if (!standings.length) return true
+    
+    // Check if all teams have very few games (likely off-season or early season)
+    const totalGames = standings.reduce((sum, team) => sum + team.wins + team.losses + (team.ties || 0), 0)
+    const avgGamesPerTeam = totalGames / standings.length
+    
+    // If average games per team is less than 10, consider it off-season or early season
+    return avgGamesPerTeam < 10
+  }, [standings])
+
+  // Check if we have valid standings data
+  const hasValidData = useMemo(() => {
+    return standings.length > 0 && standings.some(team => 
+      team.wins > 0 || team.losses > 0 || (team.ties || 0) > 0
+    )
+  }, [standings])
 
   if (loading) {
     return <StandingsSkeleton />
@@ -113,10 +166,39 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
         </div>
       )}
 
-      {/* Standings Table */}
-      <Card>
-        <CardContent className="p-0">
-          {standings.length > 0 ? (
+      {/* Off-season or insufficient data display */}
+      {!hasValidData || isOffSeason ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
+                <Trophy className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {isOffSeason ? 'Early Season / Off-Season' : 'No Standings Available'}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {isOffSeason 
+                    ? 'Standings will be available once teams have played more games. Check back soon for updated league standings.'
+                    : 'Standings data is not currently available. This may be due to off-season or data synchronization issues.'
+                  }
+                </p>
+                {isOffSeason && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      💡 <strong>Tip:</strong> Standings become more meaningful after teams have played 10+ games
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="p-0">
+            {standings.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="border-b">
@@ -188,9 +270,10 @@ export default function StandingsTable({ sport, className = "" }: StandingsTable
               <h3 className="text-lg font-semibold mb-2">No Standings Available</h3>
               <p className="text-sm">Standings data will be available soon</p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

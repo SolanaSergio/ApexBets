@@ -164,7 +164,7 @@ export class NBAStatsClient {
       apiSpecificErrorHandler.resetFailures(this.providerName)
       this.consecutiveFailures = 0 // Reset consecutive failures on success
 
-      const data = await response.json()
+      const data = await response.json() as any
       
       // Check if response has valid data
       if (!data || !data.resultSets || data.resultSets.length === 0) {

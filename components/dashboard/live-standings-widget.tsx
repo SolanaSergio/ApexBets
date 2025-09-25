@@ -40,93 +40,64 @@ interface StandingTeam {
 
 interface StandingsRowProps {
   team: StandingTeam
-  isPlayoffPosition?: boolean
+  isPlayoffPosition: boolean
 }
 
 function StandingsRow({ team, isPlayoffPosition }: StandingsRowProps) {
-  // Dynamic display based on sport type
-  const getSecondaryStats = () => {
-    // Check if sport uses points-based system (soccer, hockey, etc.)
-    const usesPointsSystem = team.points !== undefined && team.points !== null
-    
-    if (usesPointsSystem) {
-      if (team.goalDifference !== undefined) {
-        return `${team.points || 0} pts | GD: ${team.goalDifference || 0}`
-      }
-      if (team.goalsFor !== undefined && team.goalsAgainst !== undefined) {
-        return `${team.points || 0} pts | ${team.goalsFor || 0}-${team.goalsAgainst || 0}`
-      }
-      return `${team.points || 0} pts`
-    }
-    
-    return `${team.wins}-${team.losses} | ${team.winPercentage.toFixed(1)}%`
+  const getStreakIcon = (streak: string) => {
+    if (streak.startsWith('W')) return <TrendingUp className="h-3 w-3 text-accent" />
+    if (streak.startsWith('L')) return <TrendingDown className="h-3 w-3 text-destructive" />
+    return null
+  }
+
+  const getStreakColor = (streak: string) => {
+    if (streak.startsWith('W')) return 'text-accent'
+    if (streak.startsWith('L')) return 'text-destructive'
+    return 'text-muted-foreground'
   }
 
   return (
-    <div className={`flex items-center gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors ${
-      isPlayoffPosition ? 'bg-accent/5 border-l-2 border-accent' : ''
-    }`}>
-      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-bold text-sm">
-        {team.position}
+    <div className={`flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors ${isPlayoffPosition ? 'bg-accent/5' : ''}`}>
+      <div className="w-8 flex items-center justify-center">
+        <div className="flex items-center gap-1">
+          <span className="text-sm font-bold text-primary">#{team.position}</span>
+          {isPlayoffPosition && <Medal className="h-3 w-3 text-accent" />}
+        </div>
       </div>
       
-      <Avatar className="h-8 w-8">
-        <AvatarImage src={team.logo} alt={team.name} />
-        <AvatarFallback className="text-xs">
-          {team.abbreviation || team.name.slice(0, 2).toUpperCase()}
-        </AvatarFallback>
-      </Avatar>
+      <div className="w-8 flex justify-center">
+        <Avatar className="h-6 w-6">
+          <AvatarImage src={team.logo} alt={team.name} />
+          <AvatarFallback className="text-xs">
+            {team.abbreviation || team.name.slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+      </div>
       
       <div className="flex-1 min-w-0">
         <div className="font-medium text-sm truncate">{team.name}</div>
-        <div className="text-xs text-muted-foreground">
-          {getSecondaryStats()}
-        </div>
+        {team.conference && (
+          <div className="text-xs text-muted-foreground">{team.conference}</div>
+        )}
       </div>
-
-      {/* Dynamic stats grid based on sport */}
+      
       <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 text-center text-xs">
-        <div>
-          <div className="font-bold">{team.wins}</div>
-          <div className="text-muted-foreground">W</div>
+        <div className="font-semibold text-accent">{team.wins}</div>
+        <div className="font-semibold text-destructive">{team.losses}</div>
+        {team.draws !== undefined && <div className="hidden lg:block font-semibold">{team.draws}</div>}
+        <div className="hidden lg:block font-semibold">
+          {team.points !== undefined ? team.points : `${team.winPercentage.toFixed(1)}%`}
         </div>
-        <div>
-          <div className="font-bold">{team.losses}</div>
-          <div className="text-muted-foreground">L</div>
-        </div>
-        {team.draws !== undefined && (
-          <div>
-            <div className="font-bold">{team.draws}</div>
-            <div className="text-muted-foreground">D</div>
-          </div>
-        )}
-        {team.points !== undefined ? (
-          <div className="hidden lg:block">
-            <div className="font-bold">{team.points}</div>
-            <div className="text-muted-foreground">PTS</div>
-          </div>
-        ) : (
-          <div className="hidden lg:block">
-            <div className="font-bold">{team.winPercentage.toFixed(3)}</div>
-            <div className="text-muted-foreground">PCT</div>
+      </div>
+      
+      <div className="w-12 flex justify-center">
+        {team.streak && (
+          <div className={`flex items-center gap-1 ${getStreakColor(team.streak)}`}>
+            {getStreakIcon(team.streak)}
+            <span className="text-xs font-medium">{team.streak}</span>
           </div>
         )}
       </div>
-      
-      {team.streak && (
-        <div className="flex items-center gap-1 text-xs">
-          {team.streak.startsWith('W') ? (
-            <TrendingUp className="h-3 w-3 text-accent" />
-          ) : (
-            <TrendingDown className="h-3 w-3 text-destructive" />
-          )}
-          <span className="font-medium">{team.streak}</span>
-        </div>
-      )}
-      
-      {isPlayoffPosition && (
-        <Medal className="h-4 w-4 text-accent" />
-      )}
     </div>
   )
 }
@@ -160,21 +131,33 @@ export function LiveStandingsWidget() {
     if (!standings) return []
     
     return standings
-      .filter((team: any) => team && (team.name || team.full_name))
+      .filter((team: any) => team && (team.team_name || team.name || team.full_name))
       .filter((team: any) => !selectedSport || team.sport === selectedSport)
       .map((team: any, index: number) => {
-        // Calculate win percentage dynamically
+        // Handle different data structures from API
+        const teamName = team.team_name || team.name || team.full_name || team.team?.name
         const wins = team.wins || team.record?.wins || team.w || 0
         const losses = team.losses || team.record?.losses || team.l || 0
-        const draws = team.draws || team.record?.draws || team.d || 0
+        const draws = team.ties || team.draws || team.record?.draws || team.d || 0
         const totalGames = wins + losses + draws
-        const winPercentage = totalGames > 0 ? (wins / (wins + losses)) * 100 : 0
+        
+        // Calculate win percentage - handle both decimal and percentage formats
+        let winPercentage = 0
+        if (team.win_percentage !== undefined && team.win_percentage !== null) {
+          // If it's already a percentage (0-1), convert to 0-100
+          winPercentage = typeof team.win_percentage === 'string' 
+            ? parseFloat(team.win_percentage) * 100
+            : team.win_percentage * 100
+        } else if (totalGames > 0) {
+          // Calculate from wins/losses
+          winPercentage = (wins / (wins + losses)) * 100
+        }
 
         return {
           id: team.id || team.team_id || `standing-${index}`,
-          name: (team.name || team.full_name || team.team_name) ?? null,
-          abbreviation: team.abbreviation || team.alias || team.abbr || team.name?.slice(0, 3).toUpperCase() || '',
-          logo: team.logo || team.logo_url || team.image || team.team_logo || '',
+          name: teamName || 'Unknown Team',
+          abbreviation: team.abbreviation || team.alias || team.abbr || teamName?.slice(0, 3).toUpperCase() || '',
+          logo: team.logo_url || team.logo || team.image || team.team_logo || '',
           position: team.position || team.rank || team.standing || index + 1,
           wins,
           losses,
@@ -182,9 +165,9 @@ export function LiveStandingsWidget() {
           points: team.points || team.pts || 0,
           winPercentage,
           gamesBack: team.games_back || team.gb || 0,
-          streak: team.streak || team.current_streak || team.form || '',
-          lastTen: team.last_ten || team.recent_form || '',
-          conference: team.conference || team.group || '',
+          streak: team.streak || team.current_streak || team.win_streak || '',
+          lastTen: team.last_ten || team.last10 || '',
+          conference: team.conference || team.league || '',
           division: team.division || team.league || '',
           sport: team.sport || selectedSport || 'basketball',
           // Sport-specific fields
@@ -229,6 +212,25 @@ export function LiveStandingsWidget() {
     return selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
   }, [selectedSport])
 
+  // Check if we're in off-season or have insufficient data
+  const isOffSeason = useMemo(() => {
+    if (!processedStandings.length) return true
+    
+    // Check if all teams have very few games (likely off-season or early season)
+    const totalGames = processedStandings.reduce((sum, team) => sum + team.wins + team.losses + team.draws, 0)
+    const avgGamesPerTeam = totalGames / processedStandings.length
+    
+    // If average games per team is less than 10, consider it off-season or early season
+    return avgGamesPerTeam < 10
+  }, [processedStandings])
+
+  // Check if we have valid standings data
+  const hasValidData = useMemo(() => {
+    return processedStandings.length > 0 && processedStandings.some(team => 
+      team.wins > 0 || team.losses > 0 || team.draws > 0
+    )
+  }, [processedStandings])
+
   if (loading) {
     return (
       <Card className="h-fit">
@@ -240,33 +242,9 @@ export function LiveStandingsWidget() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className="h-14 bg-muted rounded-lg animate-pulse" />
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="h-16 bg-muted rounded-lg animate-pulse" />
             ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  if (error || !standings || standings.length === 0) {
-    return (
-      <Card className="h-fit">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2">
-            <Trophy className="h-5 w-5 text-primary" />
-            Standings - {sportDisplayName}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">
-              {error ? 'Failed to load standings' : `No standings data available for ${sportDisplayName}`}
-            </p>
-            <Button onClick={handleRefresh} variant="outline" size="sm" className="mt-4 hover:scale-105 transition-transform">
-              Try Again
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -310,34 +288,63 @@ export function LiveStandingsWidget() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-1 max-h-96 overflow-y-auto">
-          {/* Dynamic Header based on sport */}
-          <div className="flex items-center gap-3 p-3 text-xs font-medium text-muted-foreground border-b sticky top-0 bg-background">
-            <div className="w-8">#</div>
-            <div className="w-8"></div>
-            <div className="flex-1">Team</div>
-            <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 text-center">
-              <div>W</div>
-              <div>L</div>
-              {processedStandings.length > 0 && processedStandings.some(team => team.draws !== undefined) && <div className="hidden lg:block">D</div>}
-              <div className="hidden lg:block">
-                {processedStandings.length > 0 && processedStandings.some(team => team.points !== undefined) ? 'PTS' : 'PCT'}
+        {/* Off-season or insufficient data display */}
+        {!hasValidData || isOffSeason ? (
+          <div className="text-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
+                <Trophy className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {isOffSeason ? 'Early Season / Off-Season' : 'No Standings Available'}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {isOffSeason 
+                    ? 'Standings will be available once teams have played more games. Check back soon for updated league standings.'
+                    : 'Standings data is not currently available. This may be due to off-season or data synchronization issues.'
+                  }
+                </p>
+                {isOffSeason && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      💡 <strong>Tip:</strong> Standings become more meaningful after teams have played 10+ games
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
-            <div className="w-12">Form</div>
           </div>
+        ) : (
+          <div className="space-y-1 max-h-96 overflow-y-auto">
+            {/* Dynamic Header based on sport */}
+            <div className="flex items-center gap-3 p-3 text-xs font-medium text-muted-foreground border-b sticky top-0 bg-background">
+              <div className="w-8">#</div>
+              <div className="w-8"></div>
+              <div className="flex-1">Team</div>
+              <div className="grid grid-cols-3 lg:grid-cols-4 gap-2 text-center">
+                <div>W</div>
+                <div>L</div>
+                {processedStandings.length > 0 && processedStandings.some(team => team.draws !== undefined) && <div className="hidden lg:block">D</div>}
+                <div className="hidden lg:block">
+                  {processedStandings.length > 0 && processedStandings.some(team => team.points !== undefined) ? 'PTS' : 'PCT'}
+                </div>
+              </div>
+              <div className="w-12">Form</div>
+            </div>
 
-          {/* Enhanced Standings */}
-          {processedStandings.slice(0, 16).map((team: StandingTeam) => (
-            <StandingsRow
-              key={team.id}
-              team={team}
-              isPlayoffPosition={team.position <= playoffPositions}
-            />
-          ))}
-        </div>
+            {/* Enhanced Standings */}
+            {processedStandings.slice(0, 16).map((team: StandingTeam) => (
+              <StandingsRow
+                key={team.id}
+                team={team}
+                isPlayoffPosition={team.position <= playoffPositions}
+              />
+            ))}
+          </div>
+        )}
 
-        {playoffPositions > 0 && (
+        {hasValidData && !isOffSeason && playoffPositions > 0 && (
           <div className="mt-4 p-3 bg-accent/5 rounded-lg">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Medal className="h-4 w-4 text-accent" />

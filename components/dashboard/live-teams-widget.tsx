@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -97,42 +97,81 @@ export function LiveTeamsWidget() {
   const { data: teams, loading, error, refetch } = useTeams(selectedSport)
   const [viewMode, setViewMode] = useState<"standings" | "performance">("standings")
 
-  // Enhanced team data processing - fully dynamic
-  const processedTeams = teams ? teams
-    .filter((team: any) => team && (team.name || team.full_name))
-    .filter((team: any) => !selectedSport || team.sport === selectedSport)
-    .map((team: any, index: number) => {
-      // Calculate win percentage dynamically
-      const wins = team.wins || team.record?.wins || team.w || 0
-      const losses = team.losses || team.record?.losses || team.l || 0
-      const totalGames = wins + losses
-      const winPercentage = totalGames > 0 ? (wins / totalGames) * 100 : 0
+  // Enhanced team data processing - fully dynamic with useMemo
+  const processedTeams = useMemo(() => {
+    if (!teams) return []
+    
+    return teams
+      .filter((team: any) => team && (team.name || team.full_name || team.team_name))
+      .filter((team: any) => !selectedSport || team.sport === selectedSport)
+      .map((team: any, index: number) => {
+        // Handle different data structures from API
+        const teamName = team.name || team.full_name || team.team_name
+        const wins = team.wins || team.record?.wins || team.w || 0
+        const losses = team.losses || team.record?.losses || team.l || 0
+        const draws = team.ties || team.draws || team.record?.draws || team.d || 0
+        const totalGames = wins + losses + draws
+        
+        // Calculate win percentage - handle both decimal and percentage formats
+        let winPercentage = 0
+        if (team.win_percentage !== undefined && team.win_percentage !== null) {
+          // If it's already a percentage (0-1), convert to 0-100
+          winPercentage = typeof team.win_percentage === 'string' 
+            ? parseFloat(team.win_percentage) * 100
+            : team.win_percentage * 100
+        } else if (totalGames > 0) {
+          // Calculate from wins/losses
+          winPercentage = (wins / (wins + losses)) * 100
+        }
 
-      return {
-        id: team.id || team.team_id || `team-${index}`,
-        name: (team.name || team.full_name || team.team_name) ?? null,
-        city: team.city || team.market || team.location || '',
-        abbreviation: team.abbreviation || team.alias || team.abbr || team.name?.slice(0, 3).toUpperCase() || '',
-        logo: team.logo || team.logo_url || team.image || team.team_logo || '',
-        wins,
-        losses,
-        winPercentage,
-        streak: team.streak || team.current_streak || team.win_streak || '',
-        sport: (team.sport || selectedSport) ?? null,
-        // Additional dynamic fields
-        points: team.points || team.pts || 0,
-        goalsFor: team.goals_for || team.gf || 0,
-        goalsAgainst: team.goals_against || team.ga || 0
-      }
-    })
-    .sort((a: Team, b: Team) => {
-      if (viewMode === "standings") {
-        return b.winPercentage - a.winPercentage
-      } else {
-        return b.wins - a.wins
-      }
-    })
-    .slice(0, 12) : [] // Show more teams for better space utilization
+        return {
+          id: team.id || team.team_id || `team-${index}`,
+          name: teamName || 'Unknown Team',
+          city: team.city || team.market || team.location || '',
+          abbreviation: team.abbreviation || team.alias || team.abbr || teamName?.slice(0, 3).toUpperCase() || '',
+          logo: team.logo_url || team.logo || team.image || team.team_logo || '',
+          wins,
+          losses,
+          draws,
+          winPercentage,
+          streak: team.streak || team.current_streak || team.win_streak || '',
+          sport: (team.sport || selectedSport) ?? null,
+          // Additional dynamic fields
+          points: team.points || team.pts || 0,
+          goalsFor: team.goals_for || team.gf || 0,
+          goalsAgainst: team.goals_against || team.ga || 0
+        }
+      })
+      .sort((a: Team, b: Team) => {
+        if (viewMode === "standings") {
+          return b.winPercentage - a.winPercentage
+        } else {
+          return b.wins - a.wins
+        }
+      })
+      .slice(0, 12) // Show more teams for better space utilization
+  }, [teams, selectedSport, viewMode])
+
+  // Check if we're in off-season or have insufficient data
+  const isOffSeason = useMemo(() => {
+    if (!processedTeams.length) return true
+    
+    // Check if all teams have very few games (likely off-season or early season)
+    const totalGames = processedTeams.reduce((sum, team) => sum + team.wins + team.losses + team.draws, 0)
+    const avgGamesPerTeam = totalGames / processedTeams.length
+    
+    // If average games per team is less than 10, consider it off-season or early season
+    return avgGamesPerTeam < 10
+  }, [processedTeams])
+
+  // Check if we have valid team data
+  const hasValidData = useMemo(() => {
+    return processedTeams.length > 0 && processedTeams.some(team => 
+      team.wins > 0 || team.losses > 0 || team.draws > 0
+    )
+  }, [processedTeams])
+
+  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
 
   if (loading) {
     return (
@@ -178,8 +217,6 @@ export function LiveTeamsWidget() {
     )
   }
 
-  const sportDisplayName = selectedSport ? selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1) : "All Sports"
-
   return (
     <Card className="h-fit">
       <CardHeader className="pb-4">
@@ -213,12 +250,43 @@ export function LiveTeamsWidget() {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Optimized Grid Layout for Better Space Utilization */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
-          {processedTeams.map((team: Team, index: number) => (
-            <TeamCard key={team.id} team={team} rank={index + 1} />
-          ))}
-        </div>
+        {/* Off-season or insufficient data display */}
+        {!hasValidData || isOffSeason ? (
+          <div className="text-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-16 h-16 rounded-full bg-muted/20 flex items-center justify-center">
+                <Users className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {isOffSeason ? 'Early Season / Off-Season' : 'No Team Data Available'}
+                </h3>
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  {isOffSeason 
+                    ? 'Team statistics will be available once teams have played more games. Check back soon for updated team performance data.'
+                    : 'Team data is not currently available. This may be due to off-season or data synchronization issues.'
+                  }
+                </p>
+                {isOffSeason && (
+                  <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <p className="text-xs text-blue-700 dark:text-blue-300">
+                      💡 <strong>Tip:</strong> Team statistics become more meaningful after teams have played 10+ games
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Optimized Grid Layout for Better Space Utilization */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-3">
+              {processedTeams.map((team: Team, index: number) => (
+                <TeamCard key={team.id} team={team} rank={index + 1} />
+              ))}
+            </div>
+          </>
+        )}
 
         {processedTeams.length === 0 && (
           <div className="text-center py-8">

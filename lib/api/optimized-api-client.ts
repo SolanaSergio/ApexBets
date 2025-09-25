@@ -103,7 +103,7 @@ class OptimizedApiClient {
       }
 
       const data = await response.json()
-      return data
+      return data as T
     } catch (error) {
       if (retries > 0) {
         // Exponential backoff

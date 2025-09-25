@@ -271,7 +271,7 @@ export class NHLClient {
       }
 
       const data = await response.json()
-      return data
+      return data as T
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('NHL API: Request timeout')

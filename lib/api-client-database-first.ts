@@ -153,7 +153,7 @@ class DatabaseFirstApiClient {
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl
     // Detect browser timezone when available (client-side only)
-    if (typeof window !== 'undefined' && typeof Intl !== 'undefined') {
+    if (typeof globalThis !== 'undefined' && typeof (globalThis as any).window !== 'undefined' && typeof Intl !== 'undefined') {
       try {
         this.detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null
       } catch {
@@ -222,7 +222,7 @@ class DatabaseFirstApiClient {
         })
 
         if (response.ok) {
-          return response.json()
+          return response.json() as Promise<T>
         }
 
         // Handle rate limiting
