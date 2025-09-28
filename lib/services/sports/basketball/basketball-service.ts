@@ -692,7 +692,32 @@ export class BasketballService extends SportSpecificService {
         
         const response = await supabase
           ?.from('games')
-          .select('*')
+          .select(`
+            id,
+            external_id,
+            sport,
+            league_id,
+            league_name,
+            season,
+            home_team_id,
+            away_team_id,
+            home_team_name,
+            away_team_name,
+            home_team_score,
+            away_team_score,
+            game_date,
+            game_time_local,
+            status,
+            game_type,
+            venue,
+            attendance,
+            weather_conditions,
+            referee_info,
+            broadcast_info,
+            betting_odds,
+            last_updated,
+            created_at
+          `)
           .eq('id', gameId)
           .single()
         

@@ -1,6 +1,5 @@
 "use client"
 
-import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
 interface PageTransitionProps {
@@ -9,20 +8,11 @@ interface PageTransitionProps {
 
 export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname()
-  const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    setIsLoading(true)
-    const timer = setTimeout(() => setIsLoading(false), 300)
-    return () => clearTimeout(timer)
-  }, [pathname])
 
   return (
     <div 
       key={pathname}
-      className={`w-full transition-all duration-300 ${
-        isLoading ? 'opacity-0 translate-y-4' : 'opacity-100 translate-y-0'
-      }`}
+      className="w-full animate-fade-in"
     >
       {children}
     </div>
@@ -36,21 +26,8 @@ interface FadeInProps {
 }
 
 export function FadeIn({ children, delay = 0, className }: FadeInProps) {
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay * 1000)
-    return () => clearTimeout(timer)
-  }, [delay])
-
   return (
-    <div 
-      className={`transition-all duration-500 ease-out ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-4'
-      } ${className}`}
-    >
+    <div className={`animate-fade-in ${className}`}>
       {children}
     </div>
   )
@@ -69,26 +46,8 @@ export function SlideIn({
   delay = 0, 
   className 
 }: SlideInProps) {
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay * 1000)
-    return () => clearTimeout(timer)
-  }, [delay])
-
-  const directionClasses = {
-    left: isVisible ? 'translate-x-0' : '-translate-x-8',
-    right: isVisible ? 'translate-x-0' : 'translate-x-8',
-    up: isVisible ? 'translate-y-0' : '-translate-y-8',
-    down: isVisible ? 'translate-y-0' : 'translate-y-8'
-  }
-
   return (
-    <div 
-      className={`transition-all duration-500 ease-out ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      } ${directionClasses[direction]} ${className}`}
-    >
+    <div className={`animate-fade-in ${className}`}>
       {children}
     </div>
   )
@@ -124,21 +83,8 @@ export function StaggerItem({
   index = 0, 
   staggerDelay = 0.1 
 }: StaggerItemProps) {
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), index * staggerDelay * 1000)
-    return () => clearTimeout(timer)
-  }, [index, staggerDelay])
-
   return (
-    <div 
-      className={`transition-all duration-500 ease-out ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-4'
-      } ${className}`}
-    >
+    <div className={`animate-fade-in ${className}`}>
       {children}
     </div>
   )
@@ -151,21 +97,8 @@ interface ScaleInProps {
 }
 
 export function ScaleIn({ children, delay = 0, className }: ScaleInProps) {
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay * 1000)
-    return () => clearTimeout(timer)
-  }, [delay])
-
   return (
-    <div 
-      className={`transition-all duration-500 ease-out ${
-        isVisible 
-          ? 'opacity-100 scale-100' 
-          : 'opacity-0 scale-95'
-      } ${className}`}
-    >
+    <div className={`animate-fade-in ${className}`}>
       {children}
     </div>
   )
@@ -178,21 +111,8 @@ interface BounceInProps {
 }
 
 export function BounceIn({ children, delay = 0, className }: BounceInProps) {
-  const [isVisible, setIsVisible] = useState(false)
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), delay * 1000)
-    return () => clearTimeout(timer)
-  }, [delay])
-
   return (
-    <div 
-      className={`transition-all duration-700 ease-out ${
-        isVisible 
-          ? 'opacity-100 scale-100' 
-          : 'opacity-0 scale-75'
-      } ${isVisible ? 'animate-bounce-gentle' : ''} ${className}`}
-    >
+    <div className={`animate-fade-in ${className}`}>
       {children}
     </div>
   )

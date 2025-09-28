@@ -37,7 +37,7 @@ export interface GameData {
   away_team_name: string
   game_date: string
   season: string
-  week?: number
+  // // week // Column does not exist in database?: number // Column does not exist in database
   home_score?: number
   away_score?: number
   status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'cancelled'

@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     // Get all active sports from database
     const { data: activeSports, error: sportsError } = await supabase
       .from('sports')
-      .select('name, display_name, icon, color, is_active, update_frequency')
+      .select('name, display_name, icon_url, color_primary, color_secondary, is_active, refresh_intervals')
       .eq('is_active', true)
       .order('name')
 
@@ -68,9 +68,10 @@ export async function GET(request: NextRequest) {
           sportInfo: {
             name: sport.name,
             displayName: sport.display_name,
-            icon: sport.icon,
-            color: sport.color,
-            updateFrequency: sport.update_frequency
+            icon: sport.icon_url,
+            color: sport.color_primary,
+            colorSecondary: sport.color_secondary,
+            updateFrequency: sport.refresh_intervals
           }
         }
         totalLiveGames += Array.isArray((sportData as any).live) ? (sportData as any).live.length : 0
@@ -84,9 +85,10 @@ export async function GET(request: NextRequest) {
           sportInfo: {
             name: sport.name,
             displayName: sport.display_name,
-            icon: sport.icon,
-            color: sport.color,
-            updateFrequency: sport.update_frequency
+            icon: sport.icon_url,
+            color: sport.color_primary,
+            colorSecondary: sport.color_secondary,
+            updateFrequency: sport.refresh_intervals
           }
         }
       }
@@ -126,7 +128,30 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const { data: liveGames, error: liveGamesError } = await supabase
     .from('games')
     .select(`
-      *,
+      id,
+      external_id,
+      sport,
+      league_id,
+      league_name,
+      season,
+      home_team_id,
+      away_team_id,
+      home_team_name,
+      away_team_name,
+      home_team_score,
+      away_team_score,
+      game_date,
+      game_time_local,
+      status,
+      game_type,
+      venue,
+      attendance,
+      weather_conditions,
+      referee_info,
+      broadcast_info,
+      betting_odds,
+      last_updated,
+      created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
     `)
@@ -143,7 +168,30 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const { data: recentGames } = await supabase
     .from('games')
     .select(`
-      *,
+      id,
+      external_id,
+      sport,
+      league_id,
+      league_name,
+      season,
+      home_team_id,
+      away_team_id,
+      home_team_name,
+      away_team_name,
+      home_team_score,
+      away_team_score,
+      game_date,
+      game_time_local,
+      status,
+      game_type,
+      venue,
+      attendance,
+      weather_conditions,
+      referee_info,
+      broadcast_info,
+      betting_odds,
+      last_updated,
+      created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
     `)
@@ -159,7 +207,30 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const { data: upcomingGames } = await supabase
     .from('games')
     .select(`
-      *,
+      id,
+      external_id,
+      sport,
+      league_id,
+      league_name,
+      season,
+      home_team_id,
+      away_team_id,
+      home_team_name,
+      away_team_name,
+      home_team_score,
+      away_team_score,
+      game_date,
+      game_time_local,
+      status,
+      game_type,
+      venue,
+      attendance,
+      weather_conditions,
+      referee_info,
+      broadcast_info,
+      betting_odds,
+      last_updated,
+      created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
     `)
@@ -218,7 +289,7 @@ function normalizeGames(games: any[], sport: string): any[] {
       away_team_id: game.away_team_id,
       game_date: game.game_date,
       season: game.season,
-      week: game.week,
+      // week: game.week, // Not stored in database
       home_score: game.home_score,
       away_score: game.away_score,
       status: game.status,

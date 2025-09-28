@@ -33,7 +33,7 @@ const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined
 
 // Request cache to prevent duplicate fetches
 const requestCache = new Map<string, { data: any, timestamp: number }>()
-const CACHE_TTL = 30000 // 30 seconds
+const CACHE_TTL = 15000 // 15 seconds - faster updates
 
 // Track last data sent to avoid unnecessary updates
 const lastDataState = new Map<string, string>()
@@ -65,324 +65,112 @@ export function RealTimeProvider({ children }: RealTimeProviderProps) {
 
   const { gameUpdates, isConnected, lastUpdate, error } = useRealTimeUpdates(selectedSport)
 
-  // Enhanced data fetching with caching and better error handling
+  // Enhanced data fetching with better error handling
   useEffect(() => {
-    let liveGamesController: AbortController | null = null
-    let predictionsController: AbortController | null = null
-    let oddsController: AbortController | null = null
-
-    // Cache-aware fetch function
-    const fetchWithCache = async (url: string, options: RequestInit = {}) => {
-      const cacheKey = `${url}-${JSON.stringify(options)}`
-      const now = Date.now()
-      
-      // Check cache first
-      const cached = requestCache.get(cacheKey)
-      if (cached && (now - cached.timestamp) < CACHE_TTL) {
-        return cached.data
-      }
-      
-      // Prepare fetch options with proper signal handling
-      const fetchOptions: RequestInit = {
-        ...options
-      }
-      
-      // Only add signal if it's not undefined
-      if (options.signal !== undefined) {
-        fetchOptions.signal = options.signal
-      }
-      
-      // Fetch fresh data
-      const response = await fetch(url, fetchOptions)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const result = await response.json()
-      
-      // Cache the result
-      requestCache.set(cacheKey, {
-        data: result,
-        timestamp: now
-      })
-      
-      return result
+    if (!selectedSport) {
+      setData(prev => ({
+        ...prev,
+        error: 'No sport selected'
+      }))
+      return
     }
 
-    const fetchLiveGames = async () => {
-      if (!selectedSport) return // Don't fetch if no sport selected
-      
+    const fetchData = async () => {
       try {
-        liveGamesController = new AbortController()
-        const result = await fetchWithCache(`/api/database-first/games?sport=${selectedSport}&status=live`, {
-          signal: liveGamesController.signal,
-          headers: {
-            'Cache-Control': 'max-age=60', // Cache for 60 seconds
-          }
-        })
-
-        const newLiveGames = Array.isArray(result.data) ? result.data : []
-
-        if (result.success) {
-          // Create a string representation to check for changes
-          const dataStr = JSON.stringify(newLiveGames)
-          const lastDataStr = lastDataState.get('liveGames')
-          
-          // Only update state if data has actually changed
-          if (dataStr !== lastDataStr) {
-            lastDataState.set('liveGames', dataStr)
-            
-            setData(prev => {
-              return {
-                ...prev,
-                liveGames: newLiveGames,
-                stats: {
-                  ...prev.stats,
-                  totalGames: newLiveGames.length
-                },
-                lastUpdate: new Date(),
-                error: null,
-                isConnected: true
-              }
-            })
-          }
+        setData(prev => ({ ...prev, error: null }))
+        
+        // Single optimized API call
+        const response = await fetch(`/api/database-first/games?sport=${selectedSport}&status=live&limit=50`)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const result = await response.json()
+        
+        if (result.success && Array.isArray(result.data)) {
+          setData(prev => ({
+            ...prev,
+            liveGames: result.data,
+            lastUpdate: new Date(),
+            error: null,
+            isConnected: true
+          }))
         } else {
-          // Handle API errors gracefully - don't throw for empty results
-          const errorMessage = result.error || 'Failed to fetch live games'
-          console.warn('Live games API returned error:', errorMessage)
           setData(prev => ({
             ...prev,
             liveGames: [],
-            stats: {
-              ...prev.stats,
-              totalGames: 0
-            },
-            lastUpdate: new Date(),
-            error: `Live games: ${errorMessage}`,
-            isConnected: false
+            error: 'No data available',
+            lastUpdate: new Date()
           }))
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('Failed to fetch live games:', err)
-          setData(prev => ({
-            ...prev,
-            error: `Live games: ${err.message}`,
-            isConnected: false
-          }))
-        }
+        console.error('Failed to fetch data:', err)
+        setData(prev => ({
+          ...prev,
+          error: err instanceof Error ? err.message : 'Failed to fetch data',
+          isConnected: false
+        }))
       }
     }
 
-    const fetchPredictions = async () => {
-      if (!selectedSport) return // Don't fetch if no sport selected
-      
-      try {
-        predictionsController = new AbortController()
-        const result = await fetchWithCache(`/api/database-first/predictions?sport=${selectedSport}&limit=10`, {
-          signal: predictionsController.signal,
-          headers: {
-            'Cache-Control': 'max-age=60', // Cache for 1 minute
-          }
-        })
-
-        // Create a string representation to check for changes
-        const predictions = Array.isArray(result.data) ? result.data : (Array.isArray(result.predictions) ? result.predictions : [])
-        const dataStr = JSON.stringify(predictions)
-        const lastDataStr = lastDataState.get('predictions')
-        
-        // Only update state if data has actually changed
-        if (dataStr !== lastDataStr) {
-          lastDataState.set('predictions', dataStr)
-          
-          setData(prev => ({
-            ...prev,
-            predictions: predictions,
-            stats: {
-              ...prev.stats,
-              dataPoints: predictions.length || 0,
-              accuracy: result.accuracy || prev.stats.accuracy
-            }
-          }))
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('Failed to fetch predictions:', err)
-          setData(prev => ({
-            ...prev,
-            predictions: [],
-            error: prev.error ? `${prev.error}; Predictions: ${err.message}` : `Predictions: ${err.message}`
-          }))
-        }
-      }
-    }
-
-    const fetchOdds = async () => {
-      if (!selectedSport) return // Don't fetch if no sport selected
-      
-      try {
-        oddsController = new AbortController()
-        const result = await fetchWithCache(`/api/database-first/odds?sport=${selectedSport}`, {
-          signal: oddsController.signal,
-          headers: {
-            'Cache-Control': 'max-age=120', // Cache for 2 minutes
-          }
-        })
-
-        // Create a string representation to check for changes
-        const dataStr = JSON.stringify(result)
-        const lastDataStr = lastDataState.get('odds')
-        
-        // Only update state if data has actually changed
-        if (dataStr !== lastDataStr) {
-          lastDataState.set('odds', dataStr)
-          
-          setData(prev => ({
-            ...prev,
-            odds: Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : [])
-          }))
-        }
-      } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('Failed to fetch odds:', err)
-          setData(prev => ({
-            ...prev,
-            odds: [],
-            error: prev.error ? `${prev.error}; Odds: ${err.message}` : `Odds: ${err.message}`
-          }))
-        }
-      }
-    }
-
-    // Initial data fetch
-    const fetchAllData = async () => {
-      await Promise.allSettled([
-        fetchLiveGames(),
-        fetchPredictions(),
-        fetchOdds()
-      ])
-    }
-
-    fetchAllData()
-
-    // Set up intervals with different frequencies for optimal performance
-    // Reduced intervals to prevent excessive API calls
-    const liveGamesInterval = setInterval(fetchLiveGames, 300000) // Every 5 minutes for live data
-    const predictionsInterval = setInterval(fetchPredictions, 600000) // Every 10 minutes for predictions
-    const oddsInterval = setInterval(fetchOdds, 300000) // Every 5 minutes for odds
-
-    // Cleanup function
-    return () => {
-      clearInterval(liveGamesInterval)
-      clearInterval(predictionsInterval)
-      clearInterval(oddsInterval)
-
-      // Cancel any pending requests
-      liveGamesController?.abort()
-      predictionsController?.abort()
-      oddsController?.abort()
-      
-      // Clean up old cache entries
-      const now = Date.now()
-      for (const [key, cacheEntry] of requestCache) {
-        if (now - cacheEntry.timestamp > CACHE_TTL) {
-          requestCache.delete(key)
-        }
-      }
-    }
+    fetchData()
+    const interval = setInterval(fetchData, 15000) // 15 second intervals
+    return () => clearInterval(interval)
   }, [selectedSport])
 
   // Enhanced stats fetching with caching
   useEffect(() => {
-    let statsController: AbortController | null = null
-
-    // Cache-aware fetch function for stats
-    const fetchStatsWithCache = async (url: string) => {
-      const cacheKey = `stats-${url}`
-      const now = Date.now()
-      
-      // Check cache first
-      const cached = requestCache.get(cacheKey)
-      if (cached && (now - cached.timestamp) < CACHE_TTL) {
-        return cached.data
-      }
-      
-      // Prepare fetch options with proper signal handling
-      const fetchOptions: RequestInit = {
-        headers: {
-          'Cache-Control': 'max-age=120', // Cache for 2 minutes
-        }
-      }
-      
-      // Only add signal if controller exists
-      if (statsController) {
-        fetchOptions.signal = statsController.signal
-      }
-      
-      // Fetch fresh data
-      const response = await fetch(url, fetchOptions)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-      
-      const result = await response.json()
-      
-      // Cache the result
-      requestCache.set(cacheKey, {
-        data: result,
-        timestamp: now
-      })
-      
-      return result
+    if (!selectedSport) {
+      setData(prev => ({
+        ...prev,
+        error: 'No sport selected'
+      }))
+      return
     }
 
-    const fetchStats = async () => {
-      if (!selectedSport) return // Don't fetch if no sport selected
-      
+    const fetchData = async () => {
       try {
-        statsController = new AbortController()
-        const result = await fetchStatsWithCache(`/api/analytics/stats?sport=${selectedSport}`)
-
-        // Create a string representation to check for changes
-        const dataStr = JSON.stringify(result.data)
-        const lastDataStr = lastDataState.get('stats')
+        setData(prev => ({ ...prev, error: null }))
         
-        // Only update state if data has actually changed
-        if (dataStr !== lastDataStr) {
-          lastDataState.set('stats', dataStr)
-          
+        // Single optimized API call
+        const response = await fetch(`/api/database-first/games?sport=${selectedSport}&status=live&limit=50`)
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+        
+        const result = await response.json()
+        
+        if (result.success && Array.isArray(result.data)) {
           setData(prev => ({
             ...prev,
-            stats: {
-              totalGames: result.data?.total_games || prev.liveGames.length,
-              accuracy: Math.round((result.data?.accuracy_rate || 0) * 100),
-              teamsTracked: result.data?.total_teams || 0,
-              dataPoints: result.data?.total_predictions || prev.predictions.length,
-              liveGames: result.data?.live_games || 0,
-              scheduledGames: result.data?.scheduled_games || 0,
-              completedGames: result.data?.completed_games || 0,
-              correctPredictions: result.data?.correct_predictions || 0
-            }
+            liveGames: result.data,
+            lastUpdate: new Date(),
+            error: null,
+            isConnected: true
+          }))
+        } else {
+          setData(prev => ({
+            ...prev,
+            liveGames: [],
+            error: 'No data available',
+            lastUpdate: new Date()
           }))
         }
       } catch (err) {
-        if (err instanceof Error && err.name !== 'AbortError') {
-          console.error('Failed to fetch stats:', err)
-          // Don't update error state for stats as it's not critical
-        }
+        console.error('Failed to fetch data:', err)
+        setData(prev => ({
+          ...prev,
+          error: err instanceof Error ? err.message : 'Failed to fetch data',
+          isConnected: false
+        }))
       }
     }
 
-    fetchStats()
-    // Reduced interval for stats updates to prevent excessive calls
-    const interval = setInterval(fetchStats, 900000) // Refresh every 15 minutes
-
-    return () => {
-      clearInterval(interval)
-      statsController?.abort()
-    }
+    fetchData()
+    const interval = setInterval(fetchData, 15000) // 15 second intervals
+    return () => clearInterval(interval)
   }, [selectedSport])
 
   // Update connection status and real-time data with change detection

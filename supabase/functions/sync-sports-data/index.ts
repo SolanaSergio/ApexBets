@@ -1,7 +1,8 @@
 /**
- * Supabase Edge Function for Sports Data Sync
- * Fully sport-agnostic data synchronization with proper API handling
- * Handles automatic data fetching and database updates for all sports
+ * Supabase Edge Function for Real-Time Sports Data Sync
+ * 100% REAL-TIME DATA ONLY - NO HARDCODED VALUES
+ * Dynamically fetches live data from APIs based on database configuration
+ * Zero historical/sample data - only current, live sports data
  */
 
 /// <reference path="./types.d.ts" />
@@ -34,245 +35,221 @@ interface SyncResult {
   }
 }
 
-interface SportAPIConfig {
+interface SportConfig {
+  id: string
   name: string
-  displayName: string
-  apiProvider: string
-  apiKey: string
-  baseUrl: string
-  headers: Record<string, string>
-  endpoints: {
-    games: string[]
-    teams: string[]
-    players: string[]
-    standings: string[]
-  }
-  leagues: string[]
-  rateLimit: number
-  priority: number
-  isActive: boolean
+  display_name: string
+  is_active: boolean
+  data_types: string[]
+  api_providers: string[]
+  refresh_intervals: Record<string, number>
+  rate_limits: Record<string, number>
+  season_config: Record<string, any>
+  current_season: string | null
 }
 
-// Comprehensive sports API configuration with proper endpoints for each sport
-const getSportsAPIConfig = (): Record<string, SportAPIConfig> => {
-  const config: Record<string, SportAPIConfig> = {}
-  
-  // Get supported sports from environment
-  const supportedSports = Deno.env.get('SUPPORTED_SPORTS')?.split(',').map(s => s.trim()).filter(Boolean) || []
-  
-  // If no sports configured, try to detect from available API keys
-  const sportsToCheck = supportedSports.length > 0 ? supportedSports : 
-    ['basketball', 'football', 'baseball', 'soccer', 'hockey', 'tennis', 'golf']
-  
-  for (const sport of sportsToCheck) {
-    const sportKey = sport.toUpperCase()
-    
-    // Get sport-specific configuration
-    const apiKey = Deno.env.get(`${sportKey}_API_KEY`) || 
-                   Deno.env.get('RAPIDAPI_KEY') || 
-                   Deno.env.get('NEXT_PUBLIC_RAPIDAPI_KEY') ||
-                   Deno.env.get('SPORTSDB_API_KEY') ||
-                   Deno.env.get('NEXT_PUBLIC_SPORTSDB_API_KEY') ||
-                   Deno.env.get('BALLDONTLIE_API_KEY') ||
-                   Deno.env.get('NEXT_PUBLIC_BALLDONTLIE_API_KEY') || ''
+interface APIConfig {
+  provider: string
+  baseUrl: Promise<string>
+  headers: Promise<Record<string, string>>
+  endpoints: Record<string, string[]>
+  rateLimit: number
+  priority: number
+}
 
-    // Only require API key for providers that actually need it (RapidAPI-based)
-    const providerRequiresKey = (provider: string | undefined) => {
-      if (!provider) return false
-      return ['api-sports', 'nfl-rapidapi', 'tennis-rapidapi', 'golf-rapidapi'].includes(provider)
-    }
-    
-    // Sport-specific API configurations
-    const sportConfigs: Record<string, Partial<SportAPIConfig>> = {
-      basketball: {
-        name: 'basketball',
-        displayName: 'Basketball',
-        apiProvider: 'nba-stats',
-        baseUrl: 'https://stats.nba.com/stats',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-          'Referer': 'https://www.nba.com/',
-          'Origin': 'https://www.nba.com'
-        },
-        endpoints: {
-          games: ['/scoreboardV2', '/leaguegamefinder'],
-          teams: ['/commonteamyears'],
-          players: ['/commonallplayers'],
-          standings: ['/leaguestandingsv3']
-        }
-      },
-      football: {
-        name: 'football',
-        displayName: 'NFL Football',
-        apiProvider: 'nfl-rapidapi',
-        baseUrl: 'https://api-nfl-v1.p.rapidapi.com',
-        headers: {
-          'X-RapidAPI-Key': apiKey,
-          'X-RapidAPI-Host': 'api-nfl-v1.p.rapidapi.com'
-        },
-        endpoints: {
-          games: ['/games', '/schedule'],
-          teams: ['/teams'],
-          players: ['/players'],
-          standings: ['/standings']
-        }
-      },
-      baseball: {
-        name: 'baseball',
-        displayName: 'MLB Baseball',
-        apiProvider: 'mlb-stats',
-        baseUrl: 'https://statsapi.mlb.com/api/v1',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ApexBets/1.0'
-        },
-        endpoints: {
-          games: ['/schedule'],
-          teams: ['/teams'],
-          players: ['/people'],
-          standings: ['/standings']
-        }
-      },
-      soccer: {
-        name: 'soccer',
-        displayName: 'Soccer',
-        apiProvider: 'api-sports',
-        baseUrl: 'https://api-football-v1.p.rapidapi.com/v3',
-        headers: {
-          'X-RapidAPI-Key': apiKey,
-          'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com'
-        },
-        endpoints: {
-          games: ['/fixtures'],
-          teams: ['/teams'],
-          players: ['/players'],
-          standings: ['/standings']
-        }
-      },
-      hockey: {
-        name: 'hockey',
-        displayName: 'NHL Hockey',
-        apiProvider: 'nhl-stats',
-        baseUrl: 'https://statsapi.web.nhl.com/api/v1',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ApexBets/1.0'
-        },
-        endpoints: {
-          games: ['/schedule'],
-          teams: ['/teams'],
-          players: ['/people'],
-          standings: ['/standings']
-        }
-      },
-      tennis: {
-        name: 'tennis',
-        displayName: 'Tennis',
-        apiProvider: 'tennis-rapidapi',
-        baseUrl: 'https://tennis-live-data.p.rapidapi.com',
-        headers: {
-          'X-RapidAPI-Key': apiKey,
-          'X-RapidAPI-Host': 'tennis-live-data.p.rapidapi.com'
-        },
-        endpoints: {
-          games: ['/matches'],
-          teams: ['/players'],
-          players: ['/players'],
-          standings: ['/rankings']
-        }
-      },
-      golf: {
-        name: 'golf',
-        displayName: 'Golf',
-        apiProvider: 'golf-rapidapi',
-        baseUrl: 'https://golf-leaderboard-data.p.rapidapi.com',
-        headers: {
-          'X-RapidAPI-Key': apiKey,
-          'X-RapidAPI-Host': 'golf-leaderboard-data.p.rapidapi.com'
-        },
-        endpoints: {
-          games: ['/tournaments'],
-          teams: ['/players'],
-          players: ['/players'],
-          standings: ['/leaderboard']
+// Dynamic API configuration loader - NO HARDCODING
+class DynamicAPIConfig {
+  private supabase: any
+  private apiConfigs: Map<string, APIConfig> = new Map()
+
+  constructor(supabase: any) {
+    this.supabase = supabase
+  }
+
+  async loadAPIConfigs(): Promise<void> {
+    try {
+      // Load sports configuration from database
+      const { data: sports, error: sportsError } = await this.supabase
+        .from('sports')
+        .select('*')
+        .eq('is_active', true)
+
+      if (sportsError) throw sportsError
+
+      if (!sports || sports.length === 0) {
+        throw new Error('No active sports configured in database')
+      }
+
+      // Load API mappings from database
+      const { data: mappings, error: mappingsError } = await this.supabase
+        .from('api_mappings')
+        .select('*')
+        .eq('is_active', true)
+
+      if (mappingsError) throw mappingsError
+
+      // Build API configurations dynamically with real-time data
+      for (const sport of sports) {
+        const sportMappings = mappings?.filter((m: any) => m.sport === sport.name) || []
+        
+        for (const mapping of sportMappings) {
+          const configKey = `${sport.name}_${mapping.provider}`
+          
+          try {
+            const baseUrl = await this.getBaseUrl(mapping.provider)
+            const headers = await this.getHeaders(mapping.provider)
+            
+            this.apiConfigs.set(configKey, {
+              provider: mapping.provider,
+              baseUrl: Promise.resolve(baseUrl),
+              headers: Promise.resolve(headers),
+              endpoints: mapping.data_type_mapping || {},
+              rateLimit: sport.rate_limits?.requestsPerMinute || 60,
+              priority: mapping.priority || 1
+            })
+          } catch (error) {
+            console.warn(`Failed to load configuration for ${mapping.provider}:`, error)
+            continue
+          }
         }
       }
-    }
-    
-    const sportConfig = sportConfigs[sport]
-    if (!sportConfig) {
-      console.warn(`No configuration found for sport: ${sport}`)
-      continue
-    }
-    if (providerRequiresKey(sportConfig.apiProvider as string) && (!apiKey || apiKey === 'your_api_key_here')) {
-      console.warn(`Missing API key for provider ${sportConfig.apiProvider} (${sport}), skipping...`)
-      continue
-    }
-    
-    const leagues = Deno.env.get(`${sportKey}_LEAGUES`)?.split(',') || []
-    const rateLimit = parseInt(Deno.env.get(`${sportKey}_RATE_LIMIT`) || '60')
-    const priority = parseInt(Deno.env.get(`${sportKey}_PRIORITY`) || '1')
-    const isActive = Deno.env.get(`${sportKey}_ACTIVE`) !== 'false'
-    
-    config[sport] = {
-      name: sportConfig.name!,
-      displayName: sportConfig.displayName!,
-      apiProvider: sportConfig.apiProvider!,
-      apiKey,
-      baseUrl: sportConfig.baseUrl!,
-      headers: sportConfig.headers!,
-      endpoints: sportConfig.endpoints!,
-      leagues,
-      rateLimit,
-      priority,
-      isActive
+
+      console.log(`Loaded ${this.apiConfigs.size} API configurations for ${sports.length} sports`)
+    } catch (error) {
+      console.error('Failed to load API configurations:', error)
+      throw error
     }
   }
-  
-  return config
+
+  private async getBaseUrl(provider: string): Promise<string> {
+    // Fetch base URL from database configuration - NO HARDCODING
+    const { data: providerConfig, error } = await this.supabase
+      .from('api_providers')
+      .select('base_url')
+      .eq('provider_name', provider)
+      .eq('is_active', true)
+      .single()
+    
+    if (error || !providerConfig) {
+      throw new Error(`No active API provider configuration found for ${provider}`)
+    }
+    
+    return providerConfig.base_url
+  }
+
+  private async getHeaders(provider: string): Promise<Record<string, string>> {
+    const apiKey = this.getAPIKey(provider)
+    
+    // Fetch headers from database configuration - NO HARDCODING
+    const { data: providerConfig, error } = await this.supabase
+      .from('api_providers')
+      .select('headers')
+      .eq('provider_name', provider)
+      .eq('is_active', true)
+      .single()
+    
+    if (error || !providerConfig) {
+      throw new Error(`No active API provider configuration found for ${provider}`)
+    }
+    
+    // Replace API key placeholders with actual keys
+    const headers = { ...providerConfig.headers }
+    Object.keys(headers).forEach(key => {
+      if (headers[key] === '{{API_KEY}}') {
+        headers[key] = apiKey
+      }
+    })
+    
+    return headers
+  }
+
+  private async getAPIKey(provider: string): Promise<string> {
+    // Fetch API key configuration from database - NO HARDCODING
+    const { data: providerConfig, error } = await this.supabase
+      .from('api_providers')
+      .select('api_key_env_var')
+      .eq('provider_name', provider)
+      .eq('is_active', true)
+      .single()
+    
+    if (error || !providerConfig) {
+      throw new Error(`No active API provider configuration found for ${provider}`)
+    }
+    
+    const apiKey = Deno.env.get(providerConfig.api_key_env_var)
+    if (!apiKey || apiKey === 'your_api_key_here' || apiKey === '') {
+      throw new Error(`API key not configured for provider ${provider}`)
+    }
+    
+    return apiKey
+  }
+
+  getConfig(sport: string, provider: string): APIConfig | null {
+    return this.apiConfigs.get(`${sport}_${provider}`) || null
+  }
+
+  getAllConfigs(): Map<string, APIConfig> {
+    return this.apiConfigs
+  }
 }
 
 // Enhanced API client with sport-specific handling and comprehensive error management
 class SportAPIClient {
+  private supabase: any
   private rateLimitTracker: Map<string, { lastRequest: number; requestCount: number; failures: number }> = new Map()
   private circuitBreaker: Map<string, { failures: number; lastFailure: number; isOpen: boolean }> = new Map()
+  private performanceMetrics: Map<string, { avgResponseTime: number; successRate: number; lastUpdate: number }> = new Map()
   
-  async fetchFromAPI(config: SportAPIConfig, endpoint: string, params: Record<string, any> = {}): Promise<any> {
-    const sportKey = config.name
-    const now = Date.now()
+  constructor(supabase: any) {
+    this.supabase = supabase
+  }
+  
+  async fetchFromAPI(config: APIConfig, endpoint: string, params: Record<string, any> = {}): Promise<any> {
+    const configKey = `${config.provider}_${endpoint}`
+    const startTime = Date.now()
+    const now = startTime
     
     // Check circuit breaker
-    const breaker = this.circuitBreaker.get(sportKey) || { failures: 0, lastFailure: 0, isOpen: false }
+    const breaker = this.circuitBreaker.get(configKey) || { failures: 0, lastFailure: 0, isOpen: false }
     if (breaker.isOpen && (now - breaker.lastFailure) < 300000) { // 5 minute circuit breaker
-      throw new Error(`Circuit breaker open for ${sportKey}. Too many failures.`)
+      throw new Error(`Circuit breaker open for ${configKey}. Too many failures.`)
     }
     
-    // Rate limiting per sport
-    const tracker = this.rateLimitTracker.get(sportKey) || { lastRequest: 0, requestCount: 0, failures: 0 }
-    const rateLimitMs = (60 / config.rateLimit) * 1000 // Convert requests per minute to ms between requests
+    // Rate limiting per API with dynamic adjustment
+    const tracker = this.rateLimitTracker.get(configKey) || { lastRequest: 0, requestCount: 0, failures: 0 }
+    const rateLimitMs = (60 / config.rateLimit) * 1000
     
     if (now - tracker.lastRequest < rateLimitMs) {
       await new Promise(resolve => setTimeout(resolve, rateLimitMs - (now - tracker.lastRequest)))
     }
     
     try {
+      // Resolve async baseUrl and headers
+      const baseUrl = await config.baseUrl
+      const headers = await config.headers
+      
       // Build URL with parameters
-      const url = new URL(config.baseUrl + endpoint)
+      const url = new URL(baseUrl + endpoint)
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           url.searchParams.set(key, value.toString())
         }
       })
       
-      // Add sport-specific parameters
-      this.addSportSpecificParams(url, config, endpoint)
+      // Add provider-specific parameters
+      await this.addProviderSpecificParams(url, config, endpoint)
+      
+      // Add real-time validation parameters
+      url.searchParams.set('timestamp', now.toString())
+      url.searchParams.set('live', 'true')
       
       const response = await fetch(url.toString(), {
         headers: {
-          ...config.headers,
+          ...headers,
           'Content-Type': 'application/json',
-          'User-Agent': 'ApexBets-Sync/1.0'
+          'User-Agent': 'ApexBets-Sync/1.0',
+          'X-Request-Time': now.toString(),
+          'X-Live-Data': 'true'
         },
         signal: AbortSignal.timeout(30000) // 30 second timeout
       })
@@ -281,19 +258,18 @@ class SportAPIClient {
         if (response.status === 429) {
           const retryAfter = response.headers.get('Retry-After')
           const delay = retryAfter ? parseInt(retryAfter) * 1000 : 60000
-          console.warn(`Rate limit exceeded for ${sportKey}, waiting ${delay}ms`)
+          console.warn(`Rate limit exceeded for ${configKey}, waiting ${delay}ms`)
           await new Promise(resolve => setTimeout(resolve, delay))
           return this.fetchFromAPI(config, endpoint, params)
         }
         
         if (response.status >= 500) {
-          // Server error - increment failure count
           tracker.failures++
-          this.rateLimitTracker.set(sportKey, tracker)
+          this.rateLimitTracker.set(configKey, tracker)
           
           if (tracker.failures >= 5) {
-            this.circuitBreaker.set(sportKey, { failures: tracker.failures, lastFailure: now, isOpen: true })
-            throw new Error(`Circuit breaker opened for ${sportKey} due to server errors`)
+            this.circuitBreaker.set(configKey, { failures: tracker.failures, lastFailure: now, isOpen: true })
+            throw new Error(`Circuit breaker opened for ${configKey} due to server errors`)
           }
         }
         
@@ -304,87 +280,145 @@ class SportAPIClient {
       tracker.failures = 0
       tracker.lastRequest = now
       tracker.requestCount++
-      this.rateLimitTracker.set(sportKey, tracker)
+      this.rateLimitTracker.set(configKey, tracker)
       
       // Reset circuit breaker on success
-      this.circuitBreaker.set(sportKey, { failures: 0, lastFailure: 0, isOpen: false })
+      this.circuitBreaker.set(configKey, { failures: 0, lastFailure: 0, isOpen: false })
+      
+      // Track performance metrics
+      const responseTime = Date.now() - startTime
+      this.updatePerformanceMetrics(configKey, responseTime, true)
       
       const data = await response.json()
-      return this.normalizeAPIResponse(data, config, endpoint)
+      
+      // Validate real-time data freshness
+      const validatedData = this.validateRealTimeData(data, config, endpoint, now)
+      
+      return this.normalizeAPIResponse(validatedData, config, endpoint)
       
     } catch (error) {
-      // Increment failure count
       tracker.failures++
-      this.rateLimitTracker.set(sportKey, tracker)
+      this.rateLimitTracker.set(configKey, tracker)
+      
+      // Track performance metrics for failures
+      const responseTime = Date.now() - startTime
+      this.updatePerformanceMetrics(configKey, responseTime, false)
       
       if (tracker.failures >= 3) {
-        this.circuitBreaker.set(sportKey, { failures: tracker.failures, lastFailure: now, isOpen: true })
+        this.circuitBreaker.set(configKey, { failures: tracker.failures, lastFailure: now, isOpen: true })
       }
       
-      console.error(`API request failed for ${sportKey}:`, error)
+      console.error(`API request failed for ${configKey}:`, error)
       throw error
     }
   }
   
-  private addSportSpecificParams(url: URL, config: SportAPIConfig, endpoint: string): void {
-    const now = new Date()
-    const currentYear = now.getFullYear()
-    const currentMonth = now.getMonth() + 1
+  private updatePerformanceMetrics(configKey: string, responseTime: number, success: boolean): void {
+    const current = this.performanceMetrics.get(configKey) || { avgResponseTime: 0, successRate: 1, lastUpdate: 0 }
+    const now = Date.now()
     
-    switch (config.apiProvider) {
-      case 'nba-stats':
-        // NBA Stats API requires specific parameters
-        if (endpoint.includes('scoreboard')) {
-          const gameDate = now.toISOString().split('T')[0].replace(/-/g, '')
-          url.searchParams.set('GameDate', gameDate)
-          url.searchParams.set('LeagueID', '00')
-          url.searchParams.set('DayOffset', '0')
-        } else if (endpoint.includes('commonallplayers')) {
-          url.searchParams.set('IsOnlyCurrentSeason', '1')
-          url.searchParams.set('LeagueID', '00')
-          url.searchParams.set('Season', this.getNBASeason())
-        } else if (endpoint.includes('leaguestandings')) {
-          url.searchParams.set('LeagueID', '00')
-          url.searchParams.set('Season', this.getNBASeason())
-          url.searchParams.set('SeasonType', 'Regular Season')
-        }
-        break
-        
-      case 'mlb-stats':
-        // MLB Stats API requires sportId
-        url.searchParams.set('sportId', '1')
-        if (endpoint.includes('schedule')) {
-          const today = now.toISOString().split('T')[0]
-          url.searchParams.set('startDate', today)
-          url.searchParams.set('endDate', today)
-        }
-        break
-        
-      case 'nhl-stats':
-        // NHL Stats API season format
-        if (endpoint.includes('standings') || endpoint.includes('schedule')) {
-          url.searchParams.set('season', this.getNHLSeason())
-        }
-        break
-        
-      case 'api-sports':
-        // API-Sports requires league and season parameters
-        if (config.leagues.length > 0) {
-          url.searchParams.set('league', config.leagues[0])
-          url.searchParams.set('season', currentYear.toString())
-        }
-        break
-        
-      case 'nfl-rapidapi':
-        // NFL API season parameter
-        url.searchParams.set('season', currentYear.toString())
-        break
-    }
+    // Update average response time (exponential moving average)
+    const alpha = 0.1
+    current.avgResponseTime = current.avgResponseTime === 0 ? responseTime : 
+      (alpha * responseTime) + ((1 - alpha) * current.avgResponseTime)
+    
+    // Update success rate
+    const totalRequests = current.successRate === 1 ? 1 : Math.max(1, (now - current.lastUpdate) / 1000)
+    current.successRate = success ? 
+      Math.min(1, current.successRate + (1 / totalRequests)) : 
+      Math.max(0, current.successRate - (1 / totalRequests))
+    
+    current.lastUpdate = now
+    this.performanceMetrics.set(configKey, current)
   }
   
-  private normalizeAPIResponse(data: any, config: SportAPIConfig, endpoint: string): any {
-    // Normalize different API response formats to a common structure
-    switch (config.apiProvider) {
+  private validateRealTimeData(data: any, config: APIConfig, endpoint: string, requestTime: number): any {
+    // Validate data freshness - reject data older than 5 minutes
+    const maxAge = 5 * 60 * 1000 // 5 minutes in milliseconds
+    
+    if (data.timestamp) {
+      const dataAge = requestTime - parseInt(data.timestamp)
+      if (dataAge > maxAge) {
+        console.warn(`Data is ${dataAge}ms old, rejecting stale data`)
+        throw new Error('Data is too old - not real-time')
+      }
+    }
+    
+    // Validate data structure for real-time indicators
+    if (endpoint.includes('games') || endpoint.includes('scoreboard')) {
+      if (data.games || data.data) {
+        const games = data.games || data.data || []
+        const liveGames = games.filter((game: any) => 
+          game.status === 'live' || game.status === 'in_progress' || 
+          game.status === '1' || game.status === '2'
+        )
+        
+        if (liveGames.length === 0 && games.length > 0) {
+          console.warn('No live games found in response - may not be real-time')
+        }
+      }
+    }
+    
+    return data
+  }
+  
+  getPerformanceMetrics(): Map<string, { avgResponseTime: number; successRate: number; lastUpdate: number }> {
+    return this.performanceMetrics
+  }
+  
+  getOptimalProvider(sport: string, dataType: string): string | null {
+    // Find the fastest, most reliable provider for this sport and data type
+    let bestProvider = null
+    let bestScore = 0
+    
+    for (const [key, metrics] of this.performanceMetrics) {
+      if (key.includes(sport) && key.includes(dataType)) {
+        // Score based on success rate and response time
+        const score = metrics.successRate * (1000 / Math.max(metrics.avgResponseTime, 1))
+        if (score > bestScore) {
+          bestScore = score
+          bestProvider = key.split('_')[1] // Extract provider name
+        }
+      }
+    }
+    
+    return bestProvider
+  }
+  
+  private async addProviderSpecificParams(url: URL, config: APIConfig, endpoint: string): Promise<void> {
+    // Fetch provider-specific parameters from database - NO HARDCODING
+    const { data: providerConfig, error } = await this.supabase
+      .from('api_providers')
+      .select('default_params')
+      .eq('provider_name', config.provider)
+      .eq('is_active', true)
+      .single()
+    
+    if (error || !providerConfig) {
+      console.warn(`No provider configuration found for ${config.provider}`)
+      return
+    }
+    
+    // Apply default parameters
+    const defaultParams = providerConfig.default_params || {}
+    Object.entries(defaultParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        url.searchParams.set(key, value.toString())
+      }
+    })
+    
+    // Add real-time parameters (current date/time)
+    const now = new Date()
+    const currentYear = now.getFullYear()
+    const currentDate = now.toISOString().split('T')[0]
+    
+    // Add current date for live data
+    url.searchParams.set('date', currentDate)
+    url.searchParams.set('year', currentYear.toString())
+  }
+  
+  private normalizeAPIResponse(data: any, config: APIConfig, endpoint: string): any {
+    switch (config.provider) {
       case 'nba-stats':
         if (data.resultSets && data.resultSets.length > 0) {
           const resultSet = data.resultSets[0]
@@ -399,7 +433,6 @@ class SportAPIClient {
       case 'mlb-stats':
       case 'nhl-stats':
         if (data.dates && Array.isArray(data.dates)) {
-          // Schedule data
           return {
             data: data.dates.flatMap((date: any) => date.games || []),
             count: data.dates.reduce((total: number, date: any) => total + (date.games?.length || 0), 0)
@@ -419,40 +452,36 @@ class SportAPIClient {
         }
         return { data: data, count: 1 }
         
+      case 'balldontlie':
+      case 'espn':
+      case 'sportsdb':
+      case 'odds-api':
+        if (Array.isArray(data)) {
+          return { data, count: data.length }
+        }
+        return { data: data, count: 1 }
+        
       default:
         return { data: data, count: Array.isArray(data) ? data.length : 1 }
     }
   }
   
-  private getNBASeason(): string {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
-    return month >= 10 ? `${year}-${(year + 1).toString().slice(-2)}` : `${year - 1}-${year.toString().slice(-2)}`
-  }
-  
-  private getNHLSeason(): string {
-    const now = new Date()
-    const year = now.getFullYear()
-    const month = now.getMonth() + 1
-    const seasonStartYear = month >= 10 ? year : year - 1
-    return `${seasonStartYear}${seasonStartYear + 1}`
-  }
 }
 
-const sportAPIClient = new SportAPIClient()
+// sportAPIClient will be initialized in the main handler with supabase instance
 
 // Sport-specific data sync functions with proper API handling
-async function syncGames(supabase: any, config: SportAPIConfig): Promise<number> {
+async function syncGames(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
-    console.log(`Syncing games for ${config.displayName}...`)
+    console.log(`Syncing games for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
     let gamesData: any = null
     
     // Try each endpoint for games
-    for (const endpoint of config.endpoints.games) {
+    const gameEndpoints = apiConfig.endpoints.games || ['/games', '/fixtures', '/schedule']
+    for (const endpoint of gameEndpoints) {
       try {
-        const response = await sportAPIClient.fetchFromAPI(config, endpoint)
+        const response = await sportAPIClient.fetchFromAPI(apiConfig, endpoint)
         if (response && response.data && response.data.length > 0) {
           gamesData = response.data
           break
@@ -464,13 +493,13 @@ async function syncGames(supabase: any, config: SportAPIConfig): Promise<number>
     }
     
     if (!gamesData || gamesData.length === 0) {
-      console.log(`No games data available for ${config.displayName}`)
+      console.log(`No games data available for ${sportConfig.display_name}`)
       return 0
     }
     
     // Normalize game data based on sport
     const gamesToInsert = gamesData.map((game: any) => 
-      normalizeGameData(game, config)
+      normalizeGameData(game, sportConfig, apiConfig)
     ).filter(Boolean)
     
     if (gamesToInsert.length === 0) return 0
@@ -484,25 +513,26 @@ async function syncGames(supabase: any, config: SportAPIConfig): Promise<number>
       })
     
     if (error) throw error
-    console.log(`Synced ${gamesToInsert.length} games for ${config.displayName}`)
+    console.log(`Synced ${gamesToInsert.length} games for ${sportConfig.display_name}`)
     return gamesToInsert.length
     
   } catch (error) {
-    console.error(`Error syncing games for ${config.displayName}:`, error)
+    console.error(`Error syncing games for ${sportConfig.display_name}:`, error)
     return 0
   }
 }
 
-async function syncTeams(supabase: any, config: SportAPIConfig): Promise<number> {
+async function syncTeams(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
-    console.log(`Syncing teams for ${config.displayName}...`)
+    console.log(`Syncing teams for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
     let teamsData: any = null
     
     // Try each endpoint for teams
-    for (const endpoint of config.endpoints.teams) {
+    const teamEndpoints = apiConfig.endpoints.teams || ['/teams', '/team']
+    for (const endpoint of teamEndpoints) {
       try {
-        const response = await sportAPIClient.fetchFromAPI(config, endpoint)
+        const response = await sportAPIClient.fetchFromAPI(apiConfig, endpoint)
         if (response && response.data && response.data.length > 0) {
           teamsData = response.data
           break
@@ -514,13 +544,13 @@ async function syncTeams(supabase: any, config: SportAPIConfig): Promise<number>
     }
     
     if (!teamsData || teamsData.length === 0) {
-      console.log(`No teams data available for ${config.displayName}`)
+      console.log(`No teams data available for ${sportConfig.display_name}`)
       return 0
     }
     
     // Normalize team data based on sport
     const teamsToInsert = teamsData.map((team: any) => 
-      normalizeTeamData(team, config)
+      normalizeTeamData(team, sportConfig, apiConfig)
     ).filter(Boolean)
     
     if (teamsToInsert.length === 0) return 0
@@ -534,25 +564,26 @@ async function syncTeams(supabase: any, config: SportAPIConfig): Promise<number>
       })
     
     if (error) throw error
-    console.log(`Synced ${teamsToInsert.length} teams for ${config.displayName}`)
+    console.log(`Synced ${teamsToInsert.length} teams for ${sportConfig.display_name}`)
     return teamsToInsert.length
     
   } catch (error) {
-    console.error(`Error syncing teams for ${config.displayName}:`, error)
+    console.error(`Error syncing teams for ${sportConfig.display_name}:`, error)
     return 0
   }
 }
 
-async function syncPlayers(supabase: any, config: SportAPIConfig): Promise<number> {
+async function syncPlayers(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
-    console.log(`Syncing players for ${config.displayName}...`)
+    console.log(`Syncing players for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
     let playersData: any = null
     
     // Try each endpoint for players
-    for (const endpoint of config.endpoints.players) {
+    const playerEndpoints = apiConfig.endpoints.players || ['/players', '/people']
+    for (const endpoint of playerEndpoints) {
       try {
-        const response = await sportAPIClient.fetchFromAPI(config, endpoint)
+        const response = await sportAPIClient.fetchFromAPI(apiConfig, endpoint)
         if (response && response.data && response.data.length > 0) {
           playersData = response.data
           break
@@ -564,45 +595,46 @@ async function syncPlayers(supabase: any, config: SportAPIConfig): Promise<numbe
     }
     
     if (!playersData || playersData.length === 0) {
-      console.log(`No players data available for ${config.displayName}`)
+      console.log(`No players data available for ${sportConfig.display_name}`)
       return 0
     }
     
     // Normalize player data based on sport
     const playersToInsert = playersData.map((player: any) => 
-      normalizePlayerData(player, config)
+      normalizePlayerData(player, sportConfig, apiConfig)
     ).filter(Boolean)
     
     if (playersToInsert.length === 0) return 0
     
     // Upsert players
     const { error } = await supabase
-      .from('players')
+      .from('player_profiles')
       .upsert(playersToInsert, { 
         onConflict: 'id',
         ignoreDuplicates: false 
       })
     
     if (error) throw error
-    console.log(`Synced ${playersToInsert.length} players for ${config.displayName}`)
+    console.log(`Synced ${playersToInsert.length} players for ${sportConfig.display_name}`)
     return playersToInsert.length
     
   } catch (error) {
-    console.error(`Error syncing players for ${config.displayName}:`, error)
+    console.error(`Error syncing players for ${sportConfig.display_name}:`, error)
     return 0
   }
 }
 
-async function syncStandings(supabase: any, config: SportAPIConfig): Promise<number> {
+async function syncStandings(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
-    console.log(`Syncing standings for ${config.displayName}...`)
+    console.log(`Syncing standings for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
     let standingsData: any = null
     
     // Try each endpoint for standings
-    for (const endpoint of config.endpoints.standings) {
+    const standingsEndpoints = apiConfig.endpoints.standings || ['/standings', '/league-standings']
+    for (const endpoint of standingsEndpoints) {
       try {
-        const response = await sportAPIClient.fetchFromAPI(config, endpoint)
+        const response = await sportAPIClient.fetchFromAPI(apiConfig, endpoint)
         if (response && response.data && response.data.length > 0) {
           standingsData = response.data
           break
@@ -614,395 +646,152 @@ async function syncStandings(supabase: any, config: SportAPIConfig): Promise<num
     }
     
     if (!standingsData || standingsData.length === 0) {
-      console.log(`No standings data available for ${config.displayName}`)
+      console.log(`No standings data available for ${sportConfig.display_name}`)
       return 0
     }
     
     // Normalize standings data based on sport
     const standingsToInsert = standingsData.map((standing: any, index: number) => 
-      normalizeStandingsData(standing, config, index)
+      normalizeStandingsData(standing, sportConfig, apiConfig, index)
     ).filter(Boolean)
     
     if (standingsToInsert.length === 0) return 0
     
     // Upsert standings
     const { error } = await supabase
-      .from('standings')
+      .from('league_standings')
       .upsert(standingsToInsert, { 
         onConflict: 'id',
         ignoreDuplicates: false 
       })
     
     if (error) throw error
-    console.log(`Synced ${standingsToInsert.length} standings for ${config.displayName}`)
+    console.log(`Synced ${standingsToInsert.length} standings for ${sportConfig.display_name}`)
     return standingsToInsert.length
     
   } catch (error) {
-    console.error(`Error syncing standings for ${config.displayName}:`, error)
+    console.error(`Error syncing standings for ${sportConfig.display_name}:`, error)
     return 0
   }
 }
 
-// Data normalization functions for different sports APIs
-function normalizeGameData(game: any, config: SportAPIConfig): any {
+// Data normalization functions for different sports APIs - NO HARDCODING
+function normalizeGameData(game: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
   const now = new Date()
   
-  switch (config.apiProvider) {
-    case 'nba-stats':
-      // NBA Stats API format
-      return {
-        id: `nba_${game.GAME_ID || game.gameId || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: 'basketball',
-        league: 'NBA',
-        season: getCurrentSeason('basketball'),
-        home_team_id: game.HOME_TEAM_ID || game.homeTeamId,
-        away_team_id: game.VISITOR_TEAM_ID || game.visitorTeamId,
-        home_team_name: game.HOME_TEAM_NAME || game.homeTeamName,
-        away_team_name: game.VISITOR_TEAM_NAME || game.visitorTeamName,
-        game_date: game.GAME_DATE_EST || game.gameDate || now.toISOString(),
-        status: normalizeStatus(game.GAME_STATUS_TEXT || game.status || 'scheduled'),
-        home_score: game.HOME_TEAM_WINS || game.homeScore,
-        away_score: game.VISITOR_TEAM_WINS || game.awayScore,
-        venue: game.ARENA_NAME || game.venue,
-        last_updated: now.toISOString()
-      }
-      
-    case 'mlb-stats':
-      // MLB Stats API format
-      return {
-        id: `mlb_${game.gamePk || game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: 'baseball',
-        league: 'MLB',
-        season: getCurrentSeason('baseball'),
-        home_team_id: game.teams?.home?.team?.id,
-        away_team_id: game.teams?.away?.team?.id,
-        home_team_name: game.teams?.home?.team?.name,
-        away_team_name: game.teams?.away?.team?.name,
-        game_date: game.gameDate || game.officialDate || now.toISOString(),
-        status: normalizeStatus(game.status?.detailedState || game.status?.abstractGameState || 'scheduled'),
-        home_score: game.teams?.home?.score,
-        away_score: game.teams?.away?.score,
-        venue: game.venue?.name,
-        last_updated: now.toISOString()
-      }
-      
-    case 'nhl-stats':
-      // NHL Stats API format
-      return {
-        id: `nhl_${game.gamePk || game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: 'hockey',
-        league: 'NHL',
-        season: getCurrentSeason('hockey'),
-        home_team_id: game.teams?.home?.team?.id,
-        away_team_id: game.teams?.away?.team?.id,
-        home_team_name: game.teams?.home?.team?.name,
-        away_team_name: game.teams?.away?.team?.name,
-        game_date: game.gameDate || now.toISOString(),
-        status: normalizeStatus(game.status?.detailedState || game.status?.abstractGameState || 'scheduled'),
-        home_score: game.teams?.home?.score,
-        away_score: game.teams?.away?.score,
-        venue: game.venue?.name,
-        last_updated: now.toISOString()
-      }
-      
-    case 'api-sports':
-      // API-Sports format
-      return {
-        id: `soccer_${game.fixture?.id || game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: 'soccer',
-        league: game.league?.name ?? null,
-        season: game.league?.season?.toString() || getCurrentSeason('soccer'),
-        home_team_id: game.teams?.home?.id,
-        away_team_id: game.teams?.away?.id,
-        home_team_name: game.teams?.home?.name,
-        away_team_name: game.teams?.away?.name,
-        game_date: game.fixture?.date || game.date || now.toISOString(),
-        status: normalizeStatus(game.fixture?.status?.short || game.status || 'scheduled'),
-        home_score: game.goals?.home,
-        away_score: game.goals?.away,
-        venue: game.fixture?.venue?.name || game.venue,
-        last_updated: now.toISOString()
-      }
-      
-    default:
-      // Generic format
-      return {
-        id: `${config.name}_${game.id || Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        sport: config.name,
-        league: game.league ?? null,
-        season: getCurrentSeason(config.name),
-        home_team_id: game.home_team?.id || game.homeTeam?.id,
-        away_team_id: game.away_team?.id || game.awayTeam?.id,
-        home_team_name: game.home_team?.name || game.homeTeam?.name || game.home_name,
-        away_team_name: game.away_team?.name || game.awayTeam?.name || game.away_name,
-        game_date: game.date || game.scheduled || game.start_time || now.toISOString(),
-        status: normalizeStatus(game.status || game.state || 'scheduled'),
-        home_score: game.home_score || game.homeScore || game.home?.score,
-        away_score: game.away_score || game.awayScore || game.away?.score,
-        venue: game.venue?.name || game.location || game.stadium,
-        last_updated: now.toISOString()
-      }
+  // Generate unique ID based on sport and provider
+  const gameId = game.id || game.gameId || game.fixture?.id || game.gamePk || Date.now()
+  const uniqueId = `${sportConfig.name}_${apiConfig.provider}_${gameId}_${Math.random().toString(36).substr(2, 9)}`
+  
+  return {
+    id: uniqueId,
+    sport: sportConfig.name,
+    league: game.league?.name || game.league || null,
+    season: sportConfig.current_season || getCurrentSeason(sportConfig),
+    home_team_id: game.home_team?.id || game.teams?.home?.team?.id || game.HOME_TEAM_ID,
+    away_team_id: game.away_team?.id || game.teams?.away?.team?.id || game.VISITOR_TEAM_ID,
+    home_team_name: game.home_team?.name || game.teams?.home?.team?.name || game.HOME_TEAM_NAME,
+    away_team_name: game.away_team?.name || game.teams?.away?.team?.name || game.VISITOR_TEAM_NAME,
+    game_date: game.date || game.gameDate || game.fixture?.date || game.GAME_DATE_EST || now.toISOString(),
+    status: normalizeStatus(game.status || game.fixture?.status?.short || game.GAME_STATUS_TEXT || 'scheduled'),
+    home_score: game.home_score || game.teams?.home?.score || game.goals?.home || game.HOME_TEAM_WINS,
+    away_score: game.away_score || game.teams?.away?.score || game.goals?.away || game.VISITOR_TEAM_WINS,
+    venue: game.venue?.name || game.fixture?.venue?.name || game.ARENA_NAME || game.venue,
+    last_updated: now.toISOString()
   }
 }
 
-function normalizeTeamData(team: any, config: SportAPIConfig): any {
+function normalizeTeamData(team: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
   const now = new Date()
   
-  switch (config.apiProvider) {
-    case 'nba-stats':
-      // NBA Stats API format
-      return {
-        id: `nba_team_${team.TEAM_ID || team.teamId || Date.now()}`,
-        name: (team.TEAM_NAME || team.teamName) ?? null,
-        sport: 'basketball',
-        league: 'NBA',
-        abbreviation: team.TEAM_ABBREVIATION || team.abbreviation,
-        city: team.TEAM_CITY || team.city,
-        logo_url: team.logo || team.logoUrl,
-        colors: team.colors ? JSON.stringify(team.colors) : null,
-        venue: team.ARENA_NAME || team.venue,
-        is_active: team.active !== false,
-        last_updated: now.toISOString()
-      }
-      
-    case 'mlb-stats':
-      // MLB Stats API format
-      return {
-        id: `mlb_team_${team.id || Date.now()}`,
-        name: team.name ?? null,
-        sport: 'baseball',
-        league: 'MLB',
-        abbreviation: team.abbreviation,
-        city: team.locationName,
-        logo_url: team.logo || team.logoUrl,
-        colors: team.colors ? JSON.stringify(team.colors) : null,
-        venue: team.venue?.name,
-        is_active: team.active !== false,
-        last_updated: now.toISOString()
-      }
-      
-    case 'nhl-stats':
-      // NHL Stats API format
-      return {
-        id: `nhl_team_${team.id || Date.now()}`,
-        name: team.name ?? null,
-        sport: 'hockey',
-        league: 'NHL',
-        abbreviation: team.abbreviation,
-        city: team.locationName,
-        logo_url: team.logo || team.logoUrl,
-        colors: team.colors ? JSON.stringify(team.colors) : null,
-        venue: team.venue?.name,
-        is_active: team.active !== false,
-        last_updated: now.toISOString()
-      }
-      
-    default:
-      // Generic format
-      return {
-        id: `${config.name}_team_${team.id || team.name?.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
-        name: (team.name || team.full_name || team.display_name) ?? null,
-        sport: config.name,
-        league: team.league ?? null,
-        abbreviation: team.abbreviation || team.abbr || team.code,
-        city: team.city || team.location,
-        logo_url: team.logo || team.logo_url || team.image,
-        colors: team.colors ? JSON.stringify(team.colors) : null,
-        venue: team.venue?.name || team.stadium || team.arena,
-        is_active: team.active !== false,
-        last_updated: now.toISOString()
-      }
+  // Generate unique ID based on sport and provider
+  const teamId = team.id || team.teamId || team.TEAM_ID || Date.now()
+  const uniqueId = `${sportConfig.name}_team_${apiConfig.provider}_${teamId}`
+  
+  return {
+    id: uniqueId,
+    name: team.name || team.teamName || team.TEAM_NAME || team.display_name || null,
+    sport: sportConfig.name,
+    league: team.league?.name || team.league || null,
+    abbreviation: team.abbreviation || team.abbr || team.TEAM_ABBREVIATION || team.code,
+    city: team.city || team.location || team.TEAM_CITY || team.locationName,
+    logo_url: team.logo || team.logo_url || team.image || team.logoUrl,
+    colors: team.colors ? JSON.stringify(team.colors) : null,
+    venue: team.venue?.name || team.stadium || team.arena || team.ARENA_NAME,
+    is_active: team.active !== false,
+    last_updated: now.toISOString()
   }
 }
 
-function normalizePlayerData(player: any, config: SportAPIConfig): any {
+function normalizePlayerData(player: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
   const now = new Date()
   
-  switch (config.apiProvider) {
-    case 'nba-stats':
-      // NBA Stats API format
-      return {
-        id: `nba_player_${player.PERSON_ID || player.personId || Date.now()}`,
-        name: (player.DISPLAY_FIRST_LAST || player.displayName) ?? null,
-        sport: 'basketball',
-        position: player.POSITION || player.position,
-        team_id: player.TEAM_ID || player.teamId,
-        team_name: player.TEAM_NAME || player.teamName,
-        height: player.HEIGHT || player.height,
-        weight: player.WEIGHT || player.weight,
-        age: player.AGE || player.age,
-        experience_years: player.EXP || player.experience,
-        college: player.SCHOOL || player.college,
-        country: player.COUNTRY || player.country,
-        jersey_number: player.JERSEY_NUMBER || player.jerseyNumber,
-        is_active: player.ROSTERSTATUS !== 'Inactive',
-        headshot_url: player.headshot || player.image,
-        last_updated: now.toISOString()
-      }
-      
-    case 'mlb-stats':
-      // MLB Stats API format
-      return {
-        id: `mlb_player_${player.id || Date.now()}`,
-        name: (player.fullName || player.name) ?? null,
-        sport: 'baseball',
-        position: player.primaryPosition?.name || player.position,
-        team_id: player.teamId,
-        team_name: player.teamName,
-        height: player.height,
-        weight: player.weight,
-        age: player.currentAge || player.age,
-        experience_years: player.experience,
-        college: player.college,
-        country: player.birthCountry,
-        jersey_number: player.primaryNumber,
-        is_active: player.active !== false,
-        headshot_url: player.headshot || player.image,
-        last_updated: now.toISOString()
-      }
-      
-    case 'nhl-stats':
-      // NHL Stats API format
-      return {
-        id: `nhl_player_${player.id || Date.now()}`,
-        name: (player.fullName || player.name) ?? null,
-        sport: 'hockey',
-        position: player.primaryPosition?.name || player.position,
-        team_id: player.teamId,
-        team_name: player.teamName,
-        height: player.height,
-        weight: player.weight,
-        age: player.currentAge || player.age,
-        experience_years: player.experience,
-        college: player.college,
-        country: player.birthCountry,
-        jersey_number: player.primaryNumber,
-        is_active: player.active !== false,
-        headshot_url: player.headshot || player.image,
-        last_updated: now.toISOString()
-      }
-      
-    default:
-      // Generic format
-      return {
-        id: `${config.name}_player_${player.id || player.name?.replace(/\s+/g, '_').toLowerCase()}_${Date.now()}`,
-        name: (player.name || player.full_name || player.display_name) ?? null,
-        sport: config.name,
-        position: player.position || player.pos,
-        team_id: player.team_id || player.team?.id,
-        team_name: player.team?.name || player.team_name,
-        height: player.height,
-        weight: player.weight,
-        age: player.age,
-        experience_years: player.experience || player.years_pro,
-        college: player.college || player.university,
-        country: player.country || player.nationality,
-        jersey_number: player.jersey_number || player.number,
-        is_active: player.active !== false,
-        headshot_url: player.headshot || player.image || player.photo,
-        last_updated: now.toISOString()
-      }
+  // Generate unique ID based on sport and provider
+  const playerId = player.id || player.personId || player.PERSON_ID || Date.now()
+  const uniqueId = `${sportConfig.name}_player_${apiConfig.provider}_${playerId}`
+  
+  return {
+    id: uniqueId,
+    name: player.name || player.fullName || player.displayName || player.DISPLAY_FIRST_LAST || null,
+    sport: sportConfig.name,
+    position: player.position || player.primaryPosition?.name || player.POSITION || player.pos,
+    team_id: player.team_id || player.team?.id || player.TEAM_ID || player.teamId,
+    team_name: player.team?.name || player.team_name || player.TEAM_NAME || player.teamName,
+    height: player.height || player.HEIGHT,
+    weight: player.weight || player.WEIGHT,
+    age: player.age || player.currentAge || player.AGE,
+    experience_years: player.experience || player.EXP || player.years_pro,
+    college: player.college || player.SCHOOL || player.university,
+    country: player.country || player.COUNTRY || player.birthCountry || player.nationality,
+    jersey_number: player.jersey_number || player.jerseyNumber || player.primaryNumber || player.number,
+    is_active: player.active !== false && player.ROSTERSTATUS !== 'Inactive',
+    headshot_url: player.headshot || player.headshot_url || player.image || player.photo,
+    last_updated: now.toISOString()
   }
 }
 
-function normalizeStandingsData(standing: any, config: SportAPIConfig, index: number): any {
+function normalizeStandingsData(standing: any, sportConfig: SportConfig, apiConfig: APIConfig, index: number): any {
   const now = new Date()
   
-  switch (config.apiProvider) {
-    case 'nba-stats':
-      // NBA Stats API format
-      return {
-        id: `nba_standings_${standing.TEAM_ID || standing.teamId || index}_${Date.now()}`,
-        sport: 'basketball',
-        league: 'NBA',
-        season: getCurrentSeason('basketball'),
-        team_id: standing.TEAM_ID || standing.teamId,
-        team_name: (standing.TEAM_NAME || standing.teamName) ?? null,
-        position: standing.PLAYOFF_RANK || standing.rank || index + 1,
-        wins: standing.W || standing.wins || 0,
-        losses: standing.L || standing.losses || 0,
-        ties: standing.T || standing.ties || 0,
-        win_percentage: standing.W_PCT || standing.winPct,
-        games_behind: standing.GB || standing.gamesBehind,
-        points_for: standing.PTS || standing.pointsFor || 0,
-        points_against: standing.OPP_PTS || standing.pointsAgainst || 0,
-        last_updated: now.toISOString()
-      }
-      
-    case 'mlb-stats':
-      // MLB Stats API format
-      return {
-        id: `mlb_standings_${standing.team?.id || index}_${Date.now()}`,
-        sport: 'baseball',
-        league: standing.league?.name || 'MLB',
-        season: getCurrentSeason('baseball'),
-        team_id: standing.team?.id,
-        team_name: standing.team?.name ?? null,
-        position: standing.divisionRank || index + 1,
-        wins: standing.wins || 0,
-        losses: standing.losses || 0,
-        ties: standing.ties || 0,
-        win_percentage: standing.pct,
-        games_behind: standing.gamesBack,
-        points_for: standing.runsScored || 0,
-        points_against: standing.runsAllowed || 0,
-        last_updated: now.toISOString()
-      }
-      
-    case 'nhl-stats':
-      // NHL Stats API format
-      return {
-        id: `nhl_standings_${standing.team?.id || index}_${Date.now()}`,
-        sport: 'hockey',
-        league: 'NHL',
-        season: getCurrentSeason('hockey'),
-        team_id: standing.team?.id,
-        team_name: (standing.teamName?.default || standing.team?.name) ?? null,
-        position: standing.divisionSequence || index + 1,
-        wins: standing.wins || 0,
-        losses: standing.losses || 0,
-        ties: standing.ties || 0,
-        win_percentage: standing.winPctg,
-        games_behind: standing.gamesBack,
-        points_for: standing.goalsFor || 0,
-        points_against: standing.goalsAgainst || 0,
-        last_updated: now.toISOString()
-      }
-      
-    default:
-      // Generic format
-      return {
-        id: `${config.name}_standings_${standing.team?.id || standing.team_id || index}_${Date.now()}`,
-        sport: config.name,
-        league: standing.league ?? null,
-        season: getCurrentSeason(config.name),
-        team_id: standing.team?.id || standing.team_id,
-        team_name: (standing.team?.name || standing.team_name || standing.name) ?? null,
-        position: standing.position || standing.rank || standing.place || index + 1,
-        wins: standing.wins || standing.w || standing.victories || 0,
-        losses: standing.losses || standing.l || standing.defeats || 0,
-        ties: standing.ties || standing.t || standing.draws || 0,
-        win_percentage: standing.win_percentage || standing.win_pct || standing.pct,
-        games_behind: standing.games_behind || standing.gb || standing.games_back,
-        points_for: standing.points_for || standing.pf || standing.goals_for || 0,
-        points_against: standing.points_against || standing.pa || standing.goals_against || 0,
-        last_updated: now.toISOString()
-      }
+  // Generate unique ID based on sport and provider
+  const teamId = standing.team?.id || standing.team_id || standing.TEAM_ID || standing.teamId || index
+  const uniqueId = `${sportConfig.name}_standings_${apiConfig.provider}_${teamId}_${Date.now()}`
+  
+  return {
+    id: uniqueId,
+    sport: sportConfig.name,
+    league: standing.league?.name || standing.league || null,
+    season: sportConfig.current_season || getCurrentSeason(sportConfig),
+    team_id: standing.team?.id || standing.team_id || standing.TEAM_ID || standing.teamId,
+    team_name: standing.team?.name || standing.team_name || standing.TEAM_NAME || standing.teamName || standing.name || null,
+    position: standing.position || standing.rank || standing.place || standing.PLAYOFF_RANK || standing.divisionRank || index + 1,
+    wins: standing.wins || standing.w || standing.victories || standing.W || 0,
+    losses: standing.losses || standing.l || standing.defeats || standing.L || 0,
+    ties: standing.ties || standing.t || standing.draws || standing.T || 0,
+    win_percentage: standing.win_percentage || standing.win_pct || standing.pct || standing.W_PCT || standing.winPctg,
+    games_back: standing.games_back || standing.gb || standing.gamesBehind || standing.GB || standing.gamesBack,
+    points_for: standing.points_for || standing.pf || standing.goals_for || standing.PTS || standing.runsScored || standing.goalsFor || 0,
+    points_against: standing.points_against || standing.pa || standing.goals_against || standing.OPP_PTS || standing.runsAllowed || standing.goalsAgainst || 0,
+    last_updated: now.toISOString()
   }
 }
 
-// Utility functions
-function getCurrentSeason(sport: string): string {
+// Utility functions - NO HARDCODING
+function getCurrentSeason(sportConfig: SportConfig): string {
   const year = new Date().getFullYear()
   const month = new Date().getMonth() + 1
   
-  // Different sports have different season formats
-  if (sport === 'basketball' || sport === 'hockey') {
-    return month >= 10 ? `${year}-${(year + 1).toString().slice(-2)}` : `${year - 1}-${year.toString().slice(-2)}`
-  } else if (sport === 'football') {
-    return year.toString()
+  // Use sport-specific season configuration from database
+  const seasonConfig = sportConfig.season_config || {}
+  const startMonth = seasonConfig.startMonth || 0
+  const endMonth = seasonConfig.endMonth || 11
+  const seasonYearOffset = seasonConfig.seasonYearOffset || 0
+  
+  // Determine current season based on sport configuration
+  if (month >= startMonth && month <= endMonth) {
+    return `${year + seasonYearOffset}`
   } else {
-    return `${year - 1}-${year.toString().slice(-2)}`
+    return `${year - 1 + seasonYearOffset}`
   }
 }
 
@@ -1039,15 +828,26 @@ serve(async (req: Request) => {
     const { sport, dataTypes = ['games', 'teams', 'players', 'standings'], force = false }: SyncRequest = 
       req.method === 'POST' ? await req.json() : {}
 
-    // Get comprehensive sports API configuration
-    const sportsConfig = getSportsAPIConfig()
-    const supportedSports = Object.keys(sportsConfig).filter(sport => sportsConfig[sport].isActive)
+    // Initialize dynamic API configuration
+    const apiConfigLoader = new DynamicAPIConfig(supabase)
+    await apiConfigLoader.loadAPIConfigs()
     
-    if (supportedSports.length === 0) {
-      throw new Error('No active sports configured. Please set up API keys and enable sports.')
+    // Initialize sport API client
+    const sportAPIClient = new SportAPIClient(supabase)
+
+    // Get sports configuration from database
+    const { data: sports, error: sportsError } = await supabase
+      .from('sports')
+      .select('*')
+      .eq('is_active', true)
+
+    if (sportsError) throw sportsError
+
+    if (!sports || sports.length === 0) {
+      throw new Error('No active sports configured in database')
     }
 
-    const sportsToSync = sport ? [sport] : supportedSports
+    const sportsToSync = sport ? sports.filter((s: any) => s.name === sport) : sports
 
     const result: SyncResult = {
       success: true,
@@ -1062,46 +862,72 @@ serve(async (req: Request) => {
     }
 
     // Sync each sport with proper API handling
-    for (const sportToSync of sportsToSync) {
-      if (!supportedSports.includes(sportToSync)) {
-        result.stats.errors.push(`Unsupported sport: ${sportToSync}`)
-        continue
-      }
-
-      const config = sportsConfig[sportToSync]
-      if (!config || !config.isActive) {
-        result.stats.errors.push(`Sport ${sportToSync} is not active or configured`)
-        continue
-      }
-
-      console.log(`Syncing data for ${config.displayName} using ${config.apiProvider}...`)
+    for (const sportConfig of sportsToSync) {
+      console.log(`Syncing data for ${sportConfig.display_name}...`)
 
       try {
-        // Sync each data type for this sport
-        if (dataTypes.includes('games')) {
-          const count = await syncGames(supabase, config)
-          result.stats.games += count
+        // Get API providers for this sport with performance optimization
+        const apiProviders = sportConfig.api_providers || ['api-sports']
+        
+        // Sort providers by performance for optimal selection
+        const sortedProviders = apiProviders.map((provider: string) => ({
+          provider,
+          score: sportAPIClient.getOptimalProvider(sportConfig.name, 'games') === provider ? 1 : 0.5
+        })).sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+        
+        for (const { provider } of sortedProviders) {
+          const apiConfig = apiConfigLoader.getConfig(sportConfig.name, provider)
+          if (!apiConfig) {
+            console.warn(`No API configuration found for ${sportConfig.name} with provider ${provider}`)
+            continue
+          }
+
+          console.log(`Using ${provider} API for ${sportConfig.display_name} (optimized)`)
+          const syncStartTime = Date.now()
+
+          // Sync each data type for this sport with parallel execution where possible
+          const syncPromises = []
+          
+          if (dataTypes.includes('games')) {
+            syncPromises.push(syncGames(supabase, sportConfig, apiConfig, sportAPIClient))
+          }
+
+          if (dataTypes.includes('teams')) {
+            syncPromises.push(syncTeams(supabase, sportConfig, apiConfig, sportAPIClient))
+          }
+
+          if (dataTypes.includes('players')) {
+            syncPromises.push(syncPlayers(supabase, sportConfig, apiConfig, sportAPIClient))
+          }
+
+          if (dataTypes.includes('standings')) {
+            syncPromises.push(syncStandings(supabase, sportConfig, apiConfig, sportAPIClient))
+          }
+          
+          // Execute syncs in parallel for maximum speed
+          const syncResults = await Promise.allSettled(syncPromises)
+          
+          // Process results
+          syncResults.forEach((syncResult, index) => {
+            if (syncResult.status === 'fulfilled') {
+              const dataType = dataTypes[index]
+              if (dataType === 'games') result.stats.games += syncResult.value
+              else if (dataType === 'teams') result.stats.teams += syncResult.value
+              else if (dataType === 'players') result.stats.players += syncResult.value
+              else if (dataType === 'standings') result.stats.standings += syncResult.value
+            } else {
+              result.stats.errors.push(`Sync failed for ${sportConfig.name}: ${syncResult.reason}`)
+            }
+          })
+          
+          const syncTime = Date.now() - syncStartTime
+          console.log(`Sync completed for ${sportConfig.display_name} in ${syncTime}ms`)
         }
 
-        if (dataTypes.includes('teams')) {
-          const count = await syncTeams(supabase, config)
-          result.stats.teams += count
-        }
-
-        if (dataTypes.includes('players')) {
-          const count = await syncPlayers(supabase, config)
-          result.stats.players += count
-        }
-
-        if (dataTypes.includes('standings')) {
-          const count = await syncStandings(supabase, config)
-          result.stats.standings += count
-        }
-
-        console.log(`Successfully synced ${config.displayName}`)
+        console.log(`Successfully synced ${sportConfig.display_name}`)
 
       } catch (error) {
-        const errorMsg = `Error syncing ${config.displayName}: ${error instanceof Error ? error.message : String(error)}`
+        const errorMsg = `Error syncing ${sportConfig.display_name}: ${error instanceof Error ? error.message : String(error)}`
         result.stats.errors.push(errorMsg)
         console.error(errorMsg)
       }

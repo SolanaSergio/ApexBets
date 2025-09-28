@@ -208,7 +208,32 @@ class ProductionSupabaseClient {
         const limit = params?.[paramIndex] || 100
 
         // Fetch games first
-        let gamesQuery = this.supabase.from('games').select('*')
+        let gamesQuery = this.supabase.from('games').select(`
+          id,
+          external_id,
+          sport,
+          league_id,
+          league_name,
+          season,
+          home_team_id,
+          away_team_id,
+          home_team_name,
+          away_team_name,
+          home_team_score,
+          away_team_score,
+          game_date,
+          game_time_local,
+          status,
+          game_type,
+          venue,
+          attendance,
+          weather_conditions,
+          referee_info,
+          broadcast_info,
+          betting_odds,
+          last_updated,
+          created_at
+        `)
 
         if (sport && sport !== 'all') {
           gamesQuery = gamesQuery.eq('sport', sport)

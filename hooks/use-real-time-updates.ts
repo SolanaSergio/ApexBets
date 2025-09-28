@@ -17,43 +17,15 @@ export function useRealTimeUpdates(sport: string = "basketball") {
   const [error, setError] = useState<string | null>(null)
   const eventSourceRef = useRef<EventSource | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const retryCountRef = useRef(0)
-  const maxRetries = 5
+  const maxRetries = 3 // Reduced from 5
   const lastGameDataRef = useRef<string>("")
-  const normalizationCacheRef = useRef<Map<string, any>>(new Map())
-  const cacheCleanupTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-  // Clean up cache periodically to prevent memory leaks
-  useEffect(() => {
-    cacheCleanupTimeoutRef.current = setInterval(() => {
-      // Only clear old entries, not the entire cache
-      const now = Date.now()
-      for (const [key, value] of normalizationCacheRef.current) {
-        if (now - value.timestamp > 300000) { // 5 minutes
-          normalizationCacheRef.current.delete(key)
-        }
-      }
-    }, 120000) // Check every 2 minutes
-
-    return () => {
-      if (cacheCleanupTimeoutRef.current) {
-        clearInterval(cacheCleanupTimeoutRef.current)
-      }
-    }
-  }, [])
 
   const connect = useCallback(() => {
     // Clear any existing reconnect timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
-    }
-
-    // Clear any existing ping interval
-    if (pingIntervalRef.current) {
-      clearInterval(pingIntervalRef.current)
-      pingIntervalRef.current = null
     }
 
     // Close existing connection if any
@@ -68,19 +40,8 @@ export function useRealTimeUpdates(sport: string = "basketball") {
     eventSource.onopen = () => {
       setIsConnected(true)
       setError(null)
-      retryCountRef.current = 0 // Reset retry count on successful connection
-      // Reduced logging frequency to avoid console spam
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Real-time] Connection established for ${sport}`)
-      }
-      
-      // Send periodic pings to keep connection alive
-      pingIntervalRef.current = setInterval(() => {
-        // This is just for logging, actual keep-alive is handled by the server
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`[Real-time] Ping sent for ${sport}`)
-        }
-      }, 45000) // Every 45 seconds
+      retryCountRef.current = 0
+      console.log(`[Real-time] Connection established for ${sport}`)
     }
 
     eventSource.onmessage = (event) => {
@@ -90,87 +51,39 @@ export function useRealTimeUpdates(sport: string = "basketball") {
 
         switch (update.type) {
           case "connected":
-            if (process.env.NODE_ENV === 'development') {
-              console.log("[Real-time] Connected to live stream")
-            }
+            console.log("[Real-time] Connected to live stream")
             break
           case "game_update":
             setGameUpdates((prev) => {
-              // Check if data is empty or unchanged
+              // Simplified processing - no complex caching
               if (!update.data || update.data.length === 0) {
                 return prev
               }
 
-              // Create a cache key for this update
-              const cacheKey = `update-${JSON.stringify(update.data)}`
-              const cachedResult = normalizationCacheRef.current.get(cacheKey)
-              
-              if (cachedResult && cachedResult.timestamp) {
-                // Check if the cached result is different from current state
-                const newGamesStr = JSON.stringify(cachedResult.data)
-                if (lastGameDataRef.current !== newGamesStr) {
-                  lastGameDataRef.current = newGamesStr
-                  if (process.env.NODE_ENV === 'development') {
-                    console.log(`[Real-time] Updated ${cachedResult.data.length} games for ${sport} (cached)`)
-                  }
-                  return cachedResult.data
-                }
-                return prev
-              }
-
-              // Normalize the incoming game data with sport-specific normalization
+              // Simple normalization without caching
               const normalizedGames = update.data.map((game: any) => {
-                // Create a cache key for individual game normalization
-                const gameCacheKey = `game-${JSON.stringify(game)}-${game.sport || sport}`
-                const cachedGame = normalizationCacheRef.current.get(gameCacheKey)
-                
-                if (cachedGame && cachedGame.timestamp) {
-                  return cachedGame.data
-                }
-                
                 const normalized = normalizeGameData(game, game.sport || sport)
-                const result = normalizeSportData(normalized, game.sport || sport)
-                
-                // Cache the result with timestamp
-                normalizationCacheRef.current.set(gameCacheKey, {
-                  data: result,
-                  timestamp: Date.now()
-                })
-                return result
+                return normalizeSportData(normalized, game.sport || sport)
               })
               
               // Deduplicate and return
               const deduplicatedGames = deduplicateGames([...prev, ...normalizedGames]) as Game[]
               
-              // Cache the final result with timestamp
-              normalizationCacheRef.current.set(cacheKey, {
-                data: deduplicatedGames,
-                timestamp: Date.now()
-              })
-              
-              // Only update if there are actual changes using efficient comparison
+              // Simple change detection
               const newGamesStr = JSON.stringify(deduplicatedGames)
               if (lastGameDataRef.current !== newGamesStr) {
                 lastGameDataRef.current = newGamesStr
-                if (process.env.NODE_ENV === 'development') {
-                  console.log(`[Real-time] Updated ${deduplicatedGames.length} games for ${sport}`)
-                }
+                console.log(`[Real-time] Updated ${deduplicatedGames.length} games for ${sport}`)
                 return deduplicatedGames
               }
               return prev
             })
             break
           case "prediction_update":
-            // Handle prediction updates
-            if (process.env.NODE_ENV === 'development') {
-              console.log("[Real-time] Prediction update received:", update.data)
-            }
+            console.log("[Real-time] Prediction update received:", update.data)
             break
           case "heartbeat":
             // Keep connection alive
-            if (process.env.NODE_ENV === 'development') {
-              console.log("[Real-time] Heartbeat received")
-            }
             break
           case "error":
             setError(update.data?.message || "Unknown error")
@@ -185,9 +98,7 @@ export function useRealTimeUpdates(sport: string = "basketball") {
 
     eventSource.onerror = (error) => {
       setIsConnected(false)
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[Real-time] Connection lost for ${sport}`, error)
-      }
+      console.log(`[Real-time] Connection lost for ${sport}`, error)
       
       // Close the connection
       if (eventSourceRef.current) {
@@ -195,22 +106,14 @@ export function useRealTimeUpdates(sport: string = "basketball") {
         eventSourceRef.current = null
       }
 
-      // Clear ping interval
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current)
-        pingIntervalRef.current = null
-      }
-
-      // Implement exponential backoff for reconnection
+      // Simplified reconnection logic
       if (retryCountRef.current < maxRetries) {
         retryCountRef.current += 1
-        const delay = Math.min(1000 * 2 ** retryCountRef.current, 30000) // Max 30 seconds
+        const delay = Math.min(2000 * retryCountRef.current, 10000) // Max 10 seconds
         
         setError(`Connection lost, attempting to reconnect (${retryCountRef.current}/${maxRetries})...`)
         reconnectTimeoutRef.current = setTimeout(() => {
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[Real-time] Attempting to reconnect for ${sport}...`)
-          }
+          console.log(`[Real-time] Attempting to reconnect for ${sport}...`)
           connect()
         }, delay)
       } else {
@@ -232,9 +135,6 @@ export function useRealTimeUpdates(sport: string = "basketball") {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current)
       }
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current)
-      }
       setIsConnected(false)
     }
   }, [connect])
@@ -247,11 +147,10 @@ export function useRealTimeUpdates(sport: string = "basketball") {
     connect()
   }, [connect])
 
-  // Reset retry count and cached data when sport changes
+  // Reset retry count when sport changes
   useEffect(() => {
     retryCountRef.current = 0
     lastGameDataRef.current = ""
-    normalizationCacheRef.current.clear()
   }, [sport])
 
   return {

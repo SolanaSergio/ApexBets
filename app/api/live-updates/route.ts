@@ -93,7 +93,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_team_id: game.away_team_id,
         game_date: game.game_date,
         season: game.season,
-        week: game.week,
+        // // week: game.week // Column does not exist in database, // Column does not exist in database
         home_score: game.home_score,
         away_score: game.away_score,
         status: game.status,
@@ -130,7 +130,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_team_id: game.away_team_id,
         game_date: game.game_date,
         season: game.season,
-        week: game.week,
+        // // week: game.week // Column does not exist in database, // Not stored in database
         home_score: game.home_score,
         away_score: game.away_score,
         status: game.status,
@@ -167,7 +167,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_team_id: game.away_team_id,
         game_date: game.game_date,
         season: game.season,
-        week: game.week,
+        // // week: game.week // Column does not exist in database, // Not stored in database
         home_score: game.home_score,
         away_score: game.away_score,
         status: game.status,

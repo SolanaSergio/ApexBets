@@ -117,32 +117,24 @@ function SportSelector({
 }) {
   // Dynamic icon mapping based on sport data from database
   const getSportIcon = (sport: Sport) => {
-    if (sport.icon) {
-      // Map common icon names to Lucide icons
-      const iconMap: Record<string, any> = {
-        'zap': Zap,
-        'activity': Activity,
-        'target': Target,
-        'gamepad2': Gamepad2,
-        'trophy': Trophy,
-        '⚽': Gamepad2,
-        '🏀': Gamepad2,
-        '🏈': Gamepad2,
-        '⚾': Gamepad2,
-        '🏒': Gamepad2,
-        '🎾': Gamepad2,
-        '⛳': Gamepad2
-      }
-      return iconMap[sport.icon.toLowerCase()] || Trophy
+    // Map sport names to appropriate icons
+    const sportIconMap: Record<string, any> = {
+      'basketball': Gamepad2,
+      'football': Gamepad2,
+      'baseball': Gamepad2,
+      'hockey': Gamepad2,
+      'soccer': Gamepad2,
+      'tennis': Gamepad2,
+      'golf': Gamepad2
     }
-    return Trophy
+    return sportIconMap[sport.name.toLowerCase()] || Trophy
   }
 
   // Dynamic color mapping based on sport data from database
   const getSportColor = (sport: Sport) => {
-    if (sport.color) {
-      // Use color from database, fallback to default gradient
-      return sport.color.includes('gradient') ? sport.color : `from-[${sport.color}] to-[${sport.color}]/80`
+    if (sport.color_primary) {
+      // Use primary color from database
+      return `from-[${sport.color_primary}] to-[${sport.color_primary}]/80`
     }
     return "from-primary to-primary/80"
   }
@@ -159,7 +151,7 @@ function SportSelector({
             key={sport.id}
             onClick={() => onSportChange(sport.name)}
             variant={isSelected ? "default" : "outline"}
-            className={`px-3 sm:px-4 py-2 text-sm hover:scale-105 transition-transform ${
+            className={`px-3 sm:px-4 py-2 text-sm transition-colors ${
               isSelected ? `bg-gradient-to-r ${sportColor} text-white` : ''
             }`}
           >
@@ -200,7 +192,7 @@ export function ComprehensiveSportsDashboard() {
     return (
       <div className="space-y-8">
         <div className="flex justify-center">
-          <div className="h-12 w-64 bg-muted rounded-lg animate-pulse" />
+          <div className="h-12 w-64 bg-muted rounded-lg " />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -264,9 +256,9 @@ export function ComprehensiveSportsDashboard() {
               disabled={refreshing}
               variant="outline"
               size="sm"
-              className="text-sm hover:scale-105 transition-transform"
+              className="text-sm transition-colors"
             >
-              <RefreshCw className={`w-4 h-4 mr-1 sm:mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-1 sm:mr-2 ${refreshing ? '' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
               <span className="sm:hidden">↻</span>
             </Button>

@@ -23,18 +23,17 @@ interface DynamicBackgroundProps {
 
 export function DynamicBackground({
   variant = "particles",
-  intensity = "medium",
+  intensity = "low", // Default to low for better performance
   colors = ["#06b6d4", "#8b5cf6", "#10b981", "#3b82f6"],
-  interactive = true,
+  interactive = false, // Default to false for better performance
   className
 }: DynamicBackgroundProps) {
   const [particles, setParticles] = useState<Particle[]>([])
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
 
   const particleCount = {
-    low: 20,
-    medium: 40,
-    high: 80
+    low: 5, // Reduced from 20
+    medium: 10, // Reduced from 40
+    high: 15 // Reduced from 80
   }[intensity]
 
   useEffect(() => {
@@ -42,29 +41,17 @@ export function DynamicBackground({
       id: i,
       x: Math.random() * window.innerWidth,
       y: Math.random() * window.innerHeight,
-      size: Math.random() * 4 + 2,
+      size: Math.random() * 2 + 1, // Smaller particles
       color: colors[Math.floor(Math.random() * colors.length)],
       velocity: {
-        x: (Math.random() - 0.5) * 2,
-        y: (Math.random() - 0.5) * 2
+        x: (Math.random() - 0.5) * 0.5, // Slower movement
+        y: (Math.random() - 0.5) * 0.5
       },
-      opacity: Math.random() * 0.5 + 0.1
+      opacity: Math.random() * 0.3 + 0.1 // Lower opacity
     }))
 
     setParticles(initialParticles)
   }, [particleCount, colors])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
-
-    if (interactive) {
-      window.addEventListener('mousemove', handleMouseMove)
-      return () => window.removeEventListener('mousemove', handleMouseMove)
-    }
-    return () => {} // Return empty cleanup function when interactive is false
-  }, [interactive])
 
   useEffect(() => {
     const animateParticles = () => {
@@ -83,19 +70,6 @@ export function DynamicBackground({
             newY = Math.max(0, Math.min(window.innerHeight, newY))
           }
 
-          // Mouse interaction
-          if (interactive) {
-            const dx = mousePosition.x - newX
-            const dy = mousePosition.y - newY
-            const distance = Math.sqrt(dx * dx + dy * dy)
-            
-            if (distance < 100) {
-              const force = (100 - distance) / 100
-              particle.velocity.x -= (dx / distance) * force * 0.5
-              particle.velocity.y -= (dy / distance) * force * 0.5
-            }
-          }
-
           return {
             ...particle,
             x: newX,
@@ -105,9 +79,9 @@ export function DynamicBackground({
       )
     }
 
-    const interval = setInterval(animateParticles, 50)
+    const interval = setInterval(animateParticles, 200) // Reduced frequency from 50ms to 200ms
     return () => clearInterval(interval)
-  }, [mousePosition, interactive])
+  }, [])
 
   const renderParticles = () => (
     <div className="absolute inset-0 overflow-hidden">

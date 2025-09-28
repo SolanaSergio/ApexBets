@@ -31,21 +31,69 @@ export async function updateSession(request: NextRequest) {
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  try {
+    const {
+      data: { user },
+      error: userError
+    } = await supabase.auth.getUser()
 
-  if (
-    !user &&
-    !request.nextUrl.pathname.startsWith('/login') &&
-    !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/api') &&
-    request.nextUrl.pathname !== '/'
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = '/login'
-    return NextResponse.redirect(url)
+    // Handle refresh token errors gracefully
+    if (userError && userError.message.includes('refresh_token_not_found')) {
+      console.warn('Refresh token not found, clearing session:', userError.message)
+      
+      // Clear invalid session cookies
+      const response = NextResponse.next({ request })
+      response.cookies.delete('sb-access-token')
+      response.cookies.delete('sb-refresh-token')
+      
+      // Only redirect if not on public pages
+      if (
+        !request.nextUrl.pathname.startsWith('/login') &&
+        !request.nextUrl.pathname.startsWith('/auth') &&
+        !request.nextUrl.pathname.startsWith('/api') &&
+        request.nextUrl.pathname !== '/'
+      ) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/login'
+        return NextResponse.redirect(url)
+      }
+      
+      return response
+    }
+
+    if (
+      !user &&
+      !request.nextUrl.pathname.startsWith('/login') &&
+      !request.nextUrl.pathname.startsWith('/auth') &&
+      !request.nextUrl.pathname.startsWith('/api') &&
+      request.nextUrl.pathname !== '/'
+    ) {
+      // no user, potentially respond by redirecting the user to the login page
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+
+  } catch (error) {
+    console.error('Middleware auth error:', error)
+    
+    // On any auth error, clear cookies and redirect to login if needed
+    const response = NextResponse.next({ request })
+    response.cookies.delete('sb-access-token')
+    response.cookies.delete('sb-refresh-token')
+    
+    if (
+      !request.nextUrl.pathname.startsWith('/login') &&
+      !request.nextUrl.pathname.startsWith('/auth') &&
+      !request.nextUrl.pathname.startsWith('/api') &&
+      request.nextUrl.pathname !== '/'
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
+    
+    return response
   }
 
   // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're

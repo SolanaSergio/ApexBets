@@ -18,10 +18,7 @@ interface LoadingProps {
 
 export function EnhancedLoadingCard({ variant = 'default', animated = true }: Omit<LoadingProps, 'count'>) {
   return (
-    <Card className={`${animated ? 'animate-pulse' : ''} relative overflow-hidden`}>
-      {animated && (
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
-      )}
+    <Card className={`${animated ? 'animate-pulse' : ''}`}>
       <CardHeader className={variant === 'compact' ? 'pb-2' : ''}>
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-24" />
@@ -67,8 +64,7 @@ export function EnhancedLoadingStats({ count = 4, variant = 'default' }: Loading
       {Array.from({ length: count }).map((_, i) => {
         const Icon = icons[i % icons.length]
         return (
-          <Card key={i} className="animate-pulse relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10" />
+          <Card key={i} className="animate-pulse">
             <CardContent className={variant === 'compact' ? 'p-3' : 'p-4 lg:p-6'}>
               <div className="flex items-center justify-between mb-2">
                 <Skeleton className={variant === 'compact' ? 'h-3 w-12' : 'h-4 w-16'} />

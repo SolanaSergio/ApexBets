@@ -160,7 +160,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
     away_team_id: normalizedAwayTeam.id,
     game_date: gameDate,
     season: game.season || game.year || new Date().getFullYear().toString(),
-    week: game.week || game.matchday || game.round || null,
+    // week: game.week || game.matchday || game.round || null, // Not stored in database
     home_score: game.home_score !== undefined ? game.home_score : 
                game.homeScore !== undefined ? game.homeScore : 
                game.score?.home !== undefined ? game.score.home : null,

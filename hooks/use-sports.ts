@@ -9,18 +9,17 @@ export interface Sport {
   id: string
   name: string
   display_name: string
-  icon: string
-  color: string
+  description?: string
+  icon_url?: string
+  color_primary?: string
+  color_secondary?: string
   is_active: boolean
-  data_source: string
-  api_key?: string
-  player_stats_table: string
-  positions: string[]
-  scoring_fields: any
-  betting_markets: any[]
-  season_config: any
-  rate_limits: any
-  update_frequency: number
+  data_types: string[]
+  api_providers: string[]
+  refresh_intervals: Record<string, number>
+  rate_limits: Record<string, number>
+  season_config: Record<string, any>
+  current_season?: string
   created_at: string
   updated_at: string
 }

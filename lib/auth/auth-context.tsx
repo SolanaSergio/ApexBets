@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { User, Session, AuthError } from '@supabase/supabase-js'
 import { useRouter } from 'next/navigation'
+import { authErrorHandler } from './auth-error-handler'
 
 interface AuthContextType {
   user: User | null
@@ -26,27 +27,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with error handling
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setSession(session)
-      setUser(session?.user ?? null)
-      setLoading(false)
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          const errorResult = authErrorHandler.handleAuthError(error)
+          console.warn('Session check error:', error.message)
+          
+          if (errorResult.shouldClearSession) {
+            await authErrorHandler.clearSession(supabase)
+            setSession(null)
+            setUser(null)
+          }
+        } else {
+          setSession(session)
+          setUser(session?.user ?? null)
+        }
+      } catch (error) {
+        console.error('Error getting initial session:', error)
+        setSession(null)
+        setUser(null)
+      } finally {
+        setLoading(false)
+      }
     }
 
     getInitialSession()
 
-    // Listen for auth changes
+    // Listen for auth changes with error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        setSession(session)
-        setUser(session?.user ?? null)
-        setLoading(false)
+        try {
+          setSession(session)
+          setUser(session?.user ?? null)
+          setLoading(false)
 
-        if (event === 'SIGNED_IN') {
-          router.push('/')
-        } else if (event === 'SIGNED_OUT') {
-          router.push('/login')
+          if (event === 'SIGNED_IN') {
+            router.push('/')
+          } else if (event === 'SIGNED_OUT') {
+            router.push('/login')
+          } else if (event === 'TOKEN_REFRESHED') {
+            // Handle successful token refresh
+            console.log('Token refreshed successfully')
+          }
+        } catch (error) {
+          console.error('Error in auth state change:', error)
+          setLoading(false)
         }
       }
     )
