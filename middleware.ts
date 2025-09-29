@@ -1,5 +1,6 @@
 import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
+import { NextResponse } from 'next/server'
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for reset-password page to allow it to be static
@@ -7,7 +8,9 @@ export async function middleware(request: NextRequest) {
     return
   }
   
-  return await updateSession(request)
+  const response = await updateSession(request)
+  response.headers.set('x-request-id', crypto.randomUUID());
+  return response
 }
 
 export const config = {

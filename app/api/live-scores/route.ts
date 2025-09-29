@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { cacheManager } from "@/lib/cache"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { getCache, setCache } from "@/lib/redis"
+
+const CACHE_TTL = 120 // 2 minutes
 
 async function getDefaultLeagueFromDatabase(sport: string): Promise<string | undefined> {
   try {
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
     const cacheKey = `live_scores:${finalSport}:${league}:${status}`
     
     // Check cache first
-    const cached = cacheManager.get(cacheKey)
+    const cached = await getCache(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -174,9 +176,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Cache the response for 2 minutes (live data changes frequently)
-    const cacheTtl = status === 'live' ? 120000 : 300000 // 2 min for live, 5 min for others
-    cacheManager.set(cacheKey, response, cacheTtl)
+    await setCache(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
 

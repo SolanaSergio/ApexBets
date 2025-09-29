@@ -263,61 +263,21 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${requestId}] Authenticated and validated webhook: ${body.type} from ${clientIP}`)
 
-    // Process webhook using enhanced processor
-    const processingContext = {
-      requestId,
-      clientIP,
-      ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
-      timestamp: new Date()
-    }
+    // Process webhook using enhanced processor in the background
+    WebhookProcessor.processWebhook(validationResult.data!, processingContext);
 
-    const result = await WebhookProcessor.processWebhook(validationResult.data!, processingContext)
-
-    if (!result.success) {
-      const event: SecurityEvent = {
-        type: 'webhook_processing_failure',
-        timestamp: new Date().toISOString(),
-        clientIP,
-        ...(request.headers.get('user-agent') && { userAgent: request.headers.get('user-agent')! }),
-        error: result.message,
-        requestId
-      }
-      logSecurityEvent(event)
-
-      return NextResponse.json(
-        { 
-          error: result.message,
-          details: result.errors,
-          request_id: requestId,
-          timestamp: new Date().toISOString(),
-          processing_time_ms: result.processingTimeMs
-        }, 
-        { 
-          status: 500,
-          headers: {
-            'X-Request-ID': requestId,
-            'X-Processing-Time': result.processingTimeMs.toString()
-          }
-        }
-      )
-    }
-
-    console.log(`[${requestId}] Webhook processed successfully in ${result.processingTimeMs}ms`)
+    console.log(`[${requestId}] Webhook processing triggered in the background: ${body.type} from ${clientIP}`)
     
     return NextResponse.json(
       { 
         success: true, 
-        message: result.message,
+        message: "Webhook received and processing triggered in the background.",
         request_id: requestId,
         timestamp: new Date().toISOString(),
-        processing_time_ms: result.processingTimeMs,
-        processed: result.processed,
-        skipped: result.skipped
       },
       {
         headers: {
           'X-Request-ID': requestId,
-          'X-Processing-Time': result.processingTimeMs.toString()
         }
       }
     )

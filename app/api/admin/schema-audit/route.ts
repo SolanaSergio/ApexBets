@@ -57,6 +57,11 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { NextRequest, NextResponse } from 'next/server'
+import { schemaAuditService } from '@/lib/services/schema-audit-service'
+import { structuredLogger } from '@/lib/services/structured-logger'
+import { clearCache } from '@/lib/redis'
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -79,6 +84,10 @@ export async function POST(request: NextRequest) {
 
       // Apply migrations
       const result = await schemaAuditService.applyMigrationPlan(report.migrationPlan)
+
+      // Clear Redis cache
+      await clearCache();
+      console.log('✅ Cleared Redis cache');
       
       return NextResponse.json({
         success: result.success,

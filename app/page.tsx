@@ -5,14 +5,6 @@ import { AuthGuard } from "@/components/auth/auth-guard"
 import { RealTimeProvider } from "@/components/data/real-time-provider"
 import { ComprehensiveSportsDashboardWithErrorBoundary } from "@/components/dashboard/comprehensive-sports-dashboard"
 import { useEffect } from "react"
-// Removed auto-startup-service import - service was deleted as unnecessary
-
-function SyncInitializer() {
-  useEffect(() => {
-    // Removed auto-startup-service call - service was deleted as unnecessary
-  }, [])
-  return null
-}
 
 export default function HomePage() {
   return (
@@ -20,7 +12,6 @@ export default function HomePage() {
       <RealTimeProvider>
         <div className="min-h-screen relative bg-gradient-to-br from-background via-background to-muted/20">
           <Navigation />
-          <SyncInitializer />
 
           {/* Optimized Layout for Better Space Utilization */}
           <main className="w-full max-w-none">

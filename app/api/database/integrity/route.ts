@@ -59,3 +59,57 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { checkType } = body
+
+    // Run data integrity checks
+    const integrityChecks = await SchemaValidator.runDataIntegrityChecks()
+
+    // Filter checks based on type if specified
+    let filteredChecks = integrityChecks
+    if (checkType !== 'all') {
+      filteredChecks = integrityChecks.filter(check => 
+        check.checkName.toLowerCase().includes(checkType.toLowerCase())
+      )
+    }
+
+    // Fix issues
+    const fixResults = await SchemaValidator.fixDataIntegrityIssues(filteredChecks)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        checks: filteredChecks,
+        summary: {
+          total: filteredChecks.length,
+          passed: filteredChecks.filter(check => check.passed).length,
+          failed: filteredChecks.filter(check => !check.passed).length,
+          allPassed: filteredChecks.every(check => check.passed)
+        },
+        fixResults
+      },
+      meta: {
+        checkType,
+        timestamp: new Date().toISOString()
+      }
+    })
+
+  } catch (error) {
+    console.error('Database integrity checks API error:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to run database integrity checks',
+        details: errorMessage,
+        data: null
+      },
+      { status: 500 }
+    )
+  }
+}

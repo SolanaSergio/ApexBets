@@ -3,10 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
-  const resolvedParams = await params;
   try {
     const supabase = await createClient()
     if (!supabase) {
@@ -20,7 +18,7 @@ export async function PATCH(
         enabled: body.enabled,
         updated_at: new Date().toISOString()
       })
-      .eq("id", resolvedParams.id)
+      .eq("id", params.id)
       .select(`
         *,
         team:teams(id, name, abbreviation)
@@ -41,10 +39,8 @@ export async function PATCH(
 
 export async function DELETE(
   _request: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  { params }: { params: { id: string } }
 ) {
-  const { params } = context;
-  const resolvedParams = await params;
   try {
     const supabase = await createClient()
     if (!supabase) {
@@ -54,7 +50,7 @@ export async function DELETE(
     const { error } = await supabase
       .from("user_alerts")
       .delete()
-      .eq("id", resolvedParams.id)
+      .eq("id", params.id)
 
     if (error) {
       console.error("Error deleting alert:", error)

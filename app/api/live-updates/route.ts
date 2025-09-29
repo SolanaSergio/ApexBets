@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData } from "@/lib/utils/data-utils"
 import { databaseOptimizer } from "@/lib/database/optimize-queries"
+import { getCache, setCache } from "@/lib/redis"
 
-// Simple in-memory cache to reduce API calls
-const liveDataCache = new Map<string, { data: any, timestamp: number }>()
-const CACHE_TTL = 30000 // 30 seconds cache
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
+const CACHE_TTL = 30 // 30 seconds cache
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +16,12 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league") || "all"
     const useRealData = searchParams.get("real") === "true"
 
+    const cacheKey = `live-updates-${sport}-${league}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+        return NextResponse.json(cached);
+    }
+
     // Always check database first, even for real data requests
     // Only fall back to APIs if database has no recent data
     const databaseResult = await getLiveDataFromDatabase(sport, league)
@@ -21,17 +29,21 @@ export async function GET(request: NextRequest) {
     // If we have recent data from database, return it
     if (databaseResult && (databaseResult.summary.totalLive > 0 || databaseResult.summary.totalRecent > 0)) {
       console.log(`Returning database data for ${sport}`)
+      await setCache(cacheKey, databaseResult, CACHE_TTL);
       return NextResponse.json(databaseResult)
     }
 
     // If requesting real data or no database data available, try APIs
     if (useRealData || !databaseResult) {
       console.log(`Getting live data from APIs for ${sport}`)
-      return await getLiveDataFromAPIs(sport, league)
+      const apiResult = await getLiveDataFromAPIs(sport, league)
+        await setCache(cacheKey, apiResult, CACHE_TTL);
+      return NextResponse.json(apiResult)
     }
 
     // Return database result even if empty
     console.log(`Returning empty database data for ${sport}`)
+    await setCache(cacheKey, databaseResult, CACHE_TTL);
     return NextResponse.json(databaseResult)
 
   } catch (error) {

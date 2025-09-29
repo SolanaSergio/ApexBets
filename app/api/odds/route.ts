@@ -7,6 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 // 1 minute
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,6 +19,12 @@ export async function GET(request: NextRequest) {
     const source = searchParams.get("source")
     const limit = Number.parseInt(searchParams.get("limit") || "100")
     const liveOnly = searchParams.get("liveOnly") === "true"
+
+    const cacheKey = `odds-${sport}-${gameId}-${source}-${limit}-${liveOnly}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Use database-first API client - no external API calls
     const result = await databaseFirstApiClient.getOdds({
@@ -33,6 +42,8 @@ export async function GET(request: NextRequest) {
       count: result.data.length,
       dataSource: result.meta.source
     })
+
+    await setCache(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
 

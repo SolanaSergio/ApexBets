@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportPlayerStatsService } from '@/lib/services/player-stats/sport-player-stats-service'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 // 1 minute
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,6 +22,12 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || undefined
     const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc'
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 50
+
+    const cacheKey = `player-stats-${sport}-${league}-${teamId}-${position}-${season}-${minGames}-${sortBy}-${sortOrder}-${limit}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Validate sport parameter
     if (!sport) {
@@ -48,7 +57,7 @@ export async function GET(request: NextRequest) {
       limit
     })
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data: playerStats,
       meta: {
@@ -65,7 +74,11 @@ export async function GET(request: NextRequest) {
         count: playerStats.length,
         timestamp: new Date().toISOString()
       }
-    })
+    }
+
+    await setCache(cacheKey, result, CACHE_TTL)
+
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error('Player stats API error:', error)

@@ -9,10 +9,8 @@ import { SportAnalyticsService } from '@/lib/services/analytics/sport-analytics-
 
 export async function GET(
   request: NextRequest,
-  context: { params: Promise<{ sport: string }> }
+  { params }: { params: { sport: string } }
 ) {
-  const { params } = context;
-  const resolvedParams = await params;
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'overview'
@@ -21,7 +19,7 @@ export async function GET(
     const playerId = searchParams.get('playerId') || undefined
     const limit = parseInt(searchParams.get('limit') || '10')
 
-    const sport = resolvedParams.sport as SupportedSport
+    const sport = params.sport as SupportedSport
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {
@@ -98,14 +96,12 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  context: { params: Promise<{ sport: string }> }
+  { params }: { params: { sport: string } }
 ) {
-  const { params } = context;
-  const resolvedParams = await params;
   try {
     const body = await request.json()
     const { action, data: requestData } = body
-    const sport = resolvedParams.sport as SupportedSport
+    const sport = params.sport as SupportedSport
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {

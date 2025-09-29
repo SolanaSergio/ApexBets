@@ -1,22 +1,16 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode } from "react"
-import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react"
+import { subscribeToTable, unsubscribeFromTable } from "@/lib/supabase/realtime"
+import { databaseFirstApiClient, type Game, type Prediction, type Odd, type Standing, type Player, type PlayerStats } from "@/lib/api-client-database-first"
 
 interface RealTimeData {
-  liveGames: any[]
-  predictions: any[]
-  odds: any[]
-  stats: {
-    totalGames: number
-    accuracy: number
-    teamsTracked: number
-    dataPoints: number
-    liveGames: number
-    scheduledGames: number
-    completedGames: number
-    correctPredictions: number
-  }
+  games: Game[]
+  predictions: Prediction[]
+  odds: Odd[]
+  standings: Standing[]
+  players: Player[]
+  player_stats: PlayerStats[]
   lastUpdate: Date | null
   isConnected: boolean
   error: string | null
@@ -31,223 +25,106 @@ interface RealTimeContextType {
 
 const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined)
 
-// Request cache to prevent duplicate fetches
-const requestCache = new Map<string, { data: any, timestamp: number }>()
-const CACHE_TTL = 15000 // 15 seconds - faster updates
-
-// Track last data sent to avoid unnecessary updates
-const lastDataState = new Map<string, string>()
-
-interface RealTimeProviderProps {
-  children: ReactNode
-}
-
-export function RealTimeProvider({ children }: RealTimeProviderProps) {
-  const [selectedSport, setSelectedSport] = useState("")
+export function RealTimeProvider({ children }: { children: ReactNode }) {
+  const [selectedSport, setSelectedSport] = useState("basketball") // Default to basketball
   const [data, setData] = useState<RealTimeData>({
-    liveGames: [],
+    games: [],
     predictions: [],
     odds: [],
-    stats: {
-      totalGames: 0,
-      accuracy: 0,
-      teamsTracked: 0,
-      dataPoints: 0,
-      liveGames: 0,
-      scheduledGames: 0,
-      completedGames: 0,
-      correctPredictions: 0
-    },
+    standings: [],
+    players: [],
+    player_stats: [],
     lastUpdate: null,
     isConnected: false,
     error: null
   })
 
-  const { gameUpdates, isConnected, lastUpdate, error } = useRealTimeUpdates(selectedSport)
+  const handleUpdate = (payload: any, table: string) => {
+    const { eventType, new: newRecord, old: oldRecord } = payload
+    setData(currentData => {
+      const tableData = currentData[table as keyof RealTimeData] as any[]
+      let updatedTableData = tableData
 
-  // Enhanced data fetching with better error handling
-  useEffect(() => {
-    if (!selectedSport) {
-      setData(prev => ({
-        ...prev,
-        error: 'No sport selected'
-      }))
-      return
-    }
-
-    const fetchData = async () => {
-      try {
-        setData(prev => ({ ...prev, error: null }))
-        
-        // Single optimized API call
-        const response = await fetch(`/api/database-first/games?sport=${selectedSport}&status=live&limit=50`)
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        const result = await response.json()
-        
-        if (result.success && Array.isArray(result.data)) {
-          setData(prev => ({
-            ...prev,
-            liveGames: result.data,
-            lastUpdate: new Date(),
-            error: null,
-            isConnected: true
-          }))
-        } else {
-          setData(prev => ({
-            ...prev,
-            liveGames: [],
-            error: 'No data available',
-            lastUpdate: new Date()
-          }))
-        }
-      } catch (err) {
-        console.error('Failed to fetch data:', err)
-        setData(prev => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Failed to fetch data',
-          isConnected: false
-        }))
+      if (eventType === 'INSERT') {
+        updatedTableData = [...tableData, newRecord]
       }
-    }
-
-    fetchData()
-    const interval = setInterval(fetchData, 15000) // 15 second intervals
-    return () => clearInterval(interval)
-  }, [selectedSport])
-
-  // Enhanced stats fetching with caching
-  useEffect(() => {
-    if (!selectedSport) {
-      setData(prev => ({
-        ...prev,
-        error: 'No sport selected'
-      }))
-      return
-    }
-
-    const fetchData = async () => {
-      try {
-        setData(prev => ({ ...prev, error: null }))
-        
-        // Single optimized API call
-        const response = await fetch(`/api/database-first/games?sport=${selectedSport}&status=live&limit=50`)
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
-        
-        const result = await response.json()
-        
-        if (result.success && Array.isArray(result.data)) {
-          setData(prev => ({
-            ...prev,
-            liveGames: result.data,
-            lastUpdate: new Date(),
-            error: null,
-            isConnected: true
-          }))
-        } else {
-          setData(prev => ({
-            ...prev,
-            liveGames: [],
-            error: 'No data available',
-            lastUpdate: new Date()
-          }))
-        }
-      } catch (err) {
-        console.error('Failed to fetch data:', err)
-        setData(prev => ({
-          ...prev,
-          error: err instanceof Error ? err.message : 'Failed to fetch data',
-          isConnected: false
-        }))
+      if (eventType === 'UPDATE') {
+        updatedTableData = tableData.map(item => item.id === newRecord.id ? newRecord : item)
       }
-    }
+      if (eventType === 'DELETE') {
+        updatedTableData = tableData.filter(item => item.id !== oldRecord.id)
+      }
 
-    fetchData()
-    const interval = setInterval(fetchData, 15000) // 15 second intervals
-    return () => clearInterval(interval)
-  }, [selectedSport])
-
-  // Update connection status and real-time data with change detection
-  useEffect(() => {
-    // Create a string representation to check for changes
-    const connectionData = JSON.stringify({ isConnected, lastUpdate, error, gameUpdates })
-    const lastConnectionData = lastDataState.get('connection')
-    
-    // Only update state if data has actually changed
-    if (connectionData !== lastConnectionData) {
-      lastDataState.set('connection', connectionData)
-      
-      setData(prev => {
-        return {
-          ...prev,
-          isConnected,
-          lastUpdate: lastUpdate || prev.lastUpdate,
-          error: error || prev.error,
-          liveGames: gameUpdates.length > 0 ? gameUpdates : prev.liveGames
-        }
-      })
-    }
-  }, [gameUpdates, isConnected, lastUpdate, error])
-
-  const refreshData = async () => {
-    if (!selectedSport) return // Don't refresh if no sport selected
-    
-    // Force refresh all data using database-first endpoints
-    try {
-      const [gamesRes, predictionsRes, oddsRes, statsRes] = await Promise.all([
-        fetch(`/api/database-first/games?sport=${selectedSport}&status=live&forceRefresh=true`),
-        fetch(`/api/database-first/predictions?sport=${selectedSport}&limit=10&forceRefresh=true`),
-        fetch(`/api/database-first/odds?sport=${selectedSport}&forceRefresh=true`),
-        fetch(`/api/analytics/stats?sport=${selectedSport}`)
-      ])
-
-      const [games, predictions, odds, stats] = await Promise.all([
-        gamesRes.json(),
-        predictionsRes.json(),
-        oddsRes.json(),
-        statsRes.json()
-      ])
-
-      setData(prev => ({
-        ...prev,
-        liveGames: Array.isArray(games.data) ? games.data : [],
-        predictions: Array.isArray(predictions.data) ? predictions.data : (Array.isArray(predictions.predictions) ? predictions.predictions : []),
-        odds: Array.isArray(odds.data) ? odds.data : (Array.isArray(odds) ? odds : []),
-        stats: {
-          totalGames: stats.data?.total_games || (Array.isArray(games.data) ? games.data.length : 0),
-          accuracy: Math.round((stats.data?.accuracy_rate || 0) * 100),
-          teamsTracked: stats.data?.total_teams || 0,
-          dataPoints: stats.data?.total_predictions || 0,
-          liveGames: stats.data?.live_games || 0,
-          scheduledGames: stats.data?.scheduled_games || 0,
-          completedGames: stats.data?.completed_games || 0,
-          correctPredictions: stats.data?.correct_predictions || 0
-        },
+      return {
+        ...currentData,
+        [table]: updatedTableData,
         lastUpdate: new Date(),
+        isConnected: true
+      }
+    })
+  }
+
+  const fetchData = useCallback(async () => {
+    if (!selectedSport) return
+
+    try {
+      const [games, predictions, odds, standings, players, player_stats] = await Promise.all([
+        databaseFirstApiClient.getGames({ sport: selectedSport, limit: 200 }),
+        databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: 100 }),
+        databaseFirstApiClient.getOdds({ sport: selectedSport, limit: 500 }),
+        databaseFirstApiClient.getStandings({ sport: selectedSport }),
+        databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 }),
+        databaseFirstApiClient.getPlayerStats({ sport: selectedSport, limit: 5000 })
+      ])
+
+      setData(prev => ({
+        ...prev,
+        games,
+        predictions,
+        odds,
+        standings,
+        players,
+        player_stats,
+        lastUpdate: new Date(),
+        isConnected: true,
         error: null
       }))
     } catch (err) {
-      console.error('Failed to refresh data:', err)
+      console.error("Failed to fetch initial data:", err)
       setData(prev => ({
         ...prev,
-        error: 'Failed to refresh data'
+        error: err instanceof Error ? err.message : "Failed to fetch initial data",
+        isConnected: false
       }))
     }
-  }
+  }, [selectedSport])
+
+  useEffect(() => {
+    fetchData()
+
+    const gamesSubscription = subscribeToTable('games', (p) => handleUpdate(p, 'games'))
+    const predictionsSubscription = subscribeToTable('predictions', (p) => handleUpdate(p, 'predictions'))
+    const oddsSubscription = subscribeToTable('odds', (p) => handleUpdate(p, 'odds'))
+    const standingsSubscription = subscribeToTable('standings', (p) => handleUpdate(p, 'standings'))
+    const playersSubscription = subscribeToTable('players', (p) => handleUpdate(p, 'players'))
+    const playerStatsSubscription = subscribeToTable('player_stats', (p) => handleUpdate(p, 'player_stats'))
+
+    return () => {
+      unsubscribeFromTable('games')
+      unsubscribeFromTable('predictions')
+      unsubscribeFromTable('odds')
+      unsubscribeFromTable('standings')
+      unsubscribeFromTable('players')
+      unsubscribeFromTable('player_stats')
+    }
+  }, [fetchData])
+
+  const refreshData = useCallback(() => {
+    fetchData()
+  }, [fetchData])
 
   return (
-    <RealTimeContext.Provider value={{
-      data,
-      refreshData,
-      setSelectedSport,
-      selectedSport
-    }}>
+    <RealTimeContext.Provider value={{ data, refreshData, setSelectedSport, selectedSport }}>
       {children}
     </RealTimeContext.Provider>
   )
@@ -261,13 +138,10 @@ export function useRealTimeData() {
   return context
 }
 
-// Hook for live games with error handling
 export function useLiveGames(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
-
-  // Ensure liveGames is always an array
-  const liveGames = Array.isArray(data.liveGames) ? data.liveGames : []
+  const liveGames = Array.isArray(data.games) ? data.games.filter(game => game.status === 'in_progress') : []
 
   return {
     games: liveGames.filter(game => !sport || game.sport === targetSport),
@@ -278,12 +152,9 @@ export function useLiveGames(sport?: string) {
   }
 }
 
-// Hook for predictions with error handling
 export function usePredictions(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
-
-  // Ensure predictions is always an array
   const predictions = Array.isArray(data.predictions) ? data.predictions : []
 
   return {
@@ -294,12 +165,9 @@ export function usePredictions(sport?: string) {
   }
 }
 
-// Hook for odds with error handling
 export function useOdds(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
-
-  // Ensure odds is always an array
   const odds = Array.isArray(data.odds) ? data.odds : []
 
   return {
@@ -310,13 +178,63 @@ export function useOdds(sport?: string) {
   }
 }
 
-// Hook for dashboard stats
+export function useStandings(sport?: string) {
+  const { data, selectedSport } = useRealTimeData()
+  const targetSport = sport || selectedSport
+  const standings = Array.isArray(data.standings) ? data.standings : []
+
+  return {
+    standings: standings.filter(standing => !sport || standing.sport === targetSport),
+    loading: standings.length === 0 && !data.error,
+    error: data.error,
+    lastUpdate: data.lastUpdate
+  }
+}
+
+export function usePlayers(sport?: string) {
+  const { data, selectedSport } = useRealTimeData()
+  const targetSport = sport || selectedSport
+  const players = Array.isArray(data.players) ? data.players : []
+
+  return {
+    players: players.filter(player => !sport || player.sport === targetSport),
+    loading: players.length === 0 && !data.error,
+    error: data.error,
+    lastUpdate: data.lastUpdate
+  }
+}
+
+export function usePlayerStats(playerId?: string) {
+  const { data } = useRealTimeData()
+  const playerStats = Array.isArray(data.player_stats) ? data.player_stats : []
+
+  return {
+    stats: playerStats.filter(stat => !playerId || stat.player_id === playerId),
+    loading: playerStats.length === 0 && !data.error,
+    error: data.error,
+    lastUpdate: data.lastUpdate
+  }
+}
+
 export function useDashboardStats() {
   const { data } = useRealTimeData()
-  
+  const games = Array.isArray(data.games) ? data.games : []
+  const predictions = Array.isArray(data.predictions) ? data.predictions : []
+
+  const stats = {
+    totalGames: games.length,
+    accuracy: predictions.length > 0 ? Math.round(predictions.filter(p => p.is_correct).length / predictions.length * 100) : 0,
+    teamsTracked: [...new Set(games.map(g => g.home_team_id)), ...new Set(games.map(g => g.away_team_id))].length,
+    dataPoints: predictions.length,
+    liveGames: games.filter(g => g.status === 'in_progress').length,
+    scheduledGames: games.filter(g => g.status === 'scheduled').length,
+    completedGames: games.filter(g => g.status === 'completed').length,
+    correctPredictions: predictions.filter(p => p.is_correct).length
+  }
+
   return {
-    stats: data.stats,
-    loading: data.stats.totalGames === 0 && !data.error,
+    stats,
+    loading: games.length === 0 && !data.error,
     error: data.error,
     lastUpdate: data.lastUpdate,
     isConnected: data.isConnected

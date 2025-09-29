@@ -11,8 +11,7 @@ import {
   Medal,
   RefreshCw
 } from "lucide-react"
-import { useApiData } from "@/hooks/use-api-data"
-import { useRealTimeData } from "@/components/data/real-time-provider"
+import { useStandings, useRealTimeData } from "@/components/data/real-time-provider"
 
 interface StandingTeam {
   id: string
@@ -103,97 +102,10 @@ function StandingsRow({ team, isPlayoffPosition }: StandingsRowProps) {
 }
 
 export function LiveStandingsWidget() {
-  const { selectedSport } = useRealTimeData()
+  const { selectedSport, refreshData } = useRealTimeData()
+  const { standings, loading, error } = useStandings(selectedSport)
   const [conference, setConference] = useState<"all" | "eastern" | "western" | "american" | "national">("all")
   const [refreshing, setRefreshing] = useState(false)
-
-  // Use database-first API client for standings
-  const { data: standings, loading, error, refetch } = useApiData(
-    useCallback(async () => {
-      const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-      const params: { sport?: string; league?: string } = {}
-      if (selectedSport && selectedSport !== 'all') {
-        params.sport = selectedSport
-      }
-      if (conference !== "all") {
-        params.league = conference
-      }
-      return databaseFirstApiClient.getStandings(params)
-    }, [selectedSport, conference]),
-    {
-      enabled: true,
-      refetchInterval: 600000 // Refresh every 10 minutes
-    }
-  )
-
-  // Enhanced dynamic standings data transformation with memoization
-  const processedStandings = useMemo(() => {
-    if (!standings) return []
-    
-    return standings
-      .filter((team: any) => team && (team.team_name || team.name || team.full_name))
-      .filter((team: any) => !selectedSport || team.sport === selectedSport)
-      .map((team: any, index: number) => {
-        // Handle different data structures from API
-        const teamName = team.team_name || team.name || team.full_name || team.team?.name
-        const wins = team.wins || team.record?.wins || team.w || 0
-        const losses = team.losses || team.record?.losses || team.l || 0
-        const draws = team.ties || team.draws || team.record?.draws || team.d || 0
-        const totalGames = wins + losses + draws
-        
-        // Calculate win percentage - handle both decimal and percentage formats
-        let winPercentage = 0
-        if (team.win_percentage !== undefined && team.win_percentage !== null) {
-          // If it's already a percentage (0-1), convert to 0-100
-          winPercentage = typeof team.win_percentage === 'string' 
-            ? parseFloat(team.win_percentage) * 100
-            : team.win_percentage * 100
-        } else if (totalGames > 0) {
-          // Calculate from wins/losses
-          winPercentage = (wins / (wins + losses)) * 100
-        }
-
-        return {
-          id: team.id || team.team_id || `standing-${index}`,
-          name: teamName || 'Unknown Team',
-          abbreviation: team.abbreviation || team.alias || team.abbr || teamName?.slice(0, 3).toUpperCase() || '',
-          logo: team.logo_url || team.logo || team.image || team.team_logo || '',
-          position: team.position || team.rank || team.standing || index + 1,
-          wins,
-          losses,
-          draws,
-          points: team.points || team.pts || 0,
-          winPercentage,
-          gamesBack: team.games_back || team.gb || 0,
-          streak: team.streak || team.current_streak || team.win_streak || '',
-          lastTen: team.last_ten || team.last10 || '',
-          conference: team.conference || team.league || '',
-          division: team.division || team.league || '',
-          sport: team.sport || selectedSport || 'basketball',
-          // Sport-specific fields
-          goalsFor: team.goals_for || team.gf || team.scored || 0,
-          goalsAgainst: team.goals_against || team.ga || team.conceded || 0,
-          goalDifference: (team.goals_for || team.gf || 0) - (team.goals_against || team.ga || 0),
-          played: team.played || team.games_played || totalGames
-        }
-      })
-      .sort((a: StandingTeam, b: StandingTeam) => {
-        // Dynamic sorting based on available data
-        // If both teams have points, sort by points (points-based sports)
-        if (a.points !== undefined && b.points !== undefined) {
-          return (b.points || 0) - (a.points || 0) || a.position - b.position
-        }
-        // Otherwise sort by position and win percentage
-        return a.position - b.position || b.winPercentage - a.winPercentage
-      })
-  }, [standings, selectedSport])
-
-  const handleRefresh = async () => {
-    setRefreshing(true)
-    await refetch()
-    setTimeout(() => setRefreshing(false), 1000)
-  }
-
   // Dynamic playoff positions based on sport - memoized
   const playoffPositions = useMemo(() => {
     // Get playoff positions from team data or use default

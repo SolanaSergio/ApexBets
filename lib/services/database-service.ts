@@ -49,17 +49,19 @@ export class DatabaseService {
       // Test connection with production Supabase client
       this.isConnected = productionSupabaseClient.isConnected()
       
-      if (this.isConnected) {
-        structuredLogger.info('Database Service initialized successfully', {
-          client: 'production-supabase',
-          connected: true
-        })
-      } else {
-        structuredLogger.warn('Database Service initialized but not connected', {
-          client: 'production-supabase',
-          connected: false
-        })
-      }
+      // Disable initialization logging for performance
+      // Only log errors
+      // if (this.isConnected) {
+      //   structuredLogger.info('Database Service initialized successfully', {
+      //     client: 'production-supabase',
+      //     connected: true
+      //   })
+      // } else {
+      //   structuredLogger.warn('Database Service initialized but not connected', {
+      //     client: 'production-supabase',
+      //     connected: false
+      //   })
+      // }
     } catch (error) {
       this.isConnected = false
       structuredLogger.error('Database Service initialization failed', { 

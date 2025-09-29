@@ -1,109 +1,91 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { cachedSupabaseQuery } from '@/lib/utils/supabase-query-cache';
+import { getCache, setCache } from '@/lib/redis';
+
+const CACHE_TTL = 60 * 5; // 5 minutes
 
 export async function GET() {
   try {
+    const cacheKey = 'analytics-overview';
+    const cached = await getCache(cacheKey);
+    if (cached) {
+        return NextResponse.json(cached);
+    }
+
     const supabase = await createClient();
     if (!supabase) {
       return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
     }
 
-    // Use cached queries to prevent duplicate database calls
-    const games = await cachedSupabaseQuery(
-      'games-analytics-overview',
-      async () => {
-        const { data, error } = await supabase.from('games').select('id, sport, status, updated_at').limit(1000);
-        if (error) throw error;
-        return data || [];
-      }
-    );
-
-    const teams = await cachedSupabaseQuery(
-      'teams-analytics-overview',
-      async () => {
-        const { data, error } = await supabase.from('teams').select('id, sport, is_active').limit(1000);
-        if (error) throw error;
-        return data || [];
-      }
-    );
-
-    const predictions = await cachedSupabaseQuery(
-      'predictions-analytics-overview',
-      async () => {
-        const { data, error } = await supabase.from('predictions').select('id, sport, confidence').limit(1000);
-        if (error) throw error;
-        return data || [];
-      }
-    );
-
-    const odds = await cachedSupabaseQuery(
-      'odds-analytics-overview',
-      async () => {
-        const { data, error } = await supabase.from('odds').select('id, sport, last_updated').limit(1000);
-        if (error) throw error;
-        return data || [];
-      }
-    );
+    const [games, teams, predictions, odds] = await Promise.all([
+        supabase.from('games').select('id, sport, status, updated_at').limit(1000),
+        supabase.from('teams').select('id, sport, is_active').limit(1000),
+        supabase.from('predictions').select('id, sport, confidence').limit(1000),
+        supabase.from('odds').select('id, sport, last_updated').limit(1000)
+    ]);
     
     // Calculate analytics
     const analytics = {
       overview: {
-        totalGames: games.length,
-        totalTeams: teams.length,
-        totalPredictions: predictions.length,
-        totalOdds: odds.length
+        totalGames: games.data?.length || 0,
+        totalTeams: teams.data?.length || 0,
+        totalPredictions: predictions.data?.length || 0,
+        totalOdds: odds.data?.length || 0
       },
       bySport: {
         basketball: {
-          games: games.filter(g => g.sport === 'basketball').length,
-          teams: teams.filter(t => t.sport === 'basketball').length,
-          predictions: predictions.filter(p => p.sport === 'basketball').length
+          games: games.data?.filter(g => g.sport === 'basketball').length || 0,
+          teams: teams.data?.filter(t => t.sport === 'basketball').length || 0,
+          predictions: predictions.data?.filter(p => p.sport === 'basketball').length || 0
         },
         football: {
-          games: games.filter(g => g.sport === 'football').length,
-          teams: teams.filter(t => t.sport === 'football').length,
-          predictions: predictions.filter(p => p.sport === 'football').length
+          games: games.data?.filter(g => g.sport === 'football').length || 0,
+          teams: teams.data?.filter(t => t.sport === 'football').length || 0,
+          predictions: predictions.data?.filter(p => p.sport === 'football').length || 0
         },
         baseball: {
-          games: games.filter(g => g.sport === 'baseball').length,
-          teams: teams.filter(t => t.sport === 'baseball').length,
-          predictions: predictions.filter(p => p.sport === 'baseball').length
+          games: games.data?.filter(g => g.sport === 'baseball').length || 0,
+          teams: teams.data?.filter(t => t.sport === 'baseball').length || 0,
+          predictions: predictions.data?.filter(p => p.sport === 'baseball').length || 0
         },
         hockey: {
-          games: games.filter(g => g.sport === 'hockey').length,
-          teams: teams.filter(t => t.sport === 'hockey').length,
-          predictions: predictions.filter(p => p.sport === 'hockey').length
+          games: games.data?.filter(g => g.sport === 'hockey').length || 0,
+          teams: teams.data?.filter(t => t.sport === 'hockey').length || 0,
+          predictions: predictions.data?.filter(p => p.sport === 'hockey').length || 0
         },
         soccer: {
-          games: games.filter(g => g.sport === 'soccer').length,
-          teams: teams.filter(t => t.sport === 'soccer').length,
-          predictions: predictions.filter(p => p.sport === 'soccer').length
+          games: games.data?.filter(g => g.sport === 'soccer').length || 0,
+          teams: teams.data?.filter(t => t.sport === 'soccer').length || 0,
+          predictions: predictions.data?.filter(p => p.sport === 'soccer').length || 0
         }
       },
       gameStatus: {
-        scheduled: games.filter(g => g.status === 'scheduled').length,
-        live: games.filter(g => g.status === 'live').length,
-        finished: games.filter(g => g.status === 'finished').length
+        scheduled: games.data?.filter(g => g.status === 'scheduled').length || 0,
+        live: games.data?.filter(g => g.status === 'live').length || 0,
+        finished: games.data?.filter(g => g.status === 'finished').length || 0
       },
       predictionAccuracy: {
-        totalPredictions: predictions.length,
-        averageConfidence: predictions.length > 0 ? 
-          predictions.reduce((sum, p) => sum + (p.confidence || 0), 0) / predictions.length : 0
+        totalPredictions: predictions.data?.length || 0,
+        averageConfidence: predictions.data?.length > 0 ? 
+          predictions.data.reduce((sum, p) => sum + (p.confidence || 0), 0) / predictions.data.length : 0
       },
       dataFreshness: {
-        lastGameUpdate: games.length > 0 ? 
-          Math.max(...games.map(g => new Date(g.updated_at || 0).getTime())) : 0,
-        lastOddsUpdate: odds.length > 0 ? 
-          Math.max(...odds.map(o => new Date(o.last_updated || 0).getTime())) : 0
+        lastGameUpdate: games.data?.length > 0 ? 
+          Math.max(...games.data.map(g => new Date(g.updated_at || 0).getTime())) : 0,
+        lastOddsUpdate: odds.data?.length > 0 ? 
+          Math.max(...odds.data.map(o => new Date(o.last_updated || 0).getTime())) : 0
       }
     };
-    
-    return NextResponse.json({
+
+    const result = {
       success: true,
       data: analytics,
       timestamp: new Date().toISOString()
-    });
+    };
+
+    await setCache(cacheKey, result, CACHE_TTL);
+    
+    return NextResponse.json(result);
     
   } catch (error) {
     console.error('Analytics API error:', error);

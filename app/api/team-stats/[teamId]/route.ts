@@ -9,7 +9,7 @@ import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stat
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ teamId: string }> }
+  { params }: { params: { teamId: string } }
 ) {
   try {
     const { searchParams } = new URL(request.url)
@@ -34,7 +34,7 @@ export async function GET(
     }
 
     const teamStatsService = new SportTeamStatsService(sport, league)
-    const { teamId } = await params
+    const { teamId } = params
     
     let data: any = null
 

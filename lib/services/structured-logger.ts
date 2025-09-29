@@ -28,7 +28,8 @@ export class StructuredLogger {
   }
 
   constructor() {
-    this.logLevel = (process.env.LOG_LEVEL as any) || 'info'
+    // Set log level based on environment - reduce verbosity in production
+    this.logLevel = (process.env.LOG_LEVEL as any) || (process.env.NODE_ENV === 'production' ? 'warn' : 'info')
   }
 
   private shouldLog(level: string): boolean {

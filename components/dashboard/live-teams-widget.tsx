@@ -12,7 +12,6 @@ import {
   Trophy,
   BarChart3
 } from "lucide-react"
-import { useTeams } from "@/hooks/use-api-data"
 import { useRealTimeData } from "@/components/data/real-time-provider"
 
 interface Team {
@@ -93,9 +92,20 @@ function TeamCard({ team, rank }: TeamCardProps) {
 }
 
 export function LiveTeamsWidget() {
-  const { selectedSport } = useRealTimeData()
-  const { data: teams, loading, error, refetch } = useTeams(selectedSport)
+  const { data, selectedSport, refreshData } = useRealTimeData()
+  const { games, loading, error } = data
   const [viewMode, setViewMode] = useState<"standings" | "performance">("standings")
+
+  const teams = useMemo(() => {
+    if (!games) return []
+    const allTeams = games.reduce((acc, game) => {
+      if (game.home_team) acc.set(game.home_team.id, game.home_team)
+      if (game.away_team) acc.set(game.away_team.id, game.away_team)
+      return acc
+    }, new Map<string, any>())
+
+    return Array.from(allTeams.values())
+  }, [games])
 
   // Enhanced team data processing - fully dynamic with useMemo
   const processedTeams = useMemo(() => {
@@ -208,7 +218,7 @@ export function LiveTeamsWidget() {
             <p className="text-muted-foreground">
               {error ? 'Failed to load teams data' : `No teams data available${selectedSport ? ` for ${selectedSport}` : ''}`}
             </p>
-            <Button onClick={refetch} variant="outline" size="sm" className="mt-4 hover:scale-105 transition-transform">
+            <Button onClick={refreshData} variant="outline" size="sm" className="mt-4 hover:scale-105 transition-transform">
               Try Again
             </Button>
           </div>

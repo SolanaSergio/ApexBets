@@ -1,94 +1,49 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { 
-  Users, 
-  Target, 
-  Trophy, 
-  Zap, 
+import {
+  Users,
+  Target,
+  Trophy,
+  Zap,
   Award,
   TrendingUp,
   BarChart3,
   X
 } from "lucide-react"
-import { ballDontLieClient, type BallDontLiePlayer, type BallDontLieStats } from "@/lib/sports-apis"
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
+import { usePlayers, usePlayerStats } from "@/components/data/real-time-provider"
+import { Player } from "@/lib/api-client-database-first"
 
 interface PlayerComparisonProps {
-  selectedPlayer?: BallDontLiePlayer | null
+  selectedPlayer?: Player | null
 }
 
 export default function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
-  const [comparisonPlayer, setComparisonPlayer] = useState<BallDontLiePlayer | null>(null)
-  const [player1Stats, setPlayer1Stats] = useState<BallDontLieStats[]>([])
-  const [player2Stats, setPlayer2Stats] = useState<BallDontLieStats[]>([])
+  const [comparisonPlayer, setComparisonPlayer] = useState<Player | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<BallDontLiePlayer[]>([])
-  const [, setLoading] = useState(false)
+  const { players: allPlayers } = usePlayers(selectedPlayer?.sport)
+  const { stats: player1AllStats } = usePlayerStats(selectedPlayer?.id)
+  const { stats: player2AllStats } = usePlayerStats(comparisonPlayer?.id)
 
-  const searchPlayers = useCallback(async (query: string) => {
-    if (query.length < 2) {
-      setSearchResults([])
-      return
-    }
+  const searchResults = useMemo(() => {
+    if (!searchQuery || searchQuery.length < 2 || !allPlayers) return []
+    return allPlayers.filter(player =>
+      player.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      player.id !== selectedPlayer?.id
+    ).slice(0, 10)
+  }, [searchQuery, allPlayers, selectedPlayer])
 
-    try {
-      const response = await ballDontLieClient.getPlayers({
-        search: query,
-        per_page: 10
-      })
-      setSearchResults(response.data.filter(player => player.id !== selectedPlayer?.id))
-    } catch (error) {
-      console.error("Error searching players:", error)
-    }
-  }, [selectedPlayer]);
+  const getPlayerStatsForSeason = useCallback((playerStats: PlayerStats[], season: number) => {
+    return playerStats.filter(stat => stat.season === season)
+  }, [])
 
-  const fetchComparisonStats = useCallback(async () => {
-    if (!selectedPlayer || !comparisonPlayer) return
-
-    setLoading(true)
-    try {
-      const endDate = new Date().toISOString().split('T')[0]
-      const startDate = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-
-      const [player1Response, player2Response] = await Promise.all([
-        ballDontLieClient.getStats({
-          player_ids: [selectedPlayer.id],
-          start_date: startDate,
-          end_date: endDate,
-          seasons: [2024],
-          per_page: 20
-        }),
-        ballDontLieClient.getStats({
-          player_ids: [comparisonPlayer.id],
-          start_date: startDate,
-          end_date: endDate,
-          seasons: [2024],
-          per_page: 20
-        })
-      ])
-
-      setPlayer1Stats(player1Response.data)
-      setPlayer2Stats(player2Response.data)
-    } catch (error) {
-      console.error("Error fetching comparison stats:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedPlayer, comparisonPlayer]);
-
-  useEffect(() => {
-    if (selectedPlayer && comparisonPlayer) {
-      fetchComparisonStats()
-    }
-  }, [selectedPlayer, comparisonPlayer, fetchComparisonStats])
-
-  const calculateAverages = (stats: BallDontLieStats[]) => {
+  const calculateAverages = useCallback((stats: PlayerStats[]) => {
     if (stats.length === 0) return null
 
     const totals = stats.reduce((acc, stat) => ({
@@ -123,12 +78,23 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
       ft_pct: totals.fta > 0 ? ((totals.ftm / totals.fta) * 100).toFixed(1) : 0,
       games: totals.games
     }
-  }
+  }, [])
 
-  const prepareRadarData = () => {
-    const player1Avg = calculateAverages(player1Stats)
-    const player2Avg = calculateAverages(player2Stats)
+  const currentSeason = new Date().getFullYear()
 
+  const player1Avg = useMemo(() => {
+    if (!selectedPlayer || !player1AllStats) return null
+    const statsForSeason = getPlayerStatsForSeason(player1AllStats, currentSeason)
+    return calculateAverages(statsForSeason)
+  }, [selectedPlayer, player1AllStats, currentSeason, getPlayerStatsForSeason, calculateAverages])
+
+  const player2Avg = useMemo(() => {
+    if (!comparisonPlayer || !player2AllStats) return null
+    const statsForSeason = getPlayerStatsForSeason(player2AllStats, currentSeason)
+    return calculateAverages(statsForSeason)
+  }, [comparisonPlayer, player2AllStats, currentSeason, getPlayerStatsForSeason, calculateAverages])
+
+  const radarData = useMemo(() => {
     if (!player1Avg || !player2Avg) return []
 
     return [
@@ -136,14 +102,10 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
       { category: 'Rebounds', player1: Number(player1Avg.reb), player2: Number(player2Avg.reb) },
       { category: 'Assists', player1: Number(player1Avg.ast), player2: Number(player2Avg.ast) },
       { category: 'Steals', player1: Number(player1Avg.stl), player2: Number(player2Avg.stl) },
-      { category: 'Blocks', player1: Number(player2Avg.blk), player2: Number(player2Avg.blk) },
+      { category: 'Blocks', player1: Number(player1Avg.blk), player2: Number(player2Avg.blk) },
       { category: 'FG%', player1: Number(player1Avg.fg_pct), player2: Number(player2Avg.fg_pct) }
     ]
-  }
-
-  const player1Avg = calculateAverages(player1Stats)
-  const player2Avg = calculateAverages(player2Stats)
-  const radarData = prepareRadarData()
+  }, [player1Avg, player2Avg])
 
   if (!selectedPlayer) {
     return (
@@ -173,28 +135,28 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
           {/* Player 1 (Selected) */}
           <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
             <div className="flex items-center space-x-3">
-              <PlayerPhoto 
+              <PlayerPhoto
                 playerId={selectedPlayer.id}
-                alt={`${selectedPlayer.first_name} ${selectedPlayer.last_name}`}
+                alt={`${selectedPlayer.name}`}
                 width={48}
                 height={48}
                 className="h-12 w-12 rounded-full"
               />
               <div>
                 <div className="font-semibold">
-                  {selectedPlayer.first_name} {selectedPlayer.last_name}
+                  {selectedPlayer.name}
                 </div>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <Badge variant="secondary">{selectedPlayer.position}</Badge>
                     <span className="flex items-center gap-1">
-                      <TeamLogo 
-                        teamName={selectedPlayer.team.name} 
-                        alt={selectedPlayer.team.name}
+                      <TeamLogo
+                        teamName={selectedPlayer.team_name || ''}
+                        alt={selectedPlayer.team_name || ''}
                         width={16}
                         height={16}
                         className="h-4 w-4"
                       />
-                      {selectedPlayer.team.name}
+                      {selectedPlayer.team_name}
                     </span>
                 </div>
               </div>
@@ -212,7 +174,6 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value)
-                  searchPlayers(e.target.value)
                 }}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -223,7 +184,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
                   onClick={() => {
                     setSearchQuery("")
-                    setSearchResults([])
+                    setComparisonPlayer(null)
                   }}
                 >
                   <X className="h-4 w-4" />
@@ -232,7 +193,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
             </div>
 
             {/* Search Results */}
-            {searchResults.length > 0 && (
+            {searchQuery.length >= 2 && searchResults.length > 0 && (
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
                 {searchResults.map((player) => (
                   <div
@@ -241,23 +202,22 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                     onClick={() => {
                       setComparisonPlayer(player)
                       setSearchQuery("")
-                      setSearchResults([])
                     }}
                   >
                     <div className="flex items-center space-x-3">
-                      <PlayerPhoto 
+                      <PlayerPhoto
                         playerId={player.id}
-                        alt={`${player.first_name} ${player.last_name}`}
+                        alt={`${player.name}`}
                         width={32}
                         height={32}
                         className="h-8 w-8 rounded-full"
                       />
                       <div>
                         <div className="font-medium text-sm">
-                          {player.first_name} {player.last_name}
+                          {player.name}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {player.position} • {player.team.name}
+                          {player.position} • {player.team_name}
                         </div>
                       </div>
                     </div>
@@ -270,28 +230,28 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
             {comparisonPlayer && (
               <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
                 <div className="flex items-center space-x-3">
-                  <PlayerPhoto 
+                  <PlayerPhoto
                     playerId={comparisonPlayer.id}
-                    alt={`${comparisonPlayer.first_name} ${comparisonPlayer.last_name}`}
+                    alt={`${comparisonPlayer.name}`}
                     width={48}
                     height={48}
                     className="h-12 w-12 rounded-full"
                   />
                   <div>
                     <div className="font-semibold">
-                      {comparisonPlayer.first_name} {comparisonPlayer.last_name}
+                      {comparisonPlayer.name}
                     </div>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Badge variant="secondary">{comparisonPlayer.position}</Badge>
                       <span className="flex items-center gap-1">
-                        <TeamLogo 
-                          teamName={comparisonPlayer.team.name} 
-                          alt={comparisonPlayer.team.name}
+                        <TeamLogo
+                          teamName={comparisonPlayer.team_name || ''}
+                          alt={comparisonPlayer.team_name || ''}
                           width={16}
                           height={16}
                           className="h-4 w-4"
                         />
-                        {comparisonPlayer.team.name}
+                        {comparisonPlayer.team_name}
                       </span>
                     </div>
                   </div>

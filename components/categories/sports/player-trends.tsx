@@ -1,41 +1,60 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { TrendingUp, Target, Activity } from "lucide-react"
+import { usePlayerStats } from "@/components/data/real-time-provider"
+import { Player } from "@/lib/api-client-database-first"
 
 interface PlayerTrendsProps {
-  playerName: string
-  timeRange: string
-  sport: string
-  league: string
+  selectedPlayer?: Player | null
 }
 
-export default function PlayerTrends({ playerName, timeRange, sport, league }: PlayerTrendsProps) {
-  const [trendsData, setTrendsData] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
+  const { stats: playerStats, loading } = usePlayerStats(selectedPlayer?.id)
 
-  const fetchTrendsData = useCallback(async () => {
-    try {
-      setLoading(true)
-      
-      // Fetch real player trends data from API
-      const response = await fetch(`/api/analytics/player-analytics?sport=${sport}&league=${league}&player=${playerName}&timeRange=${timeRange}`)
-      const data = await response.json()
-      
-      setTrendsData(data.trends || [])
-    } catch (error) {
-      console.error('Error fetching player trends:', error)
-      setTrendsData([])
-    } finally {
-      setLoading(false)
+  const trendsData = useMemo(() => {
+    if (!playerStats || playerStats.length === 0) return []
+
+    // For simplicity, let's just use the last 10 games for trends
+    return playerStats.slice(-10).map((stat, index) => ({
+      date: `Game ${index + 1}`,
+      points: stat.pts,
+      rebounds: stat.reb,
+      assists: stat.ast,
+    }))
+  }, [playerStats])
+
+  const calculateAverages = useCallback((data: any[]) => {
+    if (data.length === 0) return { points: 0, rebounds: 0, assists: 0 }
+
+    const totalPoints = data.reduce((sum, d) => sum + d.points, 0)
+    const totalRebounds = data.reduce((sum, d) => sum + d.rebounds, 0)
+    const totalAssists = data.reduce((sum, d) => sum + d.assists, 0)
+
+    return {
+      points: (totalPoints / data.length).toFixed(1),
+      rebounds: (totalRebounds / data.length).toFixed(1),
+      assists: (totalAssists / data.length).toFixed(1),
     }
-  }, [playerName, timeRange, sport, league]);
+  }, [])
 
-  useEffect(() => {
-    fetchTrendsData()
-  }, [fetchTrendsData])
+  const averages = calculateAverages(trendsData)
+
+  if (!selectedPlayer) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center text-muted-foreground">
+            <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">Select a Player</h3>
+            <p className="text-sm">Choose a player from the search above to view their trends</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   if (loading) {
     return (

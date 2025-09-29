@@ -8,6 +8,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
+
+const CACHE_TTL = 120 // 2 minute cache
+
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -25,13 +31,14 @@ export async function GET(request: NextRequest) {
       limit
     })
 
-    structuredLogger.info('Standings API request processed', {
-      sport,
-      league,
-      season,
-      count: result.data.length,
-      source: result.meta.source
-    })
+    // Reduce logging frequency
+    // structuredLogger.info('Standings API request processed', {
+    //   sport,
+    //   league,
+    //   season,
+    //   count: result.data.length,
+    //   source: result.meta.source
+    // })
 
     return NextResponse.json(result)
 

@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
+import { getCache, setCache } from "@/lib/redis"
+
+const CACHE_TTL = 30; // 30 seconds
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const useRealData = searchParams.get("real") === "true"
     // const includeInactive = searchParams.get("include_inactive") === "true"
+
+    const cacheKey = `live-updates-all-${useRealData}`;
+    const cached = await getCache(cacheKey);
+    if (cached) {
+        return NextResponse.json(cached);
+    }
 
     const supabase = await createClient()
     
@@ -60,7 +69,7 @@ export async function GET(request: NextRequest) {
     let totalLiveGames = 0
 
     // Process each sport dynamically
-    for (const sport of activeSports) {
+    await Promise.all(activeSports.map(async (sport) => {
       try {
         const sportData = await getSportLiveData(supabase, sport.name, useRealData)
         sportsData[sport.name] = {
@@ -92,9 +101,9 @@ export async function GET(request: NextRequest) {
           }
         }
       }
-    }
+    }));
 
-    return NextResponse.json({
+    const result = {
       success: true,
       sports: sportsData,
       summary: {
@@ -103,7 +112,11 @@ export async function GET(request: NextRequest) {
         lastUpdated: new Date().toISOString(),
         dataSource: useRealData ? "live_apis" : "database"
       }
-    })
+    }
+
+    await setCache(cacheKey, result, CACHE_TTL);
+
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error("All sports live updates API error:", error)

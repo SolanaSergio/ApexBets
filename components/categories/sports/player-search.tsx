@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X, User } from "lucide-react";
-import { databaseFirstApiClient, type Player, type Team } from "@/lib/api-client-database-first";
+import { usePlayers, useRealTimeData } from "@/components/data/real-time-provider";
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
 import { BallDontLiePlayer } from "@/lib/sports-apis";
@@ -53,12 +53,12 @@ interface PlayerSearchProps {
 
 export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: PlayerSearchProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [players, setPlayers] = useState<Player[]>([]);
+  const { players, loading, error } = usePlayers(sport);
+  const { data } = useRealTimeData();
+  const { games } = data;
   const [teams, setTeams] = useState<Team[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<string>("all");
   const [selectedPosition, setSelectedPosition] = useState<string>("all");
-  const [error, setError] = useState<string | null>(null);
   const [, setIsOpen] = useState(false);
 
   // Dynamic positions based on sport
@@ -76,80 +76,28 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
     loadPositions();
   }, [sport]);
 
-  const fetchTeams = useCallback(async () => {
-    if (!sport) return;
-
-    try {
-      const teamsData = await databaseFirstApiClient.getTeams({ sport: sport as SupportedSport });
-      setTeams(teamsData);
-    } catch (error) {
-      console.error("Error fetching teams:", error);
-      setError("Failed to load teams");
-    }
-  }, [sport]);
-
-  const searchPlayers = useCallback(async () => {
-    if (!searchQuery.trim() || !sport) {
-      setPlayers([]);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const playersData = await databaseFirstApiClient.getPlayers({
-        sport: sport as SupportedSport,
-        limit: 20,
-      });
-
-      let filteredPlayers = playersData;
-
-      // Filter by search query
-      if (searchQuery.trim()) {
-        filteredPlayers = filteredPlayers.filter(player => 
-          player.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-
-      // Filter by team
-      if (selectedTeam !== "all") {
-        filteredPlayers = filteredPlayers.filter(player => player.teamId === selectedTeam);
-      }
-
-      // Filter by position
-      if (selectedPosition !== "all") {
-        filteredPlayers = filteredPlayers.filter(player => player.position === selectedPosition);
-      }
-
-      setPlayers(filteredPlayers);
-    } catch (error) {
-      console.error("Error searching players:", error);
-      setError("Failed to search players");
-    } finally {
-      setLoading(false);
-    }
-  }, [searchQuery, selectedTeam, selectedPosition, sport]);
-
-  // Fetch teams on component mount and when sport changes
   useEffect(() => {
-    if (sport) {
-      fetchTeams();
+    if (games) {
+      const allTeams = games.reduce((acc, game) => {
+        if (game.home_team) acc.set(game.home_team.id, game.home_team)
+        if (game.away_team) acc.set(game.away_team.id, game.away_team)
+        return acc
+      }, new Map<string, any>())
+      setTeams(Array.from(allTeams.values()));
     }
-  }, [sport, fetchTeams]);
+  }, [games]);
 
-  // Search players when query changes
-  useEffect(() => {
-    if (searchQuery.length >= 2) {
-      const timeoutId = setTimeout(() => {
-        searchPlayers();
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    } else {
-      setPlayers([]);
-      return undefined;
-    }
-  }, [searchQuery, selectedTeam, selectedPosition, searchPlayers]);
+  const filteredPlayers = useMemo(() => {
+    if (!players) return [];
+    return players.filter(player => {
+      const nameMatch = player.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const teamMatch = selectedTeam === "all" || player.teamId === selectedTeam;
+      const positionMatch = selectedPosition === "all" || player.position === selectedPosition;
+      return nameMatch && teamMatch && positionMatch;
+    });
+  }, [players, searchQuery, selectedTeam, selectedPosition]);
+
+
 
   const handlePlayerSelect = (player: Player) => {
     onPlayerSelect?.(player);
@@ -258,9 +206,9 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
               <div className="text-center py-4 text-destructive">
                 <p className="text-sm">{error}</p>
               </div>
-            ) : players.length > 0 ? (
+            ) : filteredPlayers.length > 0 ? (
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {players.map((player) => (
+                {filteredPlayers.map((player) => (
                   <div
                     key={player.id}
                     className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"

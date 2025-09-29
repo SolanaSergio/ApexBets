@@ -115,36 +115,11 @@ function SportSelector({
   selectedSport: string
   onSportChange: (sport: string) => void
 }) {
-  // Dynamic icon mapping based on sport data from database
-  const getSportIcon = (sport: Sport) => {
-    // Map sport names to appropriate icons
-    const sportIconMap: Record<string, any> = {
-      'basketball': Gamepad2,
-      'football': Gamepad2,
-      'baseball': Gamepad2,
-      'hockey': Gamepad2,
-      'soccer': Gamepad2,
-      'tennis': Gamepad2,
-      'golf': Gamepad2
-    }
-    return sportIconMap[sport.name.toLowerCase()] || Trophy
-  }
-
-  // Dynamic color mapping based on sport data from database
-  const getSportColor = (sport: Sport) => {
-    if (sport.color_primary) {
-      // Use primary color from database
-      return `from-[${sport.color_primary}] to-[${sport.color_primary}]/80`
-    }
-    return "from-primary to-primary/80"
-  }
-
   return (
     <div className="flex flex-wrap gap-2 sm:gap-3 justify-center lg:justify-start">
       {sports.map((sport) => {
-        const SportIcon = getSportIcon(sport)
-        const sportColor = getSportColor(sport)
         const isSelected = selectedSport === sport.name
+        const sportColor = sport.color_primary ? `from-[${sport.color_primary}] to-[${sport.color_primary}]/80` : "from-primary to-primary/80";
 
         return (
           <Button
@@ -155,7 +130,11 @@ function SportSelector({
               isSelected ? `bg-gradient-to-r ${sportColor} text-white` : ''
             }`}
           >
-            <SportIcon className="w-4 h-4 mr-1 sm:mr-2" />
+            {sport.icon_url ? (
+              <img src={sport.icon_url} alt={sport.display_name} className="w-4 h-4 mr-1 sm:mr-2" />
+            ) : (
+              <Trophy className="w-4 h-4 mr-1 sm:mr-2" />
+            )}
             <span className="hidden sm:inline">{sport.display_name}</span>
             <span className="sm:hidden">{sport.display_name.slice(0, 3)}</span>
           </Button>

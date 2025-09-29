@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Users, TrendingUp, BarChart3, Target } from "lucide-react"
 import { type BallDontLiePlayer } from "@/lib/sports-apis"
-import { SupportedSport, SportConfigManager } from "@/lib/services/core/sport-config"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { Player } from "@/lib/api-client-database-first"
 
 // Lazy load heavy components
@@ -50,7 +50,7 @@ export default function PlayersPage() {
             className="px-4 py-2 border rounded-lg bg-background"
           >
             {supportedSports.map(sport => {
-              const config = require("@/lib/services/core/sport-config").SportConfigManager.getSportConfig(sport as SupportedSport)
+              const config = SportConfigManager.getSportConfig(sport as SupportedSport)
               return (
                 <option key={sport} value={sport}>
                   {config?.name || sport.charAt(0).toUpperCase() + sport.slice(1)}
@@ -137,12 +137,7 @@ export default function PlayersPage() {
                   </CardContent>
                 </Card>
               }>
-                <PlayerTrends 
-                  playerName={selectedPlayer ? ('first_name' in selectedPlayer ? `${selectedPlayer.first_name} ${selectedPlayer.last_name}` : selectedPlayer.name) : ''}
-                  timeRange="30d"
-                  sport={selectedSport}
-                  league=""
-                />
+                <PlayerTrends selectedPlayer={selectedPlayer} />
               </Suspense>
             </TabsContent>
 

@@ -147,12 +147,11 @@ async function generatePlayerSVG(league: string, playerId: string | number): Pro
 }
 
 export async function GET(
-  context: { params: Promise<{ league: string; playerId: string }> }
+  _request: Request,
+  { params }: { params: { league: string; playerId: string } }
 ) {
-  const { params } = context;
-  const resolvedParams = await params;
   try {
-    const { league, playerId } = resolvedParams
+    const { league, playerId } = params
 
     if (!league || !playerId) {
       return new NextResponse('Missing parameters', { status: 400 })

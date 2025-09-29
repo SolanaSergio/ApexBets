@@ -28,14 +28,12 @@ export async function POST(request: NextRequest) {
       )
     }
     
-    // Start the comprehensive data population
-    const service = getComprehensiveDataPopulationService()
-    const stats = await service.populateAllData()
+    // Start the comprehensive data population in the background
+    getComprehensiveDataPopulationService().populateAllData();
     
     return NextResponse.json({
       success: true,
-      message: 'Data population completed successfully',
-      stats: stats
+      message: 'Data population triggered in the background.',
     })
     
   } catch (error) {

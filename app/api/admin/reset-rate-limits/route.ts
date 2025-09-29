@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 // Removed unused sportsDBClient import
 import { apiKeyRotation } from '@/lib/services/api-key-rotation'
+import { clearCache } from '@/lib/redis'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,6 +20,10 @@ export async function POST(request: NextRequest) {
         apiKeyRotation.resetKeyUsage(provider)
       })
     }
+
+    // Clear Redis cache
+    await clearCache();
+    console.log('✅ Cleared Redis cache');
 
     return NextResponse.json({
       success: true,

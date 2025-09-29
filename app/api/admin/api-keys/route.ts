@@ -19,6 +19,11 @@ export async function GET(request: NextRequest) {
 
     if (action === 'history') {
       const limit = parseInt(searchParams.get('limit') || '50')
+      if (provider) {
+        return NextResponse.json({
+          history: apiKeyRotation.getRotationHistory(limit, provider)
+        })
+      }
       return NextResponse.json({
         history: apiKeyRotation.getRotationHistory(limit)
       })

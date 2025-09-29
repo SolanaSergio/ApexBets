@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 export async function GET() {
   try {
     const supabase = await createClient()

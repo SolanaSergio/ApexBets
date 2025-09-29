@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseService } from '@/lib/services/database-service'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import redis from '@/lib/redis'
 
 export async function GET(request: NextRequest) {
   try {
@@ -38,13 +39,23 @@ export async function GET(request: NextRequest) {
       key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'configured' : 'missing'
     }
 
+    // Get Redis status
+    let redisStatus = 'disconnected';
+    try {
+        await redis.ping();
+        redisStatus = 'connected';
+    } catch (error) {
+        // ignore
+    }
+
     return NextResponse.json({
       success: true,
       data: {
         health: healthCheck,
         connection: {
           database: isConnected,
-          supabase: supabaseStatus
+          supabase: supabaseStatus,
+          redis: redisStatus
         },
         tables: includeTables ? tables : undefined,
         stats: includeStats ? stats : undefined,

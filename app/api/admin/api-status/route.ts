@@ -153,3 +153,33 @@ function generateRecommendations(status: any[]): string[] {
 
   return recommendations
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { provider } = body
+
+    if (provider) {
+      intelligentRateLimiter.resetProviderStatus(provider)
+      return NextResponse.json({
+        success: true,
+        message: `Rate limits reset for ${provider}`
+      })
+    }
+
+    return NextResponse.json(
+      { error: 'Provider is required' },
+      { status: 400 }
+    )
+
+  } catch (error) {
+    console.error('Error resetting rate limits:', error)
+    return NextResponse.json(
+      { 
+        error: 'Failed to reset rate limits',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
+      { status: 500 }
+    )
+  }
+}

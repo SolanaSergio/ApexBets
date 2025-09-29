@@ -3,6 +3,7 @@ import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 // Removed unused staleDataDetector import
 import { dynamicSportsManager } from '@/lib/services/dynamic-sports-manager'
+import redis from '@/lib/redis'
 
 // Force Node.js runtime to avoid Edge Runtime compatibility issues
 export const runtime = 'nodejs'
@@ -11,6 +12,7 @@ export async function GET() {
   const startTime = Date.now()
   const healthChecks = {
     database: false,
+    redis: false,
     staleDataDetector: false,
     dynamicSportsManager: false,
     timestamp: new Date().toISOString()
@@ -23,6 +25,14 @@ export async function GET() {
       healthChecks.database = dbTest.success
     } catch (error) {
       structuredLogger.error('Database health check failed', { error: error instanceof Error ? error.message : String(error) })
+    }
+
+    // Test Redis connection
+    try {
+        await redis.ping();
+        healthChecks.redis = true;
+    } catch (error) {
+        structuredLogger.error('Redis health check failed', { error: error instanceof Error ? error.message : String(error) })
     }
 
     // Test stale data detector

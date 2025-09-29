@@ -7,6 +7,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 * 5 // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -18,6 +21,12 @@ export async function GET(request: NextRequest) {
     const minValue = searchParams.get("minValue")
     const limit = Number.parseInt(searchParams.get("limit") || "50")
     const activeOnly = searchParams.get("activeOnly") !== "false"
+
+    const cacheKey = `value-bets-${sport}-${league}-${betType}-${recommendation}-${minValue}-${limit}-${activeOnly}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Use database-first API client - no external API calls
     const valueBetsParams: {
@@ -68,7 +77,7 @@ export async function GET(request: NextRequest) {
       count: result.data?.length || 0
     })
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: result.data,
       meta: {
@@ -83,7 +92,11 @@ export async function GET(request: NextRequest) {
         refreshed: false,
         timestamp: new Date().toISOString()
       }
-    })
+    }
+
+    await setCache(cacheKey, response, CACHE_TTL)
+
+    return NextResponse.json(response)
 
   } catch (error) {
     structuredLogger.error('Value bets API unexpected error', {

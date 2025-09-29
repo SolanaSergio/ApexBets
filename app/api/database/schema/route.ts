@@ -39,3 +39,43 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { checkIntegrity } = body
+
+    // Validate database schema
+    const validationResult = await SchemaValidator.validateSchema()
+
+    // Fix issues
+    const fixResults = await SchemaValidator.fixSchemaIssues(validationResult)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        validationResult,
+        fixResults
+      },
+      meta: {
+        checkIntegrity,
+        timestamp: new Date().toISOString()
+      }
+    })
+
+  } catch (error) {
+    console.error('Database schema validation API error:', error)
+    
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    return NextResponse.json(
+      { 
+        success: false, 
+        error: 'Failed to validate database schema',
+        details: errorMessage,
+        data: null
+      },
+      { status: 500 }
+    )
+  }
+}

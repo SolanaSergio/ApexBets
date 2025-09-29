@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
+import { clearCache } from "@/lib/redis"
 
 export async function POST(_request: NextRequest) {
   try {
@@ -49,6 +50,10 @@ export async function POST(_request: NextRequest) {
     } else {
       console.log('✅ Reset rate limit tracking')
     }
+
+    // Clear Redis cache
+    await clearCache();
+    console.log('✅ Cleared Redis cache');
 
     return NextResponse.json({
       success: true,

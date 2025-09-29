@@ -7,6 +7,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 // 1 minute
+
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
 
 // Helper functions for timezone-aware date comparison
 function isToday(date: Date, timezone: string): boolean {
@@ -38,6 +44,12 @@ export async function GET(request: NextRequest) {
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
     const league = searchParams.get("league")
     const timezone = searchParams.get("timezone") || "UTC"
+
+    const cacheKey = `database-first-games-${sport}-${status}-${dateFrom}-${dateTo}-${limit}-${league}-${timezone}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Use database-first API client - no external API calls
     const result = await databaseFirstApiClient.getGames({
@@ -84,6 +96,8 @@ export async function GET(request: NextRequest) {
       source: result.meta.source,
       timezone
     })
+
+    await setCache(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
 

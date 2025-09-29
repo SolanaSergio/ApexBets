@@ -14,7 +14,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    domains: ['localhost'],
+    domains: ['localhost', new URL(process.env.REDIS_URL || 'redis://localhost:6379').hostname],
     formats: ['image/webp', 'image/avif'],
   },
   // Optimize performance
@@ -73,6 +73,15 @@ const nextConfig = {
     if (config.cache && config.cache.type === 'filesystem') {
       config.cache.maxMemoryGenerations = 1
       config.cache.maxAge = 1000 * 60 * 60 * 24 * 7 // 7 days
+      // Reduce cache warnings by optimizing serialization
+      config.cache.compression = 'gzip'
+      config.cache.store = 'pack'
+    }
+    
+    // Suppress webpack cache warnings for large strings
+    config.infrastructureLogging = {
+      level: 'error',
+      debug: false
     }
     
     return config

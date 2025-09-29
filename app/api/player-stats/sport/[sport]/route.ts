@@ -9,10 +9,10 @@ import { structuredLogger } from '@/lib/services/structured-logger'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ sport: string }> }
+  { params }: { params: { sport: string } }
 ) {
   try {
-    const { sport } = await params
+    const { sport } = params
     const { searchParams } = new URL(request.url)
     const league = searchParams.get('league')
     const season = searchParams.get('season')

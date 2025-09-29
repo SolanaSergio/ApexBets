@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 // 1 minute
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +20,12 @@ export async function GET(request: NextRequest) {
     const position = searchParams.get('position')
     const isActive = searchParams.get('is_active')
     const limit = Number.parseInt(searchParams.get('limit') || '100')
+
+    const cacheKey = `players-${sport}-${teamId}-${league}-${position}-${isActive}-${limit}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     const supabase = await createClient()
     
@@ -160,7 +169,7 @@ export async function GET(request: NextRequest) {
       source: 'database'
     })
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data: processedPlayers,
       meta: {
@@ -171,7 +180,11 @@ export async function GET(request: NextRequest) {
         summary,
         source: 'database'
       }
-    })
+    }
+
+    await setCache(cacheKey, result, CACHE_TTL)
+
+    return NextResponse.json(result)
 
   } catch (error) {
     structuredLogger.error('Players API error', {

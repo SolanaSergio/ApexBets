@@ -1,6 +1,6 @@
 "use client"
 
-import { Suspense, useEffect, useState, useCallback } from "react"
+import { Suspense, useEffect, useState, useCallback, useMemo } from "react"
 import { Navigation } from "@/components/navigation/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -13,8 +13,11 @@ import { TeamLogo } from "@/components/ui/sports-image"
 import { databaseFirstApiClient, type Game } from "@/lib/api-client-database-first"
 import { format, addDays, subDays } from "date-fns"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { subscribeToTable, unsubscribeFromTable } from "@/lib/supabase/realtime"
 
 export default function GamesPage() {
+  const [games, setGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
   const [selectedLeague, setSelectedLeague] = useState<string>("")
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
@@ -25,6 +28,46 @@ export default function GamesPage() {
   })
   const [searchTerm, setSearchTerm] = useState("")
 
+  const fetchGames = useCallback(async () => {
+    if (!selectedSport) return
+
+    try {
+      setLoading(true)
+      const [live, upcoming, completed] = await Promise.all([
+        databaseFirstApiClient.getGames({
+          sport: selectedSport,
+          status: "in_progress",
+          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+          search: searchTerm,
+          limit: 50
+        }),
+        databaseFirstApiClient.getGames({
+          sport: selectedSport,
+          status: "scheduled",
+          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+          search: searchTerm,
+          limit: 50
+        }),
+        databaseFirstApiClient.getGames({
+          sport: selectedSport,
+          status: "completed",
+          dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
+          dateTo: format(dateRange.to, 'yyyy-MM-dd'),
+          search: searchTerm,
+          limit: 50
+        })
+      ])
+      setGames([...live, ...upcoming, ...completed])
+    } catch (error) {
+      console.error("Error fetching games:", error)
+      setGames([])
+    } finally {
+      setLoading(false)
+    }
+  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
+
   useEffect(() => {
     loadSupportedSports()
   }, [])
@@ -32,13 +75,37 @@ export default function GamesPage() {
   useEffect(() => {
     if (selectedSport) {
       loadLeaguesForSport(selectedSport)
+      fetchGames()
     }
-  }, [selectedSport])
+  }, [selectedSport, fetchGames])
+
+  useEffect(() => {
+    const handleRealtimeUpdate = (payload: any) => {
+      const { eventType, new: newRecord, old: oldRecord } = payload;
+      setGames(currentGames => {
+        if (eventType === 'INSERT') {
+          return [...currentGames, newRecord];
+        }
+        if (eventType === 'UPDATE') {
+          return currentGames.map(game => game.id === newRecord.id ? newRecord : game);
+        }
+        if (eventType === 'DELETE') {
+          return currentGames.filter(game => game.id !== oldRecord.id);
+        }
+        return currentGames;
+      });
+    };
+
+    const subscription = subscribeToTable('games', handleRealtimeUpdate);
+
+    return () => {
+      unsubscribeFromTable('games');
+    };
+  }, []);
 
   const loadSupportedSports = async () => {
     const sports = SportConfigManager.getSupportedSports()
     setSupportedSports(sports)
-    // Set first available sport as default
     if (sports.length > 0) {
       setSelectedSport(sports[0])
     }
@@ -76,7 +143,18 @@ export default function GamesPage() {
     }
   }
 
-  // Show loading state if no sport selected
+  const filteredGames = useMemo(() => {
+    return games.filter(game =>
+      (game.home_team?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        game.away_team?.name.toLowerCase().includes(searchTerm.toLowerCase())) &&
+      (selectedLeague ? game.league === selectedLeague : true)
+    )
+  }, [games, searchTerm, selectedLeague])
+
+  const liveGames = useMemo(() => filteredGames.filter(g => g.status === 'in_progress'), [filteredGames])
+  const upcomingGames = useMemo(() => filteredGames.filter(g => g.status === 'scheduled'), [filteredGames])
+  const completedGames = useMemo(() => filteredGames.filter(g => g.status === 'completed'), [filteredGames])
+
   if (!selectedSport) {
     return (
       <div className="min-h-screen bg-background">
@@ -95,7 +173,6 @@ export default function GamesPage() {
       <Navigation />
 
       <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Enhanced Header */}
         <div className="text-center space-y-6 relative">
           <div className="absolute inset-0 gradient-bg-soft opacity-20 rounded-3xl blur-3xl"></div>
           <div className="relative z-10 space-y-4">
@@ -113,7 +190,6 @@ export default function GamesPage() {
           </div>
         </div>
 
-        {/* Enhanced Filters */}
         <Card className="glass-premium border-primary/20 shadow-xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 premium-text-gradient">
@@ -123,18 +199,16 @@ export default function GamesPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 lg:gap-4">
-              {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Search teams or games..." 
+                <Input
+                  placeholder="Search teams or games..."
                   className="pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
 
-              {/* Sport Selection */}
               <Select value={selectedSport} onValueChange={(value) => setSelectedSport(value as SupportedSport)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select Sport" />
@@ -154,7 +228,6 @@ export default function GamesPage() {
                 </SelectContent>
               </Select>
 
-              {/* League Selection */}
               <Select value={selectedLeague} onValueChange={setSelectedLeague}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select League" />
@@ -168,7 +241,6 @@ export default function GamesPage() {
                 </SelectContent>
               </Select>
 
-              {/* Quick Date Range */}
               <Select onValueChange={(value) => setDateRange(getQuickDateRange(value))}>
                 <SelectTrigger>
                   <SelectValue placeholder="Quick Range" />
@@ -181,7 +253,6 @@ export default function GamesPage() {
                 </SelectContent>
               </Select>
 
-              {/* Custom Date Range */}
               <div className="flex gap-2">
                 <Input
                   type="date"
@@ -200,7 +271,6 @@ export default function GamesPage() {
           </CardContent>
         </Card>
 
-        {/* Enhanced Games Tabs */}
         <Tabs defaultValue="live" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3 glass-premium border border-primary/20">
             <TabsTrigger value="live" className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-red-600 data-[state=active]:text-white">
@@ -222,30 +292,30 @@ export default function GamesPage() {
 
           <TabsContent value="live" className="space-y-6">
             <Suspense fallback={<LiveGamesSkeleton />}>
-              <LiveGamesSection 
-                selectedSport={selectedSport} 
-                dateRange={dateRange}
-                searchTerm={searchTerm}
+              <LiveGamesSection
+                games={liveGames}
+                loading={loading}
+                onRefresh={fetchGames}
               />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="upcoming" className="space-y-6">
             <Suspense fallback={<UpcomingGamesSkeleton />}>
-              <UpcomingGamesSection 
-                selectedSport={selectedSport} 
-                dateRange={dateRange}
-                searchTerm={searchTerm}
+              <UpcomingGamesSection
+                games={upcomingGames}
+                loading={loading}
+                onRefresh={fetchGames}
               />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="completed" className="space-y-6">
             <Suspense fallback={<CompletedGamesSkeleton />}>
-              <CompletedGamesSection 
-                selectedSport={selectedSport} 
-                dateRange={dateRange}
-                searchTerm={searchTerm}
+              <CompletedGamesSection
+                games={completedGames}
+                loading={loading}
+                onRefresh={fetchGames}
               />
             </Suspense>
           </TabsContent>
@@ -255,50 +325,7 @@ export default function GamesPage() {
   )
 }
 
-// Live Games Section
-function LiveGamesSection({ 
-  selectedSport, 
-  dateRange, 
-  searchTerm 
-}: { 
-  selectedSport: SupportedSport | null
-  dateRange: { from: Date; to: Date }
-  searchTerm: string
-}) {
-  const [liveGames, setLiveGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const fetchLiveGames = useCallback(async () => {
-    if (!selectedSport) return
-    
-    try {
-      setLoading(true)
-      
-      // Fetch from database with date range and search
-      const games = await databaseFirstApiClient.getGames({
-        sport: selectedSport,
-        status: "in_progress",
-        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-        search: searchTerm,
-        limit: 50
-      })
-      
-      setLiveGames(games)
-    } catch (error) {
-      console.error("Error fetching live games:", error)
-      setLiveGames([])
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
-
-  useEffect(() => {
-    if (selectedSport) {
-      fetchLiveGames()
-    }
-  }, [selectedSport, fetchLiveGames])
-
+function LiveGamesSection({ games, loading, onRefresh }: { games: Game[], loading: boolean, onRefresh: () => void }) {
   if (loading) {
     return <LiveGamesSkeleton />
   }
@@ -312,27 +339,27 @@ function LiveGamesSection({
         </h2>
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="animate-pulse">
-            {liveGames.length} Live
+            {games.length} Live
           </Badge>
-          <Button variant="ghost" size="sm" onClick={fetchLiveGames} disabled={loading}>
+          <Button variant="ghost" size="sm" onClick={onRefresh} disabled={loading}>
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </Button>
         </div>
       </div>
 
-      {liveGames.length === 0 ? (
+      {games.length === 0 ? (
         <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Live Games</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? `No live games found matching "${searchTerm}"` : "There are currently no games in progress"}
+              There are currently no games in progress
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {liveGames.map((game) => (
+          {games.map((game) => (
             <Card key={game.id} className="glass-premium border-red-300/50 bg-gradient-to-r from-red-50/50 to-red-100/50 dark:from-red-950/30 dark:to-red-900/30 hover:shadow-xl transition-all duration-300 premium-hover data-card">
               <CardContent className="p-4 lg:p-6">
                 <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -376,49 +403,7 @@ function LiveGamesSection({
   )
 }
 
-// Upcoming Games Section
-function UpcomingGamesSection({ 
-  selectedSport, 
-  dateRange, 
-  searchTerm 
-}: { 
-  selectedSport: SupportedSport | null
-  dateRange: { from: Date; to: Date }
-  searchTerm: string
-}) {
-  const [upcomingGames, setUpcomingGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const fetchUpcomingGames = useCallback(async () => {
-    if (!selectedSport) return
-    
-    try {
-      setLoading(true)
-      
-      const games = await databaseFirstApiClient.getGames({
-        sport: selectedSport,
-        status: "scheduled",
-        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-        search: searchTerm,
-        limit: 50
-      })
-      
-      setUpcomingGames(games)
-    } catch (error) {
-      console.error("Error fetching upcoming games:", error)
-      setUpcomingGames([])
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
-
-  useEffect(() => {
-    if (selectedSport) {
-      fetchUpcomingGames()
-    }
-  }, [selectedSport, fetchUpcomingGames])
-
+function UpcomingGamesSection({ games, loading, onRefresh }: { games: Game[], loading: boolean, onRefresh: () => void }) {
   if (loading) {
     return <UpcomingGamesSkeleton />
   }
@@ -430,24 +415,24 @@ function UpcomingGamesSection({
           <Clock className="h-6 w-6" />
           Upcoming Games
         </h2>
-        <Button variant="ghost" size="sm" onClick={fetchUpcomingGames} disabled={loading}>
+        <Button variant="ghost" size="sm" onClick={onRefresh} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
-      {upcomingGames.length === 0 ? (
+      {games.length === 0 ? (
         <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Upcoming Games</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? `No upcoming games found matching "${searchTerm}"` : "Check back later for scheduled matches"}
+              Check back later for scheduled matches
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {upcomingGames.map((game) => {
+          {games.map((game) => {
             const gameDate = new Date(game.game_date)
             return (
               <Card key={game.id} className="hover:shadow-lg transition-all duration-200">
@@ -492,49 +477,7 @@ function UpcomingGamesSection({
   )
 }
 
-// Completed Games Section
-function CompletedGamesSection({ 
-  selectedSport, 
-  dateRange, 
-  searchTerm 
-}: { 
-  selectedSport: SupportedSport | null
-  dateRange: { from: Date; to: Date }
-  searchTerm: string
-}) {
-  const [completedGames, setCompletedGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
-
-  const fetchCompletedGames = useCallback(async () => {
-    if (!selectedSport) return
-    
-    try {
-      setLoading(true)
-      
-      const games = await databaseFirstApiClient.getGames({
-        sport: selectedSport,
-        status: "completed",
-        dateFrom: format(dateRange.from, 'yyyy-MM-dd'),
-        dateTo: format(dateRange.to, 'yyyy-MM-dd'),
-        search: searchTerm,
-        limit: 50
-      })
-      
-      setCompletedGames(games)
-    } catch (error) {
-      console.error("Error fetching completed games:", error)
-      setCompletedGames([])
-    } finally {
-      setLoading(false)
-    }
-  }, [selectedSport, dateRange.from, dateRange.to, searchTerm])
-
-  useEffect(() => {
-    if (selectedSport) {
-      fetchCompletedGames()
-    }
-  }, [selectedSport, fetchCompletedGames])
-
+function CompletedGamesSection({ games, loading, onRefresh }: { games: Game[], loading: boolean, onRefresh: () => void }) {
   if (loading) {
     return <CompletedGamesSkeleton />
   }
@@ -546,24 +489,24 @@ function CompletedGamesSection({
           <Trophy className="h-6 w-6" />
           Recent Results
         </h2>
-        <Button variant="ghost" size="sm" onClick={fetchCompletedGames} disabled={loading}>
+        <Button variant="ghost" size="sm" onClick={onRefresh} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
         </Button>
       </div>
 
-      {completedGames.length === 0 ? (
+      {games.length === 0 ? (
         <Card className="border-2 border-dashed">
           <CardContent className="py-12 text-center">
             <Trophy className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-lg font-semibold mb-2">No Recent Results</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? `No completed games found matching "${searchTerm}"` : "No completed games found"}
+              No completed games found
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
-          {completedGames.map((game) => {
+          {games.map((game) => {
             const gameDate = new Date(game.game_date)
             const homeWon = game.home_score && game.away_score && game.home_score > game.away_score
             return (

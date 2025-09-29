@@ -29,8 +29,9 @@ class ProductionSupabaseClient {
 
   async executeSQL(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
-      console.log('executeSQL called with query:', query.substring(0, 200) + '...')
-      console.log('executeSQL called with params:', params)
+      // Disable SQL logging for performance - only log errors
+      // console.log('executeSQL called with query:', query.substring(0, 100) + '...')
+      // console.log('executeSQL called with params:', params)
       const trimmedQuery = query.trim().toUpperCase()
       
       // Handle simple health check queries

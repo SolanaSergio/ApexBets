@@ -5,10 +5,19 @@ export async function GET() {
   try {
     // Test service registry initialization
     const supportedSports = await serviceFactory.getSupportedSports()
+    const services = await Promise.all(supportedSports.map(async (sport) => {
+        const service = await serviceFactory.getService(sport);
+        return {
+            sport,
+            defaultLeague: serviceFactory.getDefaultLeague(sport),
+            availableActions: Object.keys(service),
+        };
+    }));
     
     return NextResponse.json({
       success: true,
       supportedSports,
+      services,
       message: 'Service registry test successful'
     })
   } catch (error) {

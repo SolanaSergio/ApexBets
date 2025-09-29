@@ -133,39 +133,6 @@ export function useApiData<T>(
   }
 }
 
-// Specialized hooks for common data types
-export function useGames(sport?: string, options?: UseApiDataOptions<any[]>) {
-  const fetchFn = useCallback(async () => {
-    if (!sport) throw new Error('Sport is required for games data')
-    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-    return databaseFirstApiClient.getGames({ sport, limit: 50 })
-  }, [sport])
-
-  return useApiData(fetchFn, { enabled: !!sport, ...options })
-}
-
-export function useTeams(sport?: string, options?: UseApiDataOptions<any[]>) {
-  const fetchFn = useCallback(async () => {
-    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-    const params: { sport?: string; league?: string } = {}
-    if (sport && sport !== 'all') params.sport = sport
-    return databaseFirstApiClient.getTeams(params)
-  }, [sport])
-
-  return useApiData(fetchFn, { enabled: true, ...options })
-}
-
-export function usePlayers(sport?: string, options?: UseApiDataOptions<any[]>) {
-  const fetchFn = useCallback(async () => {
-    const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
-    const params: { sport?: string; limit?: number; search?: string } = { limit: 50 }
-    if (sport) params.sport = sport
-    return databaseFirstApiClient.getPlayers(params)
-  }, [sport])
-
-  return useApiData(fetchFn, { enabled: !!sport, ...options })
-}
-
 export function useHealthStatus(options?: UseApiDataOptions<Record<string, boolean>>) {
   const fetchFn = useCallback(async () => {
     const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')

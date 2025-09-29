@@ -15,11 +15,10 @@ import {
   Trophy,
   Zap
 } from "lucide-react"
-import { ballDontLieClient } from "@/lib/sports-apis/balldontlie-client"
-import { databaseFirstApiClient, type Player, type PlayerStats as ApiPlayerStats } from "@/lib/api-client-database-first";
+import { usePlayerStats } from "@/components/data/real-time-provider";
 import { SupportedSport } from "@/lib/services/core/sport-config";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
 import { BallDontLiePlayer } from "@/lib/sports-apis";
 import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
 
@@ -77,58 +76,35 @@ interface PlayerStatsProps {
 }
 
 export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps) {
-  const [stats, setStats] = useState<ApiPlayerStats[]>([]);
-  const [seasonAverages, setSeasonAverages] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [selectedSeason, setSelectedSeason] = useState<number>(2024)
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("last10")
+  const { stats, loading } = usePlayerStats(getPlayerId(selectedPlayer));
+  const [selectedSeason, setSelectedSeason] = useState<number>(new Date().getFullYear());
+  const [selectedPeriod, setSelectedPeriod] = useState<string>("season");
 
-  const fetchPlayerStats = useCallback(async () => {
-    if (!selectedPlayer || !sport) return;
+  const seasons = useMemo(() => {
+    if (!stats) return [];
+    const allSeasons = stats.map(stat => stat.season);
+    return [...new Set(allSeasons)].sort((a, b) => b - a);
+  }, [stats]);
 
-    setLoading(true);
-    try {
-      const playerStats = await databaseFirstApiClient.getPlayerStats({
-        sport,
-        player_id: getPlayerId(selectedPlayer),
-        season: selectedSeason,
-      });
-      setStats(playerStats || []);
-    } catch (error) {
-      console.error("Error fetching player stats:", error);
-    } finally {
-      setLoading(false);
+  const filteredStats = useMemo(() => {
+    if (!stats) return [];
+    let periodStats = stats.filter(stat => stat.season === selectedSeason);
+    if (selectedPeriod === "last5") {
+      periodStats = periodStats.slice(-5);
     }
-  }, [selectedPlayer, sport, selectedSeason]);
-
-  const fetchSeasonAverages = useCallback(async () => {
-    if (!selectedPlayer) return
-
-    try {
-      const response = await ballDontLieClient.getSeasonAverages({
-        season: selectedSeason,
-        player_ids: [Number(selectedPlayer.id)]
-      })
-
-      if (response.data && response.data.length > 0) {
-        setSeasonAverages(response.data[0])
-      }
-    } catch (error) {
-      console.error("Error fetching season averages:", error)
+    if (selectedPeriod === "last10") {
+      periodStats = periodStats.slice(-10);
     }
-  }, [selectedPlayer, selectedSeason]);
-
-  useEffect(() => {
-    if (selectedPlayer) {
-      fetchPlayerStats()
-      fetchSeasonAverages()
+    if (selectedPeriod === "last20") {
+      periodStats = periodStats.slice(-20);
     }
-  }, [selectedPlayer, selectedSeason, selectedPeriod, fetchPlayerStats, fetchSeasonAverages])
+    return periodStats;
+  }, [stats, selectedSeason, selectedPeriod]);
 
   const calculateAverages = () => {
-    if (stats.length === 0) return null
+    if (filteredStats.length === 0) return null
 
-    const totals = stats.reduce((acc, stat) => ({
+    const totals = filteredStats.reduce((acc, stat) => ({
       pts: acc.pts + stat.pts,
       reb: acc.reb + stat.reb,
       ast: acc.ast + stat.ast,
@@ -136,7 +112,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
       blk: acc.blk + stat.blk,
       fgm: acc.fgm + stat.fgm,
       fga: acc.fga + stat.fga,
-      fg3m: acc.fg3m + stat.fg3m,
+      fg3m: acc.fg3m + stat.fg3a,
       fg3a: acc.fg3a + stat.fg3a,
       ftm: acc.ftm + stat.ftm,
       fta: acc.fta + stat.fta,
@@ -162,12 +138,9 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
     }
   }
 
-
-
-
   const prepareChartData = () => {
-    return stats.slice(-10).map((stat, index) => ({
-      game: `G${stats.length - 9 + index}`,
+    return filteredStats.map((stat, index) => ({
+      game: `G${index + 1}`,
       pts: stat.pts,
       reb: stat.reb,
       ast: stat.ast,
@@ -234,9 +207,9 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Season Averages</div>
-              {seasonAverages && (
+              {averages && (
                 <div className="text-2xl font-bold text-primary">
-                  {seasonAverages.pts} PTS
+                  {averages.pts} PTS
                 </div>
               )}
             </div>
@@ -253,9 +226,9 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="2024">2024</SelectItem>
-                <SelectItem value="2023">2023</SelectItem>
-                <SelectItem value="2022">2022</SelectItem>
+                {seasons.map(season => (
+                  <SelectItem key={season} value={season.toString()}>{season}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
 
@@ -271,7 +244,7 @@ export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps)
               </SelectContent>
             </Select>
 
-            <Button variant="outline" size="sm" onClick={fetchPlayerStats} disabled={loading}>
+            <Button variant="outline" size="sm" onClick={() => {}} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </Button>

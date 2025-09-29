@@ -8,6 +8,13 @@ import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-cl
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 
+import { NextRequest, NextResponse } from 'next/server'
+import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
+import { structuredLogger } from '@/lib/services/structured-logger'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 // 1 minute
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -15,6 +22,12 @@ export async function GET(request: NextRequest) {
     const timezone = searchParams.get("timezone") || "UTC"
     const limitRaw = Number.parseInt(searchParams.get("limit") || "50")
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 50))
+
+    const cacheKey = `database-first-games-today-${sport}-${timezone}-${limit}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Get today's date range in the user's timezone and convert to UTC
     const now = new Date()
@@ -87,7 +100,7 @@ export async function GET(request: NextRequest) {
       source: result.meta.source
     })
 
-    return NextResponse.json({
+    const response = {
       ...result,
       meta: {
         ...result.meta,
@@ -97,7 +110,11 @@ export async function GET(request: NextRequest) {
           end: todayEndUTC.toISOString()
         }
       }
-    })
+    }
+
+    await setCache(cacheKey, response, CACHE_TTL)
+
+    return NextResponse.json(response)
 
   } catch (error) {
     structuredLogger.error('Today\'s games API error', {
@@ -105,8 +122,8 @@ export async function GET(request: NextRequest) {
     })
     
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch today\'s games',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

@@ -6,6 +6,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stats-service'
+import { getCache, setCache } from '@/lib/redis'
+
+const CACHE_TTL = 60 * 5 // 5 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,6 +17,12 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get('league') || undefined
     const season = searchParams.get('season') || undefined
     const type = searchParams.get('type') || 'standings' // standings, performance, leaders
+
+    const cacheKey = `team-stats-${sport}-${league}-${season}-${type}`
+    const cached = await getCache(cacheKey)
+    if (cached) {
+      return NextResponse.json(cached)
+    }
 
     // Validate sport parameter
     if (!sport) {
@@ -67,7 +76,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
+    const result = {
       success: true,
       data,
       meta: {
@@ -77,7 +86,11 @@ export async function GET(request: NextRequest) {
         type,
         timestamp: new Date().toISOString()
       }
-    })
+    }
+
+    await setCache(cacheKey, result, CACHE_TTL)
+
+    return NextResponse.json(result)
 
   } catch (error) {
     console.error('Team stats API error:', error)

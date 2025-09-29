@@ -5,7 +5,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/lib/auth/auth-context"
 import { DynamicBackground } from "@/components/effects/dynamic-background"
-import { RealTimeProvider } from "@/components/data/real-time-provider"
+
 import { Inter } from "next/font/google"
 import "./globals.css"
 
@@ -97,9 +97,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <RealTimeProvider>
-              {children}
-            </RealTimeProvider>
+            {children}
           </AuthProvider>
         </ThemeProvider>
         <Analytics />

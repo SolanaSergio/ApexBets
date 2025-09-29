@@ -281,7 +281,7 @@ export async function POST(request: NextRequest) {
 async function runSpecificTests(tests: string[]): Promise<any> {
   const results: any = {}
 
-  for (const test of tests) {
+  const testPromises = tests.map(async (test) => {
     try {
       switch (test) {
         case 'data_integrity':
@@ -307,7 +307,9 @@ async function runSpecificTests(tests: string[]): Promise<any> {
         error: error instanceof Error ? error.message : 'Unknown error' 
       }
     }
-  }
+  });
+
+  await Promise.all(testPromises);
 
   return results
 }
