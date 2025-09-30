@@ -1,108 +1,78 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { authErrorHandler } from '../auth/auth-error-handler'
 
-export async function updateSession(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
-
-  const supabase = createServerClient(
+// Helper function to create a Supabase client
+const createSupabaseClient = (request: NextRequest, response: NextResponse) => {
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll()
+        get(name: string) {
+          return request.cookies.get(name)?.value
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
+        set(name: string, value: string, options: CookieOptions) {
+          response.cookies.set(name, value, options)
+        },
+        remove(name: string, options: CookieOptions) {
+          response.cookies.set(name, '', options)
         },
       },
     }
   )
+}
 
-  // IMPORTANT: Avoid writing any logic between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+// Helper function to handle redirects for unauthenticated users
+const handleRedirect = (request: NextRequest) => {
+  const url = request.nextUrl.clone()
+  url.pathname = '/login'
+  return NextResponse.redirect(url)
+}
+
+// Helper function to check if a path is public
+const isPublicPath = (path: string) => {
+  return (
+    path.startsWith('/login') ||
+    path.startsWith('/auth') ||
+    path.startsWith('/api')
+  )
+}
+
+export async function updateSession(request: NextRequest) {
+  const response = NextResponse.next({ request })
+  const supabase = createSupabaseClient(request, response)
 
   try {
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-    // Handle refresh token errors gracefully
-    if (userError && userError.message.includes('refresh_token_not_found')) {
-      console.warn('Refresh token not found, clearing session:', userError.message)
+    if (error) {
+      const errorResult = authErrorHandler.handleAuthError(error)
       
-      // Clear invalid session cookies
-      const response = NextResponse.next({ request })
-      response.cookies.delete('sb-access-token')
-      response.cookies.delete('sb-refresh-token')
-      
-      // Only redirect if not on public pages
-      if (
-        !request.nextUrl.pathname.startsWith('/login') &&
-        !request.nextUrl.pathname.startsWith('/auth') &&
-        !request.nextUrl.pathname.startsWith('/api') &&
-        request.nextUrl.pathname !== '/'
-      ) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
+      // Only log auth errors for non-public paths and non-session-missing errors
+      if (!isPublicPath(request.nextUrl.pathname) && 
+          !error.message.includes('Auth session missing')) {
+        console.warn(`Middleware auth error: ${errorResult.error}`)
       }
-      
-      return response
+
+      if (errorResult.shouldClearSession) {
+        await authErrorHandler.clearSession(supabase)
+      }
+
+      if (errorResult.shouldRedirect && !isPublicPath(request.nextUrl.pathname)) {
+        return handleRedirect(request)
+      }
     }
 
-    if (
-      !user &&
-      !request.nextUrl.pathname.startsWith('/login') &&
-      !request.nextUrl.pathname.startsWith('/auth') &&
-      !request.nextUrl.pathname.startsWith('/api') &&
-      request.nextUrl.pathname !== '/'
-    ) {
-      // no user, potentially respond by redirecting the user to the login page
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+    if (!user && !isPublicPath(request.nextUrl.pathname)) {
+      return handleRedirect(request)
     }
-
   } catch (error) {
-    console.error('Middleware auth error:', error)
-    
-    // On any auth error, clear cookies and redirect to login if needed
-    const response = NextResponse.next({ request })
-    response.cookies.delete('sb-access-token')
-    response.cookies.delete('sb-refresh-token')
-    
-    if (
-      !request.nextUrl.pathname.startsWith('/login') &&
-      !request.nextUrl.pathname.startsWith('/auth') &&
-      !request.nextUrl.pathname.startsWith('/api') &&
-      request.nextUrl.pathname !== '/'
-    ) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/login'
-      return NextResponse.redirect(url)
+    console.error('Critical middleware error:', error)
+    if (!isPublicPath(request.nextUrl.pathname)) {
+      return handleRedirect(request)
     }
-    
-    return response
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is. If you're
-  // creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object instead of the supabaseResponse object
-
-  return supabaseResponse
+  return response
 }

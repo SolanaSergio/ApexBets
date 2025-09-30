@@ -42,8 +42,10 @@ export async function GET(request: NextRequest) {
     // Get Redis status
     let redisStatus = 'disconnected';
     try {
-        await redis.ping();
-        redisStatus = 'connected';
+        if (redis) {
+            await redis.ping();
+            redisStatus = 'connected';
+        }
     } catch (error) {
         // ignore
     }

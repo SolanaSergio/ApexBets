@@ -695,7 +695,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     <div>
       <div className={`space-y-8 ${className}`}>
       {/* Header */}
-      <FadeIn delay={0.1}>
+      <FadeIn>
         <div className="flex flex-col space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -843,7 +843,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
 
       {/* Live Odds Section */}
       {liveOdds.length > 0 && (
-        <FadeIn delay={0.2}>
+        <FadeIn>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -878,7 +878,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
       )}
 
       {/* Main Content Tabs */}
-      <FadeIn delay={0.3}>
+      <FadeIn>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4 bg-slate-100 p-1 rounded-lg">
             <TabsTrigger 
@@ -910,7 +910,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
           <TabsContent value="overview" className="space-y-4 animate-fade-in">
             <div className="grid gap-4 md:grid-cols-2">
               {/* Live Games Overview */}
-              <ScaleIn delay={0.1}>
+              <ScaleIn delay={100}>
                 <Card className="transition-all duration-300 hover:shadow-lg">
               <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
@@ -982,7 +982,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               </ScaleIn>
 
             {/* Upcoming Games Overview */}
-            <ScaleIn delay={0.2}>
+            <ScaleIn delay={200}>
             <Card className="transition-all duration-300 hover:shadow-lg">
               <CardHeader className="flex flex-col items-start pb-4">
                 <CardTitle className="flex items-center gap-2">
@@ -1024,7 +1024,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
                               <Badge variant="outline" className="border-blue-300 text-blue-700 text-xs">
                                 🕒 SCHEDULED
                               </Badge>
-                              {game.league} • {game.game_time || new Date(game.game_date).toLocaleString()}
+                              {game.league} • {game.game_time || new Date(game.game_date).toLocaleTimeString()}
                             </div>
                           </div>
                         </div>

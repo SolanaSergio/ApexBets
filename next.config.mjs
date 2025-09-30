@@ -47,6 +47,8 @@ const nextConfig = {
       '@radix-ui/react-tooltip'
     ],
   },
+  // Configure allowed development origins for cross-origin requests
+  allowedDevOrigins: ['localhost', '127.0.0.1', '192.168.1.197'],
   // Webpack optimizations
   webpack: (config, { dev, isServer }) => {
     // Optimize bundle splitting

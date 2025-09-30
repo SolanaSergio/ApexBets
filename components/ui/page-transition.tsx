@@ -21,7 +21,6 @@ export function PageTransition({ children }: PageTransitionProps) {
 
 interface FadeInProps {
   children: React.ReactNode
-  delay?: number
   className?: string
 }
 
@@ -68,14 +67,19 @@ export function StaggerContainer({
 interface StaggerItemProps {
   children: React.ReactNode
   className?: string
+  index?: number
 }
 
 export function StaggerItem({ 
   children, 
-  className
+  className,
+  index
 }: StaggerItemProps) {
   return (
-    <div className={`animate-fade-in ${className}`}>
+    <div 
+      className={`animate-fade-in ${className}`}
+      style={index ? { animationDelay: `${index * 100}ms` } : undefined}
+    >
       {children}
     </div>
   )
@@ -84,11 +88,15 @@ export function StaggerItem({
 interface ScaleInProps {
   children: React.ReactNode
   className?: string
+  delay?: number
 }
 
-export function ScaleIn({ children, className }: ScaleInProps) {
+export function ScaleIn({ children, className, delay }: ScaleInProps) {
   return (
-    <div className={`animate-fade-in ${className}`}>
+    <div 
+      className={`animate-fade-in ${className}`}
+      style={delay ? { animationDelay: `${delay}ms` } : undefined}
+    >
       {children}
     </div>
   )

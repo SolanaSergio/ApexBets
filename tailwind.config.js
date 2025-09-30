@@ -73,5 +73,13 @@ module.exports = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addUtilities }) {
+      addUtilities({
+        '.border-border': {
+          'border-color': 'hsl(var(--border))',
+        },
+      })
+    },
+  ],
 }

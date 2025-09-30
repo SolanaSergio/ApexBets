@@ -3,7 +3,7 @@ import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 // Removed unused staleDataDetector import
 import { dynamicSportsManager } from '@/lib/services/dynamic-sports-manager'
-import redis from '@/lib/redis'
+import { isRedisHealthy } from '@/lib/redis'
 
 // Force Node.js runtime to avoid Edge Runtime compatibility issues
 export const runtime = 'nodejs'
@@ -29,10 +29,10 @@ export async function GET() {
 
     // Test Redis connection
     try {
-        await redis.ping();
-        healthChecks.redis = true;
+        healthChecks.redis = await isRedisHealthy();
     } catch (error) {
         structuredLogger.error('Redis health check failed', { error: error instanceof Error ? error.message : String(error) })
+        healthChecks.redis = false;
     }
 
     // Test stale data detector
@@ -53,15 +53,25 @@ export async function GET() {
     }
 
     const duration = Date.now() - startTime
-    const allHealthy = Object.values(healthChecks).every(check => check === true || typeof check === 'string')
+    
+    // Consider system healthy if database and dynamic sports manager are working
+    // Redis is optional for basic functionality
+    const criticalChecks = {
+      database: healthChecks.database,
+      dynamicSportsManager: healthChecks.dynamicSportsManager
+    }
+    const allCriticalHealthy = Object.values(criticalChecks).every(check => check === true)
+    
+    // kept for potential future reporting of non-critical checks
 
     return NextResponse.json({
-      status: allHealthy ? 'healthy' : 'unhealthy',
+      status: allCriticalHealthy ? 'healthy' : 'unhealthy',
       checks: healthChecks,
+      criticalChecks,
       duration,
       timestamp: new Date().toISOString()
     }, { 
-      status: allHealthy ? 200 : 503 
+      status: allCriticalHealthy ? 200 : 503 
     })
 
   } catch (error) {

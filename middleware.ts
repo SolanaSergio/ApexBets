@@ -19,5 +19,3 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|auth/reset-password|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 }
-// Use experimental-edge runtime for Vercel/Next.js compatibility
-export const runtime = 'experimental-edge'
