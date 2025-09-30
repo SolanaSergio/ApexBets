@@ -25,7 +25,7 @@ interface FadeInProps {
   className?: string
 }
 
-export function FadeIn({ children, delay = 0, className }: FadeInProps) {
+export function FadeIn({ children, className }: FadeInProps) {
   return (
     <div className={`animate-fade-in ${className}`}>
       {children}
@@ -35,15 +35,11 @@ export function FadeIn({ children, delay = 0, className }: FadeInProps) {
 
 interface SlideInProps {
   children: React.ReactNode
-  direction?: 'left' | 'right' | 'up' | 'down'
-  delay?: number
   className?: string
 }
 
 export function SlideIn({ 
-  children, 
-  direction = 'left', 
-  delay = 0, 
+  children,
   className 
 }: SlideInProps) {
   return (
@@ -56,7 +52,6 @@ export function SlideIn({
 interface StaggerContainerProps {
   children: React.ReactNode
   className?: string
-  staggerDelay?: number
 }
 
 export function StaggerContainer({ 
@@ -73,15 +68,11 @@ export function StaggerContainer({
 interface StaggerItemProps {
   children: React.ReactNode
   className?: string
-  index?: number
-  staggerDelay?: number
 }
 
 export function StaggerItem({ 
   children, 
-  className, 
-  index = 0, 
-  staggerDelay = 0.1 
+  className
 }: StaggerItemProps) {
   return (
     <div className={`animate-fade-in ${className}`}>
@@ -92,11 +83,10 @@ export function StaggerItem({
 
 interface ScaleInProps {
   children: React.ReactNode
-  delay?: number
   className?: string
 }
 
-export function ScaleIn({ children, delay = 0, className }: ScaleInProps) {
+export function ScaleIn({ children, className }: ScaleInProps) {
   return (
     <div className={`animate-fade-in ${className}`}>
       {children}
@@ -106,11 +96,10 @@ export function ScaleIn({ children, delay = 0, className }: ScaleInProps) {
 
 interface BounceInProps {
   children: React.ReactNode
-  delay?: number
   className?: string
 }
 
-export function BounceIn({ children, delay = 0, className }: BounceInProps) {
+export function BounceIn({ children, className }: BounceInProps) {
   return (
     <div className={`animate-fade-in ${className}`}>
       {children}

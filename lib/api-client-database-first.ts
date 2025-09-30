@@ -142,6 +142,40 @@ export interface Prediction {
   predicted_value: number;
   created_at: string;
   updated_at: string;
+  sport?: string;
+}
+
+export interface Odd {
+  id: string;
+  game_id: string;
+  sport?: string;
+  odds_type?: string;
+  home_odds?: number;
+  away_odds?: number;
+  spread?: number;
+  total?: number;
+  bookmaker?: string;
+  source?: string;
+  timestamp?: string;
+  home_team?: string;
+  away_team?: string;
+}
+
+export interface Standing {
+  id: string;
+  sport: string;
+  league?: string;
+  team_id: string;
+  team_name?: string;
+  season?: string | number;
+  wins?: number;
+  losses?: number;
+  ties?: number;
+  win_percentage?: number;
+  games_back?: number;
+  conference?: string;
+  division?: string;
+  updated_at?: string;
 }
 
 class DatabaseFirstApiClient {
@@ -368,6 +402,7 @@ class DatabaseFirstApiClient {
     prediction_type?: string
     model_name?: string
     limit?: number
+    sport?: string
   }): Promise<any[]> {
     const cacheKey = this.getCacheKey('/database-first/predictions', params)
     const cached = this.getCachedData<any[]>(cacheKey)
@@ -380,6 +415,7 @@ class DatabaseFirstApiClient {
     if (params?.prediction_type) searchParams.set("prediction_type", params.prediction_type)
     if (params?.model_name) searchParams.set("model_name", params.model_name)
     if (params?.limit) searchParams.set("limit", params.limit.toString())
+    if (params?.sport) searchParams.set("sport", params.sport)
 
     const query = searchParams.toString()
     const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/predictions${query ? `?${query}` : ""}`)

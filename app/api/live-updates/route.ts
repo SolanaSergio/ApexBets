@@ -9,6 +9,9 @@ export const runtime = 'nodejs'
 
 const CACHE_TTL = 30 // 30 seconds cache
 
+// Simple in-memory fallback cache for API responses within this route scope
+const liveDataCache: Map<string, { data: any; timestamp: number }> = new Map()
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
     if (useRealData || !databaseResult) {
       console.log(`Getting live data from APIs for ${sport}`)
       const apiResult = await getLiveDataFromAPIs(sport, league)
-        await setCache(cacheKey, apiResult, CACHE_TTL);
+      await setCache(cacheKey, apiResult, CACHE_TTL);
       return NextResponse.json(apiResult)
     }
 
@@ -230,7 +233,7 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
     const cached = liveDataCache.get(cacheKey)
     if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
       console.log(`Returning cached data for ${sport}`)
-      return NextResponse.json(cached.data)
+      return cached.data
     }
 
     const liveGames: any[] = []
@@ -278,10 +281,10 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
     // Cache the response
     liveDataCache.set(cacheKey, { data: responseData, timestamp: Date.now() })
 
-    return NextResponse.json(responseData)
+    return responseData
   } catch (error) {
     console.error('Live API data fetch failed:', error)
-    return NextResponse.json({
+    return {
       success: false,
       error: "Failed to fetch live data from APIs",
       live: [],
@@ -294,7 +297,7 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         lastUpdated: new Date().toISOString(),
         dataSource: "error"
       }
-    }, { status: 500 })
+    }
   }
 }
 

@@ -1,6 +1,6 @@
 import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
-import { NextResponse } from 'next/server'
+//
 
 export async function middleware(request: NextRequest) {
   // Skip middleware for reset-password page to allow it to be static

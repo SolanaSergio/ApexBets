@@ -31,7 +31,7 @@
  * ================================================================================
  */
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -48,7 +48,7 @@ import {
 } from "lucide-react"
 import { databaseFirstApiClient, Game, Team } from "@/lib/api-client-database-first"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import { useRealTimeUpdates } from "@/hooks/use-real-time-updates"
+// Real-time updates hook removed; using RealTimeProvider context where needed
 
 type GameData = Game
 type TeamData = Team
@@ -112,7 +112,8 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const [liveOdds, setLiveOdds] = useState<any[]>([])
   
   // Use real-time updates hook
-  const { gameUpdates: liveGameUpdates, isConnected } = useRealTimeUpdates(selectedSupportedSport || undefined)
+  const liveGameUpdates: GameData[] = useMemo(() => [], [])
+  const isConnected = false
 
   // All function definitions moved to top to prevent reference errors
   const loadServiceHealth = useCallback(async () => {

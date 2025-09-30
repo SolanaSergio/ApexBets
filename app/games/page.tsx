@@ -96,7 +96,7 @@ export default function GamesPage() {
       });
     };
 
-    const subscription = subscribeToTable('games', handleRealtimeUpdate);
+    subscribeToTable('games', handleRealtimeUpdate);
 
     return () => {
       unsubscribeFromTable('games');

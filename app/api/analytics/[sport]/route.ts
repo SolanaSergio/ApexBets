@@ -82,12 +82,12 @@ export async function GET(
 
 
   } catch (error) {
-    console.error(`Analytics API error for ${resolvedParams.sport}:`, error)
+    console.error(`Analytics API error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: resolvedParams.sport
+        sport: params.sport
       },
       { status: 500 }
     )
@@ -152,12 +152,12 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error(`Analytics API POST error for ${resolvedParams.sport}:`, error)
+    console.error(`Analytics API POST error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: resolvedParams.sport
+        sport: params.sport
       },
       { status: 500 }
     )

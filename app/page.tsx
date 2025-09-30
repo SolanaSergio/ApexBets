@@ -3,8 +3,8 @@
 import { Navigation } from "@/components/navigation/navigation"
 import { AuthGuard } from "@/components/auth/auth-guard"
 import { RealTimeProvider } from "@/components/data/real-time-provider"
-import { ComprehensiveSportsDashboardWithErrorBoundary } from "@/components/dashboard/comprehensive-sports-dashboard"
-import { useEffect } from "react"
+import { ServerDashboard } from "@/components/categories/dashboard/server-dashboard"
+//
 
 export default function HomePage() {
   return (
@@ -54,7 +54,7 @@ export default function HomePage() {
 
             {/* Full-Width Dashboard Section */}
             <section className="px-2 sm:px-4 lg:px-6 xl:px-8 pb-4 sm:pb-6 lg:pb-8">
-              <ComprehensiveSportsDashboardWithErrorBoundary />
+              <ServerDashboard />
             </section>
           </main>
         </div>

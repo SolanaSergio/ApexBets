@@ -57,9 +57,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-import { NextRequest, NextResponse } from 'next/server'
-import { schemaAuditService } from '@/lib/services/schema-audit-service'
-import { structuredLogger } from '@/lib/services/structured-logger'
 import { clearCache } from '@/lib/redis'
 
 export async function POST(request: NextRequest) {

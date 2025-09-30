@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { SchemaValidator } from '@/lib/services/database/schema-validator'
+import { runDataIntegrityChecks, fixDataIntegrityIssues } from '@/lib/services/database/schema-validator'
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const checkType = searchParams.get('type') || 'all' // all, orphaned, duplicates, invalid
 
     // Run data integrity checks
-    const integrityChecks = await SchemaValidator.runDataIntegrityChecks()
+    const integrityChecks = await runDataIntegrityChecks()
 
     // Filter checks based on type if specified
     let filteredChecks = integrityChecks
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     const { checkType } = body
 
     // Run data integrity checks
-    const integrityChecks = await SchemaValidator.runDataIntegrityChecks()
+    const integrityChecks = await runDataIntegrityChecks()
 
     // Filter checks based on type if specified
     let filteredChecks = integrityChecks
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Fix issues
-    const fixResults = await SchemaValidator.fixDataIntegrityIssues(filteredChecks)
+    const fixResults = await fixDataIntegrityIssues(filteredChecks)
 
     return NextResponse.json({
       success: true,

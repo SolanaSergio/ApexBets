@@ -26,7 +26,7 @@ interface RealTimeContextType {
 const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined)
 
 export function RealTimeProvider({ children }: { children: ReactNode }) {
-  const [selectedSport, setSelectedSport] = useState("basketball") // Default to basketball
+  const [selectedSport, setSelectedSport] = useState("")
   const [data, setData] = useState<RealTimeData>({
     games: [],
     predictions: [],
@@ -68,13 +68,12 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
     if (!selectedSport) return
 
     try {
-      const [games, predictions, odds, standings, players, player_stats] = await Promise.all([
+      const [games, predictions, odds, standings, players] = await Promise.all([
         databaseFirstApiClient.getGames({ sport: selectedSport, limit: 200 }),
         databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: 100 }),
         databaseFirstApiClient.getOdds({ sport: selectedSport, limit: 500 }),
         databaseFirstApiClient.getStandings({ sport: selectedSport }),
-        databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 }),
-        databaseFirstApiClient.getPlayerStats({ sport: selectedSport, limit: 5000 })
+        databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 })
       ])
 
       setData(prev => ({
@@ -84,7 +83,7 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
         odds,
         standings,
         players,
-        player_stats,
+        player_stats: [],
         lastUpdate: new Date(),
         isConnected: true,
         error: null
@@ -102,12 +101,12 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     fetchData()
 
-    const gamesSubscription = subscribeToTable('games', (p) => handleUpdate(p, 'games'))
-    const predictionsSubscription = subscribeToTable('predictions', (p) => handleUpdate(p, 'predictions'))
-    const oddsSubscription = subscribeToTable('odds', (p) => handleUpdate(p, 'odds'))
-    const standingsSubscription = subscribeToTable('standings', (p) => handleUpdate(p, 'standings'))
-    const playersSubscription = subscribeToTable('players', (p) => handleUpdate(p, 'players'))
-    const playerStatsSubscription = subscribeToTable('player_stats', (p) => handleUpdate(p, 'player_stats'))
+    subscribeToTable('games', (p) => handleUpdate(p, 'games'))
+    subscribeToTable('predictions', (p) => handleUpdate(p, 'predictions'))
+    subscribeToTable('odds', (p) => handleUpdate(p, 'odds'))
+    subscribeToTable('standings', (p) => handleUpdate(p, 'standings'))
+    subscribeToTable('players', (p) => handleUpdate(p, 'players'))
+    subscribeToTable('player_stats', (p) => handleUpdate(p, 'player_stats'))
 
     return () => {
       unsubscribeFromTable('games')
@@ -155,10 +154,10 @@ export function useLiveGames(sport?: string) {
 export function usePredictions(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
-  const predictions = Array.isArray(data.predictions) ? data.predictions : []
+  const predictions = Array.isArray(data.predictions) ? data.predictions as Prediction[] : []
 
   return {
-    predictions: predictions.filter(pred => !sport || pred.sport === targetSport),
+    predictions: predictions.filter(pred => !sport || (pred.sport ?? targetSport) === targetSport),
     loading: predictions.length === 0 && !data.error,
     error: data.error,
     lastUpdate: data.lastUpdate
@@ -206,10 +205,10 @@ export function usePlayers(sport?: string) {
 
 export function usePlayerStats(playerId?: string) {
   const { data } = useRealTimeData()
-  const playerStats = Array.isArray(data.player_stats) ? data.player_stats : []
+  const playerStats = Array.isArray(data.player_stats) ? data.player_stats as PlayerStats[] : []
 
   return {
-    stats: playerStats.filter(stat => !playerId || stat.player_id === playerId),
+    stats: playerStats.filter(stat => !playerId || String(stat.player_id) === String(playerId)),
     loading: playerStats.length === 0 && !data.error,
     error: data.error,
     lastUpdate: data.lastUpdate

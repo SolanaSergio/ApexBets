@@ -14,7 +14,15 @@ import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { useAuth } from "@/lib/auth/auth-context"
 import { useIsMobile, useDeviceType, useIsTouchDevice } from "@/hooks/use-mobile"
 
-const navigationItems = [
+type NavItem = {
+  title: string
+  href: string
+  icon: any
+  description: string
+  badge?: string
+}
+
+const navigationItems: NavItem[] = [
   {
     title: "Home",
     href: "/",
@@ -26,14 +34,12 @@ const navigationItems = [
     href: "/games",
     icon: Calendar,
     description: "Live and upcoming games",
-    badge: "Live",
   },
   {
     title: "Players",
     href: "/players",
     icon: User,
     description: "Player statistics and analysis",
-    badge: "New",
   },
   {
     title: "Teams",

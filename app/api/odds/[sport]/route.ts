@@ -172,12 +172,12 @@ export async function GET(
     })
 
   } catch (error) {
-    console.error(`Odds API error for ${resolvedParams.sport}:`, error)
+    console.error(`Odds API error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: resolvedParams.sport
+        sport: params.sport
       },
       { status: 500 }
     )
@@ -249,12 +249,12 @@ export async function POST(
     })
 
   } catch (error) {
-    console.error(`Odds API POST error for ${resolvedParams.sport}:`, error)
+    console.error(`Odds API POST error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: resolvedParams.sport
+        sport: params.sport
       },
       { status: 500 }
     )

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, X, User } from "lucide-react";
 import { usePlayers, useRealTimeData } from "@/components/data/real-time-provider";
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config";
+import { SportConfigManager } from "@/lib/services/core/sport-config";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
-import { BallDontLiePlayer } from "@/lib/sports-apis";
-import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
+import type { BallDontLiePlayer } from "@/lib/sports-apis";
+import type { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
+import type { Player, Team } from "@/lib/api-client-database-first";
 
 type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
 
@@ -79,8 +80,8 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
   useEffect(() => {
     if (games) {
       const allTeams = games.reduce((acc, game) => {
-        if (game.home_team) acc.set(game.home_team.id, game.home_team)
-        if (game.away_team) acc.set(game.away_team.id, game.away_team)
+        if (game.home_team) acc.set(game.home_team.abbreviation || game.home_team.name, game.home_team)
+        if (game.away_team) acc.set(game.away_team.abbreviation || game.away_team.name, game.away_team)
         return acc
       }, new Map<string, any>())
       setTeams(Array.from(allTeams.values()));
@@ -107,7 +108,6 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
 
   const clearSelection = () => {
     setSearchQuery("");
-    setPlayers([]);
     onPlayerSelect?.(null);
   };
 
@@ -172,8 +172,8 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
             <SelectContent>
               <SelectItem value="all">All Teams</SelectItem>
               {teams.map((team) => (
-                <SelectItem key={team.id} value={team.abbreviation || team.id}>
-                  {team.abbreviation}
+                <SelectItem key={team.abbreviation || team.name} value={team.abbreviation || team.name}>
+                  {team.abbreviation || team.name}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -90,22 +90,22 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate performance metrics from database data
-    const performance = games?.map(game => {
+    const performance = (games || []).map(game => {
       const isHome = game.home_team_id === teamData.id
-      const teamScore = isHome ? (game.home_score || 0) : (game.away_score || 0)
-      const opponentScore = isHome ? (game.away_score || 0) : (game.home_score || 0)
+      const teamScore = isHome ? (game.home_team_score || 0) : (game.away_team_score || 0)
+      const opponentScore = isHome ? (game.away_team_score || 0) : (game.home_team_score || 0)
       const won = teamScore > opponentScore
       
       return {
         date: game.game_date || new Date().toISOString(),
-        opponent: isHome ? (game.away_team?.name || 'Away Team') : (game.home_team?.name || 'Home Team'),
+        opponent: isHome ? (game.away_team_name || 'Away Team') : (game.home_team_name || 'Home Team'),
         score: `${teamScore}-${opponentScore}`,
         won,
         points: teamScore,
         opponentPoints: opponentScore,
         margin: teamScore - opponentScore
       }
-    }) || []
+    })
 
     // Calculate team stats
     const wins = performance.filter(p => p.won).length

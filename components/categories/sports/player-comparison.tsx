@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ import {
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts"
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
 import { usePlayers, usePlayerStats } from "@/components/data/real-time-provider"
-import { Player } from "@/lib/api-client-database-first"
+import type { Player, PlayerStats } from "@/lib/api-client-database-first"
 
 interface PlayerComparisonProps {
   selectedPlayer?: Player | null
@@ -150,13 +150,13 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                   <Badge variant="secondary">{selectedPlayer.position}</Badge>
                     <span className="flex items-center gap-1">
                       <TeamLogo
-                        teamName={selectedPlayer.team_name || ''}
-                        alt={selectedPlayer.team_name || ''}
+                        teamName={selectedPlayer.teamName || ''}
+                        alt={selectedPlayer.teamName || ''}
                         width={16}
                         height={16}
                         className="h-4 w-4"
                       />
-                      {selectedPlayer.team_name}
+                      {selectedPlayer.teamName}
                     </span>
                 </div>
               </div>
@@ -217,7 +217,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                           {player.name}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {player.position} • {player.team_name}
+                          {player.position} • {player.teamName}
                         </div>
                       </div>
                     </div>
@@ -245,13 +245,13 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                       <Badge variant="secondary">{comparisonPlayer.position}</Badge>
                       <span className="flex items-center gap-1">
                         <TeamLogo
-                          teamName={comparisonPlayer.team_name || ''}
-                          alt={comparisonPlayer.team_name || ''}
+                          teamName={comparisonPlayer.teamName || ''}
+                          alt={comparisonPlayer.teamName || ''}
                           width={16}
                           height={16}
                           className="h-4 w-4"
                         />
-                        {comparisonPlayer.team_name}
+                        {comparisonPlayer.teamName}
                       </span>
                     </div>
                   </div>

@@ -7,10 +7,8 @@
 
 /// <reference path="./types.d.ts" />
 
-// @ts-ignore - Deno imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-// @ts-ignore - Deno imports
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,12 +55,20 @@ interface APIConfig {
   priority: number
 }
 
+interface ApiMapping {
+  sport: string;
+  provider: string;
+  data_type_mapping: Record<string, string[]>;
+  priority: number;
+}
+
 // Dynamic API configuration loader - NO HARDCODING
+
 class DynamicAPIConfig {
-  private supabase: any
+  private supabase: SupabaseClient
   private apiConfigs: Map<string, APIConfig> = new Map()
 
-  constructor(supabase: any) {
+  constructor(supabase: SupabaseClient) {
     this.supabase = supabase
   }
 
@@ -90,7 +96,7 @@ class DynamicAPIConfig {
 
       // Build API configurations dynamically with real-time data
       for (const sport of sports) {
-        const sportMappings = mappings?.filter((m: any) => m.sport === sport.name) || []
+        const sportMappings = mappings?.filter((m: ApiMapping) => m.sport === sport.name) || []
         
         for (const mapping of sportMappings) {
           const configKey = `${sport.name}_${mapping.provider}`
@@ -195,16 +201,16 @@ class DynamicAPIConfig {
 
 // Enhanced API client with sport-specific handling and comprehensive error management
 class SportAPIClient {
-  private supabase: any
+  private supabase: SupabaseClient
   private rateLimitTracker: Map<string, { lastRequest: number; requestCount: number; failures: number }> = new Map()
   private circuitBreaker: Map<string, { failures: number; lastFailure: number; isOpen: boolean }> = new Map()
   private performanceMetrics: Map<string, { avgResponseTime: number; successRate: number; lastUpdate: number }> = new Map()
   
-  constructor(supabase: any) {
+  constructor(supabase: SupabaseClient) {
     this.supabase = supabase
   }
   
-  async fetchFromAPI(config: APIConfig, endpoint: string, params: Record<string, any> = {}): Promise<any> {
+  async fetchFromAPI(config: APIConfig, endpoint: string, params: Record<string, string | number | boolean> = {}): Promise<{ data: any; count: number }> {
     const configKey = `${config.provider}_${endpoint}`
     const startTime = Date.now()
     const now = startTime
@@ -332,7 +338,7 @@ class SportAPIClient {
     this.performanceMetrics.set(configKey, current)
   }
   
-  private validateRealTimeData(data: any, config: APIConfig, endpoint: string, requestTime: number): any {
+  private validateRealTimeData(data: Record<string, unknown>, _config: APIConfig, endpoint: string, requestTime: number): Record<string, unknown> {
     // Validate data freshness - reject data older than 5 minutes
     const maxAge = 5 * 60 * 1000 // 5 minutes in milliseconds
     
@@ -348,7 +354,7 @@ class SportAPIClient {
     if (endpoint.includes('games') || endpoint.includes('scoreboard')) {
       if (data.games || data.data) {
         const games = data.games || data.data || []
-        const liveGames = games.filter((game: any) => 
+        const liveGames = games.filter((game: Record<string, unknown>) => 
           game.status === 'live' || game.status === 'in_progress' || 
           game.status === '1' || game.status === '2'
         )
@@ -385,7 +391,7 @@ class SportAPIClient {
     return bestProvider
   }
   
-  private async addProviderSpecificParams(url: URL, config: APIConfig, endpoint: string): Promise<void> {
+  private async addProviderSpecificParams(url: URL, config: APIConfig, _endpoint: string): Promise<void> {
     // Fetch provider-specific parameters from database - NO HARDCODING
     const { data: providerConfig, error } = await this.supabase
       .from('api_providers')
@@ -417,7 +423,7 @@ class SportAPIClient {
     url.searchParams.set('year', currentYear.toString())
   }
   
-  private normalizeAPIResponse(data: any, config: APIConfig, endpoint: string): any {
+  private normalizeAPIResponse(data: Record<string, unknown>, config: APIConfig, _endpoint: string): { data: any; count: number } {
     switch (config.provider) {
       case 'nba-stats':
         if (data.resultSets && data.resultSets.length > 0) {
@@ -434,8 +440,8 @@ class SportAPIClient {
       case 'nhl-stats':
         if (data.dates && Array.isArray(data.dates)) {
           return {
-            data: data.dates.flatMap((date: any) => date.games || []),
-            count: data.dates.reduce((total: number, date: any) => total + (date.games?.length || 0), 0)
+            data: data.dates.flatMap((date: Record<string, unknown>) => date.games || []),
+            count: data.dates.reduce((total: number, date: Record<string, unknown>) => total + (date.games?.length || 0), 0)
           }
         } else if (data.teams) {
           return { data: data.teams, count: data.teams.length }
@@ -471,11 +477,11 @@ class SportAPIClient {
 // sportAPIClient will be initialized in the main handler with supabase instance
 
 // Sport-specific data sync functions with proper API handling
-async function syncGames(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
+async function syncGames(supabase: SupabaseClient, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
     console.log(`Syncing games for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
-    let gamesData: any = null
+    let gamesData: Record<string, unknown>[] = []
     
     // Try each endpoint for games
     const gameEndpoints = apiConfig.endpoints.games || ['/games', '/fixtures', '/schedule']
@@ -498,7 +504,7 @@ async function syncGames(supabase: any, sportConfig: SportConfig, apiConfig: API
     }
     
     // Normalize game data based on sport
-    const gamesToInsert = gamesData.map((game: any) => 
+    const gamesToInsert = gamesData.map((game: Record<string, unknown>) => 
       normalizeGameData(game, sportConfig, apiConfig)
     ).filter(Boolean)
     
@@ -514,6 +520,15 @@ async function syncGames(supabase: any, sportConfig: SportConfig, apiConfig: API
     
     if (error) throw error
     console.log(`Synced ${gamesToInsert.length} games for ${sportConfig.display_name}`)
+
+    // Broadcast the changes to the clients
+    const channel = supabase.channel('db-changes')
+    channel.send({
+      type: 'broadcast',
+      event: 'games-updated',
+      payload: { sport: sportConfig.name, games: gamesToInsert },
+    })
+
     return gamesToInsert.length
     
   } catch (error) {
@@ -522,11 +537,11 @@ async function syncGames(supabase: any, sportConfig: SportConfig, apiConfig: API
   }
 }
 
-async function syncTeams(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
+async function syncTeams(supabase: SupabaseClient, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
     console.log(`Syncing teams for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
-    let teamsData: any = null
+    let teamsData: Record<string, unknown>[] = []
     
     // Try each endpoint for teams
     const teamEndpoints = apiConfig.endpoints.teams || ['/teams', '/team']
@@ -549,7 +564,7 @@ async function syncTeams(supabase: any, sportConfig: SportConfig, apiConfig: API
     }
     
     // Normalize team data based on sport
-    const teamsToInsert = teamsData.map((team: any) => 
+    const teamsToInsert = teamsData.map((team: Record<string, unknown>) => 
       normalizeTeamData(team, sportConfig, apiConfig)
     ).filter(Boolean)
     
@@ -565,6 +580,15 @@ async function syncTeams(supabase: any, sportConfig: SportConfig, apiConfig: API
     
     if (error) throw error
     console.log(`Synced ${teamsToInsert.length} teams for ${sportConfig.display_name}`)
+
+    // Broadcast the changes to the clients
+    const channel = supabase.channel('db-changes')
+    channel.send({
+      type: 'broadcast',
+      event: 'teams-updated',
+      payload: { sport: sportConfig.name, teams: teamsToInsert },
+    })
+
     return teamsToInsert.length
     
   } catch (error) {
@@ -573,11 +597,11 @@ async function syncTeams(supabase: any, sportConfig: SportConfig, apiConfig: API
   }
 }
 
-async function syncPlayers(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
+async function syncPlayers(supabase: SupabaseClient, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
     console.log(`Syncing players for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
-    let playersData: any = null
+    let playersData: Record<string, unknown>[] = []
     
     // Try each endpoint for players
     const playerEndpoints = apiConfig.endpoints.players || ['/players', '/people']
@@ -600,7 +624,7 @@ async function syncPlayers(supabase: any, sportConfig: SportConfig, apiConfig: A
     }
     
     // Normalize player data based on sport
-    const playersToInsert = playersData.map((player: any) => 
+    const playersToInsert = playersData.map((player: Record<string, unknown>) => 
       normalizePlayerData(player, sportConfig, apiConfig)
     ).filter(Boolean)
     
@@ -616,6 +640,15 @@ async function syncPlayers(supabase: any, sportConfig: SportConfig, apiConfig: A
     
     if (error) throw error
     console.log(`Synced ${playersToInsert.length} players for ${sportConfig.display_name}`)
+
+    // Broadcast the changes to the clients
+    const channel = supabase.channel('db-changes')
+    channel.send({
+      type: 'broadcast',
+      event: 'players-updated',
+      payload: { sport: sportConfig.name, players: playersToInsert },
+    })
+
     return playersToInsert.length
     
   } catch (error) {
@@ -624,11 +657,11 @@ async function syncPlayers(supabase: any, sportConfig: SportConfig, apiConfig: A
   }
 }
 
-async function syncStandings(supabase: any, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
+async function syncStandings(supabase: SupabaseClient, sportConfig: SportConfig, apiConfig: APIConfig, sportAPIClient: SportAPIClient): Promise<number> {
   try {
     console.log(`Syncing standings for ${sportConfig.display_name} using ${apiConfig.provider}...`)
     
-    let standingsData: any = null
+    let standingsData: Record<string, unknown>[] = []
     
     // Try each endpoint for standings
     const standingsEndpoints = apiConfig.endpoints.standings || ['/standings', '/league-standings']
@@ -651,7 +684,7 @@ async function syncStandings(supabase: any, sportConfig: SportConfig, apiConfig:
     }
     
     // Normalize standings data based on sport
-    const standingsToInsert = standingsData.map((standing: any, index: number) => 
+    const standingsToInsert = standingsData.map((standing: Record<string, unknown>, index: number) => 
       normalizeStandingsData(standing, sportConfig, apiConfig, index)
     ).filter(Boolean)
     
@@ -667,6 +700,15 @@ async function syncStandings(supabase: any, sportConfig: SportConfig, apiConfig:
     
     if (error) throw error
     console.log(`Synced ${standingsToInsert.length} standings for ${sportConfig.display_name}`)
+
+    // Broadcast the changes to the clients
+    const channel = supabase.channel('db-changes')
+    channel.send({
+      type: 'broadcast',
+      event: 'standings-updated',
+      payload: { sport: sportConfig.name, standings: standingsToInsert },
+    })
+
     return standingsToInsert.length
     
   } catch (error) {
@@ -676,7 +718,7 @@ async function syncStandings(supabase: any, sportConfig: SportConfig, apiConfig:
 }
 
 // Data normalization functions for different sports APIs - NO HARDCODING
-function normalizeGameData(game: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
+function normalizeGameData(game: Record<string, unknown>, sportConfig: SportConfig, apiConfig: APIConfig): Record<string, unknown> {
   const now = new Date()
   
   // Generate unique ID based on sport and provider
@@ -701,7 +743,7 @@ function normalizeGameData(game: any, sportConfig: SportConfig, apiConfig: APICo
   }
 }
 
-function normalizeTeamData(team: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
+function normalizeTeamData(team: Record<string, unknown>, sportConfig: SportConfig, apiConfig: APIConfig): Record<string, unknown> {
   const now = new Date()
   
   // Generate unique ID based on sport and provider
@@ -723,7 +765,7 @@ function normalizeTeamData(team: any, sportConfig: SportConfig, apiConfig: APICo
   }
 }
 
-function normalizePlayerData(player: any, sportConfig: SportConfig, apiConfig: APIConfig): any {
+function normalizePlayerData(player: Record<string, unknown>, sportConfig: SportConfig, apiConfig: APIConfig): Record<string, unknown> {
   const now = new Date()
   
   // Generate unique ID based on sport and provider
@@ -750,7 +792,7 @@ function normalizePlayerData(player: any, sportConfig: SportConfig, apiConfig: A
   }
 }
 
-function normalizeStandingsData(standing: any, sportConfig: SportConfig, apiConfig: APIConfig, index: number): any {
+function normalizeStandingsData(standing: Record<string, unknown>, sportConfig: SportConfig, apiConfig: APIConfig, index: number): Record<string, unknown> {
   const now = new Date()
   
   // Generate unique ID based on sport and provider
@@ -825,7 +867,7 @@ serve(async (req: Request) => {
     const supabase = createClient(supabaseUrl, supabaseKey)
 
     // Parse request
-    const { sport, dataTypes = ['games', 'teams', 'players', 'standings'], force = false }: SyncRequest = 
+    const { sport, dataTypes = ['games', 'teams', 'players', 'standings'], _force = false }: SyncRequest = 
       req.method === 'POST' ? await req.json() : {}
 
     // Initialize dynamic API configuration
@@ -847,7 +889,7 @@ serve(async (req: Request) => {
       throw new Error('No active sports configured in database')
     }
 
-    const sportsToSync = sport ? sports.filter((s: any) => s.name === sport) : sports
+    const sportsToSync = sport ? sports.filter((s: SportConfig) => s.name === sport) : sports
 
     const result: SyncResult = {
       success: true,

@@ -263,6 +263,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[${requestId}] Authenticated and validated webhook: ${body.type} from ${clientIP}`)
 
+    const processingContext = {
+      requestId,
+      clientIP,
+      ...(request.headers.get('user-agent') ? { userAgent: request.headers.get('user-agent') as string } : {}),
+      timestamp: new Date()
+    }
     // Process webhook using enhanced processor in the background
     WebhookProcessor.processWebhook(validationResult.data!, processingContext);
 

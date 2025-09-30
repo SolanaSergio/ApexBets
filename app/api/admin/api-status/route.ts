@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { intelligentRateLimiter } from '@/lib/services/enhanced-rate-limiter'
+import { intelligentRateLimiter, enhancedRateLimiter } from '@/lib/services/enhanced-rate-limiter'
 
 export async function GET(_request: NextRequest) {
   try {
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     const { provider } = body
 
     if (provider) {
-      intelligentRateLimiter.resetProviderStatus(provider)
+      await enhancedRateLimiter.resetRateLimits(provider)
       return NextResponse.json({
         success: true,
         message: `Rate limits reset for ${provider}`

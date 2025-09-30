@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, Target, Activity } from "lucide-react"
+import { TrendingUp, Target, Activity, User } from "lucide-react"
 import { usePlayerStats } from "@/components/data/real-time-provider"
 import { Player } from "@/lib/api-client-database-first"
 
@@ -26,21 +26,7 @@ export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
     }))
   }, [playerStats])
 
-  const calculateAverages = useCallback((data: any[]) => {
-    if (data.length === 0) return { points: 0, rebounds: 0, assists: 0 }
-
-    const totalPoints = data.reduce((sum, d) => sum + d.points, 0)
-    const totalRebounds = data.reduce((sum, d) => sum + d.rebounds, 0)
-    const totalAssists = data.reduce((sum, d) => sum + d.assists, 0)
-
-    return {
-      points: (totalPoints / data.length).toFixed(1),
-      rebounds: (totalRebounds / data.length).toFixed(1),
-      assists: (totalAssists / data.length).toFixed(1),
-    }
-  }, [])
-
-  const averages = calculateAverages(trendsData)
+  // Per-card averages are computed inline below to keep state minimal
 
   if (!selectedPlayer) {
     return (

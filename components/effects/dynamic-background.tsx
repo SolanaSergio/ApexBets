@@ -17,16 +17,16 @@ interface DynamicBackgroundProps {
   variant?: "particles" | "waves" | "grid" | "bubbles"
   intensity?: "low" | "medium" | "high"
   colors?: string[]
-  interactive?: boolean
   className?: string
+  interactive?: boolean
 }
 
 export function DynamicBackground({
   variant = "particles",
   intensity = "low", // Default to low for better performance
   colors = ["#06b6d4", "#8b5cf6", "#10b981", "#3b82f6"],
-  interactive = false, // Default to false for better performance
-  className
+  className,
+  interactive = false
 }: DynamicBackgroundProps) {
   const [particles, setParticles] = useState<Particle[]>([])
 

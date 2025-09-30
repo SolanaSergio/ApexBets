@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,7 +16,8 @@ import {
   Zap
 } from "lucide-react"
 import { usePlayerStats } from "@/components/data/real-time-provider";
-import { SupportedSport } from "@/lib/services/core/sport-config";
+import type { SupportedSport } from "@/lib/services/core/sport-config";
+import type { Player } from "@/lib/api-client-database-first";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
 import { BallDontLiePlayer } from "@/lib/sports-apis";
@@ -75,8 +76,8 @@ interface PlayerStatsProps {
   sport?: SupportedSport;
 }
 
-export default function PlayerStats({ selectedPlayer, sport }: PlayerStatsProps) {
-  const { stats, loading } = usePlayerStats(getPlayerId(selectedPlayer));
+export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
+  const { stats, loading } = usePlayerStats(getPlayerId(selectedPlayer ?? null));
   const [selectedSeason, setSelectedSeason] = useState<number>(new Date().getFullYear());
   const [selectedPeriod, setSelectedPeriod] = useState<string>("season");
 

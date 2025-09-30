@@ -8,8 +8,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
-
-const CACHE_TTL = 120 // 2 minute cache
+// Cache is handled at the client/service layer for database-first endpoints
 
 // Explicitly set runtime to suppress warnings
 export const runtime = 'nodejs'

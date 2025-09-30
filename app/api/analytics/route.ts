@@ -25,55 +25,60 @@ export async function GET() {
     ]);
     
     // Calculate analytics
+    const gamesArr = Array.isArray(games.data) ? games.data : []
+    const teamsArr = Array.isArray(teams.data) ? teams.data : []
+    const predictionsArr = Array.isArray(predictions.data) ? predictions.data : []
+    const oddsArr = Array.isArray(odds.data) ? odds.data : []
+
     const analytics = {
       overview: {
-        totalGames: games.data?.length || 0,
-        totalTeams: teams.data?.length || 0,
-        totalPredictions: predictions.data?.length || 0,
-        totalOdds: odds.data?.length || 0
+        totalGames: gamesArr.length,
+        totalTeams: teamsArr.length,
+        totalPredictions: predictionsArr.length,
+        totalOdds: oddsArr.length
       },
       bySport: {
         basketball: {
-          games: games.data?.filter(g => g.sport === 'basketball').length || 0,
-          teams: teams.data?.filter(t => t.sport === 'basketball').length || 0,
-          predictions: predictions.data?.filter(p => p.sport === 'basketball').length || 0
+          games: gamesArr.filter(g => g.sport === 'basketball').length,
+          teams: teamsArr.filter(t => t.sport === 'basketball').length,
+          predictions: predictionsArr.filter(p => p.sport === 'basketball').length
         },
         football: {
-          games: games.data?.filter(g => g.sport === 'football').length || 0,
-          teams: teams.data?.filter(t => t.sport === 'football').length || 0,
-          predictions: predictions.data?.filter(p => p.sport === 'football').length || 0
+          games: gamesArr.filter(g => g.sport === 'football').length,
+          teams: teamsArr.filter(t => t.sport === 'football').length,
+          predictions: predictionsArr.filter(p => p.sport === 'football').length
         },
         baseball: {
-          games: games.data?.filter(g => g.sport === 'baseball').length || 0,
-          teams: teams.data?.filter(t => t.sport === 'baseball').length || 0,
-          predictions: predictions.data?.filter(p => p.sport === 'baseball').length || 0
+          games: gamesArr.filter(g => g.sport === 'baseball').length,
+          teams: teamsArr.filter(t => t.sport === 'baseball').length,
+          predictions: predictionsArr.filter(p => p.sport === 'baseball').length
         },
         hockey: {
-          games: games.data?.filter(g => g.sport === 'hockey').length || 0,
-          teams: teams.data?.filter(t => t.sport === 'hockey').length || 0,
-          predictions: predictions.data?.filter(p => p.sport === 'hockey').length || 0
+          games: gamesArr.filter(g => g.sport === 'hockey').length,
+          teams: teamsArr.filter(t => t.sport === 'hockey').length,
+          predictions: predictionsArr.filter(p => p.sport === 'hockey').length
         },
         soccer: {
-          games: games.data?.filter(g => g.sport === 'soccer').length || 0,
-          teams: teams.data?.filter(t => t.sport === 'soccer').length || 0,
-          predictions: predictions.data?.filter(p => p.sport === 'soccer').length || 0
+          games: gamesArr.filter(g => g.sport === 'soccer').length,
+          teams: teamsArr.filter(t => t.sport === 'soccer').length,
+          predictions: predictionsArr.filter(p => p.sport === 'soccer').length
         }
       },
       gameStatus: {
-        scheduled: games.data?.filter(g => g.status === 'scheduled').length || 0,
-        live: games.data?.filter(g => g.status === 'live').length || 0,
-        finished: games.data?.filter(g => g.status === 'finished').length || 0
+        scheduled: gamesArr.filter(g => g.status === 'scheduled').length,
+        live: gamesArr.filter(g => g.status === 'live').length,
+        finished: gamesArr.filter(g => g.status === 'finished').length
       },
       predictionAccuracy: {
-        totalPredictions: predictions.data?.length || 0,
-        averageConfidence: predictions.data?.length > 0 ? 
-          predictions.data.reduce((sum, p) => sum + (p.confidence || 0), 0) / predictions.data.length : 0
+        totalPredictions: predictionsArr.length,
+        averageConfidence: predictionsArr.length > 0 ? 
+          predictionsArr.reduce((sum, p) => sum + (p.confidence || 0), 0) / predictionsArr.length : 0
       },
       dataFreshness: {
-        lastGameUpdate: games.data?.length > 0 ? 
-          Math.max(...games.data.map(g => new Date(g.updated_at || 0).getTime())) : 0,
-        lastOddsUpdate: odds.data?.length > 0 ? 
-          Math.max(...odds.data.map(o => new Date(o.last_updated || 0).getTime())) : 0
+        lastGameUpdate: gamesArr.length > 0 ? 
+          Math.max(...gamesArr.map(g => new Date(g.updated_at || 0).getTime())) : 0,
+        lastOddsUpdate: oddsArr.length > 0 ? 
+          Math.max(...oddsArr.map(o => new Date(o.last_updated || 0).getTime())) : 0
       }
     };
 
