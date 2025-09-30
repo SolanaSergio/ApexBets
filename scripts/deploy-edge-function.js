@@ -130,7 +130,7 @@ function main() {
     log('🎉 Deployment completed successfully!', 'success');
     log('Next steps:', 'info');
     log('1. Set up environment variables in Supabase Dashboard', 'info');
-    log('2. Configure external cron service', 'info');
+    log('2. Use Supabase Scheduler or invoke the Edge Function directly; external cron is not required', 'info');
     log('3. Test the function manually', 'info');
     
   } catch (error) {

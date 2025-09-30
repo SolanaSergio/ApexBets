@@ -27,348 +27,41 @@ class ProductionSupabaseClient {
     return ProductionSupabaseClient.instance
   }
 
+  async rpc(name: string, params: any): Promise<{ success: boolean; data: any[]; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.rpc(name, params)
+      if (error) throw error
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+
+  async raw(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
+    try {
+      const { data, error } = await this.supabase.rpc('execute_sql', { query, params })
+      if (error) throw error
+      return { success: true, data: data || [] }
+    } catch (error) {
+      return {
+        success: false,
+        data: [],
+        error: error instanceof Error ? error.message : String(error)
+      }
+    }
+  }
+
+  // Backward compatibility method - maps to raw function
   async executeSQL(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
-      // Disable SQL logging for performance - only log errors
-      // console.log('executeSQL called with query:', query.substring(0, 100) + '...')
-      // console.log('executeSQL called with params:', params)
-      const trimmedQuery = query.trim().toUpperCase()
-      
-      // Handle simple health check queries
-      if (trimmedQuery === 'SELECT 1 AS HEALTH_CHECK' || trimmedQuery === 'SELECT 1') {
-        return {
-          success: true,
-          data: [{ health_check: 1 }]
-        }
-      }
-      
-      // Handle dynamic sports manager queries
-      if (query.includes('FROM sports s') && query.includes('WHERE s.is_active = true')) {
-        const { data, error } = await this.supabase
-          .from('sports')
-          .select('id, name, display_name, is_active, data_types, refresh_intervals, api_providers, default_league, season_format, current_season')
-          .eq('is_active', true)
-          .order('display_name')
-        
-        if (error) throw error
-        return { success: true, data: data || [] }
-      }
-      
-      // Handle leagues queries for dynamic sports manager
-      if (query.includes('FROM leagues l') && query.includes('WHERE l.sport = $1')) {
-        const sport = params?.[0]
-        if (!sport) {
-          return { success: true, data: [] }
-        }
-        
-        const { data, error } = await this.supabase
-          .from('leagues')
-          .select('id, name, display_name, sport, is_active, country, season, api_mapping')
-          .eq('sport', sport)
-          .eq('is_active', true)
-          .order('display_name')
-        
-        if (error) throw error
-        return { success: true, data: data || [] }
-      }
-      
-      // Handle queries without FROM clause (system queries)
-      if (trimmedQuery.startsWith('SELECT') && !trimmedQuery.includes('FROM')) {
-        // For system queries, we'll need to implement specific handlers
-        // For now, return empty data for non-table queries
-        return {
-          success: true,
-          data: []
-        }
-      }
-      
-      // Handle analytics queries with COUNT(CASE WHEN...)
-      if (query.includes('COUNT(CASE WHEN status =') && query.includes('FROM games')) {
-        const sport = params?.[0]
-        const dateFrom = params?.[1]
-        const dateTo = params?.[2]
-
-        let queryBuilder = this.supabase.from('games').select('status, sport, game_date')
-
-        if (sport && sport !== 'all') {
-          queryBuilder = queryBuilder.eq('sport', sport)
-        }
-        if (dateFrom) {
-          queryBuilder = queryBuilder.gte('game_date', dateFrom)
-        }
-        if (dateTo) {
-          queryBuilder = queryBuilder.lte('game_date', dateTo)
-        }
-
-        const { data, error } = await queryBuilder
-
-        if (error) throw error
-
-        // Calculate stats manually
-        type GameRow = { status?: string | null }
-        const games: GameRow[] = Array.isArray(data) ? (data as GameRow[]) : []
-        const totalGames = games.length
-        const completedGames = games.filter((g: GameRow) => g.status === 'completed').length
-        const liveGames = games.filter((g: GameRow) => g.status === 'live').length
-        const scheduledGames = games.filter((g: GameRow) => g.status === 'scheduled').length
-
-        return {
-          success: true,
-          data: [{
-            total_games: totalGames,
-            completed_games: completedGames,
-            live_games: liveGames,
-            scheduled_games: scheduledGames
-          }]
-        }
-      }
-
-      // Handle predictions analytics queries
-      if (query.includes('COUNT(CASE WHEN is_correct =') && query.includes('FROM predictions')) {
-        const sport = params?.[0]
-
-        let queryBuilder = this.supabase.from('predictions').select('is_correct, confidence, sport')
-
-        if (sport && sport !== 'all') {
-          queryBuilder = queryBuilder.eq('sport', sport)
-        }
-
-        const { data, error } = await queryBuilder
-
-        if (error) throw error
-
-        // Calculate stats manually
-        type PredictionRow = { is_correct?: boolean | null; confidence?: number | null }
-        const predictions: PredictionRow[] = Array.isArray(data) ? (data as PredictionRow[]) : []
-        const totalPredictions = predictions.length
-        const correctPredictions = predictions.filter((p: PredictionRow) => p.is_correct === true).length
-        const avgConfidence = predictions.length > 0 
-          ? predictions.reduce((sum: number, p: PredictionRow) => sum + (p.confidence || 0), 0) / predictions.length 
-          : 0
-
-        return {
-          success: true,
-          data: [{
-            total_predictions: totalPredictions,
-            correct_predictions: correctPredictions,
-            avg_confidence: avgConfidence
-          }]
-        }
-      }
-
-      // Handle teams count queries
-      if (query.includes('COUNT(*) as total_teams') && query.includes('FROM teams')) {
-        const sport = params?.[0]
-
-        let queryBuilder = this.supabase.from('teams').select('sport, is_active')
-
-        if (sport && sport !== 'all') {
-          queryBuilder = queryBuilder.eq('sport', sport)
-        }
-        queryBuilder = queryBuilder.eq('is_active', true)
-
-        const { data, error } = await queryBuilder
-
-        if (error) throw error
-
-        return {
-          success: true,
-          data: [{
-            total_teams: (data || []).length
-          }]
-        }
-      }
-
-      // Handle games queries with JOINs
-      if (query.includes('FROM games g') && query.includes('LEFT JOIN teams')) {
-        // Parse parameters dynamically based on the SQL query structure
-        // The SQL query is built conditionally, so we need to count the actual parameters
-        let paramIndex = 0
-        const sport = params?.[paramIndex++]
-        const status = params?.[paramIndex++]
-        
-        // Check if dateFrom parameter exists in the query
-        let dateFrom = undefined
-        if (query.includes('g.game_date >=')) {
-          dateFrom = params?.[paramIndex++]
-        }
-        
-        // Check if dateTo parameter exists in the query  
-        let dateTo = undefined
-        if (query.includes('g.game_date <=')) {
-          dateTo = params?.[paramIndex++]
-        }
-        
-        // Check if league parameter exists in the query
-        let league = undefined
-        if (query.includes('g.league =')) {
-          league = params?.[paramIndex++]
-        }
-        
-        // Limit is always the last parameter
-        const limit = params?.[paramIndex] || 100
-
-        // Fetch games first
-        let gamesQuery = this.supabase.from('games').select(`
-          id,
-          external_id,
-          sport,
-          league_id,
-          league_name,
-          season,
-          home_team_id,
-          away_team_id,
-          home_team_name,
-          away_team_name,
-          home_team_score,
-          away_team_score,
-          game_date,
-          game_time_local,
-          status,
-          game_type,
-          venue,
-          attendance,
-          weather_conditions,
-          referee_info,
-          broadcast_info,
-          betting_odds,
-          last_updated,
-          created_at
-        `)
-
-        if (sport && sport !== 'all') {
-          gamesQuery = gamesQuery.eq('sport', sport)
-        }
-        if (status) {
-          gamesQuery = gamesQuery.eq('status', status)
-        }
-        if (dateFrom) {
-          gamesQuery = gamesQuery.gte('game_date', dateFrom)
-        }
-        if (dateTo) {
-          gamesQuery = gamesQuery.lte('game_date', dateTo)
-        }
-        if (league) {
-          gamesQuery = gamesQuery.eq('league', league)
-        }
-
-        const { data: games, error: gamesError } = await gamesQuery
-          .order('game_date', { ascending: false })
-          .limit(limit)
-
-        if (gamesError) throw gamesError
-
-        if (!games || games.length === 0) {
-          return {
-            success: true,
-            data: []
-          }
-        }
-
-        // Get unique team IDs
-        const teamIds = new Set<string>()
-        games.forEach((game: any) => {
-          if (game.home_team_id) teamIds.add(game.home_team_id)
-          if (game.away_team_id) teamIds.add(game.away_team_id)
-        })
-
-        // Fetch teams
-        const { data: teams, error: teamsError } = await this.supabase
-          .from('teams')
-          .select('id, name, abbreviation, logo_url')
-          .in('id', Array.from(teamIds))
-
-        if (teamsError) throw teamsError
-
-        // Create team lookup map
-        const teamMap = new Map<string, any>()
-        teams?.forEach((team: any) => {
-          teamMap.set(team.id, team)
-        })
-
-        // Transform data to match the expected format
-        const transformedData = games.map((game: any) => ({
-          ...game,
-          home_team_name: teamMap.get(game.home_team_id)?.name || '',
-          away_team_name: teamMap.get(game.away_team_id)?.name || ''
-        }))
-
-        return {
-          success: true,
-          data: transformedData
-        }
-      }
-
-      // Extract table name from query for basic routing
-      const tableMatch = query.match(/FROM\s+(\w+)/i)
-      const tableName = tableMatch?.[1]?.toLowerCase()
-
-      if (!tableName) {
-        // For queries without a clear table, try to execute as RPC if possible
-        // For now, return empty data for complex queries
-        return {
-          success: true,
-          data: []
-        }
-      }
-
-      // For SELECT queries with FROM clause, parse WHERE conditions and apply them
-      if (trimmedQuery.startsWith('SELECT')) {
-        let queryBuilder = this.supabase.from(tableName).select('*')
-        
-        // Parse WHERE conditions from the query
-        const whereMatch = query.match(/WHERE\s+(.+?)(?:\s+ORDER\s+BY|\s+LIMIT|$)/i)
-        if (whereMatch && params) {
-          const whereClause = whereMatch[1]
-          
-          // Handle sport filtering
-          if (whereClause.includes('sport = $1') && params[0]) {
-            queryBuilder = queryBuilder.eq('sport', params[0])
-          }
-          
-          // Handle league filtering
-          if (whereClause.includes('league = $2') && params[1]) {
-            queryBuilder = queryBuilder.eq('league', params[1])
-          }
-          
-          // Handle is_active filtering
-          if (whereClause.includes('is_active = $3') && params[2] !== undefined) {
-            queryBuilder = queryBuilder.eq('is_active', params[2])
-          }
-        }
-        
-        // Parse ORDER BY clause
-        const orderMatch = query.match(/ORDER\s+BY\s+(\w+)/i)
-        if (orderMatch) {
-          queryBuilder = queryBuilder.order(orderMatch[1])
-        }
-        
-        // Parse LIMIT clause
-        const limitMatch = query.match(/LIMIT\s+(\d+)/i)
-        if (limitMatch) {
-          queryBuilder = queryBuilder.limit(parseInt(limitMatch[1]))
-        } else {
-          queryBuilder = queryBuilder.limit(1000) // Safety limit
-        }
-
-        const { data, error } = await queryBuilder
-
-        if (error) throw error
-
-        return {
-          success: true,
-          data: data || []
-        }
-      }
-
-      // For other queries, we'd need to implement specific handlers
-      // For now, return empty data
-      return {
-        success: true,
-        data: []
-      }
-
+      const result = await this.raw(query, params)
+      return result
     } catch (error) {
+      console.error('executeSQL error:', error)
       return {
         success: false,
         data: [],

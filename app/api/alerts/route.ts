@@ -36,6 +36,12 @@ export async function POST(request: NextRequest) {
     }
     const body = await request.json()
 
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const { data: alert, error } = await supabase
       .from("user_alerts")
       .insert([{
@@ -43,7 +49,7 @@ export async function POST(request: NextRequest) {
         team_id: body.team_id || null,
         threshold: body.threshold || null,
         enabled: body.enabled ?? true,
-        user_id: "default_user" // In real app, get from auth
+        user_id: user.id
       }])
       .select(`
         *,

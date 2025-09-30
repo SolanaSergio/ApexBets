@@ -14,6 +14,8 @@ export interface TeamStats {
   sport: string
   league: string
   season: string
+  conference?: string
+  division?: string
   gamesPlayed: number
   wins: number
   losses: number
@@ -283,6 +285,8 @@ export class SportTeamStatsService extends BaseService {
         sport: this.sport,
         league: this.league,
         season: currentSeason,
+        conference: standing.team?.conference,
+        division: standing.team?.division,
         gamesPlayed: (standing.wins || 0) + (standing.losses || 0) + (standing.ties || 0),
         wins: standing.wins || 0,
         losses: standing.losses || 0,
@@ -433,13 +437,28 @@ export class SportTeamStatsService extends BaseService {
    * Group standings by conference/division
    */
   private groupStandings(teams: TeamStats[]): any[] {
-    // For now, return a single group
-    // This would be enhanced based on sport-specific league structure
-    return [{
-      conference: 'All',
-      division: 'All',
-      teams
-    }]
+    const standings: any = {}
+
+    teams.forEach(team => {
+      const conference = team.conference || 'N/A'
+      const division = team.division || 'N/A'
+
+      if (!standings[conference]) {
+        standings[conference] = {}
+      }
+      if (!standings[conference][division]) {
+        standings[conference][division] = []
+      }
+      standings[conference][division].push(team)
+    })
+
+    return Object.keys(standings).map(conference => ({
+      conference,
+      divisions: Object.keys(standings[conference]).map(division => ({
+        division,
+        teams: standings[conference][division]
+      }))
+    }))
   }
 
   /**
