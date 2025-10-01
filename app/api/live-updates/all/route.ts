@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
-import { getCache, setCache } from "@/lib/redis"
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 30; // 30 seconds
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // const includeInactive = searchParams.get("include_inactive") === "true"
 
     const cacheKey = `live-updates-all-${useRealData}`;
-    const cached = await getCache(cacheKey);
+    const cached = await databaseCacheService.get(cacheKey);
     if (cached) {
         return NextResponse.json(cached);
     }
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    await setCache(cacheKey, result, CACHE_TTL);
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL);
 
     return NextResponse.json(result)
 

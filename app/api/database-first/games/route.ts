@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { getCache, setCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 60 // 1 minute
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     const timezone = searchParams.get("timezone") || "UTC"
 
     const cacheKey = `database-first-games-${sport}-${status}-${dateFrom}-${dateTo}-${limit}-${league}-${timezone}`
-    const cached = await getCache(cacheKey)
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       timezone
     })
 
-    await setCache(cacheKey, result, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
 

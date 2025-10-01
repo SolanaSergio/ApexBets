@@ -316,45 +316,60 @@
   -webkit-text-fill-color: transparent;
 }
 
-/* Bright login page styles */
-.bright-glow {
-  box-shadow: 0 0 40px rgba(6, 182, 212, 0.2);
+/* Modern Login Page Styles - Clean and Professional */
+.auth-container {
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 50%, #f1f5f9 100%);
 }
 
-.bright-glow-cyan {
-  box-shadow: 0 0 40px rgba(6, 182, 212, 0.2);
+.hero-section {
+  background: #ffffff;
 }
 
-.bright-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  border: 2px solid rgba(6, 182, 212, 0.2);
-  box-shadow: 0 25px 50px rgba(6, 182, 212, 0.1);
+.auth-section {
+  background: #f8fafc;
 }
 
-.bright-feature-card {
-  background: rgba(255, 255, 255, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(6, 182, 212, 0.2);
-  transition: all 0.3s ease;
+.auth-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-.bright-feature-card:hover {
-  background: rgba(255, 255, 255, 0.8);
+.feature-card {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s ease-in-out;
+}
+
+.feature-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(6, 182, 212, 0.15);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
 
-.bright-gradient-text {
-  background: linear-gradient(135deg, #ea580c, #f97316, #06b6d4);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
+.form-input {
+  border: 1px solid #d1d5db;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-.bright-pattern {
-  background-image: radial-gradient(rgba(249, 115, 22, 0.1) 1px, transparent 1px);
-  background-size: 30px 30px;
+.form-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border: none;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.25), 0 2px 4px -1px rgba(59, 130, 246, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.25), 0 4px 6px -2px rgba(59, 130, 246, 0.25);
+}
+
+.tab-container {
+  background-color: #f3f4f6;
 }
 
 /* Essential animations only */

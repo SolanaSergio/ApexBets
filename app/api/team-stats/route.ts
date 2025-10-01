@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stats-service'
-import { getCache, setCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 60 * 5 // 5 minutes
 
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || 'standings' // standings, performance, leaders
 
     const cacheKey = `team-stats-${sport}-${league}-${season}-${type}`
-    const cached = await getCache(cacheKey)
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    await setCache(cacheKey, result, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
 

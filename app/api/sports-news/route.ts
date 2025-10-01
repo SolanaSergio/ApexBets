@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { getCache, setCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 60 * 5 // 5 minutes
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     const hours = Number.parseInt(searchParams.get("hours") || "24")
 
     const cacheKey = `sports-news-${sport}-${league}-${teamId}-${playerId}-${newsType}-${source}-${limit}-${hours}`
-    const cached = await getCache(cacheKey)
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    await setCache(cacheKey, response, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
 

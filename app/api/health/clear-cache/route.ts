@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 import { cacheService } from '@/lib/services/cache-service'
-import { clearCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function POST() {
   try {
     // Clear both database and memory cache
     await databaseCacheService.clear()
     cacheService.clear()
-    await clearCache()
+    await databaseCacheService.delete()
     
     return NextResponse.json({
       success: true,

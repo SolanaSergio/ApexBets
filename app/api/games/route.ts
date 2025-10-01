@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { getCache, setCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 60 // 1 minute
 
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get("league")
 
     const cacheKey = `games-${sport}-${status}-${dateFrom}-${dateTo}-${limit}-${league}`
-    const cached = await getCache(cacheKey)
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    await setCache(cacheKey, result, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
 

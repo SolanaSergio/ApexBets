@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { clearCache } from "@/lib/redis"
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function POST(_request: NextRequest) {
   try {
@@ -51,9 +51,9 @@ export async function POST(_request: NextRequest) {
       console.log('✅ Reset rate limit tracking')
     }
 
-    // Clear Redis cache
-    await clearCache();
-    console.log('✅ Cleared Redis cache');
+    // Clear database cache
+    await databaseCacheService.delete('*');
+    console.log('✅ Cleared database cache');
 
     return NextResponse.json({
       success: true,

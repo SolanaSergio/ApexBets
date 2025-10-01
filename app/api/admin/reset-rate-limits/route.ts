@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 // Removed unused sportsDBClient import
 import { apiKeyRotation } from '@/lib/services/api-key-rotation'
-import { clearCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Clear Redis cache
-    await clearCache();
-    console.log('✅ Cleared Redis cache');
+    // Clear database cache
+    await databaseCacheService.delete();
+    console.log('✅ Cleared database cache');
 
     return NextResponse.json({
       success: true,

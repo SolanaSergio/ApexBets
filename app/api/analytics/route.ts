@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { getCache, setCache } from '@/lib/redis';
+import { databaseCacheService } from '@/lib/services/database-cache-service';
 
 const CACHE_TTL = 60 * 5; // 5 minutes
 
 export async function GET() {
   try {
     const cacheKey = 'analytics-overview';
-    const cached = await getCache(cacheKey);
+    const cached = await databaseCacheService.get(cacheKey);
     if (cached) {
         return NextResponse.json(cached);
     }
@@ -88,7 +88,7 @@ export async function GET() {
       timestamp: new Date().toISOString()
     };
 
-    await setCache(cacheKey, result, CACHE_TTL);
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL);
     
     return NextResponse.json(result);
     

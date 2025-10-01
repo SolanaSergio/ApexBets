@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
-import { getCache, setCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 
 const CACHE_TTL = 60 // 1 minute cache
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     // Check cache first
     const cacheKey = `teams-${sport}-${league || 'all'}-${limit}`
-    const cached = await getCache(cacheKey)
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
     }
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     })
 
     // Cache the result
-    await setCache(cacheKey, result, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     // Reduce logging frequency
     // structuredLogger.info('Teams API request processed', {

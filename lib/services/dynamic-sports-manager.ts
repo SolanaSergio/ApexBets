@@ -28,6 +28,8 @@ export interface LeagueConfiguration {
   isActive: boolean
   country?: string
   season?: string
+  abbreviation?: string
+  level?: number
   apiMapping: Record<string, string> // Maps to different API identifiers
 }
 
@@ -73,8 +75,7 @@ export class DynamicSportsManager {
           s.data_types,
           s.refresh_intervals,
           s.api_providers,
-          s.default_league,
-          s.season_format,
+          s.season_config,
           s.current_season
         FROM sports s
         WHERE s.is_active = true
@@ -96,7 +97,8 @@ export class DynamicSportsManager {
             l.is_active,
             l.country,
             l.season,
-            l.api_mapping
+            l.abbreviation,
+            l.level
           FROM leagues l
           WHERE l.sport = $1 AND l.is_active = true
           ORDER BY l.display_name
@@ -111,7 +113,9 @@ export class DynamicSportsManager {
               isActive: league.is_active,
               country: league.country,
               season: league.season,
-              apiMapping: league.api_mapping || {}
+              abbreviation: league.abbreviation,
+              level: league.level,
+              apiMapping: {} // Default empty mapping since api_mapping column doesn't exist
             }))
           : []
 
@@ -131,8 +135,8 @@ export class DynamicSportsManager {
             predictions: 10
           },
           apiProviders: sportData.api_providers || ['api-sports', 'thesportsdb', 'espn'],
-          defaultLeague: sportData.default_league,
-          seasonFormat: sportData.season_format || 'year',
+          defaultLeague: sportData.season_config?.defaultLeague || null,
+          seasonFormat: sportData.season_config?.seasonFormat || 'year',
           currentSeason: sportData.current_season
         }
 

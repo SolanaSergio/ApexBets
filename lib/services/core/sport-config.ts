@@ -90,7 +90,7 @@ class SportConfigManagerImpl {
     const config: SportConfig = {
       name: sport,
       displayName: process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
-      icon: process.env[`${sportUpper}_ICON`] || '⚽',
+      icon: process.env[`${sportUpper}_ICON`] || '🏆',
       color: process.env[`${sportUpper}_COLOR`] || '#6B7280',
       isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
       dataSource: process.env[`${sportUpper}_DATA_SOURCE`] || 'rapidapi',

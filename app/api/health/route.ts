@@ -3,7 +3,7 @@ import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 // Removed unused staleDataDetector import
 import { dynamicSportsManager } from '@/lib/services/dynamic-sports-manager'
-import { isRedisHealthy } from '@/lib/redis'
+// Redis removed - using Supabase-based caching instead
 
 // Force Node.js runtime to avoid Edge Runtime compatibility issues
 export const runtime = 'nodejs'
@@ -12,7 +12,7 @@ export async function GET() {
   const startTime = Date.now()
   const healthChecks = {
     database: false,
-    redis: false,
+    cache: false,
     staleDataDetector: false,
     dynamicSportsManager: false,
     timestamp: new Date().toISOString()
@@ -27,12 +27,15 @@ export async function GET() {
       structuredLogger.error('Database health check failed', { error: error instanceof Error ? error.message : String(error) })
     }
 
-    // Test Redis connection
+    // Test cache system (Supabase-based)
     try {
-        healthChecks.redis = await isRedisHealthy();
+        const { databaseCacheService } = await import('@/lib/services/database-cache-service')
+        await databaseCacheService.set('health-check', 'ok', 10)
+        const testCache = await databaseCacheService.get('health-check')
+        healthChecks.cache = testCache === 'ok'
     } catch (error) {
-        structuredLogger.error('Redis health check failed', { error: error instanceof Error ? error.message : String(error) })
-        healthChecks.redis = false;
+        structuredLogger.error('Cache health check failed', { error: error instanceof Error ? error.message : String(error) })
+        healthChecks.cache = false;
     }
 
     // Test stale data detector
@@ -55,7 +58,7 @@ export async function GET() {
     const duration = Date.now() - startTime
     
     // Consider system healthy if database and dynamic sports manager are working
-    // Redis is optional for basic functionality
+    // Cache is optional for basic functionality
     const criticalChecks = {
       database: healthChecks.database,
       dynamicSportsManager: healthChecks.dynamicSportsManager

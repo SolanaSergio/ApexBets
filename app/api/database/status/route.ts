@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseService } from '@/lib/services/database-service'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
-import redis from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function GET(request: NextRequest) {
   try {
@@ -39,13 +39,12 @@ export async function GET(request: NextRequest) {
       key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'configured' : 'missing'
     }
 
-    // Get Redis status
-    let redisStatus = 'disconnected';
+    // Get cache status
+    let cacheStatus = 'disconnected';
     try {
-        if (redis) {
-            await redis.ping();
-            redisStatus = 'connected';
-        }
+        const { databaseCacheService } = await import('@/lib/services/database-cache-service');
+        await databaseCacheService.set('status-check', 'ok', 10);
+        cacheStatus = 'connected';
     } catch (error) {
         // ignore
     }
@@ -57,7 +56,7 @@ export async function GET(request: NextRequest) {
         connection: {
           database: isConnected,
           supabase: supabaseStatus,
-          redis: redisStatus
+          cache: cacheStatus
         },
         tables: includeTables ? tables : undefined,
         stats: includeStats ? stats : undefined,

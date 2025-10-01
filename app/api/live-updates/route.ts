@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { normalizeGameData } from "@/lib/utils/data-utils"
 import { databaseOptimizer } from "@/lib/database/optimize-queries"
-import { getCache, setCache } from "@/lib/redis"
+import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 // Explicitly set runtime to suppress warnings
 export const runtime = 'nodejs'
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     const useRealData = searchParams.get("real") === "true"
 
     const cacheKey = `live-updates-${sport}-${league}`;
-    const cached = await getCache(cacheKey);
+    const cached = await databaseCacheService.get(cacheKey);
     if (cached) {
         return NextResponse.json(cached);
     }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     // If we have recent data from database, return it
     if (databaseResult && (databaseResult.summary.totalLive > 0 || databaseResult.summary.totalRecent > 0)) {
       console.log(`Returning database data for ${sport}`)
-      await setCache(cacheKey, databaseResult, CACHE_TTL);
+      await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL);
       return NextResponse.json(databaseResult)
     }
 
@@ -40,13 +40,13 @@ export async function GET(request: NextRequest) {
     if (useRealData || !databaseResult) {
       console.log(`Getting live data from APIs for ${sport}`)
       const apiResult = await getLiveDataFromAPIs(sport, league)
-      await setCache(cacheKey, apiResult, CACHE_TTL);
+      await databaseCacheService.set(cacheKey, apiResult, CACHE_TTL);
       return NextResponse.json(apiResult)
     }
 
     // Return database result even if empty
     console.log(`Returning empty database data for ${sport}`)
-    await setCache(cacheKey, databaseResult, CACHE_TTL);
+    await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL);
     return NextResponse.json(databaseResult)
 
   } catch (error) {

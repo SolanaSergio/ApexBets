@@ -1,41 +1,53 @@
-import { Suspense } from "react"
+'use client'
+
+import { Suspense, useEffect, useState } from "react"
 import { ServerSportConfigManager } from "@/lib/services/core/server-sport-config"
 import { CleanDashboard } from "./clean-dashboard"
 import { DashboardSkeleton } from "./dashboard-skeleton"
+import { SupportedSport } from "@/types/sports"
 
 interface ServerDashboardProps {
   className?: string
 }
 
-export async function ServerDashboard({ className = "" }: ServerDashboardProps) {
-  try {
-    // Initialize sport configuration on the server side
-    await ServerSportConfigManager.initialize()
-    
-    // Get the first available sport as default
-    const supportedSports = ServerSportConfigManager.getSupportedSports()
-    const defaultSport = supportedSports.length > 0 ? supportedSports[0] : null
+export function ServerDashboard({ className = "" }: ServerDashboardProps) {
+  const [defaultSport, setDefaultSport] = useState<SupportedSport | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
 
-    return (
-      <Suspense fallback={<DashboardSkeleton />}>
-        <CleanDashboard 
-          className={className}
-          defaultSport={defaultSport}
-        />
-      </Suspense>
-    )
-  } catch (error) {
-    console.error('Error initializing server dashboard:', error)
-    // Fallback to client-side initialization with dynamic sport selection
-    // The CleanDashboard component will use dynamic sport selection
-    // when defaultSport is null and no supported sports are available
-    return (
-      <Suspense fallback={<DashboardSkeleton />}>
-        <CleanDashboard 
-          className={className}
-          defaultSport={null}
-        />
-      </Suspense>
-    )
+  useEffect(() => {
+    const initializeSportConfig = async () => {
+      try {
+        // Initialize sport configuration on the client side
+        await ServerSportConfigManager.initialize()
+        
+        // Get the first available sport as default
+        const supportedSports = ServerSportConfigManager.getSupportedSports()
+        // Prioritize basketball since it has games data
+        const sport = supportedSports.includes('basketball') ? 'basketball' : 
+                     (supportedSports.length > 0 ? supportedSports[0] : null)
+        setDefaultSport(sport)
+      } catch (error) {
+        console.error('Error initializing server dashboard:', error)
+        // Fallback to null - CleanDashboard will handle dynamic sport selection
+        setDefaultSport(null)
+      } finally {
+        setIsInitialized(true)
+      }
+    }
+
+    initializeSportConfig()
+  }, [])
+
+  if (!isInitialized) {
+    return <DashboardSkeleton />
   }
+
+  return (
+    <Suspense fallback={<DashboardSkeleton />}>
+      <CleanDashboard 
+        className={className}
+        defaultSport={defaultSport}
+      />
+    </Suspense>
+  )
 }
