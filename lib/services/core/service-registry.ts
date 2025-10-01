@@ -99,7 +99,7 @@ export class ServiceRegistry {
         this.serviceMap.set(sport, serviceClass)
       })
     } catch (error) {
-      console.warn('Failed to load sports from database, using fallback:', error.message)
+      console.warn('Failed to load sports from database, using fallback:', error instanceof Error ? error.message : 'Unknown error')
       // Fallback to basic sports if database fails
       const fallbackSports = ['basketball', 'football', 'soccer', 'baseball', 'hockey']
       fallbackSports.forEach((sport: string) => {

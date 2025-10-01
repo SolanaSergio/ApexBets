@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from "react"
 import { ServerSportConfigManager } from "@/lib/services/core/server-sport-config"
 import { CleanDashboard } from "./clean-dashboard"
 import { DashboardSkeleton } from "./dashboard-skeleton"
-import { SupportedSport } from "@/types/sports"
+import { SupportedSport } from "@/lib/services/core/sport-config"
 
 interface ServerDashboardProps {
   className?: string
@@ -23,8 +23,8 @@ export function ServerDashboard({ className = "" }: ServerDashboardProps) {
         // Get the first available sport as default
         const supportedSports = ServerSportConfigManager.getSupportedSports()
         // Prioritize basketball since it has games data
-        const sport = supportedSports.includes('basketball') ? 'basketball' : 
-                     (supportedSports.length > 0 ? supportedSports[0] : null)
+        const sport: SupportedSport | null = supportedSports.includes('basketball') ? 'basketball' : 
+                     (supportedSports.length > 0 ? supportedSports[0] as SupportedSport : null)
         setDefaultSport(sport)
       } catch (error) {
         console.error('Error initializing server dashboard:', error)
