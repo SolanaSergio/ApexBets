@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (league) {
-      query = query.eq('league', league)
+      query = query.eq('league_name', league)
     }
 
     if (limit > 0) {

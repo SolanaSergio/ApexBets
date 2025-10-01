@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (league) {
-      teamQuery = teamQuery.eq('league', league)
+      teamQuery = teamQuery.eq('league_name', league)
     }
 
     const { data: teamData, error: teamError } = await teamQuery.single()
@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
       .limit(parseInt(timeRange))
     
     if (league) {
-      gamesQuery = gamesQuery.eq('league', league)
+      gamesQuery = gamesQuery.eq('league_name', league)
     }
 
     const { data: games, error: gamesError } = await gamesQuery

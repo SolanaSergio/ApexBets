@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       .in('status', ['scheduled', 'live']);
     
     if (league) {
-      gamesQuery = gamesQuery.eq('league', league);
+      gamesQuery = gamesQuery.eq('league_name', league);
     }
     
     if (gameId) {

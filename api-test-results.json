@@ -1,0 +1,187 @@
+{
+  "timestamp": "2025-10-01T00:44:03.856Z",
+  "summary": {
+    "total": 28,
+    "passed": 26,
+    "failed": 1,
+    "errors": 1,
+    "successRate": 93
+  },
+  "results": {
+    "passed": [
+      {
+        "name": "Health Check",
+        "path": "/api/health",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Sports List",
+        "path": "/api/sports",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams (Basketball)",
+        "path": "/api/database-first/teams?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Live Games (Basketball)",
+        "path": "/api/database-first/games?sport=basketball&status=live",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Scheduled Games (Basketball)",
+        "path": "/api/database-first/games?sport=basketball&status=scheduled",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Odds (Basketball)",
+        "path": "/api/database-first/odds?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Standings (Basketball)",
+        "path": "/api/database-first/standings?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Predictions (Basketball)",
+        "path": "/api/database-first/predictions?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams (Football)",
+        "path": "/api/database-first/teams?sport=football",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams (Soccer)",
+        "path": "/api/database-first/teams?sport=soccer",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams (Hockey)",
+        "path": "/api/database-first/teams?sport=hockey",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams (Baseball)",
+        "path": "/api/database-first/teams?sport=baseball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Analytics (Basketball)",
+        "path": "/api/analytics?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Players (Basketball)",
+        "path": "/api/players?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Player Stats (Basketball)",
+        "path": "/api/player-stats?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Teams API (Basketball)",
+        "path": "/api/teams?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Team Stats (Basketball)",
+        "path": "/api/team-stats?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Upcoming Predictions (Basketball)",
+        "path": "/api/predictions/upcoming?sport=basketball&limit=5",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Generate Predictions (Basketball)",
+        "path": "/api/predictions/generate?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Value Bets (Basketball)",
+        "path": "/api/value-bets?sport=basketball&min_value=0.1&limit=5",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Live Scores (Basketball)",
+        "path": "/api/live-scores?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Live Updates (Basketball)",
+        "path": "/api/live-updates?sport=basketball",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "API Status",
+        "path": "/api/admin/api-status",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Database Audit",
+        "path": "/api/admin/database-audit",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Database Status",
+        "path": "/api/database/status",
+        "status": 200,
+        "responseTime": "N/A"
+      },
+      {
+        "name": "Database Schema",
+        "path": "/api/database/schema",
+        "status": 200,
+        "responseTime": "N/A"
+      }
+    ],
+    "failed": [
+      {
+        "name": "Team Performance (Basketball)",
+        "path": "/api/analytics/team-performance?sport=basketball",
+        "status": 404,
+        "error": {
+          "error": "Team not found"
+        }
+      }
+    ],
+    "errors": [
+      {
+        "name": "Trends (Basketball)",
+        "path": "/api/analytics/trends?sport=basketball",
+        "error": "Request timeout"
+      }
+    ]
+  }
+}

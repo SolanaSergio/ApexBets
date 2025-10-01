@@ -50,14 +50,29 @@ class SportConfigManagerImpl {
     this.loadDynamicConfigs().catch(error => {
       console.warn('Failed to initialize sport configurations:', error)
     })
+    
+    // Set up fallback sports immediately
+    this.setupFallbackSports()
+  }
+
+  private setupFallbackSports(): void {
+    // Set up known sports as fallback
+    const knownSports = ['basketball', 'football', 'soccer', 'hockey', 'baseball']
+    knownSports.forEach(sport => {
+      if (!this.configs.has(sport)) {
+        this.loadSportConfig(sport)
+      }
+    })
   }
 
   private async loadDynamicConfigs(): Promise<void> {
     // Load sports from database instead of hardcoded fallbacks
     try {
-      const { productionSupabaseClient } = require('../../supabase/production-client')
-      const client = productionSupabaseClient
-      const supabase = client.supabase
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
       
       const { data: sports, error } = await supabase
         .from('sports')

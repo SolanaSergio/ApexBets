@@ -22,7 +22,7 @@ async function getLeagueStyles(league: string): Promise<LeagueStyles> {
       const { data } = await supabase
         .from('teams')
         .select('primary_color, secondary_color, sport')
-        .eq('league', league)
+        .eq('league_name', league)
         .limit(1)
         .single()
 

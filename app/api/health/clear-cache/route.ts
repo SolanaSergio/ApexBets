@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 import { cacheService } from '@/lib/services/cache-service'
-import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function POST() {
   try {

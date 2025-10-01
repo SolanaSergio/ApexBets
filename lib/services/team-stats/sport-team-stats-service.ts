@@ -266,7 +266,7 @@ export class SportTeamStatsService extends BaseService {
           team:teams!league_standings_team_id_fkey(name, abbreviation, conference, division)
         `)
         .eq('sport', this.sport)
-        .eq('league', this.league)
+        .eq('league_name', this.league)
         .eq('season', season || this.getCurrentSeason())
 
       if (error) {

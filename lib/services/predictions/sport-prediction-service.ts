@@ -145,7 +145,7 @@ export class SportPredictionService {
           team:teams!league_standings_team_id_fkey(name, abbreviation)
         `)
         .eq('sport', this.sport)
-        .eq('league', this.league)
+        .eq('league_name', this.league)
         .ilike('team.name', `%${teamName}%`)
         .single()
 
@@ -469,7 +469,7 @@ export class SportPredictionService {
         .from('predictions')
         .select('*')
         .eq('sport', this.sport)
-        .eq('league', this.league)
+        .eq('league_name', this.league)
         .not('actual_value', 'is', null) // Only completed predictions
 
       if (error || !predictions || predictions.length === 0) {
@@ -545,7 +545,7 @@ export class SportPredictionService {
         .from('predictions')
         .select('*')
         .eq('sport', this.sport)
-        .eq('league', this.league)
+        .eq('league_name', this.league)
         .not('actual_value', 'is', null)
         .gte('created_at', startDate)
         .lte('created_at', endDate)

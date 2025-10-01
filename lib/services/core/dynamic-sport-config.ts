@@ -156,7 +156,10 @@ export class DynamicSportConfigService {
     // Get dynamic column configuration based on sport
     const statFields = this.getStatFieldsForSport(sport)
     const columns = this.buildColumnsString(statFields)
-    const primaryStat = config.scoringFields.primary
+    
+    // Safely access scoringFields with fallback
+    const scoringFields = config.scoringFields || { primary: 'points', for: 'points_for', against: 'points_against' }
+    const primaryStat = scoringFields.primary || 'points'
 
     return {
       tableName: config.playerStatsTable,
@@ -174,8 +177,14 @@ export class DynamicSportConfigService {
     if (!config) {
       return {}
     }
-    // Use dynamic stat fields from configuration; no hardcoded mappings
-    return config.scoringFields ? { [config.scoringFields.primary]: config.scoringFields.primary } : {}
+    
+    // Use dynamic stat fields from configuration with fallback
+    const scoringFields = config.scoringFields || { primary: 'points', for: 'points_for', against: 'points_against' }
+    return {
+      [scoringFields.primary]: scoringFields.primary,
+      [scoringFields.for]: scoringFields.for,
+      [scoringFields.against]: scoringFields.against
+    }
   }
 
   /**

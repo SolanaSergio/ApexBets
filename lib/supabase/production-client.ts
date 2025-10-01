@@ -175,7 +175,7 @@ class ProductionSupabaseClient {
     `)
 
     if (sport) query = query.eq('sport', sport)
-    if (league) query = query.eq('league', league)
+    if (league) query = query.eq('league_name', league)
     if (date) query = query.eq('game_date', date)
     if (status) query = query.eq('status', status)
 
@@ -189,7 +189,7 @@ class ProductionSupabaseClient {
     let query = this.supabase.from('teams').select('*')
 
     if (sport) query = query.eq('sport', sport)
-    if (league) query = query.eq('league', league)
+    if (league) query = query.eq('league_name', league)
 
     const { data, error } = await query.order('name')
 
@@ -198,15 +198,15 @@ class ProductionSupabaseClient {
   }
 
   async getPlayers(sport?: string, teamId?: string, limit: number = 100) {
-    // Map sport names to their specific player stats tables
+    // Map sport names to their specific player tables
     const sportTableMap: { [key: string]: string } = {
-      'basketball': 'player_stats',
-      'football': 'football_player_stats', 
-      'baseball': 'baseball_player_stats',
-      'hockey': 'hockey_player_stats',
-      'soccer': 'soccer_player_stats',
-      'tennis': 'tennis_match_stats',
-      'golf': 'golf_tournament_stats'
+      'basketball': 'player_profiles',
+      'football': 'player_profiles', 
+      'baseball': 'player_profiles',
+      'hockey': 'player_profiles',
+      'soccer': 'player_profiles',
+      'tennis': 'player_profiles',
+      'golf': 'player_profiles'
     }
 
     if (!sport) {
@@ -230,7 +230,7 @@ class ProductionSupabaseClient {
         }
       }
 
-      const { data, error } = await query.order('player_name').limit(limit)
+      const { data, error } = await query.order('name').limit(limit)
       
       if (error) throw error
       
@@ -267,7 +267,7 @@ class ProductionSupabaseClient {
     `)
 
     if (sport) query = query.eq('sport', sport)
-    if (league) query = query.eq('league', league)
+    if (league) query = query.eq('league_name', league)
     if (season) query = query.eq('season', season)
 
     const { data, error } = await query.order('wins', { ascending: false })

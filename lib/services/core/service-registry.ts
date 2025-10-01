@@ -74,20 +74,39 @@ export class ServiceRegistry {
    * Register all sport services
    */
   private static registerSportServices(): void {
-    // Get supported sports from environment validator
-    const { envValidator } = require('../../config/env-validator')
-    const supportedSports = envValidator.getSupportedSports()
+    // Get supported sports from database configuration instead of environment
+    const { DynamicSportConfigService } = require('./dynamic-sport-config')
     
-    if (supportedSports.length === 0) {
-      throw new Error('No supported sports configured in environment')
-    }
+    try {
+      // Initialize the dynamic sport config service
+      DynamicSportConfigService.initialize('luehhafpitbluxvwxczl')
+      const supportedSports = DynamicSportConfigService.getAllSports()
+      
+      if (supportedSports.length === 0) {
+        console.warn('No supported sports found in database configuration')
+        // Fallback to basic sports if database is empty
+        const fallbackSports = ['basketball', 'football', 'soccer', 'baseball', 'hockey']
+        fallbackSports.forEach((sport: string) => {
+          const serviceClass = this.getServiceClassForSport(sport)
+          this.serviceMap.set(sport, serviceClass)
+        })
+        return
+      }
 
-    // Register services for each supported sport
-    supportedSports.forEach((sport: string) => {
-      // Use specific service if available, otherwise use generic service
-      const serviceClass = this.getServiceClassForSport(sport)
-      this.serviceMap.set(sport, serviceClass)
-    })
+      // Register services for each supported sport from database
+      supportedSports.forEach((sport: string) => {
+        const serviceClass = this.getServiceClassForSport(sport)
+        this.serviceMap.set(sport, serviceClass)
+      })
+    } catch (error) {
+      console.warn('Failed to load sports from database, using fallback:', error.message)
+      // Fallback to basic sports if database fails
+      const fallbackSports = ['basketball', 'football', 'soccer', 'baseball', 'hockey']
+      fallbackSports.forEach((sport: string) => {
+        const serviceClass = this.getServiceClassForSport(sport)
+        this.serviceMap.set(sport, serviceClass)
+      })
+    }
   }
 
   /**

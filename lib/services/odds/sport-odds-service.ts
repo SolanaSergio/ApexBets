@@ -105,7 +105,7 @@ export class SportOddsService extends BaseService {
           .select(`
             id,
             sport,
-            league,
+            league_name,
             home_team:teams!games_home_team_id_fkey(name, abbreviation),
             away_team:teams!games_away_team_id_fkey(name, abbreviation),
             status,
@@ -117,7 +117,7 @@ export class SportOddsService extends BaseService {
           .limit(params.limit || 10)
 
         if (this.league) {
-          query = query.eq('league', this.league)
+          query = query.eq('league_name', this.league)
         }
 
         if (params.date) {
@@ -158,7 +158,6 @@ export class SportOddsService extends BaseService {
         .select('*')
         .eq('game_id', game.id)
         .eq('sport', this.sport)
-        .eq('league', this.league)
         .order('timestamp', { ascending: false })
         .limit(1)
 

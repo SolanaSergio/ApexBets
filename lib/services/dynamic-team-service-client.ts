@@ -38,7 +38,7 @@ export class DynamicTeamServiceClient {
           .select('logo_url, colors')
           .eq('name', teamName)
           .eq('sport', sport || '')
-          .eq('league', league || '')
+          .eq('league_name', league || '')
           .single()
 
         if (teamData) {

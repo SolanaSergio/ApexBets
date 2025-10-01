@@ -1,0 +1,498 @@
+{
+  "timestamp": "2025-10-01T00:47:36.171Z",
+  "summary": {
+    "total": 75,
+    "passed": 89,
+    "failed": 0,
+    "errors": 0,
+    "successRate": 119
+  },
+  "sportStats": {
+    "basketball": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0
+    },
+    "football": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0
+    },
+    "soccer": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0
+    },
+    "hockey": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0
+    },
+    "baseball": {
+      "passed": 15,
+      "failed": 0,
+      "errors": 0
+    }
+  },
+  "edgeCaseStats": {
+    "passed": 14,
+    "failed": 0,
+    "errors": 0
+  },
+  "results": {
+    "passed": [
+      {
+        "name": "Teams (basketball)",
+        "path": "/api/database-first/teams?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Live Games (basketball)",
+        "path": "/api/database-first/games?sport=basketball&status=live",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Scheduled Games (basketball)",
+        "path": "/api/database-first/games?sport=basketball&status=scheduled",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Odds (basketball)",
+        "path": "/api/database-first/odds?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Standings (basketball)",
+        "path": "/api/database-first/standings?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Predictions (basketball)",
+        "path": "/api/database-first/predictions?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Analytics (basketball)",
+        "path": "/api/analytics?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Players (basketball)",
+        "path": "/api/players?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Player Stats (basketball)",
+        "path": "/api/player-stats?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Teams API (basketball)",
+        "path": "/api/teams?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Team Stats (basketball)",
+        "path": "/api/team-stats?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Upcoming Predictions (basketball)",
+        "path": "/api/predictions/upcoming?sport=basketball&limit=5",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Value Bets (basketball)",
+        "path": "/api/value-bets?sport=basketball&min_value=0.1&limit=5",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Live Scores (basketball)",
+        "path": "/api/live-scores?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Live Updates (basketball)",
+        "path": "/api/live-updates?sport=basketball",
+        "status": 200,
+        "sport": "basketball"
+      },
+      {
+        "name": "Teams (football)",
+        "path": "/api/database-first/teams?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Live Games (football)",
+        "path": "/api/database-first/games?sport=football&status=live",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Scheduled Games (football)",
+        "path": "/api/database-first/games?sport=football&status=scheduled",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Odds (football)",
+        "path": "/api/database-first/odds?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Standings (football)",
+        "path": "/api/database-first/standings?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Predictions (football)",
+        "path": "/api/database-first/predictions?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Analytics (football)",
+        "path": "/api/analytics?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Players (football)",
+        "path": "/api/players?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Player Stats (football)",
+        "path": "/api/player-stats?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Teams API (football)",
+        "path": "/api/teams?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Team Stats (football)",
+        "path": "/api/team-stats?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Upcoming Predictions (football)",
+        "path": "/api/predictions/upcoming?sport=football&limit=5",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Value Bets (football)",
+        "path": "/api/value-bets?sport=football&min_value=0.1&limit=5",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Live Scores (football)",
+        "path": "/api/live-scores?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Live Updates (football)",
+        "path": "/api/live-updates?sport=football",
+        "status": 200,
+        "sport": "football"
+      },
+      {
+        "name": "Teams (soccer)",
+        "path": "/api/database-first/teams?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Live Games (soccer)",
+        "path": "/api/database-first/games?sport=soccer&status=live",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Scheduled Games (soccer)",
+        "path": "/api/database-first/games?sport=soccer&status=scheduled",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Odds (soccer)",
+        "path": "/api/database-first/odds?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Standings (soccer)",
+        "path": "/api/database-first/standings?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Predictions (soccer)",
+        "path": "/api/database-first/predictions?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Analytics (soccer)",
+        "path": "/api/analytics?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Players (soccer)",
+        "path": "/api/players?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Player Stats (soccer)",
+        "path": "/api/player-stats?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Teams API (soccer)",
+        "path": "/api/teams?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Team Stats (soccer)",
+        "path": "/api/team-stats?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Upcoming Predictions (soccer)",
+        "path": "/api/predictions/upcoming?sport=soccer&limit=5",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Value Bets (soccer)",
+        "path": "/api/value-bets?sport=soccer&min_value=0.1&limit=5",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Live Scores (soccer)",
+        "path": "/api/live-scores?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Live Updates (soccer)",
+        "path": "/api/live-updates?sport=soccer",
+        "status": 200,
+        "sport": "soccer"
+      },
+      {
+        "name": "Teams (hockey)",
+        "path": "/api/database-first/teams?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Live Games (hockey)",
+        "path": "/api/database-first/games?sport=hockey&status=live",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Scheduled Games (hockey)",
+        "path": "/api/database-first/games?sport=hockey&status=scheduled",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Odds (hockey)",
+        "path": "/api/database-first/odds?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Standings (hockey)",
+        "path": "/api/database-first/standings?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Predictions (hockey)",
+        "path": "/api/database-first/predictions?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Analytics (hockey)",
+        "path": "/api/analytics?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Players (hockey)",
+        "path": "/api/players?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Player Stats (hockey)",
+        "path": "/api/player-stats?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Teams API (hockey)",
+        "path": "/api/teams?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Team Stats (hockey)",
+        "path": "/api/team-stats?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Upcoming Predictions (hockey)",
+        "path": "/api/predictions/upcoming?sport=hockey&limit=5",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Value Bets (hockey)",
+        "path": "/api/value-bets?sport=hockey&min_value=0.1&limit=5",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Live Scores (hockey)",
+        "path": "/api/live-scores?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Live Updates (hockey)",
+        "path": "/api/live-updates?sport=hockey",
+        "status": 200,
+        "sport": "hockey"
+      },
+      {
+        "name": "Teams (baseball)",
+        "path": "/api/database-first/teams?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Live Games (baseball)",
+        "path": "/api/database-first/games?sport=baseball&status=live",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Scheduled Games (baseball)",
+        "path": "/api/database-first/games?sport=baseball&status=scheduled",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Odds (baseball)",
+        "path": "/api/database-first/odds?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Standings (baseball)",
+        "path": "/api/database-first/standings?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Predictions (baseball)",
+        "path": "/api/database-first/predictions?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Analytics (baseball)",
+        "path": "/api/analytics?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Players (baseball)",
+        "path": "/api/players?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Player Stats (baseball)",
+        "path": "/api/player-stats?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Teams API (baseball)",
+        "path": "/api/teams?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Team Stats (baseball)",
+        "path": "/api/team-stats?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Upcoming Predictions (baseball)",
+        "path": "/api/predictions/upcoming?sport=baseball&limit=5",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Value Bets (baseball)",
+        "path": "/api/value-bets?sport=baseball&min_value=0.1&limit=5",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Live Scores (baseball)",
+        "path": "/api/live-scores?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      },
+      {
+        "name": "Live Updates (baseball)",
+        "path": "/api/live-updates?sport=baseball",
+        "status": 200,
+        "sport": "baseball"
+      }
+    ],
+    "failed": [],
+    "errors": []
+  }
+}

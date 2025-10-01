@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       .from('teams')
       .update({ logo_url: logoUrl })
       .eq('name', teamName)
-      .eq('league', league)
+      .eq('league_name', league)
 
     if (error) {
       return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })

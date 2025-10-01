@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       .select(`
         *,
         team:teams!players_team_id_fkey(
-          id, name, abbreviation, logo_url, city, league, sport
+          id, name, abbreviation, logo_url, city, league_name, sport
         )
       `)
       .order('name', { ascending: true })
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (league) {
-      query = query.eq('team.league', league)
+      query = query.eq('team.league_name', league)
     }
 
     if (position) {
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       team_abbreviation: player.team?.abbreviation || '',
       team_logo: player.team?.logo_url || null,
       team_city: player.team?.city || '',
-      team_league: player.team?.league || '',
+      team_league: player.team?.league_name || '',
       team_sport: player.team?.sport || sport
     }))
 
