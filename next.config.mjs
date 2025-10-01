@@ -14,7 +14,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
-    domains: ['localhost', new URL(process.env.REDIS_URL || 'redis://localhost:6379').hostname],
+    domains: ['localhost'],
     formats: ['image/webp', 'image/avif'],
   },
   // Optimize performance

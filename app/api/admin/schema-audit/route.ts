@@ -57,7 +57,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-import { clearCache } from '@/lib/redis'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
+import { cacheService } from '@/lib/services/cache-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -82,9 +83,10 @@ export async function POST(request: NextRequest) {
       // Apply migrations
       const result = await schemaAuditService.applyMigrationPlan(report.migrationPlan)
 
-      // Clear Redis cache
-      await clearCache();
-      console.log('✅ Cleared Redis cache');
+      // Clear database and memory cache
+      await databaseCacheService.clear()
+      cacheService.clear()
+      console.log('✅ Cleared database and memory cache');
       
       return NextResponse.json({
         success: result.success,
