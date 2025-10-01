@@ -6,7 +6,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { databaseService } from '@/lib/services/database-service'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
-import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 export async function GET(request: NextRequest) {
   try {
