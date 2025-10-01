@@ -7,7 +7,6 @@ export async function POST() {
     // Clear both database and memory cache
     await databaseCacheService.clear()
     cacheService.clear()
-    await databaseCacheService.delete()
     
     return NextResponse.json({
       success: true,

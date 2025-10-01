@@ -52,7 +52,7 @@ export async function POST(_request: NextRequest) {
     }
 
     // Clear database cache
-    await databaseCacheService.delete('*');
+    await databaseCacheService.clear();
     console.log('✅ Cleared database cache');
 
     return NextResponse.json({
