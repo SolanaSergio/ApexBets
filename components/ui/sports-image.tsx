@@ -24,15 +24,15 @@ interface SportsImageProps {
   priority?: boolean
   quality?: number
   type?: 'team' | 'player' | 'sports'
-  league?: string
+  league?: string | undefined
   teamName?: string
 }
 
 interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {
   teamName: string
-  league?: SportsLeague
+  league?: SportsLeague | string | undefined
   config?: Partial<TeamLogoConfig>
-  sport?: string
+  sport?: string | undefined
   logoUrl?: string
   dynamicGeneration?: boolean // Enable for custom teams/leagues not in mappings
 }
@@ -103,7 +103,6 @@ export function SportsImage({
 export function TeamLogo({ 
   teamName, 
   league,
-  config = {},
   alt,
   width = 200,
   height = 200,
@@ -215,7 +214,7 @@ export function TeamLogo({
     if (teamName) {
       loadLogo()
     }
-  }, [teamName, league, sport, logoUrl])
+  }, [teamName, league, sport, logoUrl, fallbackType])
 
   const handleError = useCallback(() => {
     if (!hasError) {

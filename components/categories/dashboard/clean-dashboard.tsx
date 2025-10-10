@@ -576,7 +576,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } finally {
       setLoading(false)
     }
-  }, []) // Remove all dependencies - functions are stable
+  }, [loadLiveGamesForSport, loadLiveOdds, loadServiceHealth, loadStandings, loadTeamsForSport, loadUpcomingGamesForSport, loadUpcomingPredictions, loadValueBets]) // Add all function dependencies
 
 
   const handleRefresh = useCallback(async () => {
@@ -595,7 +595,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     if (selectedSupportedSport) {
       initializeAndLoadData()
     }
-  }, [selectedSupportedSport]) // Only depend on sport selection
+  }, [selectedSupportedSport, initializeAndLoadData]) // Add initializeAndLoadData dependency
 
   // Update live games with real-time updates
   useEffect(() => {

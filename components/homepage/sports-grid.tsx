@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { databaseFirstApiClient } from "@/lib/api-client-database-first"
+import { useRealTimeData } from "@/components/data/real-time-provider"
 import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import { ChevronRight, Calendar, Users } from "lucide-react"
+import { Users, Calendar, ChevronRight, Activity } from "lucide-react"
 
 interface SportData {
   sport: SupportedSport
@@ -18,85 +18,33 @@ interface SportData {
 }
 
 export function SportsGrid() {
-  const [sportsData, setSportsData] = useState<SportData[]>([])
-  const [loading, setLoading] = useState(true)
+  const { supportedSports, data } = useRealTimeData()
 
-  useEffect(() => {
-    loadSportsData()
-  }, [])
+  // Calculate sport-specific data from real-time provider
+  const sportsData = useMemo(() => {
+    return supportedSports.map(sport => {
+      const config = SportConfigManager.getSportConfig(sport)
+      if (!config) return null
 
-  const loadSportsData = async () => {
-    try {
-      setLoading(true)
-      const supportedSports = SportConfigManager.getSupportedSports()
-      
-      const sportsPromises = supportedSports.map(async (sport) => {
-        const config = SportConfigManager.getSportConfig(sport)
-        if (!config) return null
+      const sportGames = data.games.filter(game => game.sport === sport)
+      const liveGames = sportGames.filter(game => game.status === 'in_progress')
+      const sportTeams = [...new Set([
+        ...sportGames.map(g => g.home_team_id),
+        ...sportGames.map(g => g.away_team_id)
+      ])].filter(Boolean)
 
-        try {
-          const [liveGames, totalGames, teams] = await Promise.all([
-            databaseFirstApiClient.getGames({ sport, status: 'in_progress' }),
-            databaseFirstApiClient.getGames({ sport, limit: 10 }),
-            databaseFirstApiClient.getTeams({ sport })
-          ])
+      return {
+        sport,
+        name: config.name,
+        icon: config.icon,
+        liveGames: liveGames.length,
+        totalGames: sportGames.length,
+        teams: sportTeams.length
+      }
+    }).filter(Boolean) as SportData[]
+  }, [supportedSports, data.games])
 
-          return {
-            sport,
-            name: config.name,
-            icon: config.icon,
-            liveGames: liveGames.length,
-            totalGames: totalGames.length,
-            teams: teams.length
-          }
-        } catch (error) {
-          console.error(`Error loading data for ${sport}:`, error)
-          return {
-            sport,
-            name: config.name,
-            icon: config.icon,
-            liveGames: 0,
-            totalGames: 0,
-            teams: 0
-          }
-        }
-      })
-
-      const results = await Promise.all(sportsPromises)
-      setSportsData(results.filter(Boolean) as SportData[])
-    } catch (error) {
-      console.error('Error loading sports data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <Users className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Sports Coverage</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="h-12 w-12 bg-muted rounded-lg"></div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-20 bg-muted rounded"></div>
-                    <div className="h-3 w-16 bg-muted rounded"></div>
-                    <div className="h-3 w-12 bg-muted rounded"></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const totalLiveGames = sportsData.reduce((sum, sport) => sum + sport.liveGames, 0)
 
   return (
     <div className="space-y-6">
@@ -108,7 +56,7 @@ export function SportsGrid() {
         </div>
         <Badge variant="outline" className="gap-2">
           <Calendar className="h-3 w-3" />
-          {sportsData.reduce((sum, sport) => sum + sport.liveGames, 0)} Live
+          {totalLiveGames} Live
         </Badge>
       </div>
 
@@ -152,6 +100,17 @@ export function SportsGrid() {
                       <span className="text-muted-foreground">Teams</span>
                       <span className="font-medium">{sport.teams}</span>
                     </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Status</span>
+                      <div className="flex items-center gap-1">
+                        <div className={`h-2 w-2 rounded-full ${
+                          sport.liveGames > 0 ? 'bg-green-500' : 'bg-gray-400'
+                        }`} />
+                        <span className="text-xs">
+                          {sport.liveGames > 0 ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Action Indicator */}
@@ -164,6 +123,45 @@ export function SportsGrid() {
             </Card>
           </Link>
         ))}
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="card-modern">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Activity className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-sm text-muted-foreground">Total Sports</div>
+                <div className="text-lg font-bold">{sportsData.length}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-modern">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Calendar className="h-5 w-5 text-accent" />
+              <div>
+                <div className="text-sm text-muted-foreground">Live Games</div>
+                <div className="text-lg font-bold">{totalLiveGames}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="card-modern">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Users className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-sm text-muted-foreground">Total Teams</div>
+                <div className="text-lg font-bold">
+                  {sportsData.reduce((sum, sport) => sum + sport.teams, 0)}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Empty State */}

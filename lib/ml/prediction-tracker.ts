@@ -126,7 +126,7 @@ export class PredictionTracker {
     league?: string,
     modelName?: string,
     timeRange: 'week' | 'month' | 'season' | 'all' = 'month'
-  ): Promise<ModelPerformanceAnalysis> {
+  ): Promise<ModelPerformanceAnalysis | null> {
     try {
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
@@ -163,7 +163,7 @@ export class PredictionTracker {
       }
       
       if (!predictions || predictions.length === 0) {
-        return this.getEmptyAnalysis()
+        return null
       }
       
       // Calculate overall metrics
@@ -195,7 +195,7 @@ export class PredictionTracker {
       
     } catch (error) {
       console.error('Error getting model performance:', error)
-      return this.getEmptyAnalysis()
+      return null
     }
   }
   
@@ -602,40 +602,6 @@ export class PredictionTracker {
       case 'all':
       default:
         return null
-    }
-  }
-  
-  private static getEmptyAnalysis(): ModelPerformanceAnalysis {
-    const emptyMetrics: PredictionMetrics = {
-      modelName: 'No Data',
-      sport: '',
-      league: '',
-      totalPredictions: 0,
-      correctPredictions: 0,
-      accuracy: 0,
-      precision: 0,
-      recall: 0,
-      f1Score: 0,
-      calibrationScore: 0,
-      logLoss: 0,
-      brierScore: 0,
-      sharpeRatio: 0,
-      profitability: 0,
-      lastUpdated: new Date()
-    }
-    
-    return {
-      overall: emptyMetrics,
-      byConfidenceLevel: {},
-      bySeason: {},
-      byGameType: {},
-      trends: {
-        accuracyTrend: [],
-        profitabilityTrend: [],
-        confidenceTrend: [],
-        recentForm: 'stable'
-      },
-      recommendations: ['Insufficient data for analysis']
     }
   }
   

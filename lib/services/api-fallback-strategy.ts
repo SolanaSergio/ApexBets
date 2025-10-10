@@ -73,16 +73,16 @@ export class APIFallbackStrategy {
       {
         name: 'thesportsdb',
         priority: 1,
-        cost: parseFloat(process.env.THESPORTSDB_COST || '0'),
-        reliability: parseFloat(process.env.THESPORTSDB_RELIABILITY || '0.95'),
+        cost: (() => { const v = process.env.THESPORTSDB_COST; if (!v) { throw new Error('Missing THESPORTSDB_COST'); } return parseFloat(v); })(),
+        reliability: (() => { const v = process.env.THESPORTSDB_RELIABILITY; if (!v) { throw new Error('Missing THESPORTSDB_RELIABILITY'); } return parseFloat(v); })(),
         coverage: {
           sports: supportedSports,
           dataTypes: ['games', 'teams', 'players', 'standings', 'odds'],
           features: ['live', 'historical', 'comprehensive']
         },
         limits: {
-          freeRequests: parseInt(process.env.THESPORTSDB_FREE_REQUESTS || String(Number.MAX_SAFE_INTEGER)),
-          rateLimit: parseInt(process.env.THESPORTSDB_RATE_LIMIT || '20') // Reduced from 30 to be more conservative
+          freeRequests: (() => { const v = process.env.THESPORTSDB_FREE_REQUESTS; if (!v) { throw new Error('Missing THESPORTSDB_FREE_REQUESTS'); } return parseInt(v); })(),
+          rateLimit: (() => { const v = process.env.THESPORTSDB_RATE_LIMIT; if (!v) { throw new Error('Missing THESPORTSDB_RATE_LIMIT'); } return parseInt(v); })()
         },
         healthStatus: 'healthy',
         lastHealthCheck: new Date().toISOString()
@@ -328,11 +328,11 @@ export class APIFallbackStrategy {
       case 'thesportsdb':
         return this.executeTheSportsDBRequest<T>(request)
       case 'espn':
+        return this.executeESPNRequest<T>(request)
       case 'balldontlie':
+        return this.executeBallDontLieRequest<T>(request)
       case 'api-sports':
-        // These providers need proper implementation
-        // For now, return empty array to avoid errors
-        return [] as T
+        return this.executeAPISportsRequest<T>(request)
       default:
         throw new Error(`Unknown provider: ${providerName}`)
     }
@@ -356,7 +356,153 @@ export class APIFallbackStrategy {
     }
   }
 
-  // Removed individual provider methods - using generic approach
+  private async executeESPNRequest<T>(request: FallbackRequest): Promise<T> {
+    try {
+      // ESPN doesn't have a public API for most data
+      // This would require ESPN API access which is not publicly available
+      throw new Error('ESPN API not publicly available - requires ESPN partnership')
+    } catch (error) {
+      structuredLogger.error('ESPN API request failed', {
+        dataType: request.dataType,
+        sport: request.sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
+  }
+
+  private async executeBallDontLieRequest<T>(request: FallbackRequest): Promise<T> {
+    try {
+      const apiKey = process.env.BALLDONTLIE_API_KEY
+      if (!apiKey) {
+        throw new Error('BallDontLie API key not configured')
+      }
+
+      const baseUrl = 'https://www.balldontlie.io/api/v1'
+      let url = ''
+      const params = new URLSearchParams()
+
+      switch (request.dataType) {
+        case 'games':
+          url = `${baseUrl}/games`
+          if (request.params.season) params.append('seasons[]', request.params.season)
+          if (request.params.teamId) params.append('team_ids[]', request.params.teamId)
+          break
+        case 'teams':
+          url = `${baseUrl}/teams`
+          break
+        case 'players':
+          url = `${baseUrl}/players`
+          if (request.params.teamId) params.append('team_ids[]', request.params.teamId)
+          break
+        case 'standings':
+          // BallDontLie doesn't have standings endpoint
+          throw new Error('BallDontLie API does not support standings data')
+        case 'odds':
+          // BallDontLie doesn't have odds endpoint
+          throw new Error('BallDontLie API does not support odds data')
+        default:
+          throw new Error(`Unsupported data type: ${request.dataType}`)
+      }
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'User-Agent': 'ApexBets/1.0'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`BallDontLie API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return data.data || [] as T
+    } catch (error) {
+      structuredLogger.error('BallDontLie API request failed', {
+        dataType: request.dataType,
+        sport: request.sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
+  }
+
+  private async executeAPISportsRequest<T>(request: FallbackRequest): Promise<T> {
+    try {
+      const apiKey = process.env.APISPORTS_API_KEY
+      if (!apiKey) {
+        throw new Error('API-Sports API key not configured')
+      }
+
+      const baseUrl = 'https://v1.american-football.api-sports.io'
+      let url = ''
+      const params = new URLSearchParams()
+
+      // Map sport names to API-Sports endpoints
+      const sportMapping: Record<string, string> = {
+        'football': 'american-football',
+        'basketball': 'basketball',
+        'baseball': 'baseball',
+        'hockey': 'hockey',
+        'soccer': 'football'
+      }
+
+      const apiSport = sportMapping[request.sport.toLowerCase()]
+      if (!apiSport) {
+        throw new Error(`Sport ${request.sport} not supported by API-Sports`)
+      }
+
+      switch (request.dataType) {
+        case 'games':
+          url = `${baseUrl}/${apiSport}/fixtures`
+          if (request.params.season) params.append('season', request.params.season)
+          if (request.params.league) params.append('league', request.params.league)
+          break
+        case 'teams':
+          url = `${baseUrl}/${apiSport}/teams`
+          if (request.params.league) params.append('league', request.params.league)
+          break
+        case 'players':
+          url = `${baseUrl}/${apiSport}/players`
+          if (request.params.teamId) params.append('team', request.params.teamId)
+          break
+        case 'standings':
+          url = `${baseUrl}/${apiSport}/standings`
+          if (request.params.season) params.append('season', request.params.season)
+          if (request.params.league) params.append('league', request.params.league)
+          break
+        case 'odds':
+          url = `${baseUrl}/${apiSport}/odds`
+          if (request.params.fixture) params.append('fixture', request.params.fixture)
+          break
+        default:
+          throw new Error(`Unsupported data type: ${request.dataType}`)
+      }
+
+      const response = await fetch(`${url}?${params.toString()}`, {
+        headers: {
+          'X-RapidAPI-Key': apiKey,
+          'X-RapidAPI-Host': 'v1.american-football.api-sports.io',
+          'User-Agent': 'ApexBets/1.0'
+        }
+      })
+
+      if (!response.ok) {
+        throw new Error(`API-Sports API error: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      return data.response || [] as T
+    } catch (error) {
+      structuredLogger.error('API-Sports API request failed', {
+        dataType: request.dataType,
+        sport: request.sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
+      throw error
+    }
+  }
 
   private calculateCost(provider: ProviderConfig, _request: FallbackRequest): number {
     return provider.cost

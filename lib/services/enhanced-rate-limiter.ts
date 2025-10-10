@@ -83,9 +83,9 @@ export class EnhancedRateLimiter {
       },
       {
         provider: 'api-sports',
-        requestsPerMinute: parseInt(process.env.API_SPORTS_REQUESTS_PER_MINUTE || '10'), // More reasonable default
-        requestsPerDay: parseInt(process.env.API_SPORTS_REQUESTS_PER_DAY || '1000'), // More reasonable daily limit
-        burstLimit: parseInt(process.env.API_SPORTS_BURST_LIMIT || '2'),
+        requestsPerMinute: (() => { const v = process.env.API_SPORTS_REQUESTS_PER_MINUTE; if (!v) { throw new Error('Missing API_SPORTS_REQUESTS_PER_MINUTE'); } return parseInt(v); })(),
+        requestsPerDay: (() => { const v = process.env.API_SPORTS_REQUESTS_PER_DAY; if (!v) { throw new Error('Missing API_SPORTS_REQUESTS_PER_DAY'); } return parseInt(v); })(),
+        burstLimit: (() => { const v = process.env.API_SPORTS_BURST_LIMIT; if (!v) { throw new Error('Missing API_SPORTS_BURST_LIMIT'); } return parseInt(v); })(),
         windowSizeMs: 60000
       },
       {

@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       }
 
       const teams = teamsResult.data
-      const results = []
+      const results: any[] = []
       let successful = 0
       let failed = 0
 
@@ -112,9 +112,9 @@ export async function POST(request: NextRequest) {
     structuredLogger.info('Logo population completed', {
       success: true,
       result: {
-        totalProcessed: result.totalProcessed || 1,
-        successful: result.successful || (result.success ? 1 : 0),
-        failed: result.failed || (result.success ? 0 : 1)
+        totalProcessed: (result as any).totalProcessed || 1,
+        successful: (result as any).successful || ((result as any).success ? 1 : 0),
+        failed: (result as any).failed || ((result as any).success ? 0 : 1)
       }
     })
 

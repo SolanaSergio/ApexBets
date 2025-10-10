@@ -1,64 +1,38 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { databaseFirstApiClient } from "@/lib/api-client-database-first"
+import { usePredictions, useRealTimeData } from "@/components/data/real-time-provider"
 import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { Target, TrendingUp, Eye, Calendar } from "lucide-react"
+import { Target, TrendingUp, Eye, Calendar, BarChart3 } from "lucide-react"
 import { format } from "date-fns"
 
-interface Prediction {
-  id: string
-  game_id: string
-  prediction_type: string
-  predicted_value: number
-  confidence: number
-  reasoning: string
-  created_at: string
-  game?: {
-    home_team: { name: string; abbreviation: string }
-    away_team: { name: string; abbreviation: string }
-    game_date: string
-    sport: string
-  }
-}
-
 export function PredictionsDashboard() {
-  const [predictions, setPredictions] = useState<Prediction[]>([])
-  const [loading, setLoading] = useState(true)
-  const [overallAccuracy, setOverallAccuracy] = useState(0)
+  const { selectedSport } = useRealTimeData()
+  const { predictions, loading, error, lastUpdate } = usePredictions()
 
-  useEffect(() => {
-    loadPredictions()
-  }, [])
+  // Filter predictions based on selected sport
+  const filteredPredictions = useMemo(() => {
+    if (selectedSport === "all") return predictions
+    return predictions.filter(pred => pred.sport === selectedSport)
+  }, [predictions, selectedSport])
 
-  const loadPredictions = async () => {
-    try {
-      setLoading(true)
-      
-      // Load recent predictions
-      const recentPredictions = await databaseFirstApiClient.getPredictions({ 
-        limit: 6
-      })
-      
-      setPredictions(recentPredictions || [])
-      
-      // Calculate overall accuracy
-      const allPredictions = await databaseFirstApiClient.getPredictions({ limit: 100 })
-      if (allPredictions && allPredictions.length > 0) {
-        const correctPredictions = allPredictions.filter(p => p.accuracy === true).length
-        const accuracy = Math.round((correctPredictions / allPredictions.length) * 100)
-        setOverallAccuracy(accuracy)
-      }
-    } catch (error) {
-      console.error('Error loading predictions:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // Sort by confidence and take top 6
+  const topPredictions = useMemo(() => {
+    return filteredPredictions
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 6)
+  }, [filteredPredictions])
+
+  // Calculate overall accuracy
+  const overallAccuracy = useMemo(() => {
+    if (filteredPredictions.length === 0) return 0
+    const correctPredictions = filteredPredictions.filter(p => p.accuracy === true).length
+    return Math.round((correctPredictions / filteredPredictions.length) * 100)
+  }, [filteredPredictions])
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return "text-accent"
@@ -96,6 +70,26 @@ export function PredictionsDashboard() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <Target className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">AI Predictions</h2>
+        </div>
+        <Card className="card-modern">
+          <CardContent className="py-12 text-center">
+            <div className="text-destructive text-4xl mb-4">⚠️</div>
+            <h3 className="text-lg font-semibold mb-2">Connection Error</h3>
+            <p className="text-muted-foreground">
+              Unable to load predictions. Please try refreshing the page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -103,6 +97,11 @@ export function PredictionsDashboard() {
         <div className="flex items-center gap-3">
           <Target className="h-6 w-6 text-primary" />
           <h2 className="text-2xl font-bold">AI Predictions</h2>
+          {lastUpdate && (
+            <span className="text-xs text-muted-foreground">
+              Updated {format(lastUpdate, "h:mm a")}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
@@ -116,19 +115,21 @@ export function PredictionsDashboard() {
       </div>
 
       {/* Predictions Grid */}
-      {predictions.length === 0 ? (
+      {topPredictions.length === 0 ? (
         <Card className="card-modern">
           <CardContent className="py-12 text-center">
             <Target className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No Predictions Available</h3>
             <p className="text-muted-foreground">
-              AI predictions will appear here as games are analyzed
+              {selectedSport === "all" 
+                ? "AI predictions will appear here as games are analyzed across all sports"
+                : `AI predictions will appear here as ${selectedSport} games are analyzed`}
             </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {predictions.map((prediction) => {
+          {topPredictions.map((prediction) => {
             const gameDate = new Date(prediction.game?.game_date || prediction.created_at)
             const sportConfig = SportConfigManager.getSportConfig(prediction.game?.sport as any)
             
@@ -206,6 +207,47 @@ export function PredictionsDashboard() {
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {/* Stats Summary */}
+      {topPredictions.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="card-modern">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm text-muted-foreground">Total Predictions</div>
+                  <div className="text-lg font-bold">{filteredPredictions.length}</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="card-modern">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <Target className="h-5 w-5 text-accent" />
+                <div>
+                  <div className="text-sm text-muted-foreground">High Confidence</div>
+                  <div className="text-lg font-bold">
+                    {filteredPredictions.filter(p => p.confidence >= 80).length}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="card-modern">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                <div>
+                  <div className="text-sm text-muted-foreground">Accuracy Rate</div>
+                  <div className="text-lg font-bold">{overallAccuracy}%</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

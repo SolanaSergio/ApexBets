@@ -86,7 +86,7 @@ export function normalizeTeamData(team: any, sport: string, league?: string) {
     .trim();
 
   const result = {
-    id: team.id || generateTeamId({ name: normalizedTeamName || 'team', sport, league: league ?? null }),
+    id: team.id || generateTeamId({ name: normalizedTeamName || null, sport, league: league ?? null }),
     name: normalizedTeamName,
     city: team.city || team.location || team.venueCity || null,
     league: (team.league || league) ?? null,

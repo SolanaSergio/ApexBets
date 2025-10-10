@@ -605,7 +605,7 @@ export class BasketballService extends SportSpecificService {
       status: this.mapRapidAPIStatus(fixture.fixture?.status?.short),
       homeScore: fixture.goals?.home || null,
       awayScore: fixture.goals?.away || null,
-      venue: fixture.fixture?.venue?.name || 'TBD',
+      venue: fixture.fixture?.venue?.name || null,
       lastUpdated: new Date().toISOString()
     }
   }
@@ -830,7 +830,7 @@ export class BasketballService extends SportSpecificService {
                 rawData.status === 'In Progress' ? 'live' : 'scheduled',
         homeScore: rawData.home_team_score || null,
         awayScore: rawData.visitor_team_score || null,
-        venue: rawData.arena_name || 'TBD',
+        venue: rawData.arena_name || null,
         lastUpdated: new Date().toISOString()
       }
     }
@@ -848,7 +848,7 @@ export class BasketballService extends SportSpecificService {
               rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
       homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
       awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
-      venue: rawData.strVenue || 'TBD',
+      venue: rawData.strVenue || null,
       lastUpdated: new Date().toISOString()
     }
   }
@@ -915,7 +915,7 @@ export class BasketballService extends SportSpecificService {
       status: this.mapNBAStatsStatus(game.GAME_STATUS_TEXT),
       homeScore: game.HOME_TEAM_SCORE || null,
       awayScore: game.VISITOR_TEAM_SCORE || null,
-      venue: game.ARENA_NAME || 'TBD',
+      venue: game.ARENA_NAME || null,
       lastUpdated: new Date().toISOString()
     }
   }
@@ -959,7 +959,7 @@ export class BasketballService extends SportSpecificService {
       status: this.mapESPNStatus(game.status?.type?.name),
       homeScore: parseInt(homeTeam?.score) || null,
       awayScore: parseInt(awayTeam?.score) || null,
-      venue: game.competitions?.[0]?.venue?.fullName || 'TBD',
+      venue: game.competitions?.[0]?.venue?.fullName || null,
       lastUpdated: new Date().toISOString()
     }
   }

@@ -1,82 +1,7 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-
-// ESPN CDN URL generation logic (from espn-cdn-mapper)
-const ESPN_SPORT_CONFIGS = {
-  basketball: {
-    sport: 'basketball',
-    espn_sport_key: 'basketball',
-    logo_path_template: '/i/teamlogos/nba/500/{teamId}.png',
-    player_path_template: '/i/headshots/nba/players/full/{playerId}.png',
-    is_active: true
-  },
-  football: {
-    sport: 'football',
-    espn_sport_key: 'football',
-    logo_path_template: '/i/teamlogos/nfl/500/{teamId}.png',
-    player_path_template: '/i/headshots/nfl/players/full/{playerId}.png',
-    is_active: true
-  },
-  baseball: {
-    sport: 'baseball',
-    espn_sport_key: 'baseball',
-    logo_path_template: '/i/teamlogos/mlb/500/{teamId}.png',
-    player_path_template: '/i/headshots/mlb/players/full/{playerId}.png',
-    is_active: true
-  },
-  hockey: {
-    sport: 'hockey',
-    espn_sport_key: 'hockey',
-    logo_path_template: '/i/teamlogos/nhl/500/{teamId}.png',
-    player_path_template: '/i/headshots/nhl/players/full/{playerId}.png',
-    is_active: true
-  },
-  soccer: {
-    sport: 'soccer',
-    espn_sport_key: 'soccer',
-    logo_path_template: '/i/teamlogos/soccer/500/{teamId}.png',
-    player_path_template: '/i/headshots/soccer/players/full/{playerId}.png',
-    is_active: true
-  }
-};
-
-// Team ID mappings for ESPN CDN
-const TEAM_ID_MAP = {
-  basketball: {
-    'Lakers': '3', 'Warriors': '9', 'Celtics': '2', 'Heat': '14', 'Bulls': '4',
-    'Knicks': '18', 'Nets': '17', '76ers': '21', 'Raptors': '28', 'Bucks': '15',
-    'Pacers': '11', 'Pistons': '8', 'Cavaliers': '5', 'Hawks': '1', 'Hornets': '30',
-    'Magic': '19', 'Wizards': '27', 'Nuggets': '7', 'Timberwolves': '16', 'Thunder': '25',
-    'Trail Blazers': '22', 'Jazz': '26', 'Suns': '24', 'Kings': '23', 'Clippers': '12',
-    'Mavericks': '6', 'Rockets': '10', 'Grizzlies': '29', 'Pelicans': '20', 'Spurs': '24'
-  },
-  football: {
-    'Patriots': 'ne', 'Chiefs': 'kc', 'Bills': 'buf', 'Dolphins': 'mia', 'Jets': 'nyj',
-    'Steelers': 'pit', 'Ravens': 'bal', 'Browns': 'cle', 'Bengals': 'cin', 'Colts': 'ind',
-    'Titans': 'ten', 'Texans': 'hou', 'Jaguars': 'jax', 'Broncos': 'den', 'Raiders': 'lv',
-    'Chargers': 'lac', 'Cowboys': 'dal', 'Eagles': 'phi', 'Giants': 'nyg', 'Commanders': 'wsh',
-    'Packers': 'gb', 'Vikings': 'min', 'Bears': 'chi', 'Lions': 'det', 'Falcons': 'atl',
-    'Saints': 'no', 'Panthers': 'car', 'Buccaneers': 'tb', 'Rams': 'lar', '49ers': 'sf',
-    'Seahawks': 'sea', 'Cardinals': 'ari'
-  },
-  baseball: {
-    'Yankees': 'nyy', 'Red Sox': 'bos', 'Rays': 'tb', 'Blue Jays': 'tor', 'Orioles': 'bal',
-    'Astros': 'hou', 'Angels': 'laa', 'Athletics': 'oak', 'Mariners': 'sea', 'Rangers': 'tex',
-    'Twins': 'min', 'Guardians': 'cle', 'Tigers': 'det', 'Royals': 'kc', 'White Sox': 'cws',
-    'Braves': 'atl', 'Mets': 'nym', 'Phillies': 'phi', 'Marlins': 'mia', 'Nationals': 'was',
-    'Cubs': 'chc', 'Brewers': 'mil', 'Cardinals': 'stl', 'Pirates': 'pit', 'Reds': 'cin',
-    'Dodgers': 'lad', 'Padres': 'sd', 'Giants': 'sf', 'Diamondbacks': 'ari', 'Rockies': 'col'
-  },
-  hockey: {
-    'Maple Leafs': 'tor', 'Bruins': 'bos', 'Lightning': 'tb', 'Panthers': 'fla', 'Red Wings': 'det',
-    'Sabres': 'buf', 'Senators': 'ott', 'Canadiens': 'mtl', 'Rangers': 'nyr', 'Islanders': 'nyi',
-    'Devils': 'nj', 'Flyers': 'phi', 'Penguins': 'pit', 'Capitals': 'was', 'Hurricanes': 'car',
-    'Blue Jackets': 'cbj', 'Blackhawks': 'chi', 'Wild': 'min', 'Stars': 'dal', 'Predators': 'nsh',
-    'Jets': 'wpg', 'Avalanche': 'col', 'Blues': 'stl', 'Coyotes': 'ari', 'Golden Knights': 'vgk',
-    'Kings': 'la', 'Ducks': 'ana', 'Sharks': 'sj', 'Oilers': 'edm', 'Flames': 'cgy',
-    'Canucks': 'van', 'Kraken': 'sea'
-  }
-};
+// @ts-nocheck
+/// <reference path="./types.d.ts" />
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface PopulationResult {
   success: boolean;
@@ -92,17 +17,33 @@ interface PopulationResult {
   failures: Array<{ name: string; sport: string; error: string }>;
 }
 
-async function generateTeamLogoURL(teamName: string, sport: string, league: string): Promise<string | null> {
+async function generateTeamLogoURL(teamName: string, sport: string, league: string, supabase: any): Promise<string | null> {
   try {
-    const config = ESPN_SPORT_CONFIGS[sport.toLowerCase()];
-    if (!config) return null;
+    // Get sport configuration from database
+    const { data: sportConfig } = await supabase
+      .from('sports')
+      .select('logo_template, cdn_config')
+      .eq('name', sport)
+      .eq('is_active', true)
+      .single();
 
-    const teamId = TEAM_ID_MAP[sport.toLowerCase()]?.[teamName];
-    if (!teamId) return null;
+    if (!sportConfig?.logo_template) return null;
 
-    const url = `https://a.espncdn.com${config.logo_path_template}`
-      .replace('{sport}', config.espn_sport_key)
-      .replace('{teamId}', teamId);
+    // Get team CDN mapping from database
+    const { data: teamMapping } = await supabase
+      .from('team_cdn_mappings')
+      .select('cdn_team_id')
+      .eq('team_name', teamName)
+      .eq('sport', sport)
+      .eq('league', league)
+      .eq('cdn_provider', 'espn')
+      .eq('is_active', true)
+      .single();
+
+    if (!teamMapping?.cdn_team_id) return null;
+
+    const url = `https://a.espncdn.com${sportConfig.logo_template}`
+      .replace('{teamId}', teamMapping.cdn_team_id);
 
     // Verify URL exists
     const response = await fetch(url, { method: 'HEAD' });
@@ -112,13 +53,19 @@ async function generateTeamLogoURL(teamName: string, sport: string, league: stri
   }
 }
 
-async function generatePlayerPhotoURL(playerId: string, sport: string): Promise<string | null> {
+async function generatePlayerPhotoURL(playerId: string, sport: string, supabase: any): Promise<string | null> {
   try {
-    const config = ESPN_SPORT_CONFIGS[sport.toLowerCase()];
-    if (!config || !config.player_path_template) return null;
+    // Get sport configuration from database
+    const { data: sportConfig } = await supabase
+      .from('sports')
+      .select('player_template')
+      .eq('name', sport)
+      .eq('is_active', true)
+      .single();
 
-    const url = `https://a.espncdn.com${config.player_path_template}`
-      .replace('{sport}', config.espn_sport_key)
+    if (!sportConfig?.player_template) return null;
+
+    const url = `https://a.espncdn.com${sportConfig.player_template}`
       .replace('{playerId}', playerId);
 
     // Verify URL exists
@@ -158,7 +105,7 @@ async function logAuditEvent(
   }
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const sport = url.searchParams.get('sport');
@@ -195,7 +142,7 @@ Deno.serve(async (req: Request) => {
       result.stats.teamsProcessed++;
       
       try {
-        const espnUrl = await generateTeamLogoURL(team.name, team.sport, team.league);
+        const espnUrl = await generateTeamLogoURL(team.name, team.sport, team.league, supabase);
         
         if (espnUrl && espnUrl !== team.logo_url) {
           // Update team with ESPN URL
@@ -265,7 +212,7 @@ Deno.serve(async (req: Request) => {
       try {
         // Use player ID or generate from name
         const playerId = player.id.split('-')[0] || player.name.replace(/\s+/g, '-').toLowerCase();
-        const espnUrl = await generatePlayerPhotoURL(playerId, player.sport);
+        const espnUrl = await generatePlayerPhotoURL(playerId, player.sport, supabase);
         
         if (espnUrl && espnUrl !== player.headshot_url) {
           // Update player with ESPN URL

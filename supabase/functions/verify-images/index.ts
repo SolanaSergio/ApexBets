@@ -1,82 +1,7 @@
-import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'jsr:@supabase/supabase-js@2';
-
-// ESPN CDN URL generation logic (from espn-cdn-mapper)
-const ESPN_SPORT_CONFIGS = {
-  basketball: {
-    sport: 'basketball',
-    espn_sport_key: 'basketball',
-    logo_path_template: '/i/teamlogos/nba/500/{teamId}.png',
-    player_path_template: '/i/headshots/nba/players/full/{playerId}.png',
-    is_active: true
-  },
-  football: {
-    sport: 'football',
-    espn_sport_key: 'football',
-    logo_path_template: '/i/teamlogos/nfl/500/{teamId}.png',
-    player_path_template: '/i/headshots/nfl/players/full/{playerId}.png',
-    is_active: true
-  },
-  baseball: {
-    sport: 'baseball',
-    espn_sport_key: 'baseball',
-    logo_path_template: '/i/teamlogos/mlb/500/{teamId}.png',
-    player_path_template: '/i/headshots/mlb/players/full/{playerId}.png',
-    is_active: true
-  },
-  hockey: {
-    sport: 'hockey',
-    espn_sport_key: 'hockey',
-    logo_path_template: '/i/teamlogos/nhl/500/{teamId}.png',
-    player_path_template: '/i/headshots/nhl/players/full/{playerId}.png',
-    is_active: true
-  },
-  soccer: {
-    sport: 'soccer',
-    espn_sport_key: 'soccer',
-    logo_path_template: '/i/teamlogos/soccer/500/{teamId}.png',
-    player_path_template: '/i/headshots/soccer/players/full/{playerId}.png',
-    is_active: true
-  }
-};
-
-// Team ID mappings for ESPN CDN
-const TEAM_ID_MAP = {
-  basketball: {
-    'Lakers': '3', 'Warriors': '9', 'Celtics': '2', 'Heat': '14', 'Bulls': '4',
-    'Knicks': '18', 'Nets': '17', '76ers': '21', 'Raptors': '28', 'Bucks': '15',
-    'Pacers': '11', 'Pistons': '8', 'Cavaliers': '5', 'Hawks': '1', 'Hornets': '30',
-    'Magic': '19', 'Wizards': '27', 'Nuggets': '7', 'Timberwolves': '16', 'Thunder': '25',
-    'Trail Blazers': '22', 'Jazz': '26', 'Suns': '24', 'Kings': '23', 'Clippers': '12',
-    'Mavericks': '6', 'Rockets': '10', 'Grizzlies': '29', 'Pelicans': '20', 'Spurs': '24'
-  },
-  football: {
-    'Patriots': 'ne', 'Chiefs': 'kc', 'Bills': 'buf', 'Dolphins': 'mia', 'Jets': 'nyj',
-    'Steelers': 'pit', 'Ravens': 'bal', 'Browns': 'cle', 'Bengals': 'cin', 'Colts': 'ind',
-    'Titans': 'ten', 'Texans': 'hou', 'Jaguars': 'jax', 'Broncos': 'den', 'Raiders': 'lv',
-    'Chargers': 'lac', 'Cowboys': 'dal', 'Eagles': 'phi', 'Giants': 'nyg', 'Commanders': 'wsh',
-    'Packers': 'gb', 'Vikings': 'min', 'Bears': 'chi', 'Lions': 'det', 'Falcons': 'atl',
-    'Saints': 'no', 'Panthers': 'car', 'Buccaneers': 'tb', 'Rams': 'lar', '49ers': 'sf',
-    'Seahawks': 'sea', 'Cardinals': 'ari'
-  },
-  baseball: {
-    'Yankees': 'nyy', 'Red Sox': 'bos', 'Rays': 'tb', 'Blue Jays': 'tor', 'Orioles': 'bal',
-    'Astros': 'hou', 'Angels': 'laa', 'Athletics': 'oak', 'Mariners': 'sea', 'Rangers': 'tex',
-    'Twins': 'min', 'Guardians': 'cle', 'Tigers': 'det', 'Royals': 'kc', 'White Sox': 'cws',
-    'Braves': 'atl', 'Mets': 'nym', 'Phillies': 'phi', 'Marlins': 'mia', 'Nationals': 'was',
-    'Cubs': 'chc', 'Brewers': 'mil', 'Cardinals': 'stl', 'Pirates': 'pit', 'Reds': 'cin',
-    'Dodgers': 'lad', 'Padres': 'sd', 'Giants': 'sf', 'Diamondbacks': 'ari', 'Rockies': 'col'
-  },
-  hockey: {
-    'Maple Leafs': 'tor', 'Bruins': 'bos', 'Lightning': 'tb', 'Panthers': 'fla', 'Red Wings': 'det',
-    'Sabres': 'buf', 'Senators': 'ott', 'Canadiens': 'mtl', 'Rangers': 'nyr', 'Islanders': 'nyi',
-    'Devils': 'nj', 'Flyers': 'phi', 'Penguins': 'pit', 'Capitals': 'was', 'Hurricanes': 'car',
-    'Blue Jackets': 'cbj', 'Blackhawks': 'chi', 'Wild': 'min', 'Stars': 'dal', 'Predators': 'nsh',
-    'Jets': 'wpg', 'Avalanche': 'col', 'Blues': 'stl', 'Coyotes': 'ari', 'Golden Knights': 'vgk',
-    'Kings': 'la', 'Ducks': 'ana', 'Sharks': 'sj', 'Oilers': 'edm', 'Flames': 'cgy',
-    'Canucks': 'van', 'Kraken': 'sea'
-  }
-};
+// @ts-nocheck
+/// <reference path="./types.d.ts" />
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 interface VerificationResult {
   success: boolean;
@@ -187,7 +112,7 @@ async function logAuditEvent(
   }
 }
 
-Deno.serve(async (req: Request) => {
+serve(async (req: Request) => {
   try {
     const url = new URL(req.url);
     const sport = url.searchParams.get('sport');

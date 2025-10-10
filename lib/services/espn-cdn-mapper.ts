@@ -45,17 +45,32 @@ export class ESPNCDNMapper {
         return this.sportConfigs.get(sport)!
       }
 
-      // Try to load from database via MCP (when available)
-      // For now, use default configurations
-      const config = this.getDefaultSportConfig(sport)
-      if (config) {
-        this.sportConfigs.set(sport, config)
-        return config
+      // Load from database via databaseService
+      const result = await databaseService.executeSQL(`
+        SELECT logo_template, player_template, cdn_config
+        FROM sports 
+        WHERE name = $1 AND is_active = true
+        LIMIT 1
+      `, [sport])
+
+      if (!result.success || !result.data || result.data.length === 0) {
+        structuredLogger.warn('Sport configuration not found in database', { sport })
+        return null
       }
 
-      return null
+      const sportData = result.data[0] as any
+      const config: ESPNSportConfig = {
+        sport,
+        espn_sport_key: sport,
+        logo_path_template: sportData.logo_template || '/i/teamlogos/default/500/{teamId}.png',
+        player_path_template: sportData.player_template || '/i/headshots/default/players/full/{playerId}.png',
+        is_active: true
+      }
+
+      this.sportConfigs.set(sport, config)
+      return config
     } catch (error) {
-      structuredLogger.error('Failed to get sport config', {
+      structuredLogger.error('Failed to get sport config from database', {
         sport,
         error: error instanceof Error ? error.message : String(error)
       })
@@ -183,24 +198,35 @@ export class ESPNCDNMapper {
         return cachedId
       }
 
-      // Try to get from database via MCP
-      const teamId = await this.generateTeamId(teamName, sport)
+      // Get team ID from database
+      const result = await databaseService.executeSQL(`
+        SELECT cdn_team_id
+        FROM team_cdn_mappings 
+        WHERE team_name = $1 AND sport = $2 AND league = $3 AND cdn_provider = 'espn' AND is_active = true
+        LIMIT 1
+      `, [teamName, sport, league])
       
-      structuredLogger.debug('ESPN CDN mapper - generated team ID', {
-        teamName,
-        sport,
-        league,
-        teamId
-      })
-      
-      if (teamId) {
+      if (result.success && result.data && result.data.length > 0) {
+        const teamId = result.data[0].cdn_team_id
+        structuredLogger.debug('ESPN CDN mapper - found team ID in database', {
+          teamName,
+          sport,
+          league,
+          teamId
+        })
+        
         this.teamMappings.set(cacheKey, teamId)
         return teamId
       }
 
+      structuredLogger.debug('ESPN CDN mapper - no team ID found in database', {
+        teamName,
+        sport,
+        league
+      })
       return null
     } catch (error) {
-      structuredLogger.error('Failed to resolve team ID', {
+      structuredLogger.error('Failed to resolve team ID from database', {
         teamName,
         sport,
         league,
@@ -208,59 +234,6 @@ export class ESPNCDNMapper {
       })
       return null
     }
-  }
-
-  /**
-   * Generate team ID based on database lookup and fallback patterns
-   */
-  private async generateTeamId(teamName: string, sport: string): Promise<string | null> {
-    try {
-      // First try to get from database external_id field
-      const query = `
-        SELECT external_id 
-        FROM teams 
-        WHERE name = $1 AND sport = $2 
-        LIMIT 1
-      `
-      
-      const result = await databaseService.executeSQL(query, [teamName, sport])
-      
-      if (result.success && result.data.length > 0) {
-        const teamData = result.data[0] as { external_id?: string }
-        if (teamData?.external_id) {
-          return teamData.external_id
-        }
-      }
-      
-      // Fallback: Generate ID from team name hash
-      const hash = this.hashString(teamName + sport)
-      const baseNum = Math.abs(hash) % 1000
-      return baseNum.toString()
-      
-    } catch (error) {
-      structuredLogger.debug('Failed to generate team ID', {
-        teamName,
-        sport,
-        error: error instanceof Error ? error.message : String(error)
-      })
-      
-      // Ultimate fallback
-      const hash = this.hashString(teamName + sport)
-      return Math.abs(hash) % 1000 + ''
-    }
-  }
-
-  /**
-   * Simple hash function for generating consistent numeric patterns
-   */
-  private hashString(str: string): number {
-    let hash = 0
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32-bit integer
-    }
-    return hash
   }
 
   /**
@@ -291,51 +264,6 @@ export class ESPNCDNMapper {
       structuredLogger.debug('ESPN CDN mapper - URL validation error, cached', { url, error: error instanceof Error ? error.message : String(error) })
       return false
     }
-  }
-
-  /**
-   * Get default sport configuration (fallback)
-   */
-  private getDefaultSportConfig(sport: string): ESPNSportConfig | null {
-    const configs: Record<string, ESPNSportConfig> = {
-      'basketball': {
-        sport: 'basketball',
-        espn_sport_key: 'basketball',
-        logo_path_template: '/i/teamlogos/nba/500/{teamId}.png',
-        player_path_template: '/i/headshots/nba/players/full/{playerId}.png',
-        is_active: true
-      },
-      'football': {
-        sport: 'football',
-        espn_sport_key: 'football',
-        logo_path_template: '/i/teamlogos/nfl/500/{teamId}.png',
-        player_path_template: '/i/headshots/nfl/players/full/{playerId}.png',
-        is_active: true
-      },
-      'baseball': {
-        sport: 'baseball',
-        espn_sport_key: 'baseball',
-        logo_path_template: '/i/teamlogos/mlb/500/{teamId}.png',
-        player_path_template: '/i/headshots/mlb/players/full/{playerId}.png',
-        is_active: true
-      },
-      'hockey': {
-        sport: 'hockey',
-        espn_sport_key: 'hockey',
-        logo_path_template: '/i/teamlogos/nhl/500/{teamId}.png',
-        player_path_template: '/i/headshots/nhl/players/full/{playerId}.png',
-        is_active: true
-      },
-      'soccer': {
-        sport: 'soccer',
-        espn_sport_key: 'soccer',
-        logo_path_template: '/i/teamlogos/soccer/500/{teamId}.png',
-        player_path_template: '/i/headshots/soccer/players/full/{playerId}.png',
-        is_active: true
-      }
-    }
-
-    return configs[sport.toLowerCase()] || null
   }
 
   /**

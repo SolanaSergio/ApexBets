@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -15,17 +15,6 @@ export default function AnalyticsPage() {
   const [analyticsData, setAnalyticsData] = useState<any>({})
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    loadSupportedSports()
-    loadAnalyticsData()
-  }, [])
-
-  useEffect(() => {
-    if (selectedSport) {
-      loadAnalyticsData()
-    }
-  }, [selectedSport])
-
   const loadSupportedSports = async () => {
     const sports = SportConfigManager.getSupportedSports()
     setSupportedSports(sports)
@@ -34,7 +23,7 @@ export default function AnalyticsPage() {
     }
   }
 
-  const loadAnalyticsData = async () => {
+  const loadAnalyticsData = useCallback(async () => {
     try {
       setLoading(true)
       
@@ -73,7 +62,18 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadSupportedSports()
+    loadAnalyticsData()
+  }, [loadAnalyticsData])
+
+  useEffect(() => {
+    if (selectedSport) {
+      loadAnalyticsData()
+    }
+  }, [selectedSport, loadAnalyticsData])
 
   // Helper function to calculate sport breakdown
   const calculateSportBreakdown = (predictions: any[]) => {

@@ -102,6 +102,19 @@ export interface Prediction {
   confidence: number
   model_version: string
   created_at: string
+  sport?: string
+  accuracy?: boolean
+  reasoning?: string
+  game?: {
+    game_date: string
+    sport: string
+    away_team?: {
+      abbreviation: string
+    }
+    home_team?: {
+      abbreviation: string
+    }
+  }
 }
 
 export interface ValueBet {

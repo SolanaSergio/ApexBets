@@ -14,14 +14,16 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Sidebar for desktop */}
-      <SidebarNavigation />
+      {!isMobile && <SidebarNavigation />}
       
       {/* Mobile navigation */}
-      <Navigation />
+      {isMobile && <Navigation />}
       
       {/* Main content */}
-      <main className={isMobile ? "pt-16" : "ml-80"}>
-        {children}
+      <main className={isMobile ? "pt-16 pb-20" : "ml-80"}>
+        <div className="min-h-screen">
+          {children}
+        </div>
       </main>
     </div>
   )

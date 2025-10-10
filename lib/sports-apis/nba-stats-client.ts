@@ -144,11 +144,7 @@ export class NBAStatsClient {
         // Don't count 404s as failures for circuit breaker
         if (response.status === 404) {
           console.warn(`${this.providerName}: No data available for ${endpoint}`)
-          return { 
-            resource: endpoint,
-            parameters: params,
-            resultSets: [] 
-          }
+          throw new Error(`No data available for ${endpoint}`)
         }
         
         // Use API-specific error handler
@@ -169,11 +165,7 @@ export class NBAStatsClient {
       // Check if response has valid data
       if (!data || !data.resultSets || data.resultSets.length === 0) {
         console.warn(`${this.providerName}: Empty response for ${endpoint}`)
-        return { 
-          resource: endpoint,
-          parameters: params,
-          resultSets: [] 
-        }
+        throw new Error(`No data available for ${endpoint}`)
       }
       
       return data

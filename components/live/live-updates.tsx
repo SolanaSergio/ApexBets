@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { dynamicClientConfig } from "@/lib/config/dynamic-client-config"
 import Image from "next/image"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -140,50 +141,74 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
     if (isLive) {
       fetchLiveData()
       
-      // Smart polling with backoff
-      let pollInterval = 30000 // Start with 30 seconds
-      let consecutiveNoChanges = 0
-      const maxInterval = 300000 // Max 5 minutes
-      const minInterval = 10000 // Min 10 seconds
-      
-      const poll = () => {
-        const previousData = {
-          games: liveGames.length,
-          odds: liveOdds.length,
-          valueBets: valueBets.length
+      // Dynamic polling with sport-specific intervals
+      const setupPolling = async () => {
+        try {
+          const config = await dynamicClientConfig.getConfig()
+          const sportInterval = await dynamicClientConfig.getSportRefreshInterval(sport || 'basketball', 'games')
+          
+          let pollInterval = Math.min(sportInterval, config.ui.refreshInterval)
+          let consecutiveNoChanges = 0
+          const maxInterval = Math.min(sportInterval * 10, 300000) // Max 5 minutes
+          const minInterval = Math.max(sportInterval / 3, 10000) // Min 10 seconds
+          
+          const poll = () => {
+            const previousData = {
+              games: liveGames.length,
+              odds: liveOdds.length,
+              valueBets: valueBets.length
+            }
+            
+            fetchLiveData().then(() => {
+              const currentData = {
+                games: liveGames.length,
+                odds: liveOdds.length,
+                valueBets: valueBets.length
+              }
+              
+              // Check if data changed
+              const hasChanges = Object.keys(previousData).some(
+                key => previousData[key as keyof typeof previousData] !== currentData[key as keyof typeof currentData]
+              )
+              
+              if (hasChanges) {
+                consecutiveNoChanges = 0
+                pollInterval = Math.max(minInterval, pollInterval * 0.8) // Decrease interval
+              } else {
+                consecutiveNoChanges++
+                pollInterval = Math.min(maxInterval, pollInterval * 1.2) // Increase interval
+              }
+              
+              if (isLive) {
+                setTimeout(poll, pollInterval)
+              }
+            })
+          }
+          
+          const timeoutId = setTimeout(poll, pollInterval)
+          return () => clearTimeout(timeoutId)
+        } catch (error) {
+          console.error('Failed to setup dynamic polling:', error)
+          // Fallback to static polling
+          const pollInterval = 30000
+          const timeoutId = setTimeout(() => {
+            if (isLive) {
+              fetchLiveData()
+              setTimeout(arguments.callee, pollInterval)
+            }
+          }, pollInterval)
+          return () => clearTimeout(timeoutId)
         }
-        
-        fetchLiveData().then(() => {
-          const currentData = {
-            games: liveGames.length,
-            odds: liveOdds.length,
-            valueBets: valueBets.length
-          }
-          
-          // Check if data changed
-          const hasChanges = Object.keys(previousData).some(
-            key => previousData[key as keyof typeof previousData] !== currentData[key as keyof typeof currentData]
-          )
-          
-          if (hasChanges) {
-            consecutiveNoChanges = 0
-            pollInterval = Math.max(minInterval, pollInterval * 0.8) // Decrease interval
-          } else {
-            consecutiveNoChanges++
-            pollInterval = Math.min(maxInterval, pollInterval * 1.2) // Increase interval
-          }
-          
-          if (isLive) {
-            setTimeout(poll, pollInterval)
-          }
-        })
       }
       
-      const timeoutId = setTimeout(poll, pollInterval)
-      return () => clearTimeout(timeoutId)
+      setupPolling()
+      
+      return () => {
+        // Cleanup will be handled by the timeout clearing in setupPolling
+      }
     }
     return undefined
-  }, [isLive, fetchLiveData])
+  }, [isLive, fetchLiveData, sport, liveGames.length, liveOdds.length, valueBets.length])
 
   const toggleLiveUpdates = (): void => {
     setIsLive(!isLive)
@@ -347,7 +372,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {liveGames.map((game) => (
+                  {liveGames.map((game: LiveGame) => (
                     <div
                       key={game.id}
                       className="flex items-center justify-between p-6 border-2 border-green-200 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 hover:shadow-lg transition-all duration-200"
@@ -469,7 +494,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {liveOdds.map((odd) => (
+                  {liveOdds.map((odd: LiveOdds) => (
                     <div
                       key={odd.id}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"
@@ -478,19 +503,19 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                         {odd.homeTeam} vs {odd.awayTeam}
                       </h3>
                       <div className="space-y-2">
-                        {odd.bookmakers.slice(0, 3).map((bookmaker) => (
+                        {odd.bookmakers.slice(0, 3).map((bookmaker: any) => (
                           <div key={bookmaker.key} className="text-sm">
                             <div className="font-medium text-muted-foreground mb-1">
                               {bookmaker.title}
                             </div>
                             <div className="grid grid-cols-3 gap-2">
-                              {bookmaker.markets.map((market) => (
+                              {bookmaker.markets.map((market: any) => (
                                 <div key={market.key} className="text-xs">
                                   <div className="font-medium capitalize mb-1">
                                     {market.key.replace('_', ' ')}
                                   </div>
                                   <div className="space-y-1">
-                                    {market.outcomes.map((outcome, idx) => (
+                                    {market.outcomes.map((outcome: any, idx: number) => (
                                       <div key={idx} className="flex justify-between">
                                         <span>{outcome.name}</span>
                                         <span className="font-mono">{outcome.price}</span>
@@ -548,7 +573,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {valueBets.map((bet) => (
+                  {valueBets.map((bet: ValueBet) => (
                     <div
                       key={`${bet.gameId}-${bet.betType}-${bet.side}`}
                       className="p-4 border rounded-lg hover:bg-gray-50 transition-colors"

@@ -1,67 +1,46 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TeamLogo } from "@/components/ui/sports-image"
-import { databaseFirstApiClient, type Game } from "@/lib/api-client-database-first"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { ChevronLeft, ChevronRight, Clock } from "lucide-react"
+import { useLiveGames, useRealTimeData } from "@/components/data/real-time-provider"
+import { ChevronLeft, ChevronRight, Clock, Play } from "lucide-react"
 import { format } from "date-fns"
 
 export function LiveGamesHero() {
-  const [liveGames, setLiveGames] = useState<Game[]>([])
-  const [featuredGames, setFeaturedGames] = useState<Game[]>([])
-  const [loading, setLoading] = useState(true)
+  const { selectedSport } = useRealTimeData()
+  const { games: liveGames, loading, error, lastUpdate } = useLiveGames()
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [autoAdvance, setAutoAdvance] = useState(true)
 
+  // Filter games based on selected sport
+  const filteredGames = useMemo(() => {
+    if (selectedSport === "all") return liveGames
+    return liveGames.filter(game => game.sport === selectedSport)
+  }, [liveGames, selectedSport])
+
+  // Auto-advance through games
   useEffect(() => {
-    loadGames()
-  }, [])
+    if (!autoAdvance || filteredGames.length <= 1) return
 
-  const loadGames = async () => {
-    try {
-      setLoading(true)
-      const supportedSports = SportConfigManager.getSupportedSports()
-      
-      let allLiveGames: Game[] = []
-      let allUpcomingGames: Game[] = []
-      
-      // Load games from all sports
-      for (const sport of supportedSports) {
-        try {
-          const [live, upcoming] = await Promise.all([
-            databaseFirstApiClient.getGames({ sport, status: 'in_progress', limit: 5 }),
-            databaseFirstApiClient.getGames({ sport, status: 'scheduled', limit: 5 })
-          ])
-          
-          allLiveGames = [...allLiveGames, ...live]
-          allUpcomingGames = [...allUpcomingGames, ...upcoming]
-        } catch (error) {
-          console.error(`Error loading games for ${sport}:`, error)
-        }
-      }
-      
-      setLiveGames(allLiveGames)
-      setFeaturedGames(allUpcomingGames.slice(0, 3)) // Show top 3 upcoming games
-    } catch (error) {
-      console.error('Error loading games:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+    const interval = setInterval(() => {
+      setCurrentIndex(prev => (prev + 1) % filteredGames.length)
+    }, 5000) // Change every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [autoAdvance, filteredGames.length])
 
   const nextGame = () => {
-    setCurrentIndex((prev) => (prev + 1) % Math.max(liveGames.length, featuredGames.length))
+    setCurrentIndex((prev) => (prev + 1) % Math.max(filteredGames.length, 1))
   }
 
   const prevGame = () => {
-    setCurrentIndex((prev) => prev === 0 ? Math.max(liveGames.length, featuredGames.length) - 1 : prev - 1)
+    setCurrentIndex((prev) => prev === 0 ? Math.max(filteredGames.length - 1, 0) : prev - 1)
   }
 
-  const displayGames = liveGames.length > 0 ? liveGames : featuredGames
-  const currentGame = displayGames[currentIndex]
+  const currentGame = filteredGames[currentIndex]
 
   if (loading) {
     return (
@@ -76,31 +55,76 @@ export function LiveGamesHero() {
     )
   }
 
-  if (!currentGame) {
+  if (error) {
     return (
       <div className="h-80 card-modern">
         <div className="h-full flex items-center justify-center">
           <div className="text-center space-y-4">
-            <Clock className="h-12 w-12 text-muted-foreground mx-auto" />
-            <h2 className="text-xl font-semibold text-foreground">No Games Available</h2>
-            <p className="text-muted-foreground">Check back later for live games and upcoming matches</p>
+            <div className="text-destructive">⚠️</div>
+            <h2 className="text-xl font-semibold text-foreground">Connection Error</h2>
+            <p className="text-muted-foreground">Unable to load live games</p>
           </div>
         </div>
       </div>
     )
   }
 
-  const isLive = liveGames.length > 0 && liveGames.includes(currentGame)
+  if (!currentGame) {
+    return (
+      <div className="h-80 card-modern">
+        <div className="h-full flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <Clock className="h-12 w-12 text-muted-foreground mx-auto" />
+            <h2 className="text-xl font-semibold text-foreground">No Live Games</h2>
+            <p className="text-muted-foreground">
+              {selectedSport === "all" 
+                ? "No games are currently live across all sports" 
+                : `No games are currently live for ${selectedSport}`}
+            </p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const gameDate = new Date(currentGame.game_date)
 
   return (
     <div className="relative">
       <div className="h-80 card-modern overflow-hidden">
         <CardContent className="h-full p-0">
+          {/* Header with live indicator and controls */}
+          <div className="absolute top-4 left-4 right-4 z-20 flex justify-between items-center">
+            <div className="flex items-center gap-2">
+              <Badge variant="destructive" className="gap-2 px-3 py-1">
+                <div className="live-indicator" />
+                LIVE NOW
+              </Badge>
+              {lastUpdate && (
+                <span className="text-xs text-muted-foreground">
+                  Updated {format(lastUpdate, "h:mm a")}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAutoAdvance(!autoAdvance)}
+                className="h-8 w-8 p-0"
+              >
+                <Play className={`h-4 w-4 ${autoAdvance ? 'text-primary' : 'text-muted-foreground'}`} />
+              </Button>
+            </div>
+          </div>
+
           {/* Game Display */}
           <div className="h-full flex items-center justify-center relative">
             {/* Navigation Arrows */}
-            {displayGames.length > 1 && (
+            {filteredGames.length > 1 && (
               <>
                 <Button
                   variant="ghost"
@@ -123,21 +147,6 @@ export function LiveGamesHero() {
 
             {/* Game Content */}
             <div className="text-center space-y-6 max-w-2xl mx-auto px-8">
-              {/* Status Badge */}
-              <div className="flex justify-center">
-                {isLive ? (
-                  <Badge variant="destructive" className="gap-2 px-4 py-2">
-                    <div className="live-indicator" />
-                    LIVE NOW
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-2 px-4 py-2">
-                    <Clock className="h-3 w-3" />
-                    UPCOMING
-                  </Badge>
-                )}
-              </div>
-
               {/* Teams */}
               <div className="flex items-center justify-center space-x-8">
                 {/* Away Team */}
@@ -148,29 +157,25 @@ export function LiveGamesHero() {
                     width={48} 
                     height={48} 
                     className="mx-auto"
-                    logoUrl={currentGame.away_team?.logo_url}
+                    {...(currentGame.away_team?.logo_url && { logoUrl: currentGame.away_team.logo_url })}
                     sport={currentGame.sport}
-                    league={currentGame.league}
+                    {...(currentGame.league && { league: currentGame.league })}
                   />
                   <div>
                     <div className="text-sm text-muted-foreground">{currentGame.away_team?.abbreviation}</div>
                     <div className="font-semibold text-lg">{currentGame.away_team?.name}</div>
                   </div>
-                  {isLive && (
-                    <div className="text-3xl font-bold text-foreground">
-                      {currentGame.away_score || 0}
-                    </div>
-                  )}
+                  <div className="text-3xl font-bold text-foreground">
+                    {currentGame.away_score || 0}
+                  </div>
                 </div>
 
                 {/* VS */}
                 <div className="text-center">
                   <div className="text-2xl font-bold text-muted-foreground">VS</div>
-                  {isLive && (
-                    <div className="text-sm text-muted-foreground mt-2">
-                      {currentGame.venue || 'Live'}
-                    </div>
-                  )}
+                  <div className="text-sm text-muted-foreground mt-2">
+                    {currentGame.venue || 'Live'}
+                  </div>
                 </div>
 
                 {/* Home Team */}
@@ -181,19 +186,17 @@ export function LiveGamesHero() {
                     width={48} 
                     height={48} 
                     className="mx-auto"
-                    logoUrl={currentGame.home_team?.logo_url}
+                    {...(currentGame.home_team?.logo_url && { logoUrl: currentGame.home_team.logo_url })}
                     sport={currentGame.sport}
-                    league={currentGame.league}
+                    {...(currentGame.league && { league: currentGame.league })}
                   />
                   <div>
                     <div className="text-sm text-muted-foreground">{currentGame.home_team?.abbreviation}</div>
                     <div className="font-semibold text-lg">{currentGame.home_team?.name}</div>
                   </div>
-                  {isLive && (
-                    <div className="text-3xl font-bold text-foreground">
-                      {currentGame.home_score || 0}
-                    </div>
-                  )}
+                  <div className="text-3xl font-bold text-foreground">
+                    {currentGame.home_score || 0}
+                  </div>
                 </div>
               </div>
 
@@ -214,16 +217,16 @@ export function LiveGamesHero() {
 
               {/* Action Button */}
               <Button variant="outline" className="mt-4">
-                {isLive ? 'View Live Stats' : 'View Details'}
+                View Live Stats
               </Button>
             </div>
           </div>
 
           {/* Game Counter */}
-          {displayGames.length > 1 && (
+          {filteredGames.length > 1 && (
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
               <div className="flex space-x-2">
-                {displayGames.map((_, index) => (
+                {filteredGames.map((_, index) => (
                   <div
                     key={index}
                     className={`h-2 w-2 rounded-full transition-colors ${

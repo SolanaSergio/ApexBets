@@ -52,7 +52,25 @@ async function authenticateWebhook(request: NextRequest, rawBody: string): Promi
   const webhookSecret = process.env.WEBHOOK_SECRET
   const allowedIPs = process.env.WEBHOOK_ALLOWED_IPS?.split(',').map(ip => ip.trim()).filter(Boolean) || []
   const requireSignature = process.env.WEBHOOK_REQUIRE_SIGNATURE !== 'false' // Default to true
-  const signatureHeader = process.env.WEBHOOK_SIGNATURE_HEADER || 'x-hub-signature-256'
+  const signatureHeader = process.env.WEBHOOK_SIGNATURE_HEADER
+
+  if (!signatureHeader) {
+    const event: SecurityEvent = {
+      type: 'webhook_auth_failure',
+      timestamp: new Date().toISOString(),
+      clientIP,
+      ...(userAgent && { userAgent }),
+      error: 'Missing WEBHOOK_SIGNATURE_HEADER env var',
+      requestId
+    }
+    logSecurityEvent(event)
+    return {
+      success: false,
+      error: 'Webhook authentication not properly configured',
+      clientIP,
+      requestId
+    }
+  }
   
   // Check if webhook secret is configured
   if (requireSignature && !webhookSecret) {

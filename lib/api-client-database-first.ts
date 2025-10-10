@@ -148,6 +148,18 @@ export interface Prediction {
   created_at: string;
   updated_at: string;
   sport?: string;
+  accuracy?: boolean;
+  reasoning?: string;
+  game?: {
+    game_date: string;
+    sport: string;
+    away_team?: {
+      abbreviation: string;
+    };
+    home_team?: {
+      abbreviation: string;
+    };
+  };
 }
 
 export interface Odd {

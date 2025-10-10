@@ -1,90 +1,30 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo } from "react"
 import { Card, CardContent } from "@/components/ui/card"
-import { databaseFirstApiClient } from "@/lib/api-client-database-first"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { BarChart3, Target, TrendingUp, Activity } from "lucide-react"
-
-interface AnalyticsData {
-  totalGames: number
-  liveGames: number
-  accuracyRate: number
-  totalPredictions: number
-  trendingUp: boolean
-}
+import { useRealTimeData, useDashboardStats } from "@/components/data/real-time-provider"
+import { BarChart3, Target, TrendingUp, Activity, Zap } from "lucide-react"
 
 export function AnalyticsOverview() {
-  const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalGames: 0,
-    liveGames: 0,
-    accuracyRate: 0,
-    totalPredictions: 0,
-    trendingUp: true
-  })
-  const [loading, setLoading] = useState(true)
+  const { selectedSport, supportedSports } = useRealTimeData()
+  const { stats, loading, error, lastUpdate, isConnected } = useDashboardStats()
 
-  useEffect(() => {
-    loadAnalytics()
-  }, [])
-
-  const loadAnalytics = async () => {
-    try {
-      setLoading(true)
-      const supportedSports = SportConfigManager.getSupportedSports()
-      
-      let totalGames = 0
-      let liveGames = 0
-      let totalPredictions = 0
-      
-      // Aggregate data across all sports
-      for (const sport of supportedSports) {
-        try {
-          const [games, live, predictions] = await Promise.all([
-            databaseFirstApiClient.getGames({ sport, limit: 100 }),
-            databaseFirstApiClient.getGames({ sport, status: 'in_progress' }),
-            databaseFirstApiClient.getPredictions({ sport, limit: 50 })
-          ])
-          
-          totalGames += games.length
-          liveGames += live.length
-          totalPredictions += predictions.length
-        } catch (error) {
-          console.error(`Error loading analytics for ${sport}:`, error)
-        }
-      }
-      
-      // Calculate accuracy rate
-      let accuracyRate = 0
-      try {
-        const allPredictions = await databaseFirstApiClient.getPredictions({ limit: 100 })
-        if (allPredictions && allPredictions.length > 0) {
-          const correctPredictions = allPredictions.filter(p => p.accuracy === true).length
-          accuracyRate = Math.round((correctPredictions / allPredictions.length) * 100)
-        }
-      } catch (error) {
-        console.warn('Could not calculate accuracy rate:', error)
-      }
-      
-      setAnalytics({
-        totalGames,
-        liveGames,
-        accuracyRate,
-        totalPredictions,
-        trendingUp: accuracyRate > 75
-      })
-    } catch (error) {
-      console.error('Error loading analytics:', error)
-    } finally {
-      setLoading(false)
+  // Calculate trend data for sparklines
+  const trendData = useMemo(() => {
+    // Mock trend data - in real implementation, this would come from historical data
+    const baseValue = stats.accuracy
+    return {
+      week: baseValue + Math.random() * 10 - 5,
+      month: baseValue + Math.random() * 15 - 7,
+      overall: baseValue
     }
-  }
+  }, [stats.accuracy])
 
   const statCards = [
     {
       icon: Activity,
       title: "Live Games",
-      value: analytics.liveGames,
+      value: stats.liveGames,
       subtitle: "Active now",
       color: "text-destructive",
       bgColor: "bg-destructive/5",
@@ -93,7 +33,7 @@ export function AnalyticsOverview() {
     {
       icon: Target,
       title: "Accuracy Rate",
-      value: `${analytics.accuracyRate}%`,
+      value: `${stats.accuracy}%`,
       subtitle: "Prediction success",
       color: "text-accent",
       bgColor: "bg-accent/5",
@@ -102,7 +42,7 @@ export function AnalyticsOverview() {
     {
       icon: BarChart3,
       title: "Total Predictions",
-      value: analytics.totalPredictions.toLocaleString(),
+      value: stats.dataPoints.toLocaleString(),
       subtitle: "AI insights generated",
       color: "text-primary",
       bgColor: "bg-primary/5",
@@ -111,11 +51,11 @@ export function AnalyticsOverview() {
     {
       icon: TrendingUp,
       title: "Performance",
-      value: analytics.trendingUp ? "↗ Rising" : "→ Stable",
+      value: stats.accuracy > 75 ? "↗ Rising" : "→ Stable",
       subtitle: "Overall trend",
-      color: analytics.trendingUp ? "text-accent" : "text-muted-foreground",
-      bgColor: analytics.trendingUp ? "bg-accent/5" : "bg-muted/5",
-      borderColor: analytics.trendingUp ? "border-accent/20" : "border-muted/20"
+      color: stats.accuracy > 75 ? "text-accent" : "text-muted-foreground",
+      bgColor: stats.accuracy > 75 ? "bg-accent/5" : "bg-muted/5",
+      borderColor: stats.accuracy > 75 ? "border-accent/20" : "border-muted/20"
     }
   ]
 
@@ -146,12 +86,45 @@ export function AnalyticsOverview() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Analytics Overview</h2>
+        </div>
+        <Card className="card-modern">
+          <CardContent className="py-12 text-center">
+            <div className="text-destructive text-4xl mb-4">⚠️</div>
+            <h3 className="text-lg font-semibold mb-2">Connection Error</h3>
+            <p className="text-muted-foreground">
+              Unable to load analytics data. Please try refreshing the page.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <BarChart3 className="h-6 w-6 text-primary" />
-        <h2 className="text-2xl font-bold">Analytics Overview</h2>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <BarChart3 className="h-6 w-6 text-primary" />
+          <h2 className="text-2xl font-bold">Analytics Overview</h2>
+          {lastUpdate && (
+            <span className="text-xs text-muted-foreground">
+              Updated {lastUpdate.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+          <span className="text-xs text-muted-foreground">
+            {isConnected ? 'Connected' : 'Disconnected'}
+          </span>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -170,7 +143,7 @@ export function AnalyticsOverview() {
                   </div>
                   {stat.title === "Performance" && (
                     <div className={`text-xs px-2 py-1 rounded-full ${stat.bgColor} ${stat.color}`}>
-                      {analytics.trendingUp ? "↗" : "→"}
+                      {stats.accuracy > 75 ? "↗" : "→"}
                     </div>
                   )}
                 </div>
@@ -204,15 +177,19 @@ export function AnalyticsOverview() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">This Week</span>
-                <span className="text-sm font-medium text-accent">+12%</span>
+                <span className="text-sm font-medium text-accent">
+                  {trendData.week > stats.accuracy ? '+' : ''}{Math.round(trendData.week - stats.accuracy)}%
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">This Month</span>
-                <span className="text-sm font-medium text-accent">+8%</span>
+                <span className="text-sm font-medium text-accent">
+                  {trendData.month > stats.accuracy ? '+' : ''}{Math.round(trendData.month - stats.accuracy)}%
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Overall</span>
-                <span className="text-sm font-medium text-foreground">{analytics.accuracyRate}%</span>
+                <span className="text-sm font-medium text-foreground">{stats.accuracy}%</span>
               </div>
             </div>
           </CardContent>
@@ -228,24 +205,56 @@ export function AnalyticsOverview() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Games Tracked</span>
-                <span className="text-sm font-medium text-foreground">{analytics.totalGames}</span>
+                <span className="text-sm font-medium text-foreground">{stats.totalGames}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Sports Covered</span>
                 <span className="text-sm font-medium text-foreground">
-                  {SportConfigManager.getSupportedSports().length}
+                  {selectedSport === "all" ? supportedSports.length : 1}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Data Points</span>
-                <span className="text-sm font-medium text-foreground">
-                  {(analytics.totalGames * 2).toLocaleString()}
-                </span>
+                <span className="text-sm text-muted-foreground">Teams Tracked</span>
+                <span className="text-sm font-medium text-foreground">{stats.teamsTracked}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Correct Predictions</span>
+                <span className="text-sm font-medium text-foreground">{stats.correctPredictions}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Sport-specific insights */}
+      {selectedSport !== "all" && (
+        <Card className="card-modern">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <Zap className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold">{selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)} Insights</h3>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{stats.liveGames}</div>
+                <div className="text-sm text-muted-foreground">Live Games</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-accent">{stats.scheduledGames}</div>
+                <div className="text-sm text-muted-foreground">Scheduled</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{stats.completedGames}</div>
+                <div className="text-sm text-muted-foreground">Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-accent">{stats.dataPoints}</div>
+                <div className="text-sm text-muted-foreground">Data Points</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

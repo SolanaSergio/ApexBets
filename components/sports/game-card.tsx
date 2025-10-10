@@ -32,7 +32,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={24}
                 {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div className="text-sm">
                 <div className="font-medium">{game.away_team?.abbreviation}</div>
@@ -57,7 +57,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={24}
                 {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div className="text-sm">
                 <div className="font-medium">{game.home_team?.abbreviation}</div>
@@ -107,7 +107,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={32}
                 {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div>
                 <div className="font-medium">{game.away_team?.name}</div>
@@ -126,7 +126,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={32}
                 {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div>
                 <div className="font-medium">{game.home_team?.name}</div>
@@ -177,7 +177,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={28}
                 {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div>
                 <div className="font-medium">{game.away_team?.abbreviation}</div>
@@ -197,7 +197,7 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
                 height={28}
                 {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
                 sport={game.sport}
-                league={game.league}
+                {...(game.league && { league: game.league })}
               />
               <div>
                 <div className="font-medium">{game.home_team?.abbreviation}</div>

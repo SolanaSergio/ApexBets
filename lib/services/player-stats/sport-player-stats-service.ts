@@ -455,11 +455,8 @@ export class SportPlayerStatsService extends BaseService {
    * Get generic statistics when specific APIs are not available
    */
   private async getGenericStats(_playerId: string, _season?: string): Promise<any> {
-    // Return empty structure when no real data is available
-    return {
-      gamesPlayed: 0,
-      rawStats: {}
-    }
+    // No fallback - return null to indicate no data available
+    return null
   }
 
   /**

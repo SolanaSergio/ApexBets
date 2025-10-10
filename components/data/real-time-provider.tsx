@@ -1,8 +1,9 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react"
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo, useRef } from "react"
 import { subscribeToTable, unsubscribeFromTable } from "@/lib/supabase/realtime"
 import { databaseFirstApiClient, type Game, type Prediction, type Odd, type Standing, type Player, type PlayerStats } from "@/lib/api-client-database-first"
+import { SportConfigManager } from "@/lib/services/core/sport-config"
 
 interface RealTimeData {
   games: Game[]
@@ -21,12 +22,13 @@ interface RealTimeContextType {
   refreshData: () => void
   setSelectedSport: (sport: string) => void
   selectedSport: string
+  supportedSports: string[]
 }
 
 const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined)
 
 export function RealTimeProvider({ children }: { children: ReactNode }) {
-  const [selectedSport, setSelectedSport] = useState("")
+  const [selectedSport, setSelectedSport] = useState("all")
   const [data, setData] = useState<RealTimeData>({
     games: [],
     predictions: [],
@@ -38,43 +40,103 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
     isConnected: false,
     error: null
   })
+  
+  // Performance optimization: deduplicate updates
+  const lastDataHash = useRef<string>("")
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleUpdate = (payload: any, table: string) => {
     const { eventType, new: newRecord, old: oldRecord } = payload
-    setData(currentData => {
-      const tableData = currentData[table as keyof RealTimeData] as any[]
-      let updatedTableData = tableData
+    
+    // Debounce updates to prevent excessive re-renders
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current)
+    }
+    
+    updateTimeoutRef.current = setTimeout(() => {
+      setData(currentData => {
+        const tableData = currentData[table as keyof RealTimeData] as any[]
+        let updatedTableData = tableData
 
-      if (eventType === 'INSERT') {
-        updatedTableData = [...tableData, newRecord]
-      }
-      if (eventType === 'UPDATE') {
-        updatedTableData = tableData.map(item => item.id === newRecord.id ? newRecord : item)
-      }
-      if (eventType === 'DELETE') {
-        updatedTableData = tableData.filter(item => item.id !== oldRecord.id)
-      }
+        if (eventType === 'INSERT') {
+          updatedTableData = [...tableData, newRecord]
+        }
+        if (eventType === 'UPDATE') {
+          updatedTableData = tableData.map(item => item.id === newRecord.id ? newRecord : item)
+        }
+        if (eventType === 'DELETE') {
+          updatedTableData = tableData.filter(item => item.id !== oldRecord.id)
+        }
 
-      return {
-        ...currentData,
-        [table]: updatedTableData,
-        lastUpdate: new Date(),
-        isConnected: true
-      }
-    })
+        const newData = {
+          ...currentData,
+          [table]: updatedTableData,
+          lastUpdate: new Date(),
+          isConnected: true
+        }
+
+        // Check for actual changes to prevent unnecessary updates
+        const newDataHash = JSON.stringify(newData)
+        if (lastDataHash.current === newDataHash) {
+          return currentData
+        }
+        
+        lastDataHash.current = newDataHash
+        return newData
+      })
+    }, 100) // 100ms debounce
   }
 
   const fetchData = useCallback(async () => {
-    if (!selectedSport) return
-
     try {
-      const [games, predictions, odds, standings, players] = await Promise.all([
-        databaseFirstApiClient.getGames({ sport: selectedSport, limit: 200 }),
-        databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: 100 }),
-        databaseFirstApiClient.getOdds({ sport: selectedSport, limit: 500 }),
-        databaseFirstApiClient.getStandings({ sport: selectedSport }),
-        databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 })
-      ])
+      let games: Game[] = []
+      let predictions: Prediction[] = []
+      let odds: Odd[] = []
+      let standings: Standing[] = []
+      let players: Player[] = []
+
+      if (selectedSport === "all") {
+        // Fetch data from all supported sports
+        const supportedSports = SportConfigManager.getSupportedSports()
+        const promises = supportedSports.map(async (sport) => {
+          try {
+            const [sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers] = await Promise.all([
+              databaseFirstApiClient.getGames({ sport, limit: 200 }),
+              databaseFirstApiClient.getPredictions({ sport, limit: 100 }),
+              databaseFirstApiClient.getOdds({ sport, limit: 500 }),
+              databaseFirstApiClient.getStandings({ sport }),
+              databaseFirstApiClient.getPlayers({ sport, limit: 1000 })
+            ])
+            return { sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers }
+          } catch (error) {
+            console.warn(`Failed to fetch data for ${sport}:`, error)
+            return { sportGames: [], sportPredictions: [], sportOdds: [], sportStandings: [], sportPlayers: [] }
+          }
+        })
+
+        const results = await Promise.all(promises)
+        results.forEach(({ sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers }) => {
+          games = [...games, ...sportGames]
+          predictions = [...predictions, ...sportPredictions]
+          odds = [...odds, ...sportOdds]
+          standings = [...standings, ...sportStandings]
+          players = [...players, ...sportPlayers]
+        })
+      } else {
+        // Fetch data for specific sport
+        const [sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers] = await Promise.all([
+          databaseFirstApiClient.getGames({ sport: selectedSport, limit: 200 }),
+          databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: 100 }),
+          databaseFirstApiClient.getOdds({ sport: selectedSport, limit: 500 }),
+          databaseFirstApiClient.getStandings({ sport: selectedSport }),
+          databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 })
+        ])
+        games = sportGames
+        predictions = sportPredictions
+        odds = sportOdds
+        standings = sportStandings
+        players = sportPlayers
+      }
 
       setData(prev => ({
         ...prev,
@@ -98,6 +160,9 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedSport])
 
+  // Get supported sports for context
+  const supportedSports = useMemo(() => SportConfigManager.getSupportedSports(), [])
+
   useEffect(() => {
     fetchData()
 
@@ -115,6 +180,11 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
       unsubscribeFromTable('standings')
       unsubscribeFromTable('players')
       unsubscribeFromTable('player_stats')
+      
+      // Clean up timeout on unmount
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current)
+      }
     }
   }, [fetchData])
 
@@ -123,7 +193,7 @@ export function RealTimeProvider({ children }: { children: ReactNode }) {
   }, [fetchData])
 
   return (
-    <RealTimeContext.Provider value={{ data, refreshData, setSelectedSport, selectedSport }}>
+    <RealTimeContext.Provider value={{ data, refreshData, setSelectedSport, selectedSport, supportedSports }}>
       {children}
     </RealTimeContext.Provider>
   )
@@ -216,24 +286,35 @@ export function usePlayerStats(playerId?: string) {
 }
 
 export function useDashboardStats() {
-  const { data } = useRealTimeData()
-  const games = Array.isArray(data.games) ? data.games : []
-  const predictions = Array.isArray(data.predictions) ? data.predictions : []
+  const { data, selectedSport } = useRealTimeData()
+  
+  const stats = useMemo(() => {
+    const games = Array.isArray(data.games) ? data.games : []
+    const predictions = Array.isArray(data.predictions) ? data.predictions : []
+    
+    const filteredGames = selectedSport === "all" 
+      ? games 
+      : games.filter(game => game.sport === selectedSport)
+    
+    const filteredPredictions = selectedSport === "all" 
+      ? predictions 
+      : predictions.filter(pred => pred.sport === selectedSport)
 
-  const stats = {
-    totalGames: games.length,
-    accuracy: predictions.length > 0 ? Math.round(predictions.filter(p => p.is_correct).length / predictions.length * 100) : 0,
-    teamsTracked: [...new Set(games.map(g => g.home_team_id)), ...new Set(games.map(g => g.away_team_id))].length,
-    dataPoints: predictions.length,
-    liveGames: games.filter(g => g.status === 'in_progress').length,
-    scheduledGames: games.filter(g => g.status === 'scheduled').length,
-    completedGames: games.filter(g => g.status === 'completed').length,
-    correctPredictions: predictions.filter(p => p.is_correct).length
-  }
+    return {
+      totalGames: filteredGames.length,
+      accuracy: filteredPredictions.length > 0 ? Math.round(filteredPredictions.filter(p => p.is_correct).length / filteredPredictions.length * 100) : 0,
+      teamsTracked: [...new Set(filteredGames.map(g => g.home_team_id)), ...new Set(filteredGames.map(g => g.away_team_id))].length,
+      dataPoints: filteredPredictions.length,
+      liveGames: filteredGames.filter(g => g.status === 'in_progress').length,
+      scheduledGames: filteredGames.filter(g => g.status === 'scheduled').length,
+      completedGames: filteredGames.filter(g => g.status === 'completed').length,
+      correctPredictions: filteredPredictions.filter(p => p.is_correct).length
+    }
+  }, [data.games, data.predictions, selectedSport])
 
   return {
     stats,
-    loading: games.length === 0 && !data.error,
+    loading: data.games.length === 0 && !data.error,
     error: data.error,
     lastUpdate: data.lastUpdate,
     isConnected: data.isConnected
