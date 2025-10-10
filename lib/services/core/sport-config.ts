@@ -56,13 +56,9 @@ class SportConfigManagerImpl {
   }
 
   private setupFallbackSports(): void {
-    // Set up known sports as fallback
-    const knownSports = ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-    knownSports.forEach(sport => {
-      if (!this.configs.has(sport)) {
-        this.loadSportConfig(sport)
-      }
-    })
+    // NO hardcoded sports - all sports must come from database
+    // This method is kept for compatibility but does nothing
+    // All sports are loaded dynamically from database in loadDynamicConfigs()
   }
 
   private async loadDynamicConfigs(): Promise<void> {

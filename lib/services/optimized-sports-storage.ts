@@ -61,13 +61,8 @@ export class OptimizedSportsStorage {
         }))
 
         const insertQuery = `
-          INSERT INTO games (id, sport, league, season, home_team_id, away_team_id, game_date, status, home_score, away_score, venue, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.home_team_id ? `'${v.home_team_id}'` : 'NULL'}, ${v.away_team_id ? `'${v.away_team_id}'` : 'NULL'}, '${v.game_date}', '${v.status}', ${v.home_score || 'NULL'}, ${v.away_score || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
-          ON CONFLICT (id) DO UPDATE SET
-            status = EXCLUDED.status,
-            home_score = EXCLUDED.home_score,
-            away_score = EXCLUDED.away_score,
-            last_updated = EXCLUDED.last_updated
+          INSERT INTO games (id, sport, league_id, season, home_team_id, away_team_id, game_date, status, home_score, away_score, venue, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league_id}', '${v.season}', ${v.home_team_id ? `'${v.home_team_id}'` : 'NULL'}, ${v.away_team_id ? `'${v.away_team_id}'` : 'NULL'}, '${v.game_date}', '${v.status}', ${v.home_score || 'NULL'}, ${v.away_score || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -112,14 +107,8 @@ export class OptimizedSportsStorage {
         }))
 
         const insertQuery = `
-          INSERT INTO teams (id, name, sport, league, abbreviation, city, logo_url, conference, division, founded_year, stadium_name, stadium_capacity, primary_color, secondary_color, country, is_active, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', '${v.league}', '${v.abbreviation}', '${v.city}', ${v.logo_url ? `'${v.logo_url}'` : 'NULL'}, ${v.conference ? `'${v.conference}'` : 'NULL'}, ${v.division ? `'${v.division}'` : 'NULL'}, ${v.founded_year || 'NULL'}, ${v.stadium_name ? `'${v.stadium_name}'` : 'NULL'}, ${v.stadium_capacity || 'NULL'}, ${v.primary_color ? `'${v.primary_color}'` : 'NULL'}, ${v.secondary_color ? `'${v.secondary_color}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.is_active}, '${v.last_updated}')`).join(', ')}
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            abbreviation = EXCLUDED.abbreviation,
-            city = EXCLUDED.city,
-            logo_url = EXCLUDED.logo_url,
-            last_updated = EXCLUDED.last_updated
+          INSERT INTO teams (id, name, sport, league_id, abbreviation, city, logo_url, conference, division, founded_year, venue, venue_capacity, colors, country, is_active, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', '${v.league_id}', '${v.abbreviation}', '${v.city}', ${v.logo_url ? `'${v.logo_url}'` : 'NULL'}, ${v.conference ? `'${v.conference}'` : 'NULL'}, ${v.division ? `'${v.division}'` : 'NULL'}, ${v.founded_year || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, ${v.venue_capacity || 'NULL'}, ${v.colors ? `'${JSON.stringify(v.colors)}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.is_active}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -163,14 +152,8 @@ export class OptimizedSportsStorage {
         }))
 
         const insertQuery = `
-          INSERT INTO players (id, name, sport, position, team_id, team_name, height, weight, age, experience_years, college, country, jersey_number, is_active, headshot_url, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', ${v.position ? `'${v.position}'` : 'NULL'}, ${v.team_id ? `'${v.team_id}'` : 'NULL'}, ${v.team_name ? `'${v.team_name}'` : 'NULL'}, ${v.height ? `'${v.height}'` : 'NULL'}, ${v.weight || 'NULL'}, ${v.age || 'NULL'}, ${v.experience_years || 'NULL'}, ${v.college ? `'${v.college}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.jersey_number || 'NULL'}, ${v.is_active}, ${v.headshot_url ? `'${v.headshot_url}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            position = EXCLUDED.position,
-            team_id = EXCLUDED.team_id,
-            team_name = EXCLUDED.team_name,
-            last_updated = EXCLUDED.last_updated
+          INSERT INTO players (id, name, sport, position, team_id, league, jersey_number, height, weight, age, birth_date, nationality, salary, contract_end_date, is_active, external_id, created_at, updated_at)
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', ${v.position ? `'${v.position}'` : 'NULL'}, ${v.team_id ? `'${v.team_id}'` : 'NULL'}, ${v.league ? `'${v.league}'` : 'NULL'}, ${v.jersey_number || 'NULL'}, ${v.height ? `'${v.height}'` : 'NULL'}, ${v.weight || 'NULL'}, ${v.age || 'NULL'}, ${v.birth_date ? `'${v.birth_date}'` : 'NULL'}, ${v.nationality ? `'${v.nationality}'` : 'NULL'}, ${v.salary || 'NULL'}, ${v.contract_end_date ? `'${v.contract_end_date}'` : 'NULL'}, ${v.is_active}, ${v.external_id ? `'${v.external_id}'` : 'NULL'}, '${v.created_at}', '${v.updated_at}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -331,18 +314,8 @@ export class OptimizedSportsStorage {
         }))
 
         const insertQuery = `
-          INSERT INTO standings (id, sport, league, season, team_id, team_name, position, wins, losses, ties, win_percentage, games_behind, points_for, points_against, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.team_id ? `'${v.team_id}'` : 'NULL'}, '${v.team_name}', ${v.position}, ${v.wins}, ${v.losses}, ${v.ties}, ${v.win_percentage || 'NULL'}, ${v.games_behind || 'NULL'}, ${v.points_for}, ${v.points_against}, '${v.last_updated}')`).join(', ')}
-          ON CONFLICT (id) DO UPDATE SET
-            position = EXCLUDED.position,
-            wins = EXCLUDED.wins,
-            losses = EXCLUDED.losses,
-            ties = EXCLUDED.ties,
-            win_percentage = EXCLUDED.win_percentage,
-            games_behind = EXCLUDED.games_behind,
-            points_for = EXCLUDED.points_for,
-            points_against = EXCLUDED.points_against,
-            last_updated = EXCLUDED.last_updated
+          INSERT INTO league_standings (id, sport, league_id, season, team_id, team_name, position, wins, losses, ties, win_percentage, games_back, points_for, points_against, last_updated)
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league_id}', '${v.season}', ${v.team_id ? `'${v.team_id}'` : 'NULL'}, '${v.team_name}', ${v.position}, ${v.wins}, ${v.losses}, ${v.ties}, ${v.win_percentage || 'NULL'}, ${v.games_back || 'NULL'}, ${v.points_for}, ${v.points_against}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)

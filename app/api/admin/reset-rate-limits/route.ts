@@ -14,11 +14,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (service === 'api-keys' || service === 'all') {
-      // Reset API key rotation tracking
-      const providers = ['api-sports', 'odds-api', 'sportsdb', 'balldontlie']
-      providers.forEach(provider => {
-        apiKeyRotation.resetKeyUsage(provider)
-      })
+      // Reset API key rotation tracking - get providers dynamically
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: providers } = await supabase
+        .from('api_providers')
+        .select('provider_name')
+        .eq('is_active', true)
+      
+      if (providers) {
+        providers.forEach(provider => {
+          apiKeyRotation.resetKeyUsage(provider.provider_name)
+        })
+      }
     }
 
     // Clear database cache

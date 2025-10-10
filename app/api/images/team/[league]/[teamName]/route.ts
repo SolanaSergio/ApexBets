@@ -3,10 +3,10 @@ import { bulletproofImageService } from '@/lib/services/bulletproof-image-servic
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { league: string; teamName: string } }
+  { params }: { params: Promise<{ league: string; teamName: string }> }
 ) {
   try {
-    const { league, teamName } = params
+    const { league, teamName } = await params
 
     if (!league || !teamName) {
       return new NextResponse('Missing parameters', { status: 400 })

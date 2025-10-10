@@ -288,7 +288,7 @@ export class BaseballService extends SportSpecificService {
         try {
           const teams = await apiSportsClient.getTeams(leagueId, currentYear)
           if (teams?.response && Array.isArray(teams.response) && teams.response.length > 0) {
-            return teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+            return Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
           }
         } catch (leagueError) {
           console.warn(`Failed to get teams for league ${leagueId}:`, leagueError)
@@ -328,13 +328,13 @@ export class BaseballService extends SportSpecificService {
     })
   }
 
-  private mapRapidAPITeamData(team: any): TeamData {
+  private async mapRapidAPITeamData(team: any): Promise<TeamData> {
     return {
       id: team.team?.id?.toString() || '',
       sport: this.sport,
       league: this.league,
       name: team.team?.name || '',
-      city: this.extractCityFromName(team.team?.name),
+      city: await this.extractCityFromName(team.team?.name),
       abbreviation: this.extractAbbreviationFromName(team.team?.name || ''),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString()
@@ -356,12 +356,45 @@ export class BaseballService extends SportSpecificService {
     this.rapidAPIErrorTime = Date.now()
   }
 
-  private extractCityFromName(teamName: string): string {
-    // Extract city from team name (e.g., "New York Yankees" -> "New York")
+  /**
+   * Get team suffixes dynamically from database
+   * NO hardcoded team names
+   */
+  private async getTeamSuffixes(): Promise<string[]> {
+    try {
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('name')
+        .eq('sport', 'baseball')
+        .eq('is_active', true)
+      
+      if (teams && teams.length > 0) {
+        // Extract suffixes from real team names
+        return teams.map(team => {
+          const parts = team.name.split(' ')
+          return parts[parts.length - 1] // Last word is typically the suffix
+        }).filter((suffix, index, arr) => arr.indexOf(suffix) === index) // Remove duplicates
+      }
+    } catch (error) {
+      console.warn('Failed to get team suffixes from database:', error)
+    }
+    
+    // Fallback: return empty array (no hardcoded names)
+    return []
+  }
+
+  private async extractCityFromName(teamName: string): Promise<string> {
+    // Extract city from team name dynamically
     const parts = teamName.split(' ')
     if (parts.length > 1) {
-      // Remove common team suffixes
-      const suffixes = ['Diamondbacks', 'Braves', 'Orioles', 'Red Sox', 'Cubs', 'White Sox', 'Reds', 'Guardians', 'Rockies', 'Tigers', 'Astros', 'Royals', 'Angels', 'Dodgers', 'Marlins', 'Brewers', 'Twins', 'Mets', 'Yankees', 'Athletics', 'Phillies', 'Pirates', 'Padres', 'Giants', 'Mariners', 'Cardinals', 'Rays', 'Rangers', 'Blue Jays', 'Nationals']
+      // Get team suffixes dynamically from database or API
+      const suffixes = await this.getTeamSuffixes()
       
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {

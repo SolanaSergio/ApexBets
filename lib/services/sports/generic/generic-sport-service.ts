@@ -10,19 +10,7 @@ import { sportsDBClient } from '../../../sports-apis/sportsdb-client'
 import { espnClient } from '../../../sports-apis/espn-client'
 
 export class GenericSportService extends SportSpecificService {
-  private sportMapping: Record<string, string> = {
-    'golf': 'Golf',
-    'tennis': 'Tennis',
-    'mma': 'Fighting',
-    'boxing': 'Fighting',
-    'cricket': 'Cricket',
-    'rugby': 'Rugby',
-    'volleyball': 'Volleyball',
-    'motorsport': 'Motorsport',
-    'cycling': 'Cycling',
-    'swimming': 'Swimming',
-    'athletics': 'Athletics'
-  }
+  // Dynamic sport mapping - NO hardcoded values
 
   constructor(sport: string, league: string = 'General') {
     const config: ServiceConfig = {
@@ -33,6 +21,45 @@ export class GenericSportService extends SportSpecificService {
       retryDelay: 2000
     }
     super(sport, league, config)
+  }
+
+  /**
+   * Get API sport name dynamically from database
+   * NO hardcoded mappings - all from database configuration
+   */
+  private async getAPISportName(sport: string): Promise<string> {
+    // Check cache first
+    const cacheKey = `sport-api-name:${sport}`
+    const cached = await this.cache?.get(cacheKey)
+    if (cached) return cached
+    
+    try {
+      // Query database for API mapping
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data } = await supabase
+        .from('api_mappings')
+        .select('sport_name_mapping')
+        .eq('sport', sport)
+        .eq('provider', 'sportsdb')
+        .single()
+      
+      if (data?.sport_name_mapping?.apiName) {
+        await this.cache?.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
+        return data.sport_name_mapping.apiName
+      }
+    } catch (error) {
+      console.warn(`Failed to get API sport name for ${sport} from database:`, error)
+    }
+    
+    // Fallback: capitalize first letter (dynamic transformation)
+    const apiName = sport.charAt(0).toUpperCase() + sport.slice(1)
+    await this.cache?.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
+    return apiName
   }
 
   async getGames(params: {
@@ -76,13 +103,16 @@ export class GenericSportService extends SportSpecificService {
   // Implementation methods
   private async fetchGames(params: any): Promise<GameData[]> {
     try {
-      const sportName = this.sportMapping[this.sport] || this.sport
+      const sportName = await this.getAPISportName(this.sport) // Dynamic mapping
       const date = params.date || new Date().toISOString().split('T')[0]
+      
+      console.log(`GenericSportService.fetchGames - sport: ${this.sport}, sportName: ${sportName}, date: ${date}`)
       
       // Try SportsDB first
       try {
-        const events = await sportsDBClient.getEventsByDate(sportName, date)
-        return events.map(event => this.mapGameData(event))
+        const events = await sportsDBClient.getEventsByDate(date, sportName)
+        const mappedGames = events.map(event => this.mapGameData(event))
+        return mappedGames.filter(game => game !== null) // Filter out null games
       } catch (sportsDbError) {
         console.warn(`SportsDB failed for ${this.sport}:`, sportsDbError)
         
@@ -91,7 +121,8 @@ export class GenericSportService extends SportSpecificService {
           const espnSport = this.getESPNSportMapping(this.sport)
           if (espnSport) {
           const games = await espnClient.getNBAScoreboard()
-          return games.map((game: any) => this.mapESPNGameData(game))
+          const mappedGames = games.map((game: any) => this.mapESPNGameData(game))
+          return mappedGames.filter(game => game !== null) // Filter out null games
           }
         } catch (espnError) {
           console.warn(`ESPN fallback failed for ${this.sport}:`, espnError)
@@ -107,7 +138,7 @@ export class GenericSportService extends SportSpecificService {
 
   private async fetchTeams(_params: any): Promise<TeamData[]> {
     try {
-      const sportName = this.sportMapping[this.sport] || this.sport
+      const sportName = await this.getAPISportName(this.sport) // Dynamic mapping
       const leagues = await sportsDBClient.getLeaguesBySport(sportName)
       const league = leagues?.[0]?.idLeague
       if (!league) return []
@@ -189,12 +220,18 @@ export class GenericSportService extends SportSpecificService {
 
   // Data mapping methods
   protected mapGameData(event: any): GameData {
+    // NO hardcoded fallback values - only use real API data
+    if (!event.strHomeTeam || !event.strAwayTeam) {
+      console.warn(`Incomplete game data: ${JSON.stringify(event)}`)
+      return null // Return null instead of hardcoded data
+    }
+
     return {
       id: event.idEvent || event.id,
       sport: this.sport,
       league: this.league,
-      homeTeam: event.strHomeTeam || 'Home Team',
-      awayTeam: event.strAwayTeam || 'Away Team',
+      homeTeam: event.strHomeTeam, // Real team name from API
+      awayTeam: event.strAwayTeam,  // Real team name from API
       date: event.dateEvent || new Date().toISOString().split('T')[0],
       time: event.strTime || '00:00:00',
       status: this.mapGameStatus(event.strStatus),

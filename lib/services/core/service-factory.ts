@@ -184,7 +184,7 @@ export class ServiceFactory {
       this.serviceRegistry.set(sport, ServiceClass)
     }
 
-    return new ServiceClass(league)
+    return new ServiceClass(sport, league)
   }
 
   /**

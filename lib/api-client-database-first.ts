@@ -5,10 +5,10 @@
 
 const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
 // Resolve base URL: if an explicit external API base is configured, use it.
-// Otherwise, fallback to same-origin by using an empty base string.
+// Otherwise, fallback to localhost for server-side usage or empty for client-side
 const RESOLVED_API_BASE_URL = (typeof RAW_API_BASE_URL === 'string' && RAW_API_BASE_URL.trim().length > 0)
   ? RAW_API_BASE_URL
-  : ''
+  : (typeof window === 'undefined' ? 'http://localhost:3000' : '')
 
 export interface Team {
   id: string

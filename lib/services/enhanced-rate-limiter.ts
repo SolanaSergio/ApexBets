@@ -350,9 +350,9 @@ export class EnhancedRateLimiter {
 
       // Update minute-based counter
       const updateMinuteQuery = `
-        INSERT INTO api_rate_limits (provider, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
+        INSERT INTO api_rate_limits (service_name, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
         VALUES ('${provider}', '${endpoint}', 1, '${windowStart.toISOString()}', 1, '${today}')
-        ON CONFLICT (provider, endpoint, window_start)
+        ON CONFLICT (service_name, endpoint, window_start)
         DO UPDATE SET 
           requests_count = api_rate_limits.requests_count + 1,
           updated_at = NOW()
@@ -362,9 +362,9 @@ export class EnhancedRateLimiter {
 
       // Update daily counter
       const updateDailyQuery = `
-        INSERT INTO api_rate_limits (provider, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
+        INSERT INTO api_rate_limits (service_name, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
         VALUES ('${provider}', '${endpoint}', 1, '${windowStart.toISOString()}', 1, '${today}')
-        ON CONFLICT (provider, endpoint, window_start)
+        ON CONFLICT (service_name, endpoint, window_start)
         DO UPDATE SET 
           daily_requests = api_rate_limits.daily_requests + 1,
           updated_at = NOW()

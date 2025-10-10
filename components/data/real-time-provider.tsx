@@ -27,16 +27,31 @@ interface RealTimeContextType {
 
 const RealTimeContext = createContext<RealTimeContextType | undefined>(undefined)
 
-export function RealTimeProvider({ children }: { children: ReactNode }) {
+interface InitialData {
+  games: Game[]
+  predictions: Prediction[]
+  odds: Odd[]
+  standings: Standing[]
+  players: Player[]
+  sportsData: Record<string, any>
+}
+
+export function RealTimeProvider({ 
+  children, 
+  initialData 
+}: { 
+  children: ReactNode
+  initialData?: InitialData
+}) {
   const [selectedSport, setSelectedSport] = useState("all")
   const [data, setData] = useState<RealTimeData>({
-    games: [],
-    predictions: [],
-    odds: [],
-    standings: [],
-    players: [],
+    games: initialData?.games || [],
+    predictions: initialData?.predictions || [],
+    odds: initialData?.odds || [],
+    standings: initialData?.standings || [],
+    players: initialData?.players || [],
     player_stats: [],
-    lastUpdate: null,
+    lastUpdate: initialData ? new Date() : null,
     isConnected: false,
     error: null
   })

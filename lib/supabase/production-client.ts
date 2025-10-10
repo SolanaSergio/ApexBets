@@ -227,7 +227,17 @@ class ProductionSupabaseClient {
     const tableName = sportTableMap[sport] || 'players'
     
     try {
-      let query = this.supabase.from(tableName).select('*')
+      let query = this.supabase.from(tableName).select(`
+        *,
+        team:teams!player_profiles_team_id_fkey(
+          id, name, abbreviation, logo_url, city, league_name, sport
+        )
+      `)
+      
+      // Always filter by sport for player_profiles table
+      if (tableName === 'player_profiles') {
+        query = query.eq('sport', sport)
+      }
       
       if (teamId) {
         // Handle different team_id column names across tables
@@ -249,6 +259,12 @@ class ProductionSupabaseClient {
         sport: sport,
         team_id: player.team_id,
         position: player.position,
+        team_name: player.team?.name || null,
+        team_abbreviation: player.team?.abbreviation || '',
+        team_logo: player.team?.logo_url || null,
+        team_city: player.team?.city || '',
+        team_league: player.team?.league_name || '',
+        team_sport: player.team?.sport || sport,
         ...player
       }))
       

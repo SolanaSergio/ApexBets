@@ -187,7 +187,7 @@ const extractColorsFromImage = async (_imageUrl: string): Promise<{ primary: str
 }
 
 export const formatTeamName = (teamName: string): string => {
-  // Extract the last word as the team identifier (e.g., "Lakers" from "Los Angeles Lakers")
+  // Extract the last word as the team identifier dynamically
   const words = teamName.trim().split(' ')
   if (words.length > 1) {
     return words[words.length - 1]

@@ -60,6 +60,7 @@ export class SportsDBClient {
       }
 
       // Making SportsDB API request
+      console.log(`SportsDB API request: ${url}`)
       
       const response = await fetch(url, {
         method: 'GET',
@@ -70,6 +71,8 @@ export class SportsDBClient {
         // Add timeout to prevent hanging requests
         signal: AbortSignal.timeout(10000) // 10 second timeout
       })
+      
+      console.log(`SportsDB API response status: ${response.status}`)
       
       if (!response.ok) {
         if (response.status === 429) {

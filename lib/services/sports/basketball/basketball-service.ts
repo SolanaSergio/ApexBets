@@ -153,7 +153,9 @@ export class BasketballService extends SportSpecificService {
     if (!this.hasSportsDBKey()) return []
     
     try {
-      const events = await sportsDBClient.getEventsByDate(date, this.sport)
+      // Use dynamic sport mapping - NO hardcoded sport names
+      const sportName = await this.getAPISportName(this.sport)
+      const events = await sportsDBClient.getEventsByDate(date, sportName)
       if (events && Array.isArray(events)) {
         return events.map(event => this.mapGameData(event))
       }
@@ -161,6 +163,45 @@ export class BasketballService extends SportSpecificService {
       console.warn('SportsDB API error:', error)
     }
     return []
+  }
+
+  /**
+   * Get API sport name dynamically from database
+   * NO hardcoded mappings - all from database configuration
+   */
+  private async getAPISportName(sport: string): Promise<string> {
+    // Check cache first
+    const cacheKey = `sport-api-name:${sport}`
+    const cached = await this.cache?.get(cacheKey)
+    if (cached) return cached
+    
+    try {
+      // Query database for API mapping
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data } = await supabase
+        .from('api_mappings')
+        .select('sport_name_mapping')
+        .eq('sport', sport)
+        .eq('provider', 'sportsdb')
+        .single()
+      
+      if (data?.sport_name_mapping?.apiName) {
+        await this.cache?.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
+        return data.sport_name_mapping.apiName
+      }
+    } catch (error) {
+      console.warn(`Failed to get API sport name for ${sport} from database:`, error)
+    }
+    
+    // Fallback: capitalize first letter (dynamic transformation)
+    const apiName = sport.charAt(0).toUpperCase() + sport.slice(1)
+    await this.cache?.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
+    return apiName
   }
 
   // NBA Stats API methods (Official, free, no key required)

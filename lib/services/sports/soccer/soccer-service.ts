@@ -301,7 +301,7 @@ export class SoccerService extends SportSpecificService {
       sport: this.sport,
       league: this.league,
       name: team.team?.name || '',
-      city: this.extractCityFromName(team.team?.name),
+      city: await this.extractCityFromName(team.team?.name),
       abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString()
@@ -340,12 +340,45 @@ export class SoccerService extends SportSpecificService {
     }
   }
 
-  private extractCityFromName(teamName: string): string {
-    // Extract city from team name (e.g., "Manchester United" -> "Manchester")
+  /**
+   * Get team suffixes dynamically from database
+   * NO hardcoded team names
+   */
+  private async getTeamSuffixes(): Promise<string[]> {
+    try {
+      const { createClient } = require('@supabase/supabase-js')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL,
+        process.env.SUPABASE_SERVICE_ROLE_KEY
+      )
+      
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('name')
+        .eq('sport', 'soccer')
+        .eq('is_active', true)
+      
+      if (teams && teams.length > 0) {
+        // Extract suffixes from real team names
+        return teams.map(team => {
+          const parts = team.name.split(' ')
+          return parts[parts.length - 1] // Last word is typically the suffix
+        }).filter((suffix, index, arr) => arr.indexOf(suffix) === index) // Remove duplicates
+      }
+    } catch (error) {
+      console.warn('Failed to get team suffixes from database:', error)
+    }
+    
+    // Fallback: return empty array (no hardcoded names)
+    return []
+  }
+
+  private async extractCityFromName(teamName: string): Promise<string> {
+    // Extract city from team name dynamically
     const parts = teamName.split(' ')
     if (parts.length > 1) {
-      // Remove common team suffixes
-      const suffixes = ['United', 'City', 'Albion', 'Wanderers', 'Hotspur', 'Forest', 'Palace', 'Villa', 'Ham']
+      // Get team suffixes dynamically from database
+      const suffixes = await this.getTeamSuffixes()
       
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {

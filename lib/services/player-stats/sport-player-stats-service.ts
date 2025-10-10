@@ -217,22 +217,27 @@ export class SportPlayerStatsService extends BaseService {
         throw new Error('Database connection failed')
       }
 
-      // Get the appropriate table based on sport
-      const tableName = await this.getStatsTableName()
-      
+      // Get player stats with player profile information
       let query = supabase
-        .from(tableName)
-        .select('*')
-        
-      // Sport-specific tables don't have a sport column since they're already sport-specific
-      // The table name itself indicates the sport, so no need to filter by sport column
+        .from('player_stats')
+        .select(`
+          *,
+          player_profiles!inner(
+            id,
+            name,
+            position,
+            team_id,
+            team_name
+          )
+        `)
+        .eq('sport', this.sport)
 
       if (params.teamId) {
-        query = query.eq('team_id', params.teamId)
+        query = query.eq('player_profiles.team_id', params.teamId)
       }
 
       if (params.position) {
-        query = query.eq('position', params.position)
+        query = query.eq('player_profiles.position', params.position)
       }
 
       if (params.season) {
@@ -250,13 +255,15 @@ export class SportPlayerStatsService extends BaseService {
       const playerStatsMap = new Map<string, any>()
 
       for (const stat of data || []) {
-        const playerName = stat.player_name
+        const playerProfile = stat.player_profiles
+        const playerName = playerProfile.name
+        
         if (!playerStatsMap.has(playerName)) {
           playerStatsMap.set(playerName, {
-            playerId: stat.id,
+            playerId: stat.player_id,
             name: playerName,
-            team: null, // Will be resolved separately if needed
-            position: stat.position || '',
+            team: playerProfile.team_name || '',
+            position: playerProfile.position || '',
             sport: this.sport,
             league: this.league,
             season: params.season || await this.getCurrentSeason(),
@@ -272,11 +279,13 @@ export class SportPlayerStatsService extends BaseService {
         const player = playerStatsMap.get(playerName)!
         player.gamesPlayed++
         
-        // Add stats to totals
-        for (const [key, value] of Object.entries(stat)) {
-          if (typeof value === 'number' && key !== 'id' && key !== 'team_id' && key !== 'game_id' && key !== 'created_at') {
-            if (!player.totals[key]) player.totals[key] = 0
-            player.totals[key] += value
+        // Add stats from stats_data JSONB column
+        if (stat.stats_data && typeof stat.stats_data === 'object') {
+          for (const [key, value] of Object.entries(stat.stats_data)) {
+            if (typeof value === 'number') {
+              if (!player.totals[key]) player.totals[key] = 0
+              player.totals[key] += value
+            }
           }
         }
       }

@@ -428,19 +428,19 @@ export class DatabaseFirstApiClient {
         SELECT 
           id,
           game_id,
-          source,
+          provider as source,
           odds_type,
           home_odds,
           away_odds,
           spread,
           total,
-          timestamp,
+          last_updated as timestamp,
           sport,
           league,
           prop_bets,
           live_odds,
           created_at
-        FROM odds 
+        FROM betting_odds 
         WHERE 1=1
       `
       const queryParams: any[] = []

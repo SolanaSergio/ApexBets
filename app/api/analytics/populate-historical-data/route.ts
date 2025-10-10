@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@supabase/supabase-js"
 import { serviceFactory, SupportedSport } from "@/lib/services/core/service-factory"
 import { SportPredictionService } from "@/lib/services/predictions/sport-prediction-service"
 import { cachedSupabaseQuery } from "@/lib/utils/supabase-query-cache"
@@ -15,7 +15,10 @@ export async function POST(request: NextRequest) {
     const league = searchParams.get("league")
     const days = parseInt(searchParams.get("days") || "30")
     
-    const supabase = await createClient()
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
     
     if (!supabase) {
       return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
@@ -62,9 +65,25 @@ export async function POST(request: NextRequest) {
       const startDate = new Date()
       startDate.setDate(endDate.getDate() - days)
 
-      const games = await sportService.getGames({
-        date: startDate.toISOString().split('T')[0]
-      })
+      // Collect games from all dates in the range
+      const allGames: any[] = []
+      for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        try {
+          const games = await sportService.getGames({
+            date: d.toISOString().split('T')[0]
+          })
+          allGames.push(...games)
+        } catch (error) {
+          console.warn(`Failed to fetch games for ${d.toISOString().split('T')[0]}:`, error)
+        }
+      }
+      
+      const games = allGames
+      
+      console.log(`Found ${games.length} games for ${sport}`)
+      if (games.length > 0) {
+        console.log(`Sample game: ${games[0].homeTeam} vs ${games[0].awayTeam}`)
+      }
 
       // Use cached query to get all teams for this sport once, instead of per game
       const allTeams = await cachedSupabaseQuery(
@@ -86,16 +105,68 @@ export async function POST(request: NextRequest) {
       })
 
       for (const game of games) {
-        // Use cached team lookups instead of database calls
-        const homeTeam = teamMap.get(game.homeTeam)
-        const awayTeam = teamMap.get(game.awayTeam)
+        // Dynamic team creation - NO skipping games
+        let homeTeam = teamMap.get(game.homeTeam)
+        let awayTeam = teamMap.get(game.awayTeam)
 
-        if (homeTeam && awayTeam) {
+        // Create home team if it doesn't exist
+        if (!homeTeam) {
+          console.log(`Creating new team dynamically: ${game.homeTeam}`)
+          const { data: newHomeTeam, error: homeError } = await supabase
+            .from('teams')
+            .insert({
+              name: game.homeTeam,
+              sport: sport,
+              league_name: game.league || 'Unknown',
+              is_active: true,
+              external_id: game.homeTeamId || null
+            })
+            .select()
+            .single()
+
+          if (homeError) {
+            console.error(`Failed to create home team ${game.homeTeam}:`, homeError)
+            results.errors.push(`Failed to create home team ${game.homeTeam}: ${homeError.message}`)
+            continue // Skip this game
+          }
+
+          homeTeam = newHomeTeam
+          teamMap.set(game.homeTeam, newHomeTeam) // Cache for future lookups
+        }
+
+        // Create away team if it doesn't exist
+        if (!awayTeam) {
+          console.log(`Creating new team dynamically: ${game.awayTeam}`)
+          const { data: newAwayTeam, error: awayError } = await supabase
+            .from('teams')
+            .insert({
+              name: game.awayTeam,
+              sport: sport,
+              league_name: game.league || 'Unknown',
+              is_active: true,
+              external_id: game.awayTeamId || null
+            })
+            .select()
+            .single()
+
+          if (awayError) {
+            console.error(`Failed to create away team ${game.awayTeam}:`, awayError)
+            results.errors.push(`Failed to create away team ${game.awayTeam}: ${awayError.message}`)
+            continue // Skip this game
+          }
+
+          awayTeam = newAwayTeam
+          teamMap.set(game.awayTeam, newAwayTeam) // Cache for future lookups
+        }
+
+          // NOW both teams exist - insert game
           const { error } = await supabase
             .from("games")
             .upsert({
               home_team_id: homeTeam.id,
               away_team_id: awayTeam.id,
+              home_team_name: game.homeTeam, // Real name from API
+              away_team_name: game.awayTeam,  // Real name from API
               game_date: game.date,
               season: getCurrentSeason(sport),
               home_score: game.homeScore,
@@ -103,14 +174,15 @@ export async function POST(request: NextRequest) {
               status: game.status,
               venue: game.venue,
               sport: game.sport,
-              league: game.league
-            }, { onConflict: "home_team_id,away_team_id,game_date" })
+              league_name: game.league, // Fixed: use league_name not league
+              external_id: game.id // API game ID
+            }) // Simple insert - let database handle duplicates
 
-          if (error) {
-            results.errors.push(`Game ${game.homeTeam} vs ${game.awayTeam}: ${error.message}`)
-          } else {
-            results.games++
-          }
+        if (error) {
+          console.error(`Failed to insert game: ${error.message}`, game)
+          results.errors.push(`Game ${game.homeTeam} vs ${game.awayTeam}: ${error.message}`)
+        } else {
+          results.games++
         }
       }
 
@@ -320,16 +392,19 @@ function getCurrentSeason(sport: string): string {
 async function getPlayerStatsForGame(gameId: string, sport: string): Promise<any[]> {
   try {
     const { databaseFirstApiClient } = await import('@/lib/api-client-database-first')
+    // Use the pre-initialized instance
+    const apiClient = databaseFirstApiClient
+    
     // Get game details first to extract player IDs
-    const game = await databaseFirstApiClient.getGame(gameId)
+    const game = await apiClient.getGame(gameId)
     if (!game) return []
     
     // Get player stats for each team
-    const homeTeamPlayers = await databaseFirstApiClient.getPlayers({ 
+    const homeTeamPlayers = await apiClient.getPlayers({ 
       sport, 
       team_id: game.home_team_id 
     })
-    const awayTeamPlayers = await databaseFirstApiClient.getPlayers({ 
+    const awayTeamPlayers = await apiClient.getPlayers({ 
       sport, 
       team_id: game.away_team_id 
     })

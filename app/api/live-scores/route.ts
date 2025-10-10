@@ -110,7 +110,7 @@ export async function GET(request: NextRequest) {
     let liveOdds = []
     if (liveGameIds.length > 0) {
       const { data: odds, error: oddsError } = await supabase
-        .from('odds')
+        .from('betting_odds')
         .select('*')
         .in('game_id', liveGameIds)
         .eq('sport', finalSport)
@@ -126,11 +126,11 @@ export async function GET(request: NextRequest) {
         acc[odd.game_id] = []
       }
       acc[odd.game_id].push({
-        betType: odd.bet_type,
-        side: odd.side,
-        odds: odd.odds,
-        bookmaker: odd.bookmaker || "Unknown",
-        updatedAt: odd.updated_at
+        betType: odd.odds_type,
+        side: odd.home_odds ? 'home' : 'away',
+        odds: odd.home_odds || odd.away_odds,
+        bookmaker: odd.provider || "Unknown",
+        updatedAt: odd.last_updated
       })
       return acc
     }, {} as Record<string, any[]>)
