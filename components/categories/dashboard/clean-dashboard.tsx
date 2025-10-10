@@ -98,12 +98,6 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
   const [allUpcomingGames, setAllUpcomingGames] = useState<GameData[]>([])
   const [allTeams, setAllTeams] = useState<TeamData[]>([])
   const [serviceHealth, setServiceHealth] = useState<Record<SupportedSport, boolean>>({} as Record<SupportedSport, boolean>)
-  const [stats, setStats] = useState({
-    totalGames: 0,
-    liveGames: 0,
-    totalTeams: 0,
-    totalSupportedSports: 0
-  })
   
   // Additional dashboard data
   const [standings, setStandings] = useState<any[]>([])
@@ -125,33 +119,6 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     }
   }, [])
 
-  const loadStats = useCallback(async () => {
-    try {
-      const supportedSports = SportConfigManager.getSupportedSports()
-      let totalGames = 0
-      let liveGames = 0
-      let totalTeams = 0
-
-      // Count games across all sports
-      totalGames = allLiveGames.length + allUpcomingGames.length
-      liveGames = allLiveGames.length
-      totalTeams = allTeams.length
-
-      console.log(`Stats update: ${totalGames} total games (${liveGames} live), ${totalTeams} teams, ${supportedSports.length} sports`)
-      console.log(`Live games:`, allLiveGames.map(g => `${g.home_team?.name} vs ${g.away_team?.name} (${g.sport})`))
-      console.log(`Upcoming games:`, allUpcomingGames.map(g => `${g.home_team?.name} vs ${g.away_team?.name} (${g.sport})`))
-      console.log(`Teams:`, allTeams.map(t => `${t.name} (${t.sport})`).slice(0, 5))
-
-      setStats({
-        totalGames,
-        liveGames,
-        totalTeams,
-        totalSupportedSports: supportedSports.length
-      })
-    } catch (error) {
-      console.error('Error loading stats:', error)
-    }
-  }, [allLiveGames, allUpcomingGames, allTeams])
 
 
   const loadTeamsForSport = useCallback(async (sport: SupportedSport) => {
@@ -583,20 +550,12 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     try {
       setLoading(true)
       
-      // Load data sequentially to avoid rate limits
-      await loadServiceHealth()
-      
-      // Load teams first (less frequent data)
-      await loadTeamsForSport(sport)
-      
-      // Then load games data in parallel (but after teams)
+      // Load all data in parallel for better performance
       await Promise.all([
+        loadServiceHealth(),
+        loadTeamsForSport(sport),
         loadLiveGamesForSport(sport),
-        loadUpcomingGamesForSport(sport)
-      ])
-      
-      // Load additional dashboard data in parallel
-      await Promise.all([
+        loadUpcomingGamesForSport(sport),
         loadStandings(sport),
         loadUpcomingPredictions(sport),
         loadValueBets(sport),
@@ -617,7 +576,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     } finally {
       setLoading(false)
     }
-  }, [loadServiceHealth, loadTeamsForSport, loadLiveGamesForSport, loadUpcomingGamesForSport, loadStandings, loadUpcomingPredictions, loadValueBets, loadLiveOdds])
+  }, []) // Remove all dependencies - functions are stable
 
 
   const handleRefresh = useCallback(async () => {
@@ -630,23 +589,13 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     setRefreshing(false)
   }, [selectedSupportedSport, loadDataForSport])
 
+  // Combined initialization and data loading effect
   useEffect(() => {
     setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (mounted) {
+    if (selectedSupportedSport) {
       initializeAndLoadData()
     }
-  }, [mounted, initializeAndLoadData])
-
-  // Load data when sport is selected after initialization
-  useEffect(() => {
-    if (mounted && selectedSupportedSport) {
-      loadDataForSport(selectedSupportedSport)
-    }
-  }, [mounted, selectedSupportedSport, loadDataForSport])
-
+  }, [selectedSupportedSport]) // Only depend on sport selection
 
   // Update live games with real-time updates
   useEffect(() => {
@@ -660,12 +609,16 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
     }
   }, [liveGameUpdates])
 
-  // Recalculate stats when data changes
-  useEffect(() => {
-    if (mounted) {
-      loadStats()
+  // Recalculate stats when data changes - use useMemo for better performance
+  const computedStats = useMemo(() => {
+    if (!mounted) return null
+    return {
+      totalGames: allLiveGames.length + allUpcomingGames.length,
+      totalTeams: allTeams.length,
+      liveGames: allLiveGames.length,
+      upcomingGames: allUpcomingGames.length
     }
-  }, [allLiveGames, allUpcomingGames, allTeams, mounted, loadStats])
+  }, [mounted, allLiveGames.length, allUpcomingGames.length, allTeams.length])
 
   // Prevent hydration mismatch by not rendering until mounted
   if (!mounted) {
@@ -757,7 +710,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalGames}</div>
+              <div className="text-2xl font-bold">{computedStats?.totalGames || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Across all sports
               </p>
@@ -772,7 +725,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               <Zap className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">{stats.liveGames}</div>
+              <div className="text-2xl font-bold text-green-600">{computedStats?.liveGames || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Currently playing
               </p>
@@ -787,7 +740,7 @@ export function CleanDashboard({ className = "", defaultSport = null }: CleanDas
               <Star className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTeams}</div>
+              <div className="text-2xl font-bold">{computedStats?.totalTeams || 0}</div>
               <p className="text-xs text-muted-foreground">
                 Across all leagues
               </p>

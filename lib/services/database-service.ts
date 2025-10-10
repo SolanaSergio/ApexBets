@@ -28,6 +28,10 @@ export class DatabaseService {
   private static initialized = false
   private isConnected: boolean = false
   private lastHealthCheck: Date = new Date()
+  private connectionRetryCount: number = 0
+  private maxRetries: number = 3
+  private retryDelay: number = 1000 // Start with 1 second
+  private queryPerformanceStats: Map<string, { count: number; totalTime: number; avgTime: number }> = new Map()
 
   public static getInstance(): DatabaseService {
     if (!DatabaseService.instance) {
@@ -71,6 +75,103 @@ export class DatabaseService {
     }
   }
 
+  /**
+   * Perform health check on database connection
+   */
+  async performHealthCheck(): Promise<boolean> {
+    try {
+      const startTime = Date.now()
+      const result = await productionSupabaseClient.executeSQL('SELECT 1 as health_check', [])
+      const executionTime = Date.now() - startTime
+      
+      this.isConnected = result.success
+      this.lastHealthCheck = new Date()
+      this.connectionRetryCount = 0 // Reset retry count on successful connection
+      
+      structuredLogger.debug('Database health check completed', {
+        success: result.success,
+        executionTime,
+        connected: this.isConnected
+      })
+      
+      return result.success
+    } catch (error) {
+      this.isConnected = false
+      this.connectionRetryCount++
+      
+      structuredLogger.warn('Database health check failed', {
+        error: error instanceof Error ? error.message : String(error),
+        retryCount: this.connectionRetryCount,
+        connected: false
+      })
+      
+      return false
+    }
+  }
+
+  /**
+   * Execute query with retry logic and exponential backoff
+   */
+  private async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string
+  ): Promise<T> {
+    let lastError: Error | null = null
+    
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        // Perform health check if not connected
+        if (!this.isConnected || attempt > 0) {
+          await this.performHealthCheck()
+        }
+        
+        const result = await operation()
+        
+        // Reset retry count on success
+        if (attempt > 0) {
+          this.connectionRetryCount = 0
+          structuredLogger.info('Database operation succeeded after retry', {
+            operation: operationName,
+            attempt: attempt + 1
+          })
+        }
+        
+        return result
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+        
+        if (attempt < this.maxRetries) {
+          const delay = this.retryDelay * Math.pow(2, attempt) // Exponential backoff
+          structuredLogger.warn('Database operation failed, retrying', {
+            operation: operationName,
+            attempt: attempt + 1,
+            maxRetries: this.maxRetries,
+            delay,
+            error: lastError.message
+          })
+          
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+      }
+    }
+    
+    throw lastError || new Error(`Database operation failed after ${this.maxRetries + 1} attempts`)
+  }
+
+  /**
+   * Track query performance metrics
+   */
+  private trackQueryPerformance(query: string, executionTime: number): void {
+    const queryKey = query.substring(0, 50) // Use first 50 chars as key
+    const existing = this.queryPerformanceStats.get(queryKey) || { count: 0, totalTime: 0, avgTime: 0 }
+    
+    existing.count++
+    existing.totalTime += executionTime
+    existing.avgTime = existing.totalTime / existing.count
+    
+    this.queryPerformanceStats.set(queryKey, existing)
+  }
+
   async executeSQL(query: string, _params?: any[]): Promise<QueryResult> {
     const startTime = Date.now()
     
@@ -86,11 +187,17 @@ export class DatabaseService {
         }
       }
 
-      // Use production Supabase client for Vercel compatibility
-      const result = await productionSupabaseClient.executeSQL(query, _params)
+      // Use retry logic for database operations
+      const result = await this.executeWithRetry(async () => {
+        return await productionSupabaseClient.executeSQL(query, _params)
+      }, 'executeSQL')
+      
       const executionTime = Date.now() - startTime
       
       const data = Array.isArray(result.data) ? result.data : []
+      
+      // Track performance metrics
+      this.trackQueryPerformance(query, executionTime)
       
       structuredLogger.databaseQuery(query, executionTime, data.length)
       
@@ -324,6 +431,56 @@ export class DatabaseService {
         error: error instanceof Error ? error.message : String(error)
       })
       return false
+    }
+  }
+
+  /**
+   * Get performance statistics
+   */
+  getPerformanceStats(): { 
+    queryStats: Map<string, { count: number; totalTime: number; avgTime: number }>
+    connectionStatus: {
+      isConnected: boolean
+      lastHealthCheck: Date
+      retryCount: number
+    }
+  } {
+    return {
+      queryStats: new Map(this.queryPerformanceStats),
+      connectionStatus: {
+        isConnected: this.isConnected,
+        lastHealthCheck: this.lastHealthCheck,
+        retryCount: this.connectionRetryCount
+      }
+    }
+  }
+
+  /**
+   * Get health status
+   */
+  async getHealthStatus(): Promise<{
+    isHealthy: boolean
+    lastCheck: Date
+    retryCount: number
+    performanceStats: { slowQueries: number; avgQueryTime: number }
+  }> {
+    const isHealthy = await this.performHealthCheck()
+    
+    // Calculate performance metrics
+    const allStats = Array.from(this.queryPerformanceStats.values())
+    const slowQueries = allStats.filter(stat => stat.avgTime > 1000).length // Queries > 1s
+    const avgQueryTime = allStats.length > 0 
+      ? allStats.reduce((sum, stat) => sum + stat.avgTime, 0) / allStats.length 
+      : 0
+    
+    return {
+      isHealthy,
+      lastCheck: this.lastHealthCheck,
+      retryCount: this.connectionRetryCount,
+      performanceStats: {
+        slowQueries,
+        avgQueryTime
+      }
     }
   }
 

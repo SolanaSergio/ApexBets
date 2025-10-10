@@ -118,7 +118,7 @@ export interface ValueBet {
   created_at: string
 }
 
-export type Sport = 'basketball' | 'football' | 'baseball' | 'hockey' | 'soccer' | 'tennis' | 'golf'
+export type Sport = string
 
 export interface SportConfig {
   name: string

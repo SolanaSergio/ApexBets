@@ -37,7 +37,7 @@ async function getKnownTeamsFromDatabase(sport: string): Promise<string[]> {
 }
 
 describe('Comprehensive Games API Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
   describe('GET /api/games - Real NBA Data', () => {
     it('should fetch real NBA games with proper data structure', async () => {

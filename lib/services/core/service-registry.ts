@@ -5,6 +5,7 @@
 
 import { serviceFactory } from './service-factory'
 import { SportConfigManager } from './sport-config'
+import { ServerSportConfigManager } from './server-sport-config'
 
 // Import all sport services dynamically
 import { BasketballService } from '../sports/basketball/basketball-service'
@@ -74,38 +75,21 @@ export class ServiceRegistry {
    * Register all sport services
    */
   private static registerSportServices(): void {
-    // Get supported sports from database configuration instead of environment
-    const { DynamicSportConfigService } = require('./dynamic-sport-config')
-    
+    // Load supported sports from the server-side sport config manager (dynamic)
     try {
-      // Initialize the dynamic sport config service
-      DynamicSportConfigService.initialize('luehhafpitbluxvwxczl')
-      const supportedSports = DynamicSportConfigService.getAllSports()
-      
+      const supportedSports = ServerSportConfigManager.getSupportedSports?.() || []
+
       if (supportedSports.length === 0) {
-        console.warn('No supported sports found in database configuration')
-        // Fallback to basic sports if database is empty
-        const fallbackSports = ['basketball', 'football', 'soccer', 'baseball', 'hockey']
-        fallbackSports.forEach((sport: string) => {
-          const serviceClass = this.getServiceClassForSport(sport)
-          this.serviceMap.set(sport, serviceClass)
-        })
+        console.warn('No supported sports configured; service registry remains empty')
         return
       }
 
-      // Register services for each supported sport from database
       supportedSports.forEach((sport: string) => {
         const serviceClass = this.getServiceClassForSport(sport)
         this.serviceMap.set(sport, serviceClass)
       })
     } catch (error) {
-      console.warn('Failed to load sports from database, using fallback:', error instanceof Error ? error.message : 'Unknown error')
-      // Fallback to basic sports if database fails
-      const fallbackSports = ['basketball', 'football', 'soccer', 'baseball', 'hockey']
-      fallbackSports.forEach((sport: string) => {
-        const serviceClass = this.getServiceClassForSport(sport)
-        this.serviceMap.set(sport, serviceClass)
-      })
+      console.warn('Failed to load supported sports:', error instanceof Error ? error.message : 'Unknown error')
     }
   }
 

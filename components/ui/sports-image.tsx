@@ -4,8 +4,7 @@ import React, { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
 import { 
-  getTeamLogoUrl as getApiTeamLogoUrl, 
-  getPlayerPhotoUrl, 
+  imageService,
   getSportsImageUrl, 
   getFallbackImageUrl,
   IMAGE_SOURCES,
@@ -13,7 +12,6 @@ import {
   type TeamLogoConfig,
   type PlayerPhotoConfig
 } from '@/lib/services/image-service'
-import { getTeamLogoData } from '@/lib/services/dynamic-team-service-client'
 
 interface SportsImageProps {
   src?: string
@@ -35,6 +33,7 @@ interface TeamLogoProps extends Omit<SportsImageProps, 'src'> {
   league?: SportsLeague
   config?: Partial<TeamLogoConfig>
   sport?: string
+  logoUrl?: string
   dynamicGeneration?: boolean // Enable for custom teams/leagues not in mappings
 }
 
@@ -42,6 +41,7 @@ interface PlayerPhotoProps extends Omit<SportsImageProps, 'src'> {
   playerId: number | string
   league?: SportsLeague
   config?: Partial<PlayerPhotoConfig>
+  playerName?: string
 }
 
 interface SportsImageGenericProps extends Omit<SportsImageProps, 'src'> {
@@ -49,7 +49,7 @@ interface SportsImageGenericProps extends Omit<SportsImageProps, 'src'> {
 }
 
 /**
- * Generic sports image component with fallback support
+ * Generic sports image component with bulletproof fallback support
  */
 export function SportsImage({ 
   src, 
@@ -64,18 +64,14 @@ export function SportsImage({
 }: SportsImageProps) {
   const [imgSrc, setImgSrc] = useState(src)
   const [hasError, setHasError] = useState(false)
+  const [isFallback, setIsFallback] = useState(false)
 
   const handleError = useCallback(() => {
     if (!hasError) {
       setHasError(true)
-      // Try Unsplash stock image first before falling back to placeholder
-      if (fallbackType === 'team') {
-        setImgSrc('https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop')
-      } else if (fallbackType === 'sports') {
-        setImgSrc('https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?q=80&w=400&h=250&auto=format&fit=crop')
-      } else {
-        setImgSrc(getFallbackImageUrl(fallbackType))
-      }
+      const fallbackUrl = getFallbackImageUrl(fallbackType)
+      setImgSrc(fallbackUrl)
+      setIsFallback(true)
       onError?.()
     }
   }, [hasError, fallbackType, onError])
@@ -89,19 +85,20 @@ export function SportsImage({
         height={height}
         className={cn(
           "object-contain transition-opacity duration-200",
-          hasError && "opacity-50"
+          hasError && "opacity-50",
+          isFallback && "opacity-90"
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={!!(src?.includes('cdn.nba.com') || src?.includes('espncdn.com'))}
+        unoptimized={isFallback} // Don't optimize SVG data URIs
       />
     </div>
   )
 }
 
 /**
- * Team logo component with league support
+ * Team logo component with bulletproof fallback support
  */
 export function TeamLogo({ 
   teamName, 
@@ -114,84 +111,149 @@ export function TeamLogo({
   fallbackType = 'team',
   onError,
   priority = false,
-  quality = 80
+  quality = 80,
+  sport,
+  logoUrl
 }: TeamLogoProps) {
   const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
+  const [isFallback, setIsFallback] = useState(false)
+  const [loading, setLoading] = useState(true)
 
-  // Load logo using dynamic service
+  // Load logo using bulletproof image service
   useEffect(() => {
     const loadLogo = async () => {
       try {
-        const result = await getTeamLogoData(teamName, league)
-        setImgSrc(result.logoUrl)
+        setLoading(true)
+        setHasError(false)
+        
+        const startTime = Date.now()
+        
+        // If logoUrl is provided, use it directly
+        if (logoUrl) {
+          setImgSrc(logoUrl)
+          setIsFallback(false)
+          
+          // Track direct logo usage
+          try {
+            await fetch('/api/monitor/image-event', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                entityType: 'team',
+                entityName: teamName,
+                sport,
+                source: 'database',
+                success: true,
+                url: logoUrl,
+                loadTime: Date.now() - startTime
+              })
+            })
+          } catch (error) {
+            console.debug('Failed to track image event:', error)
+          }
+          return
+        }
+        
+        // Otherwise, use bulletproof image service
+        const result = await imageService.getTeamLogoUrl(teamName, league, sport)
+        const loadTime = Date.now() - startTime
+        
+        // Validate result structure
+        if (!result || typeof result !== 'object' || !result.url) {
+          throw new Error('Invalid result from image service')
+        }
+        
+        setImgSrc(result.url)
+        setIsFallback(result.url.startsWith('data:image/svg+xml'))
+        
+        // Track successful image load (fire-and-forget)
+        fetch('/api/monitor/image-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: 'team',
+            entityName: teamName,
+            sport,
+            source: result.source,
+            success: true,
+            url: result.url,
+            loadTime
+          })
+        }).catch(error => {
+          console.debug('Failed to track image event:', error)
+        })
       } catch (error) {
+        const loadTime = Date.now() - Date.now()
         console.warn('Failed to load team logo:', error)
-        // Fallback to API service
-        const fallbackUrl = await getApiTeamLogoUrl(teamName, league)
+        setHasError(true)
+        const fallbackUrl = getFallbackImageUrl(fallbackType)
         setImgSrc(fallbackUrl)
+        setIsFallback(true)
+        
+        // Track failed image load (fire-and-forget)
+        fetch('/api/monitor/image-event', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entityType: 'team',
+            entityName: teamName,
+            sport,
+            source: 'svg',
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            loadTime
+          })
+        }).catch(trackError => {
+          console.debug('Failed to track image event:', trackError)
+        })
+      } finally {
+        setLoading(false)
       }
     }
 
     if (teamName) {
       loadLogo()
     }
-  }, [teamName, league, config])
+  }, [teamName, league, sport, logoUrl])
 
   const handleError = useCallback(() => {
     if (!hasError) {
       setHasError(true)
-      // Try multiple fallback sources before giving up
-      if (fallbackType === 'team') {
-        const fallbacks = [
-          'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop', // Basketball
-          'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=150&h=150&auto=format&fit=crop', // Sports
-          getFallbackImageUrl(fallbackType) // Local placeholder
-        ]
-        // Try the first fallback, if that fails, the component will call handleError again
-        setImgSrc(fallbacks[0])
-        setHasError(false) // Allow another try with fallback
-      } else {
-        setImgSrc(getFallbackImageUrl(fallbackType))
-      }
+      const fallbackUrl = getFallbackImageUrl(fallbackType)
+      setImgSrc(fallbackUrl)
+      setIsFallback(true)
       onError?.()
-    } else if (fallbackType === 'team' && imgSrc === 'https://images.unsplash.com/photo-1546519638-68e109498ffc?q=80&w=150&h=150&auto=format&fit=crop') {
-      // Second attempt failed, try final fallback
-      setImgSrc('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?q=80&w=150&h=150&auto=format&fit=crop')
-      setHasError(true)
-    } else if (fallbackType === 'team') {
-      // Final fallback failed, use local
-      setImgSrc(getFallbackImageUrl(fallbackType))
-      setHasError(true)
     }
-  }, [hasError, fallbackType, onError, imgSrc])
+  }, [hasError, fallbackType, onError])
+
+  if (loading) {
+    return <SportsImageSkeleton width={width} height={height} {...(className && { className })} />
+  }
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
-      {imgSrc ? (
-        <Image
-          src={imgSrc}
-          alt={alt || `${teamName} logo`}
-          width={width}
-          height={height}
-          className={cn(
-            "object-contain transition-opacity duration-200",
-            hasError && "opacity-50"
-          )}
-          onError={handleError}
-          priority={priority}
-          quality={quality}
-          unoptimized={imgSrc.includes('cdn.nba.com') || imgSrc.includes('espncdn.com')}
-        />
-      ) : (
-        <SportsImageSkeleton width={width} height={height} />
-      )}
+      <Image
+        src={imgSrc}
+        alt={alt || `${teamName} logo`}
+        width={width}
+        height={height}
+        className={cn(
+          "object-contain transition-opacity duration-200",
+          hasError && "opacity-50",
+          isFallback && "opacity-90"
+        )}
+        onError={handleError}
+        priority={priority}
+        quality={quality}
+        unoptimized={isFallback} // Don't optimize SVG data URIs
+      />
     </div>
   )
 }
 
 /**
- * Player photo component with league support
+ * Player photo component with bulletproof fallback support
  */
 export function PlayerPhoto({ 
   playerId, 
@@ -202,30 +264,91 @@ export function PlayerPhoto({
   fallbackType = 'player',
   onError,
   priority = false,
-  quality = 80
+  quality = 80,
+  playerName
 }: PlayerPhotoProps) {
   const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
+  const [isFallback, setIsFallback] = useState(false)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const url = await getPlayerPhotoUrl(String(playerId))
-        setImgSrc(url)
-      } catch {
-        setImgSrc(getFallbackImageUrl('player'))
+        setLoading(true)
+        setHasError(false)
+        
+        const startTime = Date.now()
+        
+        // Use bulletproof image service
+        const result = await imageService.getPlayerPhotoUrl(String(playerId), undefined, playerName)
+        const loadTime = Date.now() - startTime
+        
+        setImgSrc(result.url)
+        setIsFallback(result.url.startsWith('data:image/svg+xml'))
+        
+        // Track successful image load
+        try {
+          await fetch('/api/monitor/image-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              entityType: 'player',
+              entityName: playerName || String(playerId),
+              source: result.source,
+              success: true,
+              url: result.url,
+              loadTime
+            })
+          })
+        } catch (error) {
+          console.debug('Failed to track image event:', error)
+        }
+      } catch (error) {
+        const loadTime = Date.now() - Date.now()
+        console.warn('Failed to load player photo:', error)
+        setHasError(true)
+        const fallbackUrl = getFallbackImageUrl('player')
+        setImgSrc(fallbackUrl)
+        setIsFallback(true)
+        
+        // Track failed image load
+        try {
+          await fetch('/api/monitor/image-event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              entityType: 'player',
+              entityName: playerName || String(playerId),
+              source: 'svg',
+              success: false,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              loadTime
+            })
+          })
+        } catch (trackError) {
+          console.debug('Failed to track image event:', trackError)
+        }
+      } finally {
+        setLoading(false)
       }
     }
     load()
-  }, [playerId])
+  }, [playerId, playerName])
 
   const handleError = useCallback(() => {
     if (!hasError) {
       setHasError(true)
-      setImgSrc(getFallbackImageUrl(fallbackType))
+      const fallbackUrl = getFallbackImageUrl(fallbackType)
+      setImgSrc(fallbackUrl)
+      setIsFallback(true)
       onError?.()
     }
   }, [hasError, fallbackType, onError])
+
+  if (loading) {
+    return <SportsImageSkeleton width={width} height={height} {...(className && { className })} />
+  }
 
   return (
     <div className={cn("relative overflow-hidden", className)}>
@@ -236,19 +359,20 @@ export function PlayerPhoto({
         height={height}
         className={cn(
           "object-cover transition-opacity duration-200",
-          hasError && "opacity-50"
+          hasError && "opacity-50",
+          isFallback && "opacity-90"
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={imgSrc.includes('cdn.nba.com') || imgSrc.includes('espncdn.com')}
+        unoptimized={isFallback} // Don't optimize SVG data URIs
       />
     </div>
   )
 }
 
 /**
- * Sports category image component
+ * Sports category image component with bulletproof fallback
  */
 export function SportsImageGeneric({ 
   category,
@@ -263,11 +387,14 @@ export function SportsImageGeneric({
 }: SportsImageGenericProps) {
   const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(String(category), { width, height }))
   const [hasError, setHasError] = useState(false)
+  const [isFallback, setIsFallback] = useState(imgSrc.startsWith('data:image/svg+xml'))
 
   const handleError = useCallback(() => {
     if (!hasError) {
       setHasError(true)
-      setImgSrc(getFallbackImageUrl(fallbackType))
+      const fallbackUrl = getFallbackImageUrl(fallbackType)
+      setImgSrc(fallbackUrl)
+      setIsFallback(true)
       onError?.()
     }
   }, [hasError, fallbackType, onError])
@@ -281,12 +408,13 @@ export function SportsImageGeneric({
         height={height}
         className={cn(
           "object-cover transition-opacity duration-200",
-          hasError && "opacity-50"
+          hasError && "opacity-50",
+          isFallback && "opacity-90"
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={imgSrc.includes('unsplash.com') || imgSrc.includes('pexels.com')}
+        unoptimized={isFallback} // Don't optimize SVG data URIs
       />
     </div>
   )
@@ -295,14 +423,14 @@ export function SportsImageGeneric({
 /**
  * Loading skeleton for sports images
  */
-export function SportsImageSkeleton({ 
-  width = 200, 
-  height = 200, 
-  className 
-}: { 
+export function SportsImageSkeleton({
+  width = 200,
+  height = 200,
+  className
+}: {
   width?: number
   height?: number
-  className?: string 
+  className?: string
 }) {
   return (
     <div 

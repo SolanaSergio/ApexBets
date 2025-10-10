@@ -43,8 +43,7 @@ class ProductionSupabaseClient {
 
   async raw(query: string, params?: any[]): Promise<{ success: boolean; data: any[]; error?: string }> {
     try {
-      // For now, avoid the problematic execute_sql function and use fallback
-      // TODO: Fix the execute_sql function parameter binding
+      // Use fallback for SELECT queries to avoid parameter binding issues
       if (query.trim().toLowerCase().startsWith('select')) {
         return await this.fallbackSelectQuery(query, params)
       }
@@ -107,14 +106,23 @@ class ProductionSupabaseClient {
       if (query.includes('FROM teams')) {
         let teamsQuery = this.supabase.from('teams').select('*')
         
-        // Handle sport parameter
-        if (params && params.length > 0 && query.includes('sport = $1')) {
+        // Handle name and sport parameters (for specific team lookup)
+        if (params && params.length >= 2 && query.includes('name = $1') && query.includes('sport = $2')) {
+          teamsQuery = teamsQuery.eq('name', params[0]).eq('sport', params[1])
+        }
+        // Handle sport parameter only
+        else if (params && params.length > 0 && query.includes('sport = $1')) {
           teamsQuery = teamsQuery.eq('sport', params[0])
         }
         
         // Handle is_active parameter
         if (query.includes('is_active = true')) {
           teamsQuery = teamsQuery.eq('is_active', true)
+        }
+        
+        // Handle LIMIT
+        if (query.includes('LIMIT 1')) {
+          teamsQuery = teamsQuery.limit(1)
         }
         
         const { data, error } = await teamsQuery.order('name')

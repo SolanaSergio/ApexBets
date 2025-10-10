@@ -1,11 +1,15 @@
 /**
  * ANALYTICS TRENDS API
- * Provides real trend data instead of random generation
+ * Provides real trend data with timeout handling and caching
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SeasonManager } from '@/lib/services/core/season-manager'
+import { databaseCacheService } from '@/lib/services/database-cache-service'
+
+const CACHE_TTL = 5 * 60 // 5 minutes cache
+const REQUEST_TIMEOUT = 8000 // 8 seconds timeout
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +17,20 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get('sport') || 'all'
     const league = searchParams.get('league') || undefined
     const season = searchParams.get('season') || await SeasonManager.getCurrentSeason(sport)
+    
+    // Check cache first
+    const cacheKey = `analytics-trends-${sport}-${league}-${season}`
+    const cached = await databaseCacheService.get(cacheKey)
+    if (cached) {
+      return NextResponse.json({
+        ...cached,
+        meta: {
+          ...(cached as any).meta,
+          fromCache: true,
+          timestamp: new Date().toISOString()
+        }
+      })
+    }
     
     // Validate sport
     if (!serviceFactory.isSportSupported(sport as SupportedSport)) {
@@ -26,42 +44,90 @@ export async function GET(request: NextRequest) {
     // Get sport-specific service
     const sportService = await serviceFactory.getService(sport as SupportedSport, league)
     
-    // Get comprehensive data for trend analysis
-    const [games, teamsData, playersData] = await Promise.all([
+    // Create timeout promise
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Request timeout')), REQUEST_TIMEOUT)
+    })
+    
+    // Get comprehensive data for trend analysis with timeout
+    const dataPromise = Promise.all([
       sportService.getGames({ 
         season, 
-        limit: 100, // Get more games for better trend calculation
+        limit: 50, // Reduced limit for faster response
         status: 'completed' 
       }),
-      sportService.getTeams({ limit: 50 }),
-      sportService.getPlayers({ limit: 100 })
+      sportService.getTeams({ limit: 30 }), // Reduced limit
+      sportService.getPlayers({ limit: 50 }) // Reduced limit
     ])
     
-    // Get predictions if available
+    let games: any[] = []
+    let teamsData: any[] = []
+    let playersData: any[] = []
+    
+    try {
+      const [gamesResult, teamsResult, playersResult] = await Promise.race([
+        dataPromise,
+        timeoutPromise
+      ]) as [any[], any[], any[]]
+      
+      games = gamesResult || []
+      teamsData = teamsResult || []
+      playersData = playersResult || []
+    } catch (error) {
+      console.warn('External API timeout, using cached data:', error)
+      // Fallback to cached data or minimal data
+      games = []
+      teamsData = []
+      playersData = []
+    }
+    
+    // Get predictions if available (with timeout)
     let predictions: any[] = []
     try {
       if ('getPredictions' in sportService && typeof sportService.getPredictions === 'function') {
-        predictions = await sportService.getPredictions({ limit: 50 })
+        const predictionsPromise = sportService.getPredictions({ limit: 30 })
+        predictions = await Promise.race([
+          predictionsPromise,
+          timeoutPromise
+        ]) as any[]
       }
     } catch (error) {
-      console.warn('Predictions not available for this sport:', error)
+      console.warn('Predictions timeout:', error)
+      predictions = []
     }
 
-    // Get historical data for comparison (previous season)
+    // Get historical data for comparison (with timeout)
     const previousSeason = SeasonManager.getPreviousSeason(sport, await season)
-    const [historicalGames, historicalTeams] = await Promise.all([
-      sportService.getGames({ 
-        season: previousSeason, 
-        limit: 100,
-        status: 'completed' 
-      }).catch(() => []), // Gracefully handle if previous season data doesn't exist
-      sportService.getTeams({ limit: 50 }).catch(() => [])
-    ])
+    let historicalGames: any[] = []
+    let historicalTeams: any[] = []
+    
+    try {
+      const historicalPromise = Promise.all([
+        sportService.getGames({ 
+          season: previousSeason, 
+          limit: 50,
+          status: 'completed' 
+        }).catch(() => []),
+        sportService.getTeams({ limit: 30 }).catch(() => [])
+      ])
+      
+      const [histGames, histTeams] = await Promise.race([
+        historicalPromise,
+        timeoutPromise
+      ]) as [any[], any[]]
+      
+      historicalGames = histGames || []
+      historicalTeams = histTeams || []
+    } catch (error) {
+      console.warn('Historical data timeout:', error)
+      historicalGames = []
+      historicalTeams = []
+    }
 
     // Calculate real trends with comprehensive data
     const trends = await calculateSportTrends(sport, games, teamsData, playersData, predictions, historicalGames, historicalTeams)
     
-    return NextResponse.json({
+    const response = {
       success: true,
       sport,
       league: league || serviceFactory.getDefaultLeague(sport as SupportedSport),
@@ -83,9 +149,17 @@ export async function GET(request: NextRequest) {
         historical_teams: historicalTeams.length,
         season_active: await SeasonManager.isSeasonActive(sport, await season),
         previous_season: previousSeason,
-        data_quality: calculateDataQuality(games, teamsData, playersData, predictions)
+        data_quality: calculateDataQuality(games, teamsData, playersData, predictions),
+        timeout_used: games.length === 0 && teamsData.length === 0,
+        fromCache: false,
+        timestamp: new Date().toISOString()
       }
-    })
+    }
+    
+    // Cache the response
+    await databaseCacheService.set(cacheKey, response, CACHE_TTL)
+    
+    return NextResponse.json(response)
     
   } catch (error) {
     console.error('Analytics trends API error:', error)

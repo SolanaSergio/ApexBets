@@ -20,11 +20,9 @@ export function ServerDashboard({ className = "" }: ServerDashboardProps) {
         // Initialize sport configuration on the client side
         await ServerSportConfigManager.initialize()
         
-        // Get the first available sport as default
+        // Get the first available sport as default (no hardcoded priority)
         const supportedSports = ServerSportConfigManager.getSupportedSports()
-        // Prioritize basketball since it has games data
-        const sport: SupportedSport | null = supportedSports.includes('basketball') ? 'basketball' : 
-                     (supportedSports.length > 0 ? supportedSports[0] as SupportedSport : null)
+        const sport: SupportedSport | null = supportedSports.length > 0 ? supportedSports[0] as SupportedSport : null
         setDefaultSport(sport)
       } catch (error) {
         console.error('Error initializing server dashboard:', error)

@@ -3,7 +3,7 @@
  * Core functionality shared across all services
  */
 
-import { cacheManager } from '../../cache'
+import { unifiedCacheService } from '../unified-cache-service'
 import { enhancedRateLimiter } from '../enhanced-rate-limiter'
 import { errorHandlingService } from '../error-handling-service'
 
@@ -34,24 +34,9 @@ export abstract class BaseService {
     if (existing) {
       return existing
     }
-    // Check database first (if available)
-    try {
-      const { databaseCacheService } = await import('../database-cache-service')
-      if (databaseCacheService.isAvailable()) {
-        const dbCached = await databaseCacheService.get<T>(key)
-        if (dbCached) {
-          console.log(`Database cache hit for ${key}`)
-          return dbCached
-        }
-      }
-    } catch (error) {
-      console.warn('Database cache check failed:', error)
-    }
-
-    // Check memory cache second
-    const cached = await cacheManager.getAsync<T>(key)
+    // Check unified cache first
+    const cached = await unifiedCacheService.get<T>(key)
     if (cached) {
-      console.log(`Memory cache hit for ${key}`)
       return cached
     }
 
@@ -91,18 +76,11 @@ export abstract class BaseService {
         // Removed unused responseTime variable
         // Rate limiting tracking is now handled by the centralized enhanced rate limiter
 
-        // Cache the result in both memory and database
-        cacheManager.set(key, data, ttl || this.config.cacheTTL)
-
-        // Also store in database cache
-        try {
-          const { databaseCacheService } = await import('../database-cache-service')
-          if (databaseCacheService.isAvailable()) {
-            await databaseCacheService.set(key, data, ttl || this.config.cacheTTL)
-          }
-        } catch (error) {
-          console.warn('Failed to store in database cache:', error)
-        }
+        // Cache the result using unified cache
+        await unifiedCacheService.set(key, data, ttl || this.config.cacheTTL, {
+          priority: 'medium',
+          dataType: this.config.name
+        })
 
         return data
       } catch (error) {
@@ -136,10 +114,10 @@ export abstract class BaseService {
   }
 
   clearCache(): void {
-    cacheManager.clear()
+    unifiedCacheService.clear()
   }
 
   getCacheStats() {
-    return cacheManager.getStats()
+    return unifiedCacheService.getStats()
   }
 }

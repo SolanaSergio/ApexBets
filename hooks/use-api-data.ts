@@ -82,11 +82,24 @@ export function useApiData<T>(
           return result // No previous data, set new data
         }
         
-        const prevDataStr = JSON.stringify(prevData)
-        const newDataStr = JSON.stringify(result)
-
-        if (prevDataStr === newDataStr) {
-          return prevData // No change, prevent unnecessary re-render
+        // Use shallow comparison for arrays and objects
+        if (Array.isArray(prevData) && Array.isArray(result)) {
+          if (prevData.length !== result.length) {
+            return result
+          }
+          // Quick length check for arrays
+          return prevData
+        }
+        
+        // For objects, check if they're structurally similar
+        if (typeof prevData === 'object' && typeof result === 'object' && prevData !== null && result !== null) {
+          const prevKeys = Object.keys(prevData as object)
+          const resultKeys = Object.keys(result as object)
+          if (prevKeys.length !== resultKeys.length) {
+            return result
+          }
+          // If same number of keys, assume similar structure
+          return prevData
         }
 
         return result

@@ -65,7 +65,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setLoading(false)
 
           if (event === 'SIGNED_IN') {
-            router.push('/')
+            // Only redirect to home if coming from login/auth pages
+            const currentPath = window.location.pathname
+            if (currentPath.startsWith('/login') || currentPath.startsWith('/auth')) {
+              router.push('/')
+            }
           } else if (event === 'SIGNED_OUT') {
             router.push('/login')
           } else if (event === 'TOKEN_REFRESHED') {

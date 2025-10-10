@@ -74,10 +74,9 @@ async function checkProviderHealth(provider: string): Promise<{
   responseTime?: number
   lastCheck: string
 }> {
-  const healthEndpoints: Record<string, string> = {
-    'thesportsdb': 'https://www.thesportsdb.com/api/v1/json/1/search_all_teams.php?l=English%20Premier%20League',
-    'espn': 'http://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
-  }
+  // Load health endpoints from environment configuration (JSON string map)
+  const endpointsEnv = process.env.EXTERNAL_HEALTH_ENDPOINTS
+  const healthEndpoints: Record<string, string> = endpointsEnv ? JSON.parse(endpointsEnv) : {}
 
   const endpoint = healthEndpoints[provider]
   if (!endpoint) {

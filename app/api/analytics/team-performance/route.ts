@@ -39,11 +39,28 @@ export async function GET(request: NextRequest) {
       teamQuery = teamQuery.eq('league_name', league)
     }
 
-    const { data: teamData, error: teamError } = await teamQuery.single()
+    const { data: teamData, error: teamError } = await teamQuery
     
-    if (teamError || !teamData) {
-      return NextResponse.json({ error: "Team not found" }, { status: 404 })
+    if (teamError) {
+      return NextResponse.json({ error: "Failed to fetch team data" }, { status: 500 })
     }
+    
+    if (!teamData || teamData.length === 0) {
+      return NextResponse.json({ error: "No teams found for the specified criteria" }, { status: 404 })
+    }
+    
+    // If no specific team requested, return list of available teams
+    if (!team || team === 'all') {
+      return NextResponse.json({
+        message: "Please specify a team parameter. Available teams:",
+        teams: teamData.map(t => ({ id: t.id, name: t.name, league: t.league_name })),
+        sport: finalSport,
+        league: league || 'all'
+      })
+    }
+    
+    // If multiple teams found, use the first one
+    const selectedTeam = Array.isArray(teamData) ? teamData[0] : teamData
 
     // Get recent games for this team from database
     let gamesQuery = supabase
@@ -74,7 +91,7 @@ export async function GET(request: NextRequest) {
         last_updated,
         created_at
       `)
-      .or(`home_team_id.eq.${teamData.id},away_team_id.eq.${teamData.id}`)
+      .or(`home_team_id.eq.${selectedTeam.id},away_team_id.eq.${selectedTeam.id}`)
       .eq('sport', finalSport)
       .order('game_date', { ascending: false })
       .limit(parseInt(timeRange))
@@ -91,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     // Calculate performance metrics from database data
     const performance = (games || []).map(game => {
-      const isHome = game.home_team_id === teamData.id
+      const isHome = game.home_team_id === selectedTeam.id
       const teamScore = isHome ? (game.home_team_score || 0) : (game.away_team_score || 0)
       const opponentScore = isHome ? (game.away_team_score || 0) : (game.home_team_score || 0)
       const won = teamScore > opponentScore
@@ -117,7 +134,7 @@ export async function GET(request: NextRequest) {
       performance.reduce((sum, p) => sum + p.opponentPoints, 0) / performance.length : 0
 
     return NextResponse.json({
-      team: teamData,
+      team: selectedTeam,
       performance,
       stats: {
         wins,

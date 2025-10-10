@@ -5,7 +5,7 @@
  */
 
 describe('Comprehensive Predictions API Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
   describe('GET /api/predictions - Real NBA Predictions', () => {
     it('should fetch real predictions with proper data structure', async () => {

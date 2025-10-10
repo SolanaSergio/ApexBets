@@ -4,7 +4,7 @@
  */
 
 describe('Analytics API Integration Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
   describe('GET /api/analytics/stats', () => {
     it('should fetch real analytics statistics', async () => {

@@ -1,117 +1,30 @@
 "use client"
 
-import { Suspense, useEffect, useState } from "react"
-import { Navigation } from "@/components/navigation/navigation"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { AppLayout } from "@/components/layout/app-layout"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw } from "lucide-react"
-import { databaseFirstApiClient, Game, Prediction } from "@/lib/api-client-database-first"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw, Lightbulb } from "lucide-react"
+import { databaseFirstApiClient, type Game, type Prediction } from "@/lib/api-client-database-first"
+import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
 import { format } from "date-fns"
 
 export default function PredictionsPage() {
-  return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <main className="container mx-auto px-4 py-6 lg:py-8 space-y-6 lg:space-y-8">
-        {/* Enhanced Header */}
-        <div className="text-center space-y-6 relative">
-          <div className="absolute inset-0 gradient-bg-soft opacity-20 rounded-3xl blur-3xl"></div>
-          <div className="relative z-10 space-y-4">
-            <h1 className="text-4xl lg:text-5xl font-bold premium-text-gradient animate-slide-in-down">
-              AI Predictions
-            </h1>
-            <p className="text-lg lg:text-xl text-muted-foreground max-w-3xl mx-auto animate-fade-in px-2">
-              Advanced machine learning predictions for games, spreads, and totals with confidence scores
-            </p>
-            <div className="flex justify-center animate-scale-in">
-              <div className="glass-premium px-4 py-2 rounded-full border border-accent/30">
-                <div className="flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-accent" />
-                  <span className="text-sm font-medium text-muted-foreground">AI-Powered Analytics</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Quick Stats */}
-        <Suspense fallback={<QuickStatsSkeleton />}>
-          <QuickStatsSection />
-        </Suspense>
-
-        {/* Predictions Tabs */}
-        <Tabs defaultValue="today" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
-            <TabsTrigger value="today" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Today
-            </TabsTrigger>
-            <TabsTrigger value="upcoming" className="gap-2">
-              <Clock className="h-4 w-4" />
-              Upcoming
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              History
-            </TabsTrigger>
-            <TabsTrigger value="models" className="gap-2">
-              <Brain className="h-4 w-4" />
-              Models
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="today" className="space-y-6">
-            <Suspense fallback={<TodayPredictionsSkeleton />}>
-              <TodayPredictionsSection />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="upcoming" className="space-y-6">
-            <Suspense fallback={<UpcomingPredictionsSkeleton />}>
-              <UpcomingPredictionsSection />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="history" className="space-y-6">
-            <Suspense fallback={<HistorySkeleton />}>
-              <HistorySection />
-            </Suspense>
-          </TabsContent>
-
-          <TabsContent value="models" className="space-y-6">
-            <Suspense fallback={<ModelsSkeleton />}>
-              <ModelsSection />
-            </Suspense>
-          </TabsContent>
-        </Tabs>
-      </main>
-    </div>
-  )
-}
-
-// Today's Predictions Section
-function TodayPredictionsSection() {
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [games, setGames] = useState<Record<string, Game>>({})
   const [loading, setLoading] = useState(true)
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
 
-  useEffect(() => {
-    fetchTodayPredictions()
-  }, [])
-
-  async function fetchTodayPredictions() {
+  const loadPredictions = useCallback(async () => {
     try {
       setLoading(true)
-      
-      // Fetch today's predictions
       const predictionsData = await databaseFirstApiClient.getPredictions({
-        limit: 10
+        ...(selectedSport && { sport: selectedSport }),
+        limit: 20
       })
 
       // Fetch game details for each prediction
@@ -133,55 +46,216 @@ function TodayPredictionsSection() {
       setPredictions(predictionsData)
       setGames(gamesMap)
     } catch (error) {
-      console.error("Error fetching today's predictions:", error)
+      console.error("Error fetching predictions:", error)
+      setPredictions([])
+      setGames({})
     } finally {
       setLoading(false)
     }
+  }, [selectedSport])
+
+  const loadSupportedSports = async () => {
+    const sports = SportConfigManager.getSupportedSports()
+    setSupportedSports(sports)
+    if (sports.length > 0) {
+      setSelectedSport(sports[0])
+    }
   }
 
+  useEffect(() => {
+    loadSupportedSports()
+  }, [])
+
+  useEffect(() => {
+    if (selectedSport) {
+      loadPredictions()
+    }
+  }, [selectedSport, loadPredictions])
+
+  const predictionStats = useMemo(() => {
+    const totalPredictions = predictions.length
+    const correctPredictions = predictions.filter(p => p.is_correct === true).length
+    const pendingPredictions = predictions.filter(p => p.is_correct === null).length
+    const accuracy = totalPredictions > 0 ? (correctPredictions / (totalPredictions - pendingPredictions)) * 100 : 0
+    const avgConfidence = predictions.length > 0 ? 
+      predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length : 0
+
+    return { totalPredictions, correctPredictions, pendingPredictions, accuracy, avgConfidence }
+  }, [predictions])
+
+  const recentPredictions = useMemo(() => {
+    return predictions
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 6)
+  }, [predictions])
+
   if (loading) {
-    return <TodayPredictionsSkeleton />
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Today's Predictions</h2>
-        <div className="flex items-center gap-2">
-          <Badge variant="secondary" className="gap-1">
-            <Zap className="h-3 w-3" />
-            {predictions.length} Active
-          </Badge>
-          <Button variant="ghost" size="sm" onClick={fetchTodayPredictions} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
+    <AppLayout>
+      <div className="p-6 space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-4">
+          <h1 className="text-3xl lg:text-4xl font-bold">
+            AI Predictions
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+            Advanced machine learning predictions for games, spreads, and totals with confidence scores
+          </p>
         </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <Card className="card-modern">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-primary/5">
+                  <Target className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{predictionStats.accuracy.toFixed(1)}%</div>
+                  <div className="text-sm text-muted-foreground">Accuracy Rate</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-modern">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-accent/5">
+                  <Brain className="h-6 w-6 text-accent" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{predictionStats.totalPredictions}</div>
+                  <div className="text-sm text-muted-foreground">Total Predictions</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-modern">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-secondary/5">
+                  <TrendingUp className="h-6 w-6 text-secondary" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{predictionStats.correctPredictions}</div>
+                  <div className="text-sm text-muted-foreground">Correct Predictions</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-modern">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-lg bg-primary/5">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold">{(predictionStats.avgConfidence * 100).toFixed(0)}%</div>
+                  <div className="text-sm text-muted-foreground">Avg Confidence</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
       </div>
 
-      {predictions.length === 0 ? (
-        <Card>
+        {/* Sport Filter */}
+        <Card className="card-modern">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5" />
+              Filter by Sport
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {supportedSports.map((sport) => {
+                const config = SportConfigManager.getSportConfig(sport)
+                return (
+                  <Button
+                    key={sport}
+                    variant={selectedSport === sport ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setSelectedSport(sport)}
+                    className="gap-2"
+                  >
+                    <span>{config?.icon}</span>
+                    {config?.name}
+                  </Button>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Predictions Tabs */}
+        <Tabs defaultValue="recent" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
+            <TabsTrigger value="recent" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Recent
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="gap-2">
+              <Calendar className="h-4 w-4" />
+              Pending
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-2">
+              <BarChart3 className="h-4 w-4" />
+              History
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="recent" className="space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Recent Predictions</h2>
+                <Button variant="ghost" size="sm" onClick={loadPredictions} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
+
+              {recentPredictions.length === 0 ? (
+                <Card className="card-modern">
           <CardContent className="py-12 text-center">
-            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Predictions Available</h3>
+                    <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                    <h3 className="text-lg font-semibold mb-2">No Recent Predictions</h3>
             <p className="text-muted-foreground">Check back later for new predictions</p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-6">
-          {predictions.map((prediction) => {
+                  {recentPredictions.map((prediction) => {
             const game = games[prediction.id]
             const gameDate = game ? new Date(game.game_date) : new Date()
             
             return (
-              <Card key={prediction.id} className="card-hover-enhanced">
+                      <Card key={prediction.id} className="card-modern">
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg">
                       {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
                     </CardTitle>
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline">
-                        {prediction.is_correct === null ? 'Pending' : prediction.is_correct ? 'Correct' : 'Incorrect'}
+                              <Badge variant={
+                                prediction.is_correct === true ? "default" : 
+                                prediction.is_correct === false ? "destructive" : 
+                                "secondary"
+                              }>
+                                {prediction.is_correct === true ? 'Correct' : 
+                                 prediction.is_correct === false ? 'Incorrect' : 
+                                 'Pending'}
                       </Badge>
                       <span className="text-sm text-muted-foreground">
                         {format(gameDate, "h:mm a")}
@@ -221,7 +295,7 @@ function TodayPredictionsSection() {
                     <Progress value={prediction.confidence * 100} className="h-2" />
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t">
+                          <div className="flex items-center justify-between pt-2 border-t border-border">
                     <div className="text-xs text-muted-foreground">
                       Created: {format(new Date(prediction.created_at), "MMM d, h:mm a")}
                     </div>
@@ -241,155 +315,85 @@ function TodayPredictionsSection() {
         </div>
       )}
     </div>
-  )
-}
+          </TabsContent>
 
-// Upcoming Predictions Section
-function UpcomingPredictionsSection() {
-  const [upcomingPredictions, setUpcomingPredictions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchUpcomingPredictions()
-  }, [])
-
-  async function fetchUpcomingPredictions() {
-    try {
-      setLoading(true)
-      const predictionsData = await databaseFirstApiClient.getUpcomingPredictions({
-        limit: 10,
-        days: 7
-      })
-      setUpcomingPredictions(predictionsData)
-    } catch (error) {
-      console.error("Error fetching upcoming predictions:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <UpcomingPredictionsSkeleton />
-  }
-
+          <TabsContent value="pending" className="space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Pending Predictions</h2>
+              <div className="grid gap-6">
+                {predictions.filter(p => p.is_correct === null).map((prediction) => {
+                  const game = games[prediction.id]
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Upcoming Predictions</h2>
-
-      {upcomingPredictions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Upcoming Predictions</h3>
-            <p className="text-muted-foreground">Check back later for new predictions</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-          {upcomingPredictions.map((prediction) => (
-          <Card key={prediction.id} className="card-hover">
-            <CardHeader>
+                    <Card key={prediction.id} className="card-modern">
+                      <CardContent className="p-6">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{prediction.game}</CardTitle>
+                          <div className="flex items-center space-x-4">
+                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            <div>
+                              <div className="font-semibold">
+                                {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
+                              </div>
                 <div className="text-sm text-muted-foreground">
-                  {prediction.gameDate} at {prediction.gameTime}
+                                {game ? format(new Date(game.game_date), "MMM d, yyyy") : 'Loading...'}
+                              </div>
                 </div>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Prediction</div>
-                  <div className="font-semibold text-primary">{prediction.prediction}</div>
+
+                          <div className="text-right">
+                            <div className="font-semibold text-primary">
+                              {prediction.prediction_type === "winner" 
+                                ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
+                                : prediction.prediction_type === "spread"
+                                ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
+                                : `Total: ${prediction.predicted_value.toFixed(1)}`}
                 </div>
-                <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">Confidence</div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-primary">
-                      {Math.round(prediction.confidence * 100)}%
-                    </span>
-                    <Progress value={prediction.confidence * 100} className="flex-1 h-2" />
+                            <div className="text-sm text-muted-foreground">
+                              Model: {prediction.model_name}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t">
-                <div className="text-xs text-muted-foreground">
-                  Model: {prediction.model}
+                        <div className="mt-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Confidence:</span>
+                            <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
                 </div>
-                <Button variant="outline" size="sm">
-                  View Details
-                </Button>
+                          <Badge variant="secondary">Pending</Badge>
               </div>
             </CardContent>
           </Card>
-          ))}
+                  )
+                })}
         </div>
-      )}
     </div>
-  )
-}
+          </TabsContent>
 
-// History Section
-function HistorySection() {
-  const [historyPredictions, setHistoryPredictions] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchHistoryPredictions()
-  }, [])
-
-  const fetchHistoryPredictions = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/predictions/history')
-      if (response.ok) {
-        const data = await response.json()
-        setHistoryPredictions(data.predictions || [])
-      }
-    } catch (error) {
-      console.error('Error fetching history predictions:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <HistorySkeleton />
-  }
-
+          <TabsContent value="history" className="space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Prediction History</h2>
+              <div className="grid gap-4">
+                {predictions.filter(p => p.is_correct !== null).map((prediction) => {
+                  const game = games[prediction.id]
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Prediction History</h2>
-
-      {historyPredictions.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Target className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No History Available</h3>
-            <p className="text-muted-foreground">No prediction history found</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-4">
-          {historyPredictions.map((prediction) => (
-            <Card key={prediction.id} className="card-hover">
+                    <Card key={prediction.id} className="card-modern">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      prediction.is_correct === true ? "bg-green-100" : prediction.is_correct === false ? "bg-red-100" : "bg-gray-100"
+                              prediction.is_correct === true ? "bg-accent/10" : "bg-destructive/10"
                     }`}>
                       {prediction.is_correct === true ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : prediction.is_correct === false ? (
-                        <XCircle className="h-4 w-4 text-red-600" />
+                                <CheckCircle className="h-4 w-4 text-accent" />
                       ) : (
-                        <Clock className="h-4 w-4 text-gray-600" />
+                                <XCircle className="h-4 w-4 text-destructive" />
                       )}
                     </div>
                     <div>
-                      <div className="font-semibold">{prediction.game || 'Game Details Loading...'}</div>
+                              <div className="font-semibold">
+                                {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
+                              </div>
                       <div className="text-sm text-muted-foreground">
                         {format(new Date(prediction.created_at), "MMM d, yyyy")}
                       </div>
@@ -416,423 +420,20 @@ function HistorySection() {
                     <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
                   </div>
                   <Badge variant={
-                    prediction.is_correct === true ? "default" : 
-                    prediction.is_correct === false ? "destructive" : 
-                    "secondary"
+                            prediction.is_correct === true ? "default" : "destructive"
                   }>
-                    {prediction.is_correct === true ? "Correct" : 
-                     prediction.is_correct === false ? "Incorrect" : 
-                     "Pending"}
+                            {prediction.is_correct === true ? "Correct" : "Incorrect"}
                   </Badge>
                 </div>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Models Section
-function ModelsSection() {
-  const [models, setModels] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetchModels()
-  }, [])
-
-  const fetchModels = async () => {
-    try {
-      setLoading(true)
-      const response = await fetch('/api/predictions/models')
-      if (response.ok) {
-        const data = await response.json()
-        setModels(data.models || [])
-      }
-    } catch (error) {
-      console.error('Error fetching models:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (loading) {
-    return <ModelsSkeleton />
-  }
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Prediction Models</h2>
-
-      {models.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Brain className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">No Models Available</h3>
-            <p className="text-muted-foreground">No prediction models found</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-          {models.map((model) => (
-            <Card key={model.id || model.name} className="card-hover">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{model.name}</CardTitle>
-                  <Badge variant={model.status === "active" ? "default" : "secondary"}>
-                    {model.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">{model.description}</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Accuracy</div>
-                    <div className="text-2xl font-bold text-primary">
-                      {Math.round((model.accuracy || 0) * 100)}%
-                    </div>
-                    <Progress value={(model.accuracy || 0) * 100} className="h-2" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Total Predictions</div>
-                    <div className="text-2xl font-bold text-accent">
-                      {(model.predictions || 0).toLocaleString()}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="text-sm text-muted-foreground">Last Updated</div>
-                    <div className="text-lg font-semibold">
-                      {model.last_updated ? format(new Date(model.last_updated), "MMM d, yyyy") : "Unknown"}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-2 pt-2 border-t">
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
-                  <Button variant="outline" size="sm">
-                    Performance
-                  </Button>
-                  {model.status === "active" && (
-                    <Button size="sm">
-                      Retrain Model
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
-// Loading Skeletons
-function TodayPredictionsSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="h-8 w-40 bg-muted rounded animate-pulse" />
-        <div className="h-6 w-20 bg-muted rounded animate-pulse" />
-      </div>
-      <div className="grid gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-                <div className="flex items-center gap-2">
-                  <div className="h-5 w-16 bg-muted rounded animate-pulse" />
-                  <div className="h-4 w-12 bg-muted rounded animate-pulse" />
-                </div>
+                  )
+                })}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                  <div className="h-5 w-16 bg-muted rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                  <div className="h-5 w-20 bg-muted rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-8 bg-muted rounded animate-pulse" />
-                  <div className="h-5 w-12 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-              <div className="h-2 w-full bg-muted rounded animate-pulse" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function UpcomingPredictionsSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="h-8 w-48 bg-muted rounded animate-pulse" />
-      <div className="grid gap-6">
-        {Array.from({ length: 2 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="h-6 w-40 bg-muted rounded animate-pulse" />
-                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                  <div className="h-5 w-20 bg-muted rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                  <div className="h-5 w-16 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function HistorySkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="h-8 w-40 bg-muted rounded animate-pulse" />
-      <div className="grid gap-4">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-8 h-8 bg-muted rounded-full animate-pulse" />
-                  <div className="space-y-2">
-                    <div className="h-5 w-32 bg-muted rounded animate-pulse" />
-                    <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                  </div>
-                </div>
-                <div className="text-right space-y-2">
-                  <div className="h-5 w-24 bg-muted rounded animate-pulse" />
-                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function ModelsSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="h-8 w-40 bg-muted rounded animate-pulse" />
-      <div className="grid gap-6">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i}>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="h-6 w-48 bg-muted rounded animate-pulse" />
-                <div className="h-6 w-16 bg-muted rounded animate-pulse" />
-              </div>
-              <div className="h-4 w-64 bg-muted rounded animate-pulse" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <div className="h-4 w-16 bg-muted rounded animate-pulse" />
-                  <div className="h-8 w-12 bg-muted rounded animate-pulse" />
-                  <div className="h-2 w-full bg-muted rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                  <div className="h-8 w-16 bg-muted rounded animate-pulse" />
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-20 bg-muted rounded animate-pulse" />
-                  <div className="h-6 w-24 bg-muted rounded animate-pulse" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Quick Stats Section
-function QuickStatsSection() {
-  const [stats, setStats] = useState({
-    overallAccuracy: 0,
-    predictionsToday: 0,
-    winStreak: 0,
-    confidenceAvg: 0,
-    loading: true,
-    error: null as string | null
-  })
-
-  useEffect(() => {
-    fetchQuickStats()
-  }, [])
-
-  const fetchQuickStats = async () => {
-    try {
-      setStats(prev => ({ ...prev, loading: true, error: null }))
-      
-      // Fetch analytics data for all sports
-      const supportedSports = SportConfigManager.getSupportedSports()
-      const allStats = await Promise.all(
-        (await supportedSports).map(async (sport) => {
-          try {
-            const response = await fetch(`/api/analytics/stats?sport=${sport}`)
-            const data = await response.json()
-            return data.data || {}
-          } catch (error) {
-            console.warn(`Failed to fetch stats for ${sport}:`, error)
-            return {}
-          }
-        })
-      )
-      
-      // Aggregate stats across all sports
-      const totalPredictions = allStats.reduce((sum: number, stats: any) => sum + (stats.total_predictions || 0), 0)
-      const totalAccuracy = allStats.reduce((sum: number, stats: any) => sum + (stats.accuracy_rate || 0), 0)
-      const avgAccuracy = allStats.length > 0 ? totalAccuracy / allStats.length : 0
-      
-      setStats({
-        overallAccuracy: avgAccuracy,
-        predictionsToday: totalPredictions,
-        winStreak: 0, // This would need to be calculated
-        confidenceAvg: 0, // This would need to be calculated
-        loading: false,
-        error: null
-      })
-    } catch (error) {
-      console.error('Error fetching quick stats:', error)
-      setStats(prev => ({
-        ...prev,
-        loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load stats'
-      }))
-    }
-  }
-
-  if (stats.loading) {
-    return <QuickStatsSkeleton />
-  }
-
-  if (stats.error) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-6 text-center">
-            <div className="text-red-500 mb-2">Error loading stats</div>
-            <div className="text-sm text-muted-foreground">{stats.error}</div>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
-
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <Card className="card-hover">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Overall Accuracy</p>
-              <p className="text-2xl font-bold text-primary">{(stats.overallAccuracy * 100).toFixed(1)}%</p>
             </div>
-            <Target className="h-8 w-8 text-primary" />
+          </TabsContent>
+        </Tabs>
           </div>
-          <div className="mt-2">
-            <Progress value={stats.overallAccuracy * 100} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="card-hover">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Predictions</p>
-              <p className="text-2xl font-bold text-accent">{stats.predictionsToday}</p>
-            </div>
-            <Brain className="h-8 w-8 text-accent" />
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            All time predictions
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="card-hover">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Win Streak</p>
-              <p className="text-2xl font-bold text-green-600">{stats.winStreak}</p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-green-600" />
-          </div>
-          <div className="mt-2 text-xs text-muted-foreground">
-            Current streak
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="card-hover">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Confidence Avg</p>
-              <p className="text-2xl font-bold text-blue-600">{(stats.confidenceAvg * 100).toFixed(0)}%</p>
-            </div>
-            <BarChart3 className="h-8 w-8 text-blue-600" />
-          </div>
-          <div className="mt-2">
-            <Progress value={stats.confidenceAvg * 100} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-function QuickStatsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Card key={i} className="card-hover">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-8 w-16" />
-              </div>
-              <Skeleton className="h-8 w-8" />
-            </div>
-            <div className="mt-2">
-              <Skeleton className="h-2 w-full" />
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
+    </AppLayout>
   )
 }

@@ -6,7 +6,7 @@
 const fetch = require('node-fetch')
 
 describe('Rate Limiting Integration Tests', () => {
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL
   
   beforeAll(async () => {
     // Wait for server to be ready

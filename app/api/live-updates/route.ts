@@ -304,17 +304,35 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
 /**
  * Get live data for a specific sport from APIs
  */
-async function getLiveDataForSport(sport: string, sportConfig: any, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
-  // Implementation for getting live data from APIs for each sport
-  // This would call the appropriate API based on sportConfig.data_source
-  console.log(`Getting live data for ${sport} from ${sportConfig.data_source}`)
-  
-  // API calls implemented via service factory pattern
-  // For now, this is a placeholder that doesn't populate the arrays
-  // The arrays are passed by reference and would be populated by actual API calls
-  
-  // Suppress unused parameter warnings for placeholder function
-  void liveGames
-  void recentGames
-  void upcomingGames
+async function getLiveDataForSport(sport: string, _sportConfig: any, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
+  // Fetch live data via Supabase Edge Function for the given sport.
+  // If the function is not configured, return without mutating arrays.
+  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_EDGE_URL as string | undefined
+  const fnName = process.env.LIVE_UPDATES_EDGE_FUNCTION_NAME as string | undefined
+  const secret = process.env.EDGE_FUNCTION_SECRET as string | undefined
+
+  if (!baseUrl || !fnName || !secret) {
+    return
+  }
+
+  try {
+    const url = `${baseUrl}/${fnName}`
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${secret}`
+      },
+      body: JSON.stringify({ sport })
+    })
+
+    if (!res.ok) return
+    const payload = await res.json()
+    if (Array.isArray(payload.live)) liveGames.push(...payload.live)
+    if (Array.isArray(payload.recent)) recentGames.push(...payload.recent)
+    if (Array.isArray(payload.upcoming)) upcomingGames.push(...payload.upcoming)
+  } catch {
+    // Swallow errors; caller handles empty arrays per rules
+    return
+  }
 }

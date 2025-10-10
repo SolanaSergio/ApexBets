@@ -5,7 +5,9 @@
 
 export const CLIENT_CONFIG = {
   // API Configuration
-  API_BASE_URL: process.env.NEXT_PUBLIC_API_URL || '/api',
+  API_BASE_URL: (typeof process.env.NEXT_PUBLIC_API_URL === 'string' && (process.env.NEXT_PUBLIC_API_URL as string).trim().length > 0)
+    ? (process.env.NEXT_PUBLIC_API_URL as string)
+    : '',
   
   // Cache Configuration
   CACHE_TTL: {
@@ -35,10 +37,10 @@ export const CLIENT_CONFIG = {
     MAX_PAGE_SIZE: 100,
   },
   
-  // Sports Configuration
+  // Sports Configuration (dynamic; populated at runtime via services)
   SPORTS: {
-    SUPPORTED: ['basketball', 'football', 'soccer', 'baseball', 'hockey'],
-    DEFAULT: 'basketball',
+    SUPPORTED: [] as string[],
+    DEFAULT: '' as string,
   },
   
   // Feature Flags

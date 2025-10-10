@@ -3,7 +3,12 @@
  * Always uses database-first endpoints for optimal performance and rate limit management
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
+// Resolve base URL: if an explicit external API base is configured, use it.
+// Otherwise, fallback to same-origin by using an empty base string.
+const RESOLVED_API_BASE_URL = (typeof RAW_API_BASE_URL === 'string' && RAW_API_BASE_URL.trim().length > 0)
+  ? RAW_API_BASE_URL
+  : ''
 
 export interface Team {
   id: string
@@ -184,7 +189,7 @@ class DatabaseFirstApiClient {
   private readonly CACHE_TTL = 5 * 60 * 1000 // 5 minutes
   private detectedTimezone: string | null = null
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = RESOLVED_API_BASE_URL) {
     this.baseUrl = baseUrl
     // Detect browser timezone when available (client-side only)
     if (typeof globalThis !== 'undefined' && typeof (globalThis as any).window !== 'undefined' && typeof Intl !== 'undefined') {
@@ -243,7 +248,10 @@ class DatabaseFirstApiClient {
   private async request<T>(endpoint: string, options?: RequestInit, retries: number = 3): Promise<T> {
     // Always include user's timezone (client) unless caller explicitly provided one
     const endpointWithTz = this.ensureTimezoneOnEndpoint(endpoint)
-    const url = `${this.baseUrl}${endpointWithTz}`
+    // If no external base URL is configured, use same-origin and ensure `/api` prefix for Next.js routes
+    const url = this.baseUrl && this.baseUrl.trim().length > 0
+      ? `${this.baseUrl}${endpointWithTz}`
+      : (endpointWithTz.startsWith('/api') ? endpointWithTz : `/api${endpointWithTz}`)
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {

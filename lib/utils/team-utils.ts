@@ -22,14 +22,17 @@ export const getTeamLogoUrl = async (teamName: string, sport: string): Promise<s
     if (response && !response.error && response.data?.leagues) {
       const leagues = response.data.leagues
       const primaryLeague = Array.isArray(leagues) ? leagues[0] : leagues
-      return getTeamLogoFromService(teamName, primaryLeague)
+      const result = await getTeamLogoFromService(teamName, primaryLeague, sport)
+      return result.url
     }
     
     // Fallback to sport name if no league found
-    return getTeamLogoFromService(teamName, sport)
+    const result = await getTeamLogoFromService(teamName, sport)
+    return result.url
   } catch (error) {
     console.warn(`Error getting team logo for ${teamName} in ${sport}:`, error)
-    return getTeamLogoFromService(teamName, sport)
+    const result = await getTeamLogoFromService(teamName, sport)
+    return result.url
   }
 }
 
@@ -48,15 +51,19 @@ export const getPlayerPhotoUrl = async (playerId: number, sport: string): Promis
     
     if (response && !response.error && response.data?.leagues) {
       const leagues = response.data.leagues
+      // Use primary league for player photo lookup
       const primaryLeague = Array.isArray(leagues) ? leagues[0] : leagues
-      return getPlayerPhotoFromService(String(playerId), primaryLeague)
+      const result = await getPlayerPhotoFromService(String(playerId), primaryLeague, sport)
+      return result.url
     }
     
     // Fallback to sport name if no league found
-    return getPlayerPhotoFromService(String(playerId), sport)
+    const result = await getPlayerPhotoFromService(String(playerId), sport)
+    return result.url
   } catch (error) {
     console.warn(`Error getting player photo for ${playerId} in ${sport}:`, error)
-    return getPlayerPhotoFromService(String(playerId), sport)
+    const result = await getPlayerPhotoFromService(String(playerId), sport)
+    return result.url
   }
 }
 

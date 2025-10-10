@@ -4,7 +4,7 @@
  */
 
 describe('Comprehensive Teams API Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
   describe('GET /api/teams - Real NBA Teams', () => {
     it('should fetch real NBA teams with proper data structure', async () => {

@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+// Note: No direct DB writes in website runtime; use Supabase Edge Function for mutations
 import { EnsembleModel, TeamStats, GameContext } from '@/lib/ml/prediction-algorithms';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 /**
  * Generate new ML predictions for upcoming games
@@ -9,18 +15,17 @@ import { EnsembleModel, TeamStats, GameContext } from '@/lib/ml/prediction-algor
 export async function POST(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const sport = searchParams.get('sport') || 'basketball';
+    const sport = searchParams.get('sport');
+    if (!sport) {
+      return NextResponse.json({ success: false, error: 'sport required' }, { status: 400 });
+    }
     const league = searchParams.get('league') || undefined;
     const gameId = searchParams.get('gameId') || undefined;
     
-    const supabase = await createClient();
-    
-    if (!supabase) {
-      return NextResponse.json({
-        success: false,
-        error: "Database connection failed"
-      }, { status: 500 });
-    }
+    // Edge Function config
+    const edgeBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_EDGE_URL as string | undefined
+    const fnName = process.env.GENERATE_PREDICTIONS_EDGE_FUNCTION_NAME as string | undefined
+    const edgeSecret = process.env.EDGE_FUNCTION_SECRET as string | undefined
     
     // Get games to predict (upcoming or specific game)
     let gamesQuery = supabase
@@ -49,13 +54,24 @@ export async function POST(request: NextRequest) {
       gamesQuery = gamesQuery.limit(5); // Limit to 5 games for performance
     }
     
-    const { data: games, error: gamesError } = await gamesQuery;
+    // Fetch candidate games via read path (database-first APIs) using same-origin
+    const listUrl = new URL('/api/database-first/games', request.url)
+    listUrl.searchParams.set('sport', sport)
+    if (league) listUrl.searchParams.set('league', league)
+    if (gameId) listUrl.searchParams.set('id', gameId)
+    listUrl.searchParams.set('status', 'scheduled')
+    const listRes = await fetch(listUrl.toString(), { method: 'GET' })
+    if (!listRes.ok) {
+      return NextResponse.json({ success: false, error: 'Failed to fetch games' }, { status: 502 })
+    }
+    const listPayload = await listRes.json()
+    const games = Array.isArray(listPayload?.data) ? listPayload.data : Array.isArray(listPayload) ? listPayload : []
     
-    if (gamesError || !games || games.length === 0) {
+    if (!games || games.length === 0) {
       return NextResponse.json({
         success: false,
         error: "No games found for prediction",
-        details: gamesError?.message
+        details: undefined
       }, { status: 404 });
     }
     
@@ -132,30 +148,36 @@ export async function POST(request: NextRequest) {
         // Generate ML prediction using ensemble model
         const mlPrediction = EnsembleModel.predict(homeStats, awayStats, gameContext);
         
-        // Store prediction in database
-        const { data: storedPrediction, error: storeError } = await supabase
-          .from('predictions')
-          .insert({
-            game_id: game.id,
-            model_name: mlPrediction.model,
-            prediction_type: 'winner',
-            predicted_value: mlPrediction.homeWinProbability > 0.5 ? 1 : 0,
-            confidence: mlPrediction.confidence,
-            sport: game.sport,
-            league: game.league,
-            reasoning: mlPrediction.factors.join('; '),
-            model_version: '2.1.0',
-            feature_importance: mlPrediction.featureImportance,
-            confidence_interval: {
-              low: Math.max(0, mlPrediction.homeWinProbability - 0.1),
-              high: Math.min(1, mlPrediction.homeWinProbability + 0.1)
+        // Persist via Edge Function if configured
+        let storedPredictionId: string | undefined
+        if (edgeBaseUrl && fnName && edgeSecret) {
+          try {
+            const res = await fetch(`${edgeBaseUrl}/${fnName}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${edgeSecret}`
+              },
+              body: JSON.stringify({
+                action: 'insert_prediction',
+                sport: game.sport,
+                league: game.league,
+                gameId: game.id,
+                winner: mlPrediction.homeWinProbability > 0.5 ? 'home' : 'away',
+                confidence: mlPrediction.confidence,
+                model: mlPrediction.model,
+                featureImportance: mlPrediction.featureImportance,
+                confidenceInterval: {
+                  low: Math.max(0, mlPrediction.homeWinProbability - 0.1),
+                  high: Math.min(1, mlPrediction.homeWinProbability + 0.1)
+                }
+              })
+            })
+            if (res.ok) {
+              const j = await res.json()
+              storedPredictionId = j?.id
             }
-          })
-          .select()
-          .single();
-        
-        if (storeError) {
-          console.error('Error storing prediction:', storeError);
+          } catch {}
         }
         
         // Add to results
@@ -169,40 +191,50 @@ export async function POST(request: NextRequest) {
             venue: game.venue,
             status: game.status
           },
-          storedPredictionId: storedPrediction?.id
+          storedPredictionId
         });
         
         // Also generate spread and total predictions
-        if (mlPrediction.predictedSpread !== 0) {
-          await supabase
-            .from('predictions')
-            .insert({
-              game_id: game.id,
-              model_name: mlPrediction.model,
-              prediction_type: 'spread',
-              predicted_value: mlPrediction.predictedSpread,
-              confidence: mlPrediction.confidence * 0.9, // Slightly lower confidence for spread
-              sport: game.sport,
-              league: game.league,
-              reasoning: `Predicted spread: ${mlPrediction.predictedSpread}`,
-              model_version: '2.1.0'
-            });
+        if (mlPrediction.predictedSpread !== 0 && edgeBaseUrl && fnName && edgeSecret) {
+          try {
+            await fetch(`${edgeBaseUrl}/${fnName}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${edgeSecret}`
+              },
+              body: JSON.stringify({
+                action: 'insert_prediction_spread',
+                sport: game.sport,
+                league: game.league,
+                gameId: game.id,
+                spread: mlPrediction.predictedSpread,
+                confidence: mlPrediction.confidence * 0.9,
+                model: mlPrediction.model
+              })
+            })
+          } catch {}
         }
         
-        if (mlPrediction.predictedTotal > 0) {
-          await supabase
-            .from('predictions')
-            .insert({
-              game_id: game.id,
-              model_name: mlPrediction.model,
-              prediction_type: 'total_points',
-              predicted_value: mlPrediction.predictedTotal,
-              confidence: mlPrediction.confidence * 0.85, // Lower confidence for totals
-              sport: game.sport,
-              league: game.league,
-              reasoning: `Predicted total: ${mlPrediction.predictedTotal}`,
-              model_version: '2.1.0'
-            });
+        if (mlPrediction.predictedTotal > 0 && edgeBaseUrl && fnName && edgeSecret) {
+          try {
+            await fetch(`${edgeBaseUrl}/${fnName}`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${edgeSecret}`
+              },
+              body: JSON.stringify({
+                action: 'insert_prediction_total',
+                sport: game.sport,
+                league: game.league,
+                gameId: game.id,
+                total: mlPrediction.predictedTotal,
+                confidence: mlPrediction.confidence * 0.85,
+                model: mlPrediction.model
+              })
+            })
+          } catch {}
         }
         
       } catch (error) {

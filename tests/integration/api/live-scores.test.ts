@@ -4,7 +4,7 @@
  */
 
 describe('Live Scores API Integration Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api'
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
 
   describe('GET /api/live-scores', () => {
     it('should fetch real live scores data', async () => {

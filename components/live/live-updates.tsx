@@ -139,8 +139,48 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
   useEffect(() => {
     if (isLive) {
       fetchLiveData()
-      const interval = setInterval(fetchLiveData, 30000) // Update every 30 seconds
-      return () => clearInterval(interval)
+      
+      // Smart polling with backoff
+      let pollInterval = 30000 // Start with 30 seconds
+      let consecutiveNoChanges = 0
+      const maxInterval = 300000 // Max 5 minutes
+      const minInterval = 10000 // Min 10 seconds
+      
+      const poll = () => {
+        const previousData = {
+          games: liveGames.length,
+          odds: liveOdds.length,
+          valueBets: valueBets.length
+        }
+        
+        fetchLiveData().then(() => {
+          const currentData = {
+            games: liveGames.length,
+            odds: liveOdds.length,
+            valueBets: valueBets.length
+          }
+          
+          // Check if data changed
+          const hasChanges = Object.keys(previousData).some(
+            key => previousData[key as keyof typeof previousData] !== currentData[key as keyof typeof currentData]
+          )
+          
+          if (hasChanges) {
+            consecutiveNoChanges = 0
+            pollInterval = Math.max(minInterval, pollInterval * 0.8) // Decrease interval
+          } else {
+            consecutiveNoChanges++
+            pollInterval = Math.min(maxInterval, pollInterval * 1.2) // Increase interval
+          }
+          
+          if (isLive) {
+            setTimeout(poll, pollInterval)
+          }
+        })
+      }
+      
+      const timeoutId = setTimeout(poll, pollInterval)
+      return () => clearTimeout(timeoutId)
     }
     return undefined
   }, [isLive, fetchLiveData])

@@ -33,7 +33,8 @@ export class EnhancedApiClient {
   private defaultRetries = 3
 
   constructor() {
-    this.baseUrl = process.env.NEXT_PUBLIC_API_URL || '/api'
+    const raw = process.env.NEXT_PUBLIC_API_URL as string | undefined
+    this.baseUrl = (typeof raw === 'string' && raw.trim().length > 0) ? raw : ''
   }
 
   /**
@@ -296,7 +297,11 @@ export class EnhancedApiClient {
   }
 
   private buildUrl(endpoint: string, params: Record<string, any>): string {
-    const url = new URL(`${this.baseUrl}${endpoint}`)
+    // If no external base is configured, use same-origin and ensure `/api` prefix
+    const path = this.baseUrl && this.baseUrl.trim().length > 0
+      ? `${this.baseUrl}${endpoint}`
+      : (endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`)
+    const url = new URL(path, typeof window === 'undefined' ? 'http://localhost' : window.location.origin)
     
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {

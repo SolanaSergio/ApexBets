@@ -135,12 +135,36 @@ export interface StandingData {
 
 export class DatabaseFirstApiClient {
   private static instance: DatabaseFirstApiClient
+  private requestCache = new Map<string, Promise<any>>()
 
   public static getInstance(): DatabaseFirstApiClient {
     if (!DatabaseFirstApiClient.instance) {
       DatabaseFirstApiClient.instance = new DatabaseFirstApiClient()
     }
     return DatabaseFirstApiClient.instance
+  }
+
+  private getCacheKey(method: string, params: any): string {
+    return `${method}:${JSON.stringify(params)}`
+  }
+
+  private async deduplicateRequest<T>(
+    cacheKey: string,
+    requestFn: () => Promise<T>
+  ): Promise<T> {
+    if (this.requestCache.has(cacheKey)) {
+      return this.requestCache.get(cacheKey)!
+    }
+
+    const promise = requestFn()
+    this.requestCache.set(cacheKey, promise)
+    
+    try {
+      const result = await promise
+      return result
+    } finally {
+      this.requestCache.delete(cacheKey)
+    }
   }
 
   // Games
@@ -152,19 +176,35 @@ export class DatabaseFirstApiClient {
     limit?: number
     league?: string
   } = {}): Promise<DatabaseApiResponse<GameData[]>> {
-    try {
-      const {
-        sport = 'all',
-        status,
-        dateFrom,
-        dateTo,
-        limit = 100,
-        league
-      } = params
+    const cacheKey = this.getCacheKey('getGames', params)
+    
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        const {
+          sport = 'all',
+          status,
+          dateFrom,
+          dateTo,
+          limit = 100,
+          league
+        } = params
 
       let query = `
         SELECT 
-          g.*,
+          g.id,
+          g.home_team_id,
+          g.away_team_id,
+          g.game_date,
+          g.season,
+          g.home_score,
+          g.away_score,
+          g.status,
+          g.venue,
+          g.sport,
+          g.league,
+          g.game_type,
+          g.created_at,
+          g.updated_at,
           ht.name as home_team_name,
           at.name as away_team_name
         FROM games g
@@ -252,6 +292,7 @@ export class DatabaseFirstApiClient {
         error: error instanceof Error ? error.message : String(error)
       }
     }
+    })
   }
 
   // Teams
@@ -261,15 +302,40 @@ export class DatabaseFirstApiClient {
     limit?: number
     isActive?: boolean
   } = {}): Promise<DatabaseApiResponse<TeamData[]>> {
-    try {
-      const {
-        sport = 'all',
-        league,
-        limit = 100,
-        isActive = true
-      } = params
+    const cacheKey = this.getCacheKey('getTeams', params)
+    
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        const {
+          sport = 'all',
+          league,
+          limit = 100,
+          isActive = true
+        } = params
 
-      let query = 'SELECT * FROM teams WHERE 1=1'
+      let query = `
+        SELECT 
+          id,
+          name,
+          city,
+          league,
+          sport,
+          abbreviation,
+          logo_url,
+          conference,
+          division,
+          founded_year,
+          stadium_name,
+          stadium_capacity,
+          primary_color,
+          secondary_color,
+          country,
+          is_active,
+          created_at,
+          updated_at
+        FROM teams 
+        WHERE 1=1
+      `
       const queryParams: any[] = []
       let paramIndex = 1
 
@@ -335,6 +401,7 @@ export class DatabaseFirstApiClient {
         error: error instanceof Error ? error.message : String(error)
       }
     }
+    })
   }
 
   // Odds
@@ -345,16 +412,37 @@ export class DatabaseFirstApiClient {
     limit?: number
     liveOnly?: boolean
   } = {}): Promise<DatabaseApiResponse<OddsData[]>> {
-    try {
-      const {
-        sport = 'all',
-        gameId,
-        source,
-        limit = 100,
-        liveOnly = false
-      } = params
+    const cacheKey = this.getCacheKey('getOdds', params)
+    
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        const {
+          sport = 'all',
+          gameId,
+          source,
+          limit = 100,
+          liveOnly = false
+        } = params
 
-      let query = 'SELECT * FROM odds WHERE 1=1'
+      let query = `
+        SELECT 
+          id,
+          game_id,
+          source,
+          odds_type,
+          home_odds,
+          away_odds,
+          spread,
+          total,
+          timestamp,
+          sport,
+          league,
+          prop_bets,
+          live_odds,
+          created_at
+        FROM odds 
+        WHERE 1=1
+      `
       const queryParams: any[] = []
       let paramIndex = 1
 
@@ -425,6 +513,7 @@ export class DatabaseFirstApiClient {
         error: error instanceof Error ? error.message : String(error)
       }
     }
+    })
   }
 
   // Predictions
@@ -435,16 +524,38 @@ export class DatabaseFirstApiClient {
     predictionType?: string
     limit?: number
   } = {}): Promise<DatabaseApiResponse<PredictionData[]>> {
-    try {
-      const {
-        sport = 'all',
-        gameId,
-        modelName,
-        predictionType,
-        limit = 50
-      } = params
+    const cacheKey = this.getCacheKey('getPredictions', params)
+    
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        const {
+          sport = 'all',
+          gameId,
+          modelName,
+          predictionType,
+          limit = 50
+        } = params
 
-      let query = 'SELECT * FROM predictions WHERE 1=1'
+      let query = `
+        SELECT 
+          id,
+          game_id,
+          model_name,
+          prediction_type,
+          predicted_value,
+          confidence,
+          actual_value,
+          is_correct,
+          sport,
+          league,
+          reasoning,
+          model_version,
+          feature_importance,
+          confidence_interval,
+          created_at
+        FROM predictions 
+        WHERE 1=1
+      `
       const queryParams: any[] = []
       let paramIndex = 1
 
@@ -518,6 +629,7 @@ export class DatabaseFirstApiClient {
         error: error instanceof Error ? error.message : String(error)
       }
     }
+    })
   }
 
   // Standings

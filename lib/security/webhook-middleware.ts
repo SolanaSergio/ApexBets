@@ -140,6 +140,6 @@ export function getWebhookConfigFromEnv(): WebhookAuthConfig {
     secret,
     allowedIPs,
     requireSignature: process.env.WEBHOOK_REQUIRE_SIGNATURE !== 'false',
-    signatureHeader: process.env.WEBHOOK_SIGNATURE_HEADER || 'x-hub-signature-256'
+    signatureHeader: process.env.WEBHOOK_SIGNATURE_HEADER as string
   }
 }

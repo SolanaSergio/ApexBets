@@ -625,7 +625,15 @@ export class DatabaseAuditService {
       'idx_games_home_team': 'CREATE INDEX IF NOT EXISTS idx_games_home_team ON games(home_team_id)',
       'idx_games_away_team': 'CREATE INDEX IF NOT EXISTS idx_games_away_team ON games(away_team_id)',
       'idx_odds_game_id': 'CREATE INDEX IF NOT EXISTS idx_odds_game_id ON odds(game_id)',
-      'idx_teams_sport_league': 'CREATE INDEX IF NOT EXISTS idx_teams_sport_league ON teams(sport, league)'
+      'idx_teams_sport_league': 'CREATE INDEX IF NOT EXISTS idx_teams_sport_league ON teams(sport, league)',
+      // Composite indexes for common query patterns
+      'idx_games_sport_status_date': 'CREATE INDEX IF NOT EXISTS idx_games_sport_status_date ON games(sport, status, game_date)',
+      'idx_odds_sport_game_timestamp': 'CREATE INDEX IF NOT EXISTS idx_odds_sport_game_timestamp ON odds(sport, game_id, timestamp)',
+      'idx_predictions_sport_game_created': 'CREATE INDEX IF NOT EXISTS idx_predictions_sport_game_created ON predictions(sport, game_id, created_at)',
+      'idx_players_team_sport': 'CREATE INDEX IF NOT EXISTS idx_players_team_sport ON players(team_id, sport)',
+      'idx_standings_sport_league_season': 'CREATE INDEX IF NOT EXISTS idx_standings_sport_league_season ON standings(sport, league, season)',
+      'idx_news_sport_published': 'CREATE INDEX IF NOT EXISTS idx_news_sport_published ON sports_news(sport, published_at)',
+      'idx_value_bets_sport_active': 'CREATE INDEX IF NOT EXISTS idx_value_bets_sport_active ON value_betting_opportunities(sport, expires_at)'
     }
     
     const definition = indexDefinitions[indexName]
