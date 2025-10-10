@@ -1,17 +1,15 @@
 /**
  * API Cost Tracker
  * Monitors API usage, costs, and provides budget alerts
+ * Rate limits are managed by EnhancedRateLimiter
  */
+
+import { enhancedRateLimiter } from './enhanced-rate-limiter'
 
 export interface APIProvider {
   name: string
   costPerRequest: number
   freeRequests: number
-  rateLimit: {
-    requestsPerMinute: number
-    requestsPerDay: number
-    requestsPerMonth: number
-  }
   isActive: boolean
 }
 
@@ -76,77 +74,42 @@ export class APICostTracker {
         name: 'api-sports',
         costPerRequest: 0.01,
         freeRequests: 100,
-        rateLimit: {
-          requestsPerMinute: 100,
-          requestsPerDay: 100,
-          requestsPerMonth: 3000
-        },
         isActive: true
       },
       {
         name: 'odds-api',
         costPerRequest: 0.02,
         freeRequests: 500,
-        rateLimit: {
-          requestsPerMinute: 10,
-          requestsPerDay: 500,
-          requestsPerMonth: 15000
-        },
         isActive: true
       },
       {
         name: 'thesportsdb',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        rateLimit: {
-          requestsPerMinute: 30,
-          requestsPerDay: 10000,
-          requestsPerMonth: 300000
-        },
         isActive: true
       },
       {
         name: 'espn',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        rateLimit: {
-          requestsPerMinute: 60,
-          requestsPerDay: 5000,
-          requestsPerMonth: 150000
-        },
         isActive: true
       },
       {
         name: 'balldontlie',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        rateLimit: {
-          requestsPerMinute: 5, // Free tier: 5 requests per minute (strict limit)
-          requestsPerDay: 7200, // 5 req/min * 60 min * 24 hours
-          requestsPerMonth: 216000 // 7200 * 30 days
-        },
         isActive: true
       },
       {
         name: 'nba-stats',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        rateLimit: {
-          requestsPerMinute: 60,
-          requestsPerDay: 10000,
-          requestsPerMonth: 300000
-        },
         isActive: true
       },
       {
         name: 'mlb-stats',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        rateLimit: {
-          requestsPerMinute: 60,
-          requestsPerDay: 10000,
-          requestsPerMonth: 300000
-        },
         isActive: true
       }
     ]
@@ -310,10 +273,14 @@ export class APICostTracker {
     // Check rate limit approaching
     const providerConfig = this.providers.get(provider)
     if (providerConfig) {
-      const dailyRatio = metrics.dailyUsage / providerConfig.rateLimit.requestsPerDay
-      if (dailyRatio >= 0.9) {
-        this.createAlert(provider, 'RATE_LIMIT_APPROACHING', 'HIGH',
-          `Rate limit approaching: ${metrics.dailyUsage} / ${providerConfig.rateLimit.requestsPerDay} daily requests`)
+      // Get rate limits from EnhancedRateLimiter instead of local config
+      const rateLimitConfig = enhancedRateLimiter.getConfig(provider)
+      if (rateLimitConfig) {
+        const dailyRatio = metrics.dailyUsage / rateLimitConfig.requestsPerDay
+        if (dailyRatio >= 0.9) {
+          this.createAlert(provider, 'RATE_LIMIT_APPROACHING', 'HIGH',
+            `Rate limit approaching: ${metrics.dailyUsage} / ${rateLimitConfig.requestsPerDay} daily requests`)
+        }
       }
     }
   }

@@ -73,16 +73,16 @@ export class APIFallbackStrategy {
       {
         name: 'thesportsdb',
         priority: 1,
-        cost: (() => { const v = process.env.THESPORTSDB_COST; if (!v) { throw new Error('Missing THESPORTSDB_COST'); } return parseFloat(v); })(),
-        reliability: (() => { const v = process.env.THESPORTSDB_RELIABILITY; if (!v) { throw new Error('Missing THESPORTSDB_RELIABILITY'); } return parseFloat(v); })(),
+        cost: 0, // Free API
+        reliability: 0.8, // Good reliability
         coverage: {
           sports: supportedSports,
           dataTypes: ['games', 'teams', 'players', 'standings', 'odds'],
           features: ['live', 'historical', 'comprehensive']
         },
         limits: {
-          freeRequests: (() => { const v = process.env.THESPORTSDB_FREE_REQUESTS; if (!v) { throw new Error('Missing THESPORTSDB_FREE_REQUESTS'); } return parseInt(v); })(),
-          rateLimit: (() => { const v = process.env.THESPORTSDB_RATE_LIMIT; if (!v) { throw new Error('Missing THESPORTSDB_RATE_LIMIT'); } return parseInt(v); })()
+          freeRequests: 10000, // Free tier limit
+          rateLimit: 30 // requests per minute
         },
         healthStatus: 'healthy',
         lastHealthCheck: new Date().toISOString()

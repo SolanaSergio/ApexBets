@@ -30,12 +30,6 @@ export interface DynamicSportConfig {
     endMonth: number
     seasonYearOffset?: number
   }
-  rateLimits: {
-    requestsPerMinute: number
-    requestsPerHour: number
-    requestsPerDay: number
-    burstLimit: number
-  }
   updateFrequency: number
 }
 
@@ -113,7 +107,6 @@ export class DynamicSportConfigService {
           scoringFields: row.scoring_fields,
           bettingMarkets: Array.isArray(row.betting_markets) ? row.betting_markets : [],
           seasonConfig: row.season_config,
-          rateLimits: row.rate_limits,
           updateFrequency: typeof row.update_frequency === 'number' ? row.update_frequency : 30
         }
         this.configs.set(cfg.name, cfg)
@@ -231,19 +224,6 @@ export class DynamicSportConfigService {
     }
     
     return (year + seasonYearOffset).toString()
-  }
-
-  /**
-   * Get rate limits for a sport
-   */
-  static getRateLimits(sport: string): { requestsPerMinute: number; requestsPerHour: number; requestsPerDay: number; burstLimit: number } {
-    const config = this.getSportConfig(sport)
-    return config?.rateLimits || {
-      requestsPerMinute: 30,
-      requestsPerHour: 500,
-      requestsPerDay: 5000,
-      burstLimit: 5
-    }
   }
 
   /**

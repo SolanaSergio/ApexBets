@@ -8,11 +8,6 @@ import { structuredLogger as logger } from './structured-logger'
 
 interface ApiConfig {
   name: string
-  rateLimit: {
-    requestsPerMinute?: number
-    requestsPerDay?: number
-    requestsPerMonth?: number
-  }
   authentication: 'api_key' | 'none' | 'header'
   retryStrategy: {
     maxRetries: number
@@ -50,9 +45,6 @@ class ApiSpecificErrorHandler {
     // The Odds API - Very limited free tier
     this.configs.set('odds-api', {
       name: 'The Odds API',
-      rateLimit: {
-        requestsPerMonth: 500 // Free tier
-      },
       authentication: 'api_key',
       retryStrategy: {
         maxRetries: 2, // Conservative due to low limits
@@ -70,14 +62,10 @@ class ApiSpecificErrorHandler {
     // API-Football - Strict rate limits
     this.configs.set('api-sports', {
       name: 'API-Football',
-      rateLimit: {
-        requestsPerMinute: 10,
-        requestsPerDay: 100
-      },
       authentication: 'header',
       retryStrategy: {
         maxRetries: 2,
-        baseDelay: 6000, // 6 seconds (10 req/min = 6s between)
+        baseDelay: 6000, // 6 seconds (conservative)
         maxDelay: 120000, // 2 minutes
         backoffMultiplier: 2
       },
@@ -91,9 +79,6 @@ class ApiSpecificErrorHandler {
     // BallDontLie - Moderate rate limits
     this.configs.set('balldontlie', {
       name: 'BallDontLie',
-      rateLimit: {
-        requestsPerMinute: 60
-      },
       authentication: 'none',
       retryStrategy: {
         maxRetries: 3,
@@ -111,7 +96,6 @@ class ApiSpecificErrorHandler {
     // ESPN - Unlimited but unofficial
     this.configs.set('espn', {
       name: 'ESPN Hidden API',
-      rateLimit: {}, // Unlimited
       authentication: 'none',
       retryStrategy: {
         maxRetries: 4,
@@ -129,7 +113,6 @@ class ApiSpecificErrorHandler {
     // MLB Stats - Unlimited official
     this.configs.set('mlb-stats', {
       name: 'MLB Stats API',
-      rateLimit: {}, // Unlimited
       authentication: 'none',
       retryStrategy: {
         maxRetries: 3,
@@ -147,7 +130,6 @@ class ApiSpecificErrorHandler {
     // NHL API - Unlimited official
     this.configs.set('nhl', {
       name: 'NHL API',
-      rateLimit: {}, // Unlimited
       authentication: 'none',
       retryStrategy: {
         maxRetries: 3,
@@ -165,9 +147,6 @@ class ApiSpecificErrorHandler {
     // NBA Stats - Unofficial, needs careful handling
     this.configs.set('nba-stats', {
       name: 'NBA Stats',
-      rateLimit: {
-        requestsPerMinute: 30 // Conservative estimate
-      },
       authentication: 'none',
       retryStrategy: {
         maxRetries: 2,
@@ -185,9 +164,6 @@ class ApiSpecificErrorHandler {
     // SportsDB - Free tier with rate limits
     this.configs.set('sportsdb', {
       name: 'TheSportsDB',
-      rateLimit: {
-        requestsPerMinute: 60
-      },
       authentication: 'api_key',
       retryStrategy: {
         maxRetries: 2,
@@ -258,7 +234,8 @@ class ApiSpecificErrorHandler {
   }
 
   private handleRateLimitError(apiName: string, config: ApiConfig): ApiErrorResult {
-    const retryAfter = this.calculateRateLimitDelay(config)
+    // Use base delay for rate limit errors since we removed rate limit configs
+    const retryAfter = config.retryStrategy.baseDelay * 5 // Default to 5x base delay
     
     logger.logBusinessEvent('api_rate_limit_hit', {
       api: apiName,
@@ -331,17 +308,6 @@ class ApiSpecificErrorHandler {
     }
   }
 
-  private calculateRateLimitDelay(config: ApiConfig): number {
-    // Calculate delay based on rate limits
-    if (config.rateLimit.requestsPerMinute) {
-      return Math.ceil(60000 / config.rateLimit.requestsPerMinute) * 2 // Double the minimum interval
-    }
-    if (config.rateLimit.requestsPerDay) {
-      return Math.ceil(86400000 / config.rateLimit.requestsPerDay) * 2
-    }
-    return config.retryStrategy.baseDelay * 5 // Default to 5x base delay
-  }
-
   private calculateRetryDelay(config: ApiConfig, attempt: number): number {
     const delay = config.retryStrategy.baseDelay * Math.pow(config.retryStrategy.backoffMultiplier, attempt)
     return Math.min(delay, config.retryStrategy.maxDelay)
@@ -379,8 +345,8 @@ class ApiSpecificErrorHandler {
       name: config?.name || apiName,
       failures,
       circuitState,
-      requestCount,
-      rateLimit: config?.rateLimit
+      requestCount
+      // Note: Rate limits are now managed by EnhancedRateLimiter
     }
   }
 }

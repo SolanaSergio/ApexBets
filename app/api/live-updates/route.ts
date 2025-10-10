@@ -9,15 +9,11 @@ export const runtime = 'nodejs'
 
 const CACHE_TTL = 30 // 30 seconds cache
 
-// Simple in-memory fallback cache for API responses within this route scope
-const liveDataCache: Map<string, { data: any; timestamp: number }> = new Map()
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get("sport") || "all"
     const league = searchParams.get("league") || "all"
-    const useRealData = searchParams.get("real") === "true"
 
     const cacheKey = `live-updates-${sport}-${league}`;
     const cached = await databaseCacheService.get(cacheKey);
@@ -25,27 +21,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(cached);
     }
 
-    // Always check database first, even for real data requests
-    // Only fall back to APIs if database has no recent data
+    // ARCHITECTURE PATTERN: Database-First Approach
+    // Only fetch from database - external APIs should only be called by background services
     const databaseResult = await getLiveDataFromDatabase(sport, league)
     
-    // If we have recent data from database, return it
-    if (databaseResult && (databaseResult.summary.totalLive > 0 || databaseResult.summary.totalRecent > 0)) {
-      console.log(`Returning database data for ${sport}`)
-      await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL);
-      return NextResponse.json(databaseResult)
-    }
-
-    // If requesting real data or no database data available, try APIs
-    if (useRealData || !databaseResult) {
-      console.log(`Getting live data from APIs for ${sport}`)
-      const apiResult = await getLiveDataFromAPIs(sport, league)
-      await databaseCacheService.set(cacheKey, apiResult, CACHE_TTL);
-      return NextResponse.json(apiResult)
-    }
-
-    // Return database result even if empty
-    console.log(`Returning empty database data for ${sport}`)
+    // Always return database data, even if empty
+    console.log(`Returning database data for ${sport}`)
     await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL);
     return NextResponse.json(databaseResult)
 
@@ -219,74 +200,8 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
 
   } catch (error) {
     console.error('Database live data fetch failed:', error)
-    return null
-  }
-}
-
-/**
- * Get live data directly from APIs instead of database
- */
-async function getLiveDataFromAPIs(sport: string, league: string) {
-  try {
-    // Check cache first
-    const cacheKey = `live-data-${sport}-${league}`
-    const cached = liveDataCache.get(cacheKey)
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      console.log(`Returning cached data for ${sport}`)
-      return cached.data
-    }
-
-    const liveGames: any[] = []
-    const recentGames: any[] = []
-    const upcomingGames: any[] = []
-
-    // Get all active sports from environment configuration - NO HARDCODED SPORTS
-    const supportedSports = (process.env.SUPPORTED_SPORTS || '').split(',').filter(Boolean)
-    const activeSports = supportedSports.map(sportName => ({
-      name: sportName,
-      display_name: process.env[`${sportName.toUpperCase()}_DISPLAY_NAME`] || sportName.charAt(0).toUpperCase() + sportName.slice(1)
-    }))
-
-    const sportsToCheck = sport === "all" ? activeSports.map(s => s.name) : [sport]
-
-    // Try to get live data from multiple sources for each sport
-    for (const currentSport of sportsToCheck) {
-      const sportConfig = activeSports?.find(s => s.name === currentSport)
-      if (!sportConfig) continue
-
-      try {
-        await getLiveDataForSport(currentSport, sportConfig, liveGames, recentGames, upcomingGames)
-      } catch (error) {
-        console.warn(`Failed to get live data for ${currentSport}:`, error)
-      }
-    }
-
-    const responseData = {
-      success: true,
-      live: liveGames,
-      recent: recentGames.slice(0, 10),
-      upcoming: upcomingGames.slice(0, 10),
-      summary: {
-        totalLive: liveGames.length,
-        totalRecent: recentGames.length,
-        totalUpcoming: upcomingGames.length,
-        lastUpdated: new Date().toISOString(),
-        dataSource: "live_apis",
-        sportsChecked: sportsToCheck
-      },
-      sport,
-      league
-    }
-
-    // Cache the response
-    liveDataCache.set(cacheKey, { data: responseData, timestamp: Date.now() })
-
-    return responseData
-  } catch (error) {
-    console.error('Live API data fetch failed:', error)
     return {
       success: false,
-      error: "Failed to fetch live data from APIs",
       live: [],
       recent: [],
       upcoming: [],
@@ -296,43 +211,9 @@ async function getLiveDataFromAPIs(sport: string, league: string) {
         totalUpcoming: 0,
         lastUpdated: new Date().toISOString(),
         dataSource: "error"
-      }
-    }
-  }
-}
-
-/**
- * Get live data for a specific sport from APIs
- */
-async function getLiveDataForSport(sport: string, _sportConfig: any, liveGames: any[], recentGames: any[], upcomingGames: any[]) {
-  // Fetch live data via Supabase Edge Function for the given sport.
-  // If the function is not configured, return without mutating arrays.
-  const baseUrl = process.env.NEXT_PUBLIC_SUPABASE_EDGE_URL as string | undefined
-  const fnName = process.env.LIVE_UPDATES_EDGE_FUNCTION_NAME as string | undefined
-  const secret = process.env.EDGE_FUNCTION_SECRET as string | undefined
-
-  if (!baseUrl || !fnName || !secret) {
-    return
-  }
-
-  try {
-    const url = `${baseUrl}/${fnName}`
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${secret}`
       },
-      body: JSON.stringify({ sport })
-    })
-
-    if (!res.ok) return
-    const payload = await res.json()
-    if (Array.isArray(payload.live)) liveGames.push(...payload.live)
-    if (Array.isArray(payload.recent)) recentGames.push(...payload.recent)
-    if (Array.isArray(payload.upcoming)) upcomingGames.push(...payload.upcoming)
-  } catch {
-    // Swallow errors; caller handles empty arrays per rules
-    return
+      sport,
+      league
+    }
   }
 }

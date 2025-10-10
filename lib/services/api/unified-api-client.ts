@@ -7,7 +7,6 @@ import { SportConfigManager, SupportedSport } from '../core/sport-config'
 
 // Re-export SupportedSport for convenience
 export type { SupportedSport }
-import { apiFallbackStrategy } from '../api-fallback-strategy'
 
 export interface UnifiedGameData {
   id: string
@@ -113,13 +112,24 @@ export class UnifiedApiClient {
     league?: string
   } = {}): Promise<UnifiedGameData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('games', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.date && { date_from: options.date }),
+        ...(options.status && { status: options.status }),
+        ...(options.limit && { limit: options.limit.toString() }),
+        ...(options.league && { league: options.league })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizeGameData)
+      const response = await fetch(`/api/database-first/games?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizeGameData)
       }
 
       return []
@@ -138,13 +148,22 @@ export class UnifiedApiClient {
     league?: string
   } = {}): Promise<UnifiedTeamData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('teams', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.limit && { limit: options.limit.toString() }),
+        ...(options.league && { league: options.league })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizeTeamData)
+      const response = await fetch(`/api/database-first/teams?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizeTeamData)
       }
 
       return []
@@ -160,13 +179,23 @@ export class UnifiedApiClient {
     position?: string
   } = {}): Promise<UnifiedPlayerData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('players', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.limit && { limit: options.limit.toString() }),
+        ...(options.teamId && { team_id: options.teamId }),
+        ...(options.position && { position: options.position })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizePlayerData)
+      const response = await fetch(`/api/players?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizePlayerData)
       }
 
       return []
@@ -181,13 +210,22 @@ export class UnifiedApiClient {
     league?: string
   } = {}): Promise<UnifiedStandingsData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('standings', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.season && { season: options.season }),
+        ...(options.league && { league: options.league })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizeStandingsData)
+      const response = await fetch(`/api/database-first/standings?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizeStandingsData)
       }
 
       return []
@@ -202,13 +240,22 @@ export class UnifiedApiClient {
     limit?: number
   } = {}): Promise<UnifiedOddsData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('odds', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.gameId && { game_id: options.gameId }),
+        ...(options.limit && { limit: options.limit.toString() })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizeOddsData)
+      const response = await fetch(`/api/database-first/odds?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizeOddsData)
       }
 
       return []
@@ -223,13 +270,22 @@ export class UnifiedApiClient {
     limit?: number
   } = {}): Promise<UnifiedPredictionData[]> {
     try {
-      const result = await apiFallbackStrategy.fetchData('predictions', {
+      // ARCHITECTURE PATTERN: Database-First Approach
+      // Call internal API routes that fetch from database, not external APIs
+      const params = new URLSearchParams({
         sport,
-        ...options
+        ...(options.gameId && { game_id: options.gameId }),
+        ...(options.limit && { limit: options.limit.toString() })
       })
 
-      if (Array.isArray(result)) {
-        return result.map(this.normalizePredictionData)
+      const response = await fetch(`/api/database-first/predictions?${params}`)
+      if (!response.ok) {
+        throw new Error(`API request failed: ${response.status}`)
+      }
+
+      const result = await response.json()
+      if (result.success && Array.isArray(result.data)) {
+        return result.data.map(this.normalizePredictionData)
       }
 
       return []

@@ -37,125 +37,154 @@ export class EnhancedRateLimiter {
   }
 
   private initializeConfigs() {
-    // Load rate limit configurations from environment or defaults
+    // Load rate limit configurations from verified official sources
+    // These limits are enforced ONLY in background services that update the database
+    // Frontend components should NEVER call external APIs directly
     const configs: RateLimitConfig[] = [
       {
-        provider: 'thesportsdb',
-        requestsPerMinute: 30, // Official limit: 30 requests per minute
-        requestsPerDay: 10000, // Official limit: 10,000 requests per day
-        burstLimit: 5,
-        windowSizeMs: 60000
-      },
-      {
-        provider: 'nba-stats',
-        requestsPerMinute: 20, // More conservative due to server errors
-        requestsPerDay: 10000, // Reasonable daily limit
-        burstLimit: 5, // Reduced burst limit
-        windowSizeMs: 60000
-      },
-      {
-        provider: 'mlb-stats',
-        requestsPerMinute: 60,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 20,
-        windowSizeMs: 60000
-      },
-      {
-        provider: 'nhl',
-        requestsPerMinute: 60,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 20,
-        windowSizeMs: 60000
-      },
-      {
-        provider: 'espn',
-        requestsPerMinute: 60,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 15,
-        windowSizeMs: 60000
-      },
-      {
         provider: 'balldontlie',
-        requestsPerMinute: 5, // Official limit: 5 requests per minute
+        requestsPerMinute: 5, // Official: 5/min (Free tier) - Source: balldontlie.io
         requestsPerDay: 7200, // 5 * 60 * 24 hours
         burstLimit: 1, // No burst allowed on free tier
         windowSizeMs: 60000
+        // Update frequency: Every 15s for live games, 5min for standings
       },
       {
         provider: 'api-sports',
-        requestsPerMinute: (() => { const v = process.env.API_SPORTS_REQUESTS_PER_MINUTE; if (!v) { throw new Error('Missing API_SPORTS_REQUESTS_PER_MINUTE'); } return parseInt(v); })(),
-        requestsPerDay: (() => { const v = process.env.API_SPORTS_REQUESTS_PER_DAY; if (!v) { throw new Error('Missing API_SPORTS_REQUESTS_PER_DAY'); } return parseInt(v); })(),
-        burstLimit: (() => { const v = process.env.API_SPORTS_BURST_LIMIT; if (!v) { throw new Error('Missing API_SPORTS_BURST_LIMIT'); } return parseInt(v); })(),
+        requestsPerMinute: 100, // Official: 100/min (Free tier) - Source: RapidAPI docs
+        requestsPerDay: 100, // Conservative: ~3/day to preserve monthly quota
+        burstLimit: 10, // Reasonable burst protection
         windowSizeMs: 60000
+        // Update frequency: Every 1min for live games, 10min for standings
+      },
+      {
+        provider: 'thesportsdb',
+        requestsPerMinute: 30, // Official: 30/min (Patreon tier) - Source: thesportsdb.com
+        requestsPerDay: 10000, // Official: 10,000 requests per day
+        burstLimit: 5,
+        windowSizeMs: 60000
+        // Update frequency: Every 5min for general data
       },
       {
         provider: 'odds-api',
-        requestsPerMinute: 10, // Official limit: 10 requests per minute
-        requestsPerDay: 100, // Official limit: 100 requests per day
+        requestsPerMinute: 10, // Conservative limit
+        requestsPerDay: 16, // 500/month ÷ 30 days = ~16/day
         burstLimit: 5,
         windowSizeMs: 60000
+        // Update frequency: Every 2 hours (conservative to preserve monthly quota)
       },
       {
-        provider: 'optimized-api',
-        requestsPerMinute: 1000,
-        requestsPerDay: Number.MAX_SAFE_INTEGER,
-        burstLimit: 100,
+        provider: 'nba-stats',
+        requestsPerMinute: 20, // Conservative limit (unofficial API)
+        requestsPerDay: 10000, // Reasonable daily limit
+        burstLimit: 5, // Reduced burst limit
         windowSizeMs: 60000
+        // Update frequency: Every 5s for live games, 5min for stats
+      },
+      {
+        provider: 'mlb-stats',
+        requestsPerMinute: 60, // Official MLB Stats API (unlimited)
+        requestsPerDay: Number.MAX_SAFE_INTEGER,
+        burstLimit: 20,
+        windowSizeMs: 60000
+        // Update frequency: Every 2s for live games, 3min for stats
+      },
+      {
+        provider: 'nhl',
+        requestsPerMinute: 60, // Official NHL API (unlimited)
+        requestsPerDay: Number.MAX_SAFE_INTEGER,
+        burstLimit: 20,
+        windowSizeMs: 60000
+        // Update frequency: Every 2s for live games, 3min for stats
+      },
+      {
+        provider: 'espn',
+        requestsPerMinute: 60, // ESPN API (unofficial, unlimited)
+        requestsPerDay: Number.MAX_SAFE_INTEGER,
+        burstLimit: 15,
+        windowSizeMs: 60000
+        // Update frequency: Every 2s for live games, 3min for stats
       },
       {
         provider: 'rapidapi',
-        requestsPerMinute: 100,
+        requestsPerMinute: 100, // RapidAPI general limit
         requestsPerDay: 10000,
         burstLimit: 10,
         windowSizeMs: 60000
+        // Update frequency: Varies by specific API
+      },
+      {
+        provider: 'optimized-api',
+        requestsPerMinute: 1000, // Internal optimized service
+        requestsPerDay: Number.MAX_SAFE_INTEGER,
+        burstLimit: 100,
+        windowSizeMs: 60000
+        // Update frequency: As needed for internal operations
       },
       {
         provider: 'player-stats',
-        requestsPerMinute: 30,
+        requestsPerMinute: 30, // Internal service limit
         requestsPerDay: 1000,
         burstLimit: 5,
         windowSizeMs: 60000
+        // Update frequency: Every 5min for player statistics
       },
       {
         provider: 'team-stats',
-        requestsPerMinute: 30,
+        requestsPerMinute: 30, // Internal service limit
         requestsPerDay: 1000,
         burstLimit: 5,
         windowSizeMs: 60000
+        // Update frequency: Every 5min for team statistics
       },
       {
         provider: 'predictions',
-        requestsPerMinute: 20,
+        requestsPerMinute: 20, // Internal ML service limit
         requestsPerDay: 500,
         burstLimit: 3,
         windowSizeMs: 60000
+        // Update frequency: Every 10min for predictions
       },
       {
         provider: 'analytics',
-        requestsPerMinute: 60,
+        requestsPerMinute: 60, // Internal analytics service
         requestsPerDay: 2000,
         burstLimit: 10,
         windowSizeMs: 60000
+        // Update frequency: Every 3min for analytics
       },
       {
         provider: 'tennis',
-        requestsPerMinute: 30,
+        requestsPerMinute: 30, // Internal tennis service
         requestsPerDay: 1000,
         burstLimit: 5,
         windowSizeMs: 60000
+        // Update frequency: Every 5min for tennis data
       },
       {
         provider: 'golf',
-        requestsPerMinute: 30,
+        requestsPerMinute: 30, // Internal golf service
         requestsPerDay: 1000,
         burstLimit: 5,
         windowSizeMs: 60000
+        // Update frequency: Every 5min for golf data
       }
     ]
 
     configs.forEach(config => {
       this.configs.set(config.provider, config)
     })
+
+    // ARCHITECTURE PATTERN: Database-First Approach
+    // ==============================================
+    // 1. External APIs → Background Services (rate-limited) → Database → Frontend Components
+    // 2. ONLY background services should call external APIs and respect these rate limits
+    // 3. Frontend components should NEVER call external APIs directly
+    // 4. All frontend data should come from the database via optimized-sports-storage
+    // 5. Background services update database at optimal frequencies per API
+    //
+    // Note: Rate limits can be overridden at runtime by loading from database
+    // This allows dynamic configuration without requiring environment variables
   }
 
   async checkRateLimit(
