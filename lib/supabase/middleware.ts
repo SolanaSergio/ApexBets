@@ -61,14 +61,22 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getUser()
 
     if (userError) {
-      console.warn('User authentication error:', userError.message)
+      // Only log unexpected auth errors, not routine session checks
+      const isExpectedError = 
+        userError.message.includes('Auth session missing') ||
+        userError.message.includes('refresh_token_not_found') ||
+        userError.message.includes('Invalid JWT')
+
+      if (!isExpectedError) {
+        console.warn('Unexpected authentication error:', userError.message)
+      }
 
       // Handle specific auth errors
       if (
         userError.message.includes('Auth session missing') ||
         userError.message.includes('refresh_token_not_found')
       ) {
-        // Clear invalid session
+        // Clear invalid session silently
         await supabase.auth.signOut()
       }
     }

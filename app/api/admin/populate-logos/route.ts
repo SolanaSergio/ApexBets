@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { logoPopulationService } from '@/lib/services/logo-population-service'
-import { databaseService } from '@/lib/services/database-service'
 import { structuredLogger } from '@/lib/services/structured-logger'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,16 +26,26 @@ export async function POST(request: NextRequest) {
 
     if (teamName && sport) {
       // Populate logo for specific team
-      const teamsQuery = `
-        SELECT id, name, sport, abbreviation, league_name 
-        FROM teams 
-        WHERE name = $1 AND sport = $2 AND is_active = true
-        LIMIT 1
-      `
+      const supabase = getSupabaseClient()
+      const { data: teams, error: teamsError } = await supabase
+        .from('teams')
+        .select('id, name, sport, abbreviation, league_name')
+        .eq('name', teamName)
+        .eq('sport', sport)
+        .eq('is_active', true)
+        .limit(1)
 
-      const teamsResult = await databaseService.executeSQL(teamsQuery, [teamName, sport])
+      if (teamsError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Database error: ${teamsError.message}`,
+          },
+          { status: 500 }
+        )
+      }
 
-      if (!teamsResult.success || teamsResult.data.length === 0) {
+      if (!teams || teams.length === 0) {
         return NextResponse.json(
           {
             success: false,
@@ -38,30 +55,34 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const team = teamsResult.data[0]
+      const team = teams[0]
       result = await logoPopulationService.populateTeamLogo(team)
     } else if (sport) {
       // Populate logos for specific sport
-      const teamsQuery = `
-        SELECT id, name, sport, abbreviation, league_name 
-        FROM teams 
-        WHERE sport = $1 AND (logo_url IS NULL OR $2 = true) AND is_active = true
-        ORDER BY name
-      `
+      const supabase = getSupabaseClient()
+      let query = supabase
+        .from('teams')
+        .select('id, name, sport, abbreviation, league_name')
+        .eq('sport', sport)
+        .eq('is_active', true)
+        .order('name')
 
-      const teamsResult = await databaseService.executeSQL(teamsQuery, [sport, forceUpdate])
+      if (!forceUpdate) {
+        query = query.is('logo_url', null)
+      }
 
-      if (!teamsResult.success) {
+      const { data: teams, error: teamsError } = await query
+
+      if (teamsError) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Failed to fetch teams',
+            error: `Failed to fetch teams: ${teamsError.message}`,
           },
           { status: 500 }
         )
       }
 
-      const teams = teamsResult.data
       const results: any[] = []
       let successful = 0
       let failed = 0
@@ -70,10 +91,10 @@ export async function POST(request: NextRequest) {
       const batchSize = 5
       for (let i = 0; i < teams.length; i += batchSize) {
         const batch = teams.slice(i, i + batchSize)
-        const batchPromises = batch.map(team => logoPopulationService.populateTeamLogo(team))
+        const batchPromises = batch.map((team: any) => logoPopulationService.populateTeamLogo(team))
         const batchResults = await Promise.allSettled(batchPromises)
 
-        batchResults.forEach((batchResult, index) => {
+        batchResults.forEach((batchResult: any, index: number) => {
           if (batchResult.status === 'fulfilled') {
             results.push(batchResult.value)
             if (batchResult.value.success) {

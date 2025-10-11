@@ -50,7 +50,15 @@ export function LiveGamesHero() {
   const currentGame = filteredGames[currentIndex]
 
   if (loading) {
-    return <LoadingSkeleton />
+    return (
+      <Card className="h-96 rounded-2xl border-2 border-primary/10 bg-gray-50/50 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="text-2xl">🏀</div>
+          <h2 className="text-xl font-semibold text-gray-600">Loading Live Games...</h2>
+          <p className="text-sm text-gray-500">Fetching real-time data from database</p>
+        </div>
+      </Card>
+    )
   }
 
   if (error) {
@@ -83,17 +91,6 @@ export function LiveGamesHero() {
 }
 
 // --- Sub-components for clarity ---
-
-function LoadingSkeleton() {
-  return (
-    <div className="h-96 rounded-2xl bg-gray-100 animate-pulse flex items-center justify-center">
-      <div className="text-center space-y-4">
-        <div className="h-8 w-48 bg-gray-200 rounded-md mx-auto"></div>
-        <div className="h-4 w-32 bg-gray-200 rounded-md mx-auto"></div>
-      </div>
-    </div>
-  )
-}
 
 function ErrorState() {
   return (

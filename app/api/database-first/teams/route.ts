@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { createClient } from '@/lib/supabase/server'
 import { structuredLogger } from '@/lib/services/structured-logger'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get('sport') || 'all'
-    const league = searchParams.get('league')
+    const league = searchParams.get('league') || undefined
     const limitRaw = Number.parseInt(searchParams.get('limit') || '100')
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
+    const requestId = crypto.randomUUID()
 
     // Check cache first
     const cacheKey = `teams-${sport}-${league || 'all'}-${limit}`
@@ -29,31 +30,52 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached)
     }
 
-    // Check if Supabase client is available
-    if (!productionSupabaseClient.isConnected()) {
-      structuredLogger.error('Supabase client not available', {
+    structuredLogger.info('Querying teams from database', {
+      service: 'teams-api',
+      requestId,
+      sport,
+      league,
+    })
+
+    // Query teams directly from database
+    const supabase = await createClient()
+    let query = supabase
+      .from('teams')
+      .select('*')
+      .order('name', { ascending: true })
+
+    if (sport !== 'all') {
+      query = query.eq('sport', sport)
+    }
+    if (league) {
+      query = query.eq('league', league)
+    }
+
+    const { data: teams, error } = await query.limit(limit)
+
+    if (error) {
+      structuredLogger.error('Database query failed', {
         service: 'teams-api',
-        step: 'client-check',
+        requestId,
+        error: error.message,
       })
       return NextResponse.json(
         {
           success: false,
-          error: 'Database service unavailable',
-          details: 'Supabase client not initialized',
+          error: 'Database query failed',
+          details: error.message,
+          requestId,
         },
-        { status: 503 }
+        { status: 500 }
       )
     }
 
-    // Use production Supabase client directly - no external API calls
-    const teams = await productionSupabaseClient.getTeams(sport, league || undefined)
-
     const result = {
       success: true,
-      data: teams.slice(0, limit),
+      data: teams || [],
       meta: {
         source: 'database',
-        count: teams.length,
+        count: teams?.length || 0,
         sport,
         league: league || 'all',
         limit,

@@ -25,12 +25,20 @@ export function PredictionsDashboard() {
   const overallAccuracy = useMemo(() => {
     const completed = filteredPredictions.filter(p => (p as any).status === 'completed')
     if (completed.length === 0) return 0
-    const correct = completed.filter(p => p.accuracy === true).length
+    const correct = completed.filter(p => p.is_correct === true).length
     return Math.round((correct / completed.length) * 100)
   }, [filteredPredictions])
 
   if (loading) {
-    return <LoadingSkeleton />
+    return (
+      <Card className="border-2 border-primary/10 bg-gray-50/50 text-center py-12">
+        <CardContent>
+          <Target className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">Loading AI Predictions...</h3>
+          <p className="text-sm text-gray-500">Fetching real-time predictions from database</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (error) {
@@ -62,30 +70,6 @@ export function PredictionsDashboard() {
 }
 
 // --- Sub-components ---
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="h-8 w-48 bg-gray-200 rounded-md"></div>
-        <div className="h-8 w-24 bg-gray-200 rounded-md"></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="bg-gray-100 animate-pulse">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="h-5 w-3/4 bg-gray-200 rounded"></div>
-                <div className="h-3 w-1/2 bg-gray-200 rounded"></div>
-                <div className="h-8 w-full bg-gray-200 rounded"></div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 function ErrorState() {
   return (

@@ -4,10 +4,12 @@
  */
 
 export interface EnvConfig {
-  // Supabase
+  // Supabase (client-side accessible)
   NEXT_PUBLIC_SUPABASE_URL: string
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string
-  SUPABASE_SERVICE_ROLE_KEY: string
+  
+  // Supabase (server-side only)
+  SUPABASE_SERVICE_ROLE_KEY?: string
 
   // API Configuration
   NEXT_PUBLIC_API_URL: string
@@ -58,14 +60,16 @@ class EnvValidator {
     this.validationErrors = []
     const config: Partial<EnvConfig> = {}
 
-    // Required Supabase variables
+    // Required Supabase variables (client-side accessible)
     this.validateRequired('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL, config)
     this.validateRequired(
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       config
     )
-    this.validateRequired(
+    
+    // Server-side only Supabase variable (optional for client-side validation)
+    this.validateOptional(
       'SUPABASE_SERVICE_ROLE_KEY',
       process.env.SUPABASE_SERVICE_ROLE_KEY,
       config
@@ -162,13 +166,88 @@ class EnvValidator {
   }
 
   /**
+   * Validate server-side environment variables
+   * This should be called on the server side to ensure all required variables are present
+   */
+  public validateServerSide(): EnvConfig {
+    this.validationErrors = []
+    const config: Partial<EnvConfig> = {}
+
+    // Required Supabase variables (client-side accessible)
+    this.validateRequired('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL, config)
+    this.validateRequired(
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      config
+    )
+    
+    // Required server-side Supabase variable
+    this.validateRequired(
+      'SUPABASE_SERVICE_ROLE_KEY',
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      config
+    )
+
+    // Optional API keys (but validate format if present)
+    this.validateOptional('RAPIDAPI_KEY', process.env.RAPIDAPI_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_RAPIDAPI_KEY', process.env.NEXT_PUBLIC_RAPIDAPI_KEY, config)
+    this.validateOptional('ODDS_API_KEY', process.env.ODDS_API_KEY, config)
+    this.validateOptional('NEXT_PUBLIC_ODDS_API_KEY', process.env.NEXT_PUBLIC_ODDS_API_KEY, config)
+    this.validateOptional('SPORTSDB_API_KEY', process.env.SPORTSDB_API_KEY, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_SPORTSDB_API_KEY',
+      process.env.NEXT_PUBLIC_SPORTSDB_API_KEY,
+      config
+    )
+    this.validateOptional('BALLDONTLIE_API_KEY', process.env.BALLDONTLIE_API_KEY, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_BALLDONTLIE_API_KEY',
+      process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY,
+      config
+    )
+
+    // App configuration
+    this.validateRequired('NODE_ENV', process.env.NODE_ENV, config)
+    this.validateOptional('NEXT_PUBLIC_APP_VERSION', process.env.NEXT_PUBLIC_APP_VERSION, config)
+    this.validateOptional('HOSTNAME', process.env.HOSTNAME, config)
+    this.validateOptional('PORT', process.env.PORT, config)
+
+    // Sports configuration (dynamic)
+    this.validateOptional('SUPPORTED_SPORTS', process.env.SUPPORTED_SPORTS, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_SUPPORTED_SPORTS',
+      process.env.NEXT_PUBLIC_SUPPORTED_SPORTS,
+      config
+    )
+
+    if (this.validationErrors.length > 0) {
+      throw new Error(`Environment validation failed:\n${this.validationErrors.join('\n')}`)
+    }
+
+    this.config = config as EnvConfig
+    return this.config
+  }
+
+  /**
    * Get validated configuration
    * Always enforces validation; no build-time fallbacks allowed
    */
   public getConfig(): EnvConfig {
     if (!this.config) {
-      // Enforce validation immediately to comply with repo rules
+      // Use client-side validation for browser environments
       return this.validate()
+    }
+    return this.config
+  }
+
+  /**
+   * Get server-side validated configuration
+   * Enforces server-side validation with all required variables
+   */
+  public getServerConfig(): EnvConfig {
+    if (!this.config) {
+      // Enforce server-side validation immediately
+      return this.validateServerSide()
     }
     return this.config
   }
@@ -245,8 +324,10 @@ class EnvValidator {
 
 export const envValidator = EnvValidator.getInstance()
 
-// Export convenience function
+// Export convenience functions
 export const validateEnv = () => envValidator.validate()
+export const validateServerSideEnv = () => envValidator.validateServerSide()
 export const getEnvConfig = () => envValidator.getConfig()
+export const getServerEnvConfig = () => envValidator.getServerConfig()
 export const getSupportedSports = () => envValidator.getSupportedSports()
 export const isSportSupported = (sport: string) => envValidator.isSportSupported(sport)

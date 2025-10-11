@@ -27,14 +27,14 @@ export interface Team {
 
 export interface Game {
   id: string
-  home_team_id: string
-  away_team_id: string
+  home_team_id?: string
+  away_team_id?: string
   game_date: string
-  season: string
+  season?: string
   week?: number
   home_score?: number
   away_score?: number
-  status: string
+  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'cancelled'
   venue?: string
   league?: string
   sport?: string
@@ -49,18 +49,22 @@ export interface Game {
   home_team_stats?: GameStats
   away_team_stats?: GameStats
   home_team?: {
+    id: string
     name: string
     abbreviation?: string
     record?: string
     logo_url?: string
     city?: string
+    sport: string
   }
   away_team?: {
+    id: string
     name: string
     abbreviation?: string
     record?: string
     logo_url?: string
     city?: string
+    sport: string
   }
 }
 
@@ -142,12 +146,12 @@ export interface AnalyticsStats {
 export interface Prediction {
   id: string
   game_id: string
-  prediction_type: string
+prediction_type: string
   predicted_outcome: string
+  predicted_value: number
   confidence: number
   model_name: string
   is_correct?: boolean | null
-  predicted_value: number
   created_at: string
   updated_at: string
   sport?: string
@@ -435,7 +439,7 @@ class DatabaseFirstApiClient {
   // Players - DATABASE FIRST
   async getPlayers(params?: {
     sport?: string
-    team_id?: string
+    team_id?: string | undefined
     limit?: number
     search?: string
   }): Promise<Player[]> {

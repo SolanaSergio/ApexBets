@@ -307,7 +307,7 @@ function calculateDataConsistency(games: any[], teams: any[]): number {
   }
 
   // Check for missing required fields in teams
-  const teamsWithCompleteData = teams.filter(team => team.name && team.sport && team.league).length
+  const teamsWithCompleteData = teams.filter(team => team.name && team.sport && team.league_name).length
 
   if (teams.length > 0) {
     const teamConsistency = (teamsWithCompleteData / teams.length) * 100

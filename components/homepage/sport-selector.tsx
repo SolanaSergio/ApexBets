@@ -8,18 +8,22 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useRealTimeData } from '@/components/data/real-time-provider'
-import { SportConfigManager } from '@/lib/services/core/sport-config'
-import { Globe } from 'lucide-react'
+import { useSportConfigs } from '@/hooks/use-sport-config'
+import { Globe, Trophy } from 'lucide-react'
 
 export function SportSelector() {
   const { selectedSport, setSelectedSport, supportedSports } = useRealTimeData()
+  const { configs: sportConfigs, loading } = useSportConfigs()
 
-  const sportConfigs = supportedSports
-    .map(sport => ({
-      sport,
-      config: SportConfigManager.getSportConfig(sport),
-    }))
-    .filter(item => item.config)
+  if (loading) {
+    return (
+      <Select disabled>
+        <SelectTrigger className="w-full md:w-[240px] bg-white shadow-sm">
+          <SelectValue placeholder="Loading sports..." />
+        </SelectTrigger>
+      </Select>
+    )
+  }
 
   return (
     <Select value={selectedSport} onValueChange={setSelectedSport}>
@@ -33,11 +37,11 @@ export function SportSelector() {
             <span className="font-medium">All Sports</span>
           </div>
         </SelectItem>
-        {sportConfigs.map(({ sport, config }) => (
-          <SelectItem key={sport} value={sport}>
+        {sportConfigs.map((config) => (
+          <SelectItem key={config.name} value={config.name}>
             <div className="flex items-center gap-3">
-              <span className="text-xl">{config?.icon}</span>
-              <span className="font-medium">{config?.name}</span>
+              <Trophy className="h-5 w-5" style={{ color: config.color }} />
+              <span className="font-medium">{config.displayName}</span>
             </div>
           </SelectItem>
         ))}

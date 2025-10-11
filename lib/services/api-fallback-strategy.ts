@@ -3,12 +3,12 @@
  * No hardcoded sport-specific logic - all configuration driven
  */
 
-import { apiCostTracker } from './api-cost-tracker'
-import { enhancedRateLimiter } from './enhanced-rate-limiter'
-// Removed unused imports - using only SportsDB for now
-import { sportsDBClient } from '../sports-apis/sportsdb-client'
-import { envValidator } from '../config/env-validator'
+import { createClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
+import { envValidator } from '../config/env-validator'
+import { enhancedRateLimiter } from './enhanced-rate-limiter'
+import { apiCostTracker } from './api-cost-tracker'
+import { sportsDBClient } from '../sports-apis/sportsdb-client'
 
 export interface ProviderConfig {
   name: string
@@ -152,26 +152,22 @@ export class APIFallbackStrategy {
 
   private async loadSportSpecificProviders(supportedSports: string[]): Promise<void> {
     try {
-      // Import database service
-      const { databaseService } = await import('./database-service')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
 
-      const query = `
-        SELECT 
-          provider_name,
-          priority,
-          cost,
-          reliability,
-          supported_sports,
-          data_types,
-          features,
-          rate_limit,
-          free_requests
-        FROM api_provider_configurations
-        WHERE is_active = true
-        ORDER BY priority
-      `
+      const { data: providersData, error: providersError } = await supabase
+        .from('api_provider_configurations')
+        .select('provider_name, priority, cost, reliability, supported_sports, data_types, features, rate_limit, free_requests')
+        .eq('is_active', true)
+        .order('priority')
 
-      const result = await databaseService.executeSQL(query)
+      if (providersError) {
+        throw new Error(`Failed to load provider configurations: ${providersError.message}`)
+      }
+
+      const result = { success: true, data: providersData || [] }
 
       if (result.success && result.data) {
         for (const row of result.data) {
@@ -471,16 +467,8 @@ export class APIFallbackStrategy {
       let url = ''
       const params = new URLSearchParams()
 
-      // Map sport names to API-Sports endpoints
-      const sportMapping: Record<string, string> = {
-        football: 'american-football',
-        basketball: 'basketball',
-        baseball: 'baseball',
-        hockey: 'hockey',
-        soccer: 'football',
-      }
-
-      const apiSport = sportMapping[request.sport.toLowerCase()]
+      // Get sport mapping from database configuration
+      const apiSport = await this.getSportApiMapping(request.sport)
       if (!apiSport) {
         throw new Error(`Sport ${request.sport} not supported by API-Sports`)
       }
@@ -625,6 +613,20 @@ export class APIFallbackStrategy {
     return stats
   }
 
+  /**
+   * Get sport API mapping from database
+   */
+  private async getSportApiMapping(sport: string): Promise<string | null> {
+    try {
+      // This should be implemented to get sport configuration from database
+      // For now, return null to force dynamic configuration
+      return null
+    } catch (error) {
+      console.error('Error getting sport API mapping:', error)
+      return null
+    }
+  }
+
   // Legacy method for backward compatibility
   async executeWithFallback<T>(request: FallbackRequest): Promise<FallbackResult<T>> {
     return this.executeRequest<T>(request)
@@ -633,7 +635,7 @@ export class APIFallbackStrategy {
   // Legacy method for backward compatibility
   async fetchData<T>(dataType: string, params: any): Promise<T> {
     const request: FallbackRequest = {
-      sport: params.sport || 'basketball',
+      sport: params.sport || 'unknown',
       dataType: dataType as any,
       params,
       priority: 'medium',

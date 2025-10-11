@@ -96,7 +96,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_score: game.away_score,
         status: game.status,
         venue: game.venue,
-        league_id: game.league_id,
+        league_id: game.league_name_id,
         sport: game.sport,
         attendance: game.attendance,
         game_type: game.game_type,
@@ -107,7 +107,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         updated_at: game.updated_at,
       }
 
-      return normalizeGameData(gameData, game.sport, game.league)
+      return normalizeGameData(gameData, game.sport, game.league_name)
     })
 
     const normalizedRecentGames = (recentGames || []).map((game: any) => {
@@ -133,7 +133,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_score: game.away_score,
         status: game.status,
         venue: game.venue,
-        league_id: game.league_id,
+        league_id: game.league_name_id,
         sport: game.sport,
         attendance: game.attendance,
         game_type: game.game_type,
@@ -144,7 +144,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         updated_at: game.updated_at,
       }
 
-      return normalizeGameData(gameData, game.sport, game.league)
+      return normalizeGameData(gameData, game.sport, game.league_name)
     })
 
     const normalizedUpcomingGames = (upcomingGames || []).map((game: any) => {
@@ -170,7 +170,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         away_score: game.away_score,
         status: game.status,
         venue: game.venue,
-        league_id: game.league_id,
+        league_id: game.league_name_id,
         sport: game.sport,
         attendance: game.attendance,
         game_type: game.game_type,
@@ -181,7 +181,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         updated_at: game.updated_at,
       }
 
-      return normalizeGameData(gameData, game.sport, game.league)
+      return normalizeGameData(gameData, game.sport, game.league_name)
     })
 
     return {

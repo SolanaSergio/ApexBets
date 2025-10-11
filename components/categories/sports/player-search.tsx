@@ -100,7 +100,7 @@ export default function PlayerSearch({ onPlayerSelect, selectedPlayer, sport }: 
     if (!players) return []
     return players.filter(player => {
       const nameMatch = player.name.toLowerCase().includes(searchQuery.toLowerCase())
-      const teamMatch = selectedTeam === 'all' || player.teamId === selectedTeam
+      const teamMatch = selectedTeam === 'all' || player.team_id === selectedTeam
       const positionMatch = selectedPosition === 'all' || player.position === selectedPosition
       return nameMatch && teamMatch && positionMatch
     })

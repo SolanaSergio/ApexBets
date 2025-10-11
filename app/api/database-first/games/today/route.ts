@@ -54,13 +54,21 @@ export async function GET(request: NextRequest) {
     const todayEndUTC = new Date(baseEndUtc.getTime() - offsetMinutesAtEnd * 60 * 1000)
 
     // Fetch games for today (only scheduled games)
+    // Since getGames only accepts a single date parameter, we'll fetch all games and filter
     const result = await databaseFirstApiClient.getGames({
       sport,
       status: 'scheduled',
-      dateFrom: todayStartUTC.toISOString(),
-      dateTo: todayEndUTC.toISOString(),
-      limit,
+      limit: 1000, // Get more games to filter by date range
     })
+
+    // Filter games to only include today's games
+    if (result.success && result.data) {
+      result.data = result.data.filter((game: any) => {
+        if (!game.game_date) return false
+        const gameDate = new Date(game.game_date)
+        return gameDate >= todayStartUTC && gameDate <= todayEndUTC
+      }).slice(0, limit)
+    }
 
     // Add timezone-aware formatting
     if (result.success && result.data) {

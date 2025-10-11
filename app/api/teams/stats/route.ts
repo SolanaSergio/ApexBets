@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       let teamsQuery = supabase.from('teams').select('*')
 
       if (league) {
-        teamsQuery = teamsQuery.eq('league', league)
+        teamsQuery = teamsQuery.eq('league_name', league)
       }
       if (sport) {
         teamsQuery = teamsQuery.eq('sport', sport)
@@ -160,7 +160,7 @@ export async function GET(request: NextRequest) {
         teamName: team.name,
         teamAbbreviation: team.abbreviation,
         sport: team.sport,
-        league: team.league,
+        league: team.league_name,
         gamesPlayed: completedGames.length,
         totalScore,
         stats,

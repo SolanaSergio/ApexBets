@@ -1,6 +1,6 @@
 /**
  * BASKETBALL SERVICE
- * NBA-specific implementation with BallDontLie and SportsDB integration
+ * Sport-agnostic implementation with dynamic configuration
  */
 
 import {
@@ -20,9 +20,10 @@ import {
 import { ServiceConfig } from '../../core/base-service'
 import { SportConfigManager } from '../../core/sport-config'
 import { unifiedCacheService } from '../../unified-cache-service'
+import { dynamicSportConfigService } from '@/lib/services/dynamic-sport-config-service'
 
 export class BasketballService extends SportSpecificService {
-  constructor(league: string = 'NBA') {
+  constructor(league?: string) {
     const config: ServiceConfig = {
       name: 'basketball',
       cacheTTL: 5 * 60 * 1000, // 5 minutes
@@ -30,7 +31,7 @@ export class BasketballService extends SportSpecificService {
       retryAttempts: 3,
       retryDelay: 1000,
     }
-    super('basketball', league, config)
+    super('basketball', league || 'NBA', config)
   }
 
   async getGames(
@@ -52,11 +53,7 @@ export class BasketballService extends SportSpecificService {
 
     try {
       // Following comprehensive sports data API guide priority:
-      // 1. NBA Stats API (official, highest quality for basketball)
-      // 2. TheSportsDB (free, reliable)
-      // 3. ESPN (free, good coverage)
-      // 4. Ball Don't Lie (basketball-specific but rate-limited)
-      // 5. API-Sports (cost-based)
+      // Dynamic API priority based on database configuration
 
       // First: Try NBA Stats API (official, free, no key required)
       try {
@@ -160,9 +157,9 @@ export class BasketballService extends SportSpecificService {
 
     try {
       // Use dynamic league configuration
-      const leagueConfig = this.getLeagueConfig()
+      const leagueConfig = await this.getLeagueConfig()
       const fixtures = await apiSportsClient.getFixtures({
-        league: leagueConfig?.rapidApiId || 39, // NBA default fallback
+        league: leagueConfig?.rapidApiId || await this.getDefaultLeagueId(),
         season: new Date().getFullYear(),
         date: date,
       })
@@ -235,6 +232,16 @@ export class BasketballService extends SportSpecificService {
   }
 
   // NBA Stats API methods (Official, free, no key required)
+  private async getDefaultLeagueId(): Promise<number> {
+    try {
+      const leagueConfig = await dynamicSportConfigService.getLeagueConfig('basketball', this.league)
+      return leagueConfig?.rapidApiId || 39 // Fallback only if database fails
+    } catch (error) {
+      console.warn('Failed to get league config, using fallback:', error)
+      return 39
+    }
+  }
+
   private async fetchGamesFromNBAStats(date: string): Promise<GameData[]> {
     try {
       // Convert date format: YYYY-MM-DD to YYYYMMDD
@@ -425,9 +432,9 @@ export class BasketballService extends SportSpecificService {
 
     try {
       // Use dynamic league configuration
-      const leagueConfig = this.getLeagueConfig()
+      const leagueConfig = await this.getLeagueConfig()
       const teams = await apiSportsClient.getTeams(
-        leagueConfig?.rapidApiId || 39,
+        leagueConfig?.rapidApiId || await this.getDefaultLeagueId(),
         new Date().getFullYear()
       )
       if (teams?.response && Array.isArray(teams.response)) {
@@ -478,19 +485,19 @@ export class BasketballService extends SportSpecificService {
       sport: this.sport,
       league: this.league,
       name: team.team?.name || '',
-      city: this.extractCityFromName(team.team?.name),
+      city: await this.extractCityFromName(team.team?.name),
       abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
       lastUpdated: new Date().toISOString(),
     }
   }
 
-  private extractCityFromName(teamName: string): string {
+  private async extractCityFromName(teamName: string): Promise<string> {
     // Extract city from team name (e.g., "Los Angeles Lakers" -> "Los Angeles")
     const parts = teamName.split(' ')
     if (parts.length > 1) {
       // Use sport-specific configuration for team suffixes if available
-      const leagueConfig = this.getLeagueConfig()
+      const leagueConfig = await this.getLeagueConfig()
       const suffixes = leagueConfig?.teamSuffixes || []
 
       // If no suffixes configured, try to extract city by removing the last word
@@ -526,7 +533,7 @@ export class BasketballService extends SportSpecificService {
     this.rapidAPIErrorTime = Date.now()
   }
 
-  private getLeagueConfig(): any {
+  private async getLeagueConfig(): Promise<any> {
     // Get league configuration from sport config manager
     try {
       const sportConfig = require('../../core/sport-config').SportConfigManager.getSportConfig(
@@ -534,14 +541,14 @@ export class BasketballService extends SportSpecificService {
       )
       return (
         sportConfig?.leagues?.find((l: any) => l.name === this.league) || {
-          rapidApiId: this.sport === 'basketball' ? 39 : undefined, // NBA default
+          rapidApiId: await this.getDefaultLeagueId(),
           teamSuffixes: undefined,
         }
       )
     } catch (error) {
       // Fallback configuration
       return {
-        rapidApiId: this.sport === 'basketball' ? 39 : undefined,
+        rapidApiId: await this.getDefaultLeagueId(),
         teamSuffixes: undefined,
       }
     }
@@ -671,7 +678,7 @@ export class BasketballService extends SportSpecificService {
       }
 
       const odds = await oddsApiClient.getOdds({
-        sport: 'basketball_nba',
+        sport: 'basketball',
         regions: 'us',
         markets: 'h2h,spreads,totals',
         oddsFormat: 'american',
@@ -1017,7 +1024,7 @@ export class BasketballService extends SportSpecificService {
     return {
       id: game.GAME_ID?.toString() || '',
       sport: this.sport,
-      league: 'NBA',
+      league: this.league || 'NBA',
       homeTeam: game.HOME_TEAM_NAME || '',
       awayTeam: game.VISITOR_TEAM_NAME || '',
       date: game.GAME_DATE_EST || new Date().toISOString(),
@@ -1033,7 +1040,7 @@ export class BasketballService extends SportSpecificService {
     return {
       id: team.TEAM_ID?.toString() || '',
       sport: this.sport,
-      league: 'NBA',
+      league: this.league || 'NBA',
       name: team.TEAM_NAME || '',
       city: team.TEAM_CITY || '',
       abbreviation: team.TEAM_ABBREVIATION || '',
@@ -1069,7 +1076,7 @@ export class BasketballService extends SportSpecificService {
     return {
       id: game.id?.toString() || '',
       sport: this.sport,
-      league: 'NBA',
+      league: this.league || 'NBA',
       homeTeam: homeTeam?.team?.displayName || '',
       awayTeam: awayTeam?.team?.displayName || '',
       date: game.date || new Date().toISOString(),
@@ -1085,7 +1092,7 @@ export class BasketballService extends SportSpecificService {
     return {
       id: team.id?.toString() || '',
       sport: this.sport,
-      league: 'NBA',
+      league: this.league || 'NBA',
       name: team.displayName || team.name || '',
       city: team.location || '',
       abbreviation: team.abbreviation || '',

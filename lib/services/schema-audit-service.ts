@@ -4,7 +4,7 @@
  * No hardcoded sport-specific logic - fully dynamic and professional
  */
 
-import { databaseService } from './database-service'
+import { createClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
 
 export interface SchemaAuditReport {
@@ -84,6 +84,13 @@ export class SchemaAuditService {
     return SchemaAuditService.instance
   }
 
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+
   /**
    * Run comprehensive schema audit
    */
@@ -146,20 +153,14 @@ export class SchemaAuditService {
    * Get list of all tables in public schema
    */
   private async getTableList(): Promise<string[]> {
-    const query = `
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_type = 'BASE TABLE'
-      ORDER BY table_name
-    `
+    const supabase = this.getSupabaseClient()
+    const { data, error } = await supabase.rpc('get_all_tables')
 
-    const result = await databaseService.executeSQL(query)
-    if (!result.success) {
-      throw new Error(`Failed to get table list: ${result.error}`)
+    if (error) {
+      throw new Error(`Failed to get table list: ${error.message}`)
     }
 
-    return result.data.map((row: any) => row.table_name)
+    return data || []
   }
 
   /**
@@ -198,45 +199,14 @@ export class SchemaAuditService {
    * Get table column information
    */
   private async getTableColumns(tableName: string): Promise<ColumnSchema[]> {
-    const query = `
-      SELECT 
-        column_name,
-        data_type,
-        is_nullable,
-        column_default,
-        character_maximum_length,
-        CASE WHEN pk.column_name IS NOT NULL THEN true ELSE false END as is_primary_key,
-        CASE WHEN uk.column_name IS NOT NULL THEN true ELSE false END as is_unique
-      FROM information_schema.columns c
-      LEFT JOIN (
-        SELECT ku.column_name
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage ku 
-          ON tc.constraint_name = ku.constraint_name
-        WHERE tc.table_name = $1 
-        AND tc.constraint_type = 'PRIMARY KEY'
-        AND tc.table_schema = 'public'
-      ) pk ON c.column_name = pk.column_name
-      LEFT JOIN (
-        SELECT ku.column_name
-        FROM information_schema.table_constraints tc
-        JOIN information_schema.key_column_usage ku 
-          ON tc.constraint_name = ku.constraint_name
-        WHERE tc.table_name = $1 
-        AND tc.constraint_type = 'UNIQUE'
-        AND tc.table_schema = 'public'
-      ) uk ON c.column_name = uk.column_name
-      WHERE c.table_name = $1 
-      AND c.table_schema = 'public'
-      ORDER BY c.ordinal_position
-    `
+    const supabase = this.getSupabaseClient()
+    const { data, error } = await supabase.rpc('get_table_columns', { table_name: tableName })
 
-    const result = await databaseService.executeSQL(query, [tableName])
-    if (!result.success) {
-      throw new Error(`Failed to get columns for ${tableName}: ${result.error}`)
+    if (error) {
+      throw new Error(`Failed to get columns for ${tableName}: ${error.message}`)
     }
 
-    return result.data.map((row: any) => ({
+    return (data || []).map((row: any) => ({
       name: row.column_name,
       type: row.data_type,
       nullable: row.is_nullable === 'YES',
@@ -251,30 +221,14 @@ export class SchemaAuditService {
    * Get table constraints
    */
   private async getTableConstraints(tableName: string): Promise<ConstraintSchema[]> {
-    const query = `
-      SELECT 
-        tc.constraint_name,
-        tc.constraint_type,
-        array_agg(kcu.column_name ORDER BY kcu.ordinal_position) as columns,
-        ccu.table_name as referenced_table,
-        array_agg(ccu.column_name ORDER BY kcu.ordinal_position) as referenced_columns
-      FROM information_schema.table_constraints tc
-      LEFT JOIN information_schema.key_column_usage kcu 
-        ON tc.constraint_name = kcu.constraint_name
-      LEFT JOIN information_schema.constraint_column_usage ccu 
-        ON tc.constraint_name = ccu.constraint_name
-      WHERE tc.table_name = $1 
-      AND tc.table_schema = 'public'
-      GROUP BY tc.constraint_name, tc.constraint_type, ccu.table_name
-      ORDER BY tc.constraint_name
-    `
+    const supabase = this.getSupabaseClient()
+    const { data, error } = await supabase.rpc('get_table_constraints', { table_name: tableName })
 
-    const result = await databaseService.executeSQL(query, [tableName])
-    if (!result.success) {
-      throw new Error(`Failed to get constraints for ${tableName}: ${result.error}`)
+    if (error) {
+      throw new Error(`Failed to get constraints for ${tableName}: ${error.message}`)
     }
 
-    return result.data.map((row: any) => ({
+    return (data || []).map((row: any) => ({
       name: row.constraint_name,
       type: row.constraint_type,
       columns: row.columns || [],
@@ -287,28 +241,14 @@ export class SchemaAuditService {
    * Get table indexes
    */
   private async getTableIndexes(tableName: string): Promise<IndexSchema[]> {
-    const query = `
-      SELECT 
-        indexname,
-        array_agg(attname ORDER BY attnum) as columns,
-        indisunique as unique,
-        indexdef
-      FROM pg_indexes pi
-      JOIN pg_class pc ON pc.relname = pi.indexname
-      JOIN pg_index pgi ON pgi.indexrelid = pc.oid
-      JOIN pg_attribute pa ON pa.attrelid = pgi.indrelid AND pa.attnum = ANY(pgi.indkey)
-      WHERE pi.tablename = $1 
-      AND pi.schemaname = 'public'
-      GROUP BY indexname, indisunique, indexdef
-      ORDER BY indexname
-    `
+    const supabase = this.getSupabaseClient()
+    const { data, error } = await supabase.rpc('get_table_indexes', { table_name: tableName })
 
-    const result = await databaseService.executeSQL(query, [tableName])
-    if (!result.success) {
-      throw new Error(`Failed to get indexes for ${tableName}: ${result.error}`)
+    if (error) {
+      throw new Error(`Failed to get indexes for ${tableName}: ${error.message}`)
     }
 
-    return result.data.map((row: any) => ({
+    return (data || []).map((row: any) => ({
       name: row.indexname,
       columns: row.columns || [],
       unique: row.unique,
@@ -320,20 +260,14 @@ export class SchemaAuditService {
    * Get table statistics
    */
   private async getTableStats(tableName: string): Promise<{ rowCount: number; size: string }> {
-    const query = `
-      SELECT 
-        n_live_tup as row_count,
-        pg_size_pretty(pg_total_relation_size($1)) as size
-      FROM pg_stat_user_tables 
-      WHERE relname = $1
-    `
+    const supabase = this.getSupabaseClient()
+    const { data, error } = await supabase.rpc('get_table_stats', { table_name: tableName })
 
-    const result = await databaseService.executeSQL(query, [tableName])
-    if (!result.success || !result.data.length) {
+    if (error || !data || data.length === 0) {
       return { rowCount: 0, size: '0 bytes' }
     }
 
-    const row = result.data[0]
+    const row = data[0]
     return {
       rowCount: parseInt(row.row_count) || 0,
       size: row.size || '0 bytes',
@@ -393,7 +327,7 @@ export class SchemaAuditService {
             type: 'missing_unique',
             description: 'Teams table missing unique constraint on (name, league) or external_id',
             suggestedConstraint:
-              'ALTER TABLE teams ADD CONSTRAINT teams_name_league_unique UNIQUE (name, league)',
+              'ALTER TABLE teams ADD CONSTRAINT teams_name_league_name_unique UNIQUE (name, league_name)',
           })
         }
       }
@@ -894,15 +828,17 @@ export class SchemaAuditService {
           priority: step.priority,
         })
 
-        const result = await databaseService.executeSQL(step.sql)
-        if (result.success) {
+        const supabase = this.getSupabaseClient()
+        const { error } = await supabase.rpc('execute_sql', { sql: step.sql })
+        
+        if (!error) {
           applied++
           structuredLogger.info('Migration step applied successfully', {
             type: step.type,
             table: step.table,
           })
         } else {
-          errors.push(`Failed to apply ${step.type} for ${step.table}: ${result.error}`)
+          errors.push(`Failed to apply ${step.type} for ${step.table}: ${error.message}`)
         }
       } catch (error) {
         errors.push(

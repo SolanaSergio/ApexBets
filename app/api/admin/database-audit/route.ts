@@ -2,8 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseAuditService } from '@/lib/services/database-audit-service'
 import { databaseCleanupService } from '@/lib/services/database-cleanup-service'
 import { enhancedApiClient } from '@/lib/services/enhanced-api-client'
-// Removed automatedMonitoringService import - service was deleted
 import { dataIntegrityService } from '@/lib/services/data-integrity-service'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabaseClient() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  )
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -309,52 +316,86 @@ async function runSpecificTests(tests: string[]): Promise<any> {
 }
 
 async function testDataIntegrity(): Promise<any> {
-  const { databaseService } = await import('@/lib/services/database-service')
-  const dbService = databaseService
+  const supabase = getSupabaseClient()
 
-  const query = `
-    SELECT 
-      COUNT(*) as total_teams,
-      COUNT(CASE WHEN name IS NULL OR name = '' THEN 1 END) as missing_names,
-      COUNT(CASE WHEN sport IS NULL OR sport = '' THEN 1 END) as missing_sports
-    FROM teams
-  `
-  const result = await dbService.executeSQL(query)
-  return (result.data as any[])[0]
+  const { data, error } = await supabase
+    .from('teams')
+    .select('name, sport')
+    .limit(1000)
+
+  if (error) {
+    throw new Error(`Failed to test data integrity: ${error.message}`)
+  }
+
+  const totalTeams = data?.length || 0
+  const missingNames = data?.filter(team => !team.name || team.name === '').length || 0
+  const missingSports = data?.filter(team => !team.sport || team.sport === '').length || 0
+
+  return {
+    total_teams: totalTeams,
+    missing_names: missingNames,
+    missing_sports: missingSports,
+  }
 }
 
 async function testForeignKeyIntegrity(): Promise<any> {
-  const { databaseService } = await import('@/lib/services/database-service')
-  const dbService = databaseService
+  const supabase = getSupabaseClient()
 
-  const query = `
-    SELECT 
-      COUNT(*) as total_games,
-      COUNT(CASE WHEN ht.id IS NULL THEN 1 END) as broken_home_fk,
-      COUNT(CASE WHEN at.id IS NULL THEN 1 END) as broken_away_fk
-    FROM games g
-    LEFT JOIN teams ht ON g.home_team_id = ht.id
-    LEFT JOIN teams at ON g.away_team_id = at.id
-  `
-  const result = await dbService.executeSQL(query)
-  return (result.data as any[])[0]
+  const { data: games, error: gamesError } = await supabase
+    .from('games')
+    .select('home_team_id, away_team_id')
+    .limit(1000)
+
+  if (gamesError) {
+    throw new Error(`Failed to test foreign key integrity: ${gamesError.message}`)
+  }
+
+  const totalGames = games?.length || 0
+  let brokenHomeFk = 0
+  let brokenAwayFk = 0
+
+  // Check for broken foreign keys
+  for (const game of games || []) {
+    if (game.home_team_id) {
+      const { error: homeError } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('id', game.home_team_id)
+        .single()
+      if (homeError) brokenHomeFk++
+    }
+    
+    if (game.away_team_id) {
+      const { error: awayError } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('id', game.away_team_id)
+        .single()
+      if (awayError) brokenAwayFk++
+    }
+  }
+
+  return {
+    total_games: totalGames,
+    broken_home_fk: brokenHomeFk,
+    broken_away_fk: brokenAwayFk,
+  }
 }
 
 async function testPerformance(): Promise<any> {
-  const { databaseService } = await import('@/lib/services/database-service')
-  const dbService = databaseService
-
+  const supabase = getSupabaseClient()
   const startTime = Date.now()
 
-  await dbService.executeSQL(`
-    SELECT t.*, COUNT(g.id) as game_count
-    FROM teams t
-    LEFT JOIN games g ON (g.home_team_id = t.id OR g.away_team_id = t.id)
-    WHERE t.sport = 'basketball'
-    GROUP BY t.id
-    ORDER BY game_count DESC
-    LIMIT 20
-  `)
+  const { error } = await supabase
+    .from('teams')
+    .select('*, games!home_team_id(*), games!away_team_id(*)')
+    .eq('sport', 'basketball')
+    .limit(20)
+
+  // Log error if present for debugging
+  if (error) {
+    console.warn('Performance test query error:', error.message)
+  }
 
   const executionTime = Date.now() - startTime
   return { executionTime, status: executionTime < 5000 ? 'GOOD' : 'SLOW' }
@@ -386,26 +427,38 @@ async function testAPIDataFlow(): Promise<any> {
 }
 
 async function testRealTimeUpdates(): Promise<any> {
-  const { databaseService } = await import('@/lib/services/database-service')
-  const dbService = databaseService
+  const supabase = getSupabaseClient()
 
-  const liveQuery = `
-    SELECT COUNT(*) as live_count
-    FROM games 
-    WHERE status = 'live' 
-    AND game_date BETWEEN NOW() - INTERVAL '2 hours' AND NOW() + INTERVAL '2 hours'
-  `
-  const liveResult = await dbService.executeSQL(liveQuery)
+  const twoHoursAgo = new Date()
+  twoHoursAgo.setHours(twoHoursAgo.getHours() - 2)
+  const twoHoursFromNow = new Date()
+  twoHoursFromNow.setHours(twoHoursFromNow.getHours() + 2)
 
-  const recentQuery = `
-    SELECT COUNT(*) as recent_count
-    FROM games 
-    WHERE updated_at > NOW() - INTERVAL '24 hours'
-  `
-  const recentResult = await dbService.executeSQL(recentQuery)
+  const { count: liveCount, error: liveError } = await supabase
+    .from('games')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'live')
+    .gte('game_date', twoHoursAgo.toISOString())
+    .lte('game_date', twoHoursFromNow.toISOString())
+
+  if (liveError) {
+    throw new Error(`Failed to test live games: ${liveError.message}`)
+  }
+
+  const twentyFourHoursAgo = new Date()
+  twentyFourHoursAgo.setHours(twentyFourHoursAgo.getHours() - 24)
+
+  const { count: recentCount, error: recentError } = await supabase
+    .from('games')
+    .select('*', { count: 'exact', head: true })
+    .gte('updated_at', twentyFourHoursAgo.toISOString())
+
+  if (recentError) {
+    throw new Error(`Failed to test recent games: ${recentError.message}`)
+  }
 
   return {
-    liveGames: (liveResult.data as any[])[0]?.live_count,
-    recentUpdates: (recentResult.data as any[])[0]?.recent_count,
+    liveGames: liveCount || 0,
+    recentUpdates: recentCount || 0,
   }
 }

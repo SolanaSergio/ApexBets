@@ -124,7 +124,7 @@ export class SchemaValidator {
     errors: string[]
   }> {
     try {
-      // This project uses Supabase MCP for DB operations; this method returns a summary
+      // This project uses proper Supabase client for DB operations; this method returns a summary
       // without executing DB mutations here. Keep interface for API route compatibility.
       const failed = checks.filter(c => !c.passed)
       return { applied: failed.length, errors: [] }

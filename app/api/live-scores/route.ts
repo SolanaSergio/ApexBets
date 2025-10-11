@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
         game_type: game.game_type,
         overtime_periods: game.overtime_periods,
         date: game.game_date,
-        league: game.league,
+        league: game.league_name,
         venue: game.venue,
         attendance: game.attendance,
         weather: game.weather,

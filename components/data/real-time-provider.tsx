@@ -11,15 +11,8 @@ import {
   useRef,
 } from 'react'
 import { subscribeToTable, unsubscribeFromTable } from '@/lib/supabase/realtime'
-import {
-  databaseFirstApiClient,
-  type Game,
-  type Prediction,
-  type Odd,
-  type Standing,
-  type Player,
-  type PlayerStats,
-} from '@/lib/api-client-database-first'
+import { databaseFirstApiClient } from '@/lib/api-client-database-first'
+import type { Game, Prediction, BettingOdds as Odd, LeagueStanding as Standing, Player, PlayerStats } from '@/types/api-responses'
 
 
 interface RealTimeData {
@@ -51,6 +44,7 @@ interface InitialData {
   standings: Standing[]
   players: Player[]
   sportsData: Record<string, any>
+  supportedSports: string[]
 }
 
 export function RealTimeProvider({
@@ -75,6 +69,9 @@ export function RealTimeProvider({
     error: null,
   })
   const [isInitialLoad, setIsInitialLoad] = useState(!initialData)
+
+  // Use supportedSports from initialData if available, otherwise fall back to prop
+  const effectiveSupportedSports = initialData?.supportedSports || supportedSports
 
   // Performance optimization: deduplicate updates
   const lastDataHash = useRef<string>('')
@@ -130,27 +127,28 @@ export function RealTimeProvider({
       let standings: Standing[] = []
       let players: Player[] = []
 
+      // Reduced limits for better performance
+      const limits = {
+        games: 50,
+        predictions: 25,
+        odds: 100,
+        standings: 50,
+        players: 200
+      }
+
       if (selectedSport === 'all') {
-        const promises = supportedSports.map(async sport => {
+        // Load only essential data initially, rest will be lazy loaded
+        const promises = effectiveSupportedSports.map(async sport => {
           try {
-            const [sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers] =
-              await Promise.all([
-                databaseFirstApiClient.getGames({ sport, limit: 200 }),
-                databaseFirstApiClient.getPredictions({ sport, limit: 100 }),
-                databaseFirstApiClient.getOdds({ sport, limit: 500 }),
-                databaseFirstApiClient.getStandings({ sport }),
-                databaseFirstApiClient.getPlayers({ sport, limit: 1000 }),
-              ])
-            return { sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers }
+            // Only fetch games and basic data initially
+            const [sportGames, sportStandings] = await Promise.all([
+              databaseFirstApiClient.getGames({ sport, limit: limits.games }),
+              databaseFirstApiClient.getStandings({ sport }),
+            ])
+            return { sportGames, sportStandings, sportPredictions: [], sportOdds: [], sportPlayers: [] }
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : 'Unknown error'
             console.warn(`Failed to fetch data for ${sport}:`, errorMessage)
-
-            // Set specific error message for debugging
-            setData(prev => ({
-              ...prev,
-              error: `Failed to load ${sport} data: ${errorMessage}`,
-            }))
 
             return {
               sportGames: [],
@@ -173,14 +171,14 @@ export function RealTimeProvider({
           }
         )
       } else {
-        // Fetch data for specific sport
+        // Fetch data for specific sport with reduced limits
         const [sportGames, sportPredictions, sportOdds, sportStandings, sportPlayers] =
           await Promise.all([
-            databaseFirstApiClient.getGames({ sport: selectedSport, limit: 200 }),
-            databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: 100 }),
-            databaseFirstApiClient.getOdds({ sport: selectedSport, limit: 500 }),
+            databaseFirstApiClient.getGames({ sport: selectedSport, limit: limits.games }),
+            databaseFirstApiClient.getPredictions({ sport: selectedSport, limit: limits.predictions }),
+            databaseFirstApiClient.getOdds({ sport: selectedSport, limit: limits.odds }),
             databaseFirstApiClient.getStandings({ sport: selectedSport }),
-            databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: 1000 }),
+            databaseFirstApiClient.getPlayers({ sport: selectedSport, limit: limits.players }),
           ])
         games = sportGames
         predictions = sportPredictions
@@ -209,7 +207,7 @@ export function RealTimeProvider({
         isConnected: false,
       }))
     }
-  }, [selectedSport, supportedSports])
+  }, [selectedSport, effectiveSupportedSports])
 
 
 
@@ -249,7 +247,7 @@ export function RealTimeProvider({
 
   return (
     <RealTimeContext.Provider
-      value={{ data, refreshData, setSelectedSport, selectedSport, supportedSports }}
+      value={{ data, refreshData, setSelectedSport, selectedSport, supportedSports: effectiveSupportedSports }}
     >
       {children}
     </RealTimeContext.Provider>
@@ -268,7 +266,7 @@ export function useLiveGames(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
   const liveGames = Array.isArray(data.games)
-    ? data.games.filter(game => game.status === 'in_progress')
+    ? data.games.filter(game => game.status === 'live')
     : []
 
   return {
@@ -373,7 +371,7 @@ export function useDashboardStats() {
         ...new Set(filteredGames.map(g => g.away_team_id)),
       ].length,
       dataPoints: filteredPredictions.length,
-      liveGames: filteredGames.filter(g => g.status === 'in_progress').length,
+      liveGames: filteredGames.filter(g => g.status === 'live').length,
       scheduledGames: filteredGames.filter(g => g.status === 'scheduled').length,
       completedGames: filteredGames.filter(g => g.status === 'completed').length,
       correctPredictions: filteredPredictions.filter(p => p.is_correct).length,

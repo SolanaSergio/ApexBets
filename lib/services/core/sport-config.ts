@@ -1,7 +1,10 @@
 /**
  * Sport Configuration Manager
  * Centralized sport configuration and management
+ * NO hardcoded values - all configurations loaded from database
  */
+
+import { dynamicSportConfigService } from '@/lib/services/dynamic-sport-config-service'
 
 export type SupportedSport = string
 
@@ -33,13 +36,8 @@ export interface SportConfig {
 class SportConfigManagerImpl {
   private static instance: SportConfigManagerImpl
   private configs: Map<SupportedSport, SportConfig> = new Map()
-  private fallbackSports: SupportedSport[] = [
-    'basketball',
-    'football',
-    'baseball',
-    'hockey',
-    'soccer',
-  ]
+  private initialized = false
+  private initializationPromise: Promise<void> | null = null
 
   public static getInstance(): SportConfigManagerImpl {
     if (!SportConfigManagerImpl.instance) {
@@ -49,166 +47,171 @@ class SportConfigManagerImpl {
   }
 
   constructor() {
-    // Immediate sync initialization with fallbacks
-    this.initializeFallbackConfigs()
-    // Async enhancement (non-blocking)
-    if (typeof window === 'undefined') {
-      this.loadDynamicConfigs().catch(error => {
-        console.warn('Failed to load dynamic sport configurations:', error)
-      })
-    }
+    // Don't initialize in constructor - use lazy initialization
+    // This prevents circular dependencies and unhandled promise rejections
   }
 
-  private initializeFallbackConfigs(): void {
-    this.fallbackSports.forEach(sport => {
-      this.configs.set(sport, this.createDefaultConfig(sport))
-    })
-  }
-
-  private createDefaultConfig(sport: SupportedSport): SportConfig {
-    const sportUpper = sport.toUpperCase()
-
-    return {
-      name: sport,
-      displayName:
-        process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
-      icon: process.env[`${sportUpper}_ICON`] || '🏆',
-      color: process.env[`${sportUpper}_COLOR`] || '#6B7280',
-      isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
-      dataSource: process.env[`${sportUpper}_DATA_SOURCE`] || 'rapidapi',
-      playerStatsTable: process.env[`${sportUpper}_STATS_TABLE`] || 'player_stats',
-      positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
-      scoringFields: process.env[`${sportUpper}_SCORING_FIELDS`]?.split(',') || ['points'],
-      bettingMarkets: process.env[`${sportUpper}_BETTING_MARKETS`]?.split(',') || [
-        'h2h',
-        'spread',
-        'totals',
-      ],
-      seasonConfig: {
-        startMonth: parseInt(process.env[`${sportUpper}_START_MONTH`] || '9'),
-        endMonth: parseInt(process.env[`${sportUpper}_END_MONTH`] || '5'),
-        currentSeason:
-          process.env[`${sportUpper}_CURRENT_SEASON`] || new Date().getFullYear().toString(),
-      },
-      rateLimits: {
-        requests: parseInt(process.env[`${sportUpper}_RATE_LIMIT`] || '100'),
-        interval: process.env[`${sportUpper}_RATE_INTERVAL`] || '1m',
-      },
-      updateFrequency: process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '5m',
-    }
-  }
-
-  private async loadDynamicConfigs(): Promise<void> {
-    // Load additional sports from database (additive to fallback configs)
-    if (typeof window !== 'undefined') {
-      return
-    }
+  private async initializeFromDatabase(): Promise<void> {
     try {
-      // Use the production Supabase client instead of creating a new one
-      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
+      // First ensure the dynamic sport config service is initialized
+      await dynamicSportConfigService.initialize()
 
-      const { data: sports, error } = await productionSupabaseClient.supabase
-        .from('sports')
-        .select('name, display_name, is_active')
-        .eq('is_active', true)
-        .order('name')
+      // Load all sports from database using dynamic sport config service
+      const sports = dynamicSportConfigService.getAllSports()
 
-      if (error) {
-        console.warn('Failed to load sports from database:', error)
-        return
+      if (!sports || sports.length === 0) {
+        throw new Error('No sports found in database - migration may be required')
       }
 
-      const supportedSports = sports?.map((sport: any) => sport.name) || []
+      // Convert database sport configs to legacy format for compatibility
+      for (const sport of sports) {
+        const config = await this.convertDatabaseConfigToLegacy(sport)
+        this.configs.set(sport.name, config)
+      }
 
-      // Load configuration for each sport dynamically (additive)
-      supportedSports.forEach((sport: SupportedSport) => {
-        // Only add if not already in configs (from fallbacks)
-        if (!this.configs.has(sport)) {
-          this.configs.set(sport, this.createDefaultConfig(sport))
-        }
-      })
+      this.initialized = true
+      console.log(`Loaded ${sports.length} sports from database`)
     } catch (error) {
-      console.warn('Failed to load sports configuration from database:', error)
-      // Fallback configs are already loaded, so this is non-critical
+      console.error('Failed to initialize sport configurations from database:', error)
+      // Don't throw error - allow app to continue with degraded functionality
+      this.initialized = false
     }
   }
 
-  getSportConfig(sport: SupportedSport): SportConfig | undefined {
+  private async convertDatabaseConfigToLegacy(sport: any): Promise<SportConfig> {
+    const leagues = await dynamicSportConfigService.getLeaguesForSport(sport.name)
+    
+    return {
+      name: sport.name,
+      displayName: sport.display_name,
+      icon: sport.icon_url || '🏆',
+      color: sport.color_primary || '#6B7280',
+      isActive: sport.is_active,
+      dataSource: 'database',
+      playerStatsTable: 'player_stats',
+      leagues: leagues.map(l => l.name),
+      positions: [], // Will be loaded dynamically per sport
+      scoringFields: ['points'], // Will be loaded dynamically per sport
+      bettingMarkets: ['h2h', 'spread', 'totals'],
+      seasonConfig: {
+        startMonth: sport.season_config?.startMonth || 9,
+        endMonth: sport.season_config?.endMonth || 5,
+        currentSeason: sport.current_season || new Date().getFullYear().toString(),
+      },
+      rateLimits: {
+        requests: sport.rate_limits?.requestsPerMinute || 60,
+        interval: '1m',
+      },
+      updateFrequency: '5m',
+    }
+  }
+
+  /**
+   * Public method to initialize sport configurations
+   * Can be called from both client and server
+   */
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      return
+    }
+
+    if (this.initializationPromise) {
+      return this.initializationPromise
+    }
+
+    this.initializationPromise = this.initializeFromDatabase()
+    return this.initializationPromise
+  }
+
+  /**
+   * Get sport configuration with automatic initialization
+   */
+  async getSportConfig(sport: SupportedSport): Promise<SportConfig | undefined> {
+    if (!this.initialized) {
+      await this.initialize()
+    }
     return this.configs.get(sport)
   }
 
-  getAllSportConfigs(): SportConfig[] {
+  async getAllSportConfigs(): Promise<SportConfig[]> {
+    if (!this.initialized) {
+      await this.initialize()
+    }
     return Array.from(this.configs.values())
   }
 
-  getActiveSports(): SupportedSport[] {
+  async getActiveSports(): Promise<SupportedSport[]> {
+    if (!this.initialized) {
+      await this.initialize()
+    }
     return Array.from(this.configs.values())
       .filter(config => config.isActive)
       .map(config => config.name)
   }
 
-  getSportDisplayName(sport: SupportedSport): string {
-    const config = this.configs.get(sport)
+  async getSportDisplayName(sport: SupportedSport): Promise<string> {
+    const config = await this.getSportConfig(sport)
     return config?.displayName || sport
   }
 
-  getSportIcon(sport: SupportedSport): string {
-    const config = this.configs.get(sport)
+  async getSportIcon(sport: SupportedSport): Promise<string> {
+    const config = await this.getSportConfig(sport)
     return config?.icon || '🏆'
   }
 
-  getSportColor(sport: SupportedSport): string {
-    const config = this.configs.get(sport)
+  async getSportColor(sport: SupportedSport): Promise<string> {
+    const config = await this.getSportConfig(sport)
     return config?.color || '#000000'
   }
 
-  getCurrentSeason(sport: SupportedSport): string {
-    const config = this.configs.get(sport)
+  async getCurrentSeason(sport: SupportedSport): Promise<string> {
+    const config = await this.getSportConfig(sport)
     return config?.seasonConfig.currentSeason || new Date().getFullYear().toString()
   }
 
-  isSportActive(sport: SupportedSport): boolean {
-    const config = this.configs.get(sport)
+  async isSportActive(sport: SupportedSport): Promise<boolean> {
+    const config = await this.getSportConfig(sport)
     return config?.isActive || false
   }
 
-  // Additional methods needed by components
-  async initialize(): Promise<void> {
-    // Initialize any async operations
-  }
-
   initializeSync(): void {
-    // Initialize sync operations
+    // Synchronous initialization - just check if ready
+    if (!this.initialized) {
+      console.warn('Sport config not initialized yet - call initialize() first')
+    }
   }
 
-  getSupportedSports(): SupportedSport[] {
+  async getSupportedSports(): Promise<SupportedSport[]> {
     return this.getActiveSports()
   }
 
-  async getSportConfigAsync(sport: SupportedSport): Promise<SportConfig | undefined> {
-    return this.getSportConfig(sport)
-  }
-
-  getPositionsForSport(sport: SupportedSport): string[] {
-    const config = this.getSportConfig(sport)
+  async getPositionsForSport(sport: SupportedSport): Promise<string[]> {
+    const config = await this.getSportConfig(sport)
     return config?.positions || []
   }
 
-  getBettingMarkets(sport: SupportedSport): string[] {
-    const config = this.getSportConfig(sport)
+  async getBettingMarkets(sport: SupportedSport): Promise<string[]> {
+    const config = await this.getSportConfig(sport)
     return config?.bettingMarkets || []
   }
 
   async getAllSports(): Promise<SupportedSport[]> {
+    await this.initialize()
     return this.getActiveSports()
   }
 
   getAllSportsSync(): SupportedSport[] {
-    return this.getActiveSports()
+    if (!this.initialized) {
+      console.warn('Sport config not initialized yet, returning empty array')
+      return []
+    }
+    return Array.from(this.configs.values())
+      .filter(config => config.isActive)
+      .map(config => config.name)
   }
 
   async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
-    const config = this.getSportConfig(sport)
+    const config = await this.getSportConfig(sport)
     return config?.leagues || []
   }
 
@@ -218,6 +221,7 @@ class SportConfigManagerImpl {
   }
 
   async isSportSupported(sport: SupportedSport): Promise<boolean> {
+    await this.initialize()
     return this.isSportActive(sport)
   }
 }
@@ -234,23 +238,23 @@ export class SportConfigManagerProxy {
     sportConfigManager.initializeSync()
   }
 
-  static getSupportedSports(): SupportedSport[] {
+  static async getSupportedSports(): Promise<SupportedSport[]> {
     return sportConfigManager.getSupportedSports()
   }
 
-  static getSportConfig(sport: SupportedSport) {
+  static async getSportConfig(sport: SupportedSport) {
     return sportConfigManager.getSportConfig(sport)
   }
 
   static async getSportConfigAsync(sport: SupportedSport) {
-    return sportConfigManager.getSportConfigAsync(sport)
+    return sportConfigManager.getSportConfig(sport)
   }
 
-  static getPositionsForSport(sport: SupportedSport): string[] {
+  static async getPositionsForSport(sport: SupportedSport): Promise<string[]> {
     return sportConfigManager.getPositionsForSport(sport)
   }
 
-  static getBettingMarkets(sport: SupportedSport): string[] {
+  static async getBettingMarkets(sport: SupportedSport): Promise<string[]> {
     return sportConfigManager.getBettingMarkets(sport)
   }
 
@@ -274,7 +278,7 @@ export class SportConfigManagerProxy {
     return sportConfigManager.isSportSupported(sport)
   }
 
-  static getCurrentSeason(sport: SupportedSport): string {
+  static async getCurrentSeason(sport: SupportedSport): Promise<string> {
     return sportConfigManager.getCurrentSeason(sport)
   }
 }

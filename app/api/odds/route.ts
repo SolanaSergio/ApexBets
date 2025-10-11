@@ -18,9 +18,8 @@ export async function GET(request: NextRequest) {
     const gameId = searchParams.get('gameId')
     const source = searchParams.get('source')
     const limit = Number.parseInt(searchParams.get('limit') || '100')
-    const liveOnly = searchParams.get('liveOnly') === 'true'
 
-    const cacheKey = `odds-${sport}-${gameId}-${source}-${limit}-${liveOnly}`
+    const cacheKey = `odds-${sport}-${gameId}-${source}-${limit}`
     const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -32,7 +31,6 @@ export async function GET(request: NextRequest) {
       ...(gameId && { gameId }),
       ...(source && { source }),
       limit,
-      liveOnly,
     })
 
     structuredLogger.info('Odds API request processed', {

@@ -16,7 +16,7 @@ interface GameCardProps {
 }
 
 export function GameCard({ game, variant = 'default' }: GameCardProps) {
-  const isLive = game.status === 'in_progress'
+  const isLive = game.status === 'live'
   const isCompleted = game.status === 'completed'
   const gameDate = new Date(game.game_date)
 

@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { edgeFunctionClient } from '@/lib/services/edge-function-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 // Cache is handled at the client/service layer for database-first endpoints
@@ -39,25 +39,7 @@ export async function GET(request: NextRequest) {
       limit,
     })
 
-    // Check if Supabase client is available
-    if (!productionSupabaseClient.isConnected()) {
-      structuredLogger.error('Supabase client not available', {
-        service: 'standings-api',
-        requestId,
-        step: 'client-check',
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Database service unavailable',
-          details: 'Supabase client not initialized',
-          requestId,
-        },
-        { status: 503 }
-      )
-    }
-
-    structuredLogger.info('Calling productionSupabaseClient.getStandings', {
+    structuredLogger.info('Calling Edge Function query-standings', {
       service: 'standings-api',
       requestId,
       sport,
@@ -65,18 +47,39 @@ export async function GET(request: NextRequest) {
       season,
     })
 
-    // Use production Supabase client directly - no external API calls
-    const standings = await productionSupabaseClient.getStandings(
+    // Use Edge Function instead of direct Supabase client
+    const edgeResponse = await edgeFunctionClient.queryStandings({
       sport,
-      league || undefined,
-      season || undefined
-    )
+      ...(league && { league }),
+      ...(season && { season }),
+      limit: limit,
+      offset: 0,
+    })
+
+    if (!edgeResponse.success) {
+      structuredLogger.error('Edge Function query-standings failed', {
+        service: 'standings-api',
+        requestId,
+        error: edgeResponse.error,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database service unavailable',
+          details: edgeResponse.error,
+          requestId,
+        },
+        { status: 503 }
+      )
+    }
+
+    const standings = edgeResponse.data
 
     const result = {
       success: true,
       data: standings.slice(0, limit),
       meta: {
-        source: 'database',
+        source: 'edge-function',
         count: standings.length,
         sport,
         league: league || 'all',

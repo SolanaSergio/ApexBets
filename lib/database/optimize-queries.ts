@@ -39,6 +39,8 @@ export class DatabaseOptimizer {
           id,
           home_team_id,
           away_team_id,
+          home_team_name,
+          away_team_name,
           game_date,
           season,
           overtime_periods,
@@ -46,17 +48,15 @@ export class DatabaseOptimizer {
           away_score,
           status,
           venue,
-          league_id,
+          league_name,
           sport,
           attendance,
           game_type,
           created_at,
-          updated_at,
-          home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
-          away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
+          last_updated
         `
         )
-        .in('status', ['live', 'in_progress', 'in progress'])
+        .eq('status', 'live')
         .order('game_date', { ascending: true })
         .limit(limit)
 

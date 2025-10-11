@@ -3,7 +3,7 @@
  * Loads configuration from database instead of hardcoded values
  */
 
-import { databaseService } from '@/lib/services/database-service'
+import { createClient } from '@supabase/supabase-js'
 
 export interface DynamicCacheConfig {
   games: number
@@ -43,6 +43,13 @@ class DynamicClientConfigManager {
     return DynamicClientConfigManager.instance
   }
 
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+
   /**
    * Get dynamic configuration, loading from database if needed
    */
@@ -60,23 +67,19 @@ class DynamicClientConfigManager {
 
     try {
       // Load configuration from database
-      const result = await databaseService.executeSQL(`
-        SELECT 
-          name,
-          refresh_intervals,
-          rate_limits,
-          update_frequency
-        FROM sports 
-        WHERE is_active = true
-        ORDER BY name
-      `)
+      const supabase = this.getSupabaseClient()
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('name, refresh_intervals, rate_limits, update_frequency')
+        .eq('is_active', true)
+        .order('name')
 
-      if (!result.success || !result.data) {
+      if (sportsError || !sportsData) {
         throw new Error('Failed to load sports configuration from database')
       }
 
       // Calculate dynamic intervals based on sports configuration
-      const sports = result.data as any[]
+      const sports = sportsData as any[]
       const config = this.calculateDynamicConfig(sports)
 
       this.config = config
@@ -176,21 +179,24 @@ class DynamicClientConfigManager {
     dataType: 'games' | 'teams' | 'players'
   ): Promise<number> {
     try {
-      const result = await databaseService.executeSQL(
-        `
-        SELECT refresh_intervals
-        FROM sports 
-        WHERE name = $1 AND is_active = true
-        LIMIT 1
-      `,
-        [sport]
-      )
+      const supabase = this.getSupabaseClient()
+      const { data: sportData, error: sportError } = await supabase
+        .from('sports')
+        .select('refresh_intervals')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
 
-      if (result.success && result.data && result.data.length > 0) {
-        const intervals = result.data[0].refresh_intervals
-        if (intervals && intervals[dataType]) {
-          return intervals[dataType] * 1000 // Convert to milliseconds
-        }
+      if (sportError || !sportData) {
+        // Return default if not found
+        const defaults = { games: 120, teams: 300, players: 300 }
+        return defaults[dataType] * 1000
+      }
+
+      const intervals = sportData.refresh_intervals
+      if (intervals && intervals[dataType]) {
+        return intervals[dataType] * 1000 // Convert to milliseconds
       }
 
       // Return default if not found

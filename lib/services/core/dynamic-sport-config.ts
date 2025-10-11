@@ -1,8 +1,4 @@
-/**
- * DYNAMIC SPORT CONFIGURATION SERVICE
- * Replaces all hardcoded sport-specific logic with dynamic database-driven configuration
- * Handles any sport without hardcoding team names, dates, or leagues
- */
+import { createClient } from '@supabase/supabase-js'
 
 export interface DynamicSportConfig {
   id: string
@@ -68,29 +64,22 @@ export class DynamicSportConfigService {
       // Load from database; no hardcoded defaults
       this.configs.clear()
 
-      const { productionSupabaseClient } = await import('../../supabase/production-client')
-      const sql = `
-        SELECT id,
-               name,
-               display_name,
-               icon_url,
-               color_primary,
-               color_secondary,
-               is_active,
-               data_source,
-               api_key,
-               player_stats_table,
-               positions,
-               scoring_fields,
-               betting_markets,
-               season_config,
-               rate_limits,
-               update_frequency
-        FROM sports
-        WHERE is_active = true
-        ORDER BY display_name
-      `
-      const rows = await productionSupabaseClient.executeSQL(sql)
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('id, name, display_name, icon_url, color_primary, color_secondary, is_active, data_source, api_key, player_stats_table, positions, scoring_fields, betting_markets, season_config, rate_limits, update_frequency')
+        .eq('is_active', true)
+        .order('display_name')
+
+      if (sportsError) {
+        throw new Error(`Failed to load sports configuration: ${sportsError.message}`)
+      }
+
+      const rows = { success: true, data: sportsData || [] }
 
       for (const row of rows.success ? rows.data : []) {
         const cfg: DynamicSportConfig = {

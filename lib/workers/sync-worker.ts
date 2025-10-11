@@ -1,43 +1,56 @@
 /**
  * SYNC WORKER
- * Background worker for automated data synchronization
- * Runs independently of the main application
+ * Event-driven worker for data synchronization
+ * Vercel-compatible: No background intervals or cron jobs
  */
-
-// Removed data-sync-service import - service was deleted as unnecessary
 
 class SyncWorker {
   private isRunning: boolean = false
-  private workerInterval: NodeJS.Timeout | null = null
 
   constructor() {
-    // Auto-start the worker
-    this.start()
+    // Initialize worker but don't auto-start background processes
+    this.initialize()
   }
 
   /**
-   * Start the sync worker
+   * Initialize the sync worker
    */
-  start(): void {
-    if (this.isRunning) {
-      console.log('Sync worker is already running')
-      return
-    }
-
-    console.log('Starting sync worker...')
+  private initialize(): void {
+    console.log('Initializing sync worker...')
     this.isRunning = true
-
-    // Start the data sync service
-    // Data sync service was removed
-
-    // Set up health check interval
-    this.workerInterval = setInterval(() => {
-      this.healthCheck()
-    }, 60000) // Check every minute
 
     // Handle graceful shutdown
     process.on('SIGINT', () => this.shutdown())
     process.on('SIGTERM', () => this.shutdown())
+  }
+
+  /**
+   * Start manual sync process
+   */
+  async startSync(sport?: string): Promise<void> {
+    if (!this.isRunning) {
+      console.log('Sync worker is not initialized')
+      return
+    }
+
+    console.log('Starting manual sync process...', { sport })
+    
+    try {
+      // Trigger sync via API endpoint instead of background process
+      const response = await fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport, force: true })
+      })
+      
+      if (response.ok) {
+        console.log('Sync process completed successfully')
+      } else {
+        console.error('Sync process failed:', await response.text())
+      }
+    } catch (error) {
+      console.error('Sync process error:', error)
+    }
   }
 
   /**
@@ -51,36 +64,28 @@ class SyncWorker {
 
     console.log('Stopping sync worker...')
     this.isRunning = false
-
-    // Stop the data sync service
-    // Data sync service was removed
-
-    // Clear the health check interval
-    if (this.workerInterval) {
-      clearInterval(this.workerInterval)
-      this.workerInterval = null
-    }
   }
 
   /**
    * Perform health check
    */
-  private healthCheck(): void {
-    const isServiceRunning = false
-
+  async healthCheck(): Promise<{
+    isRunning: boolean
+    lastSync: string
+    stats: any
+  }> {
     console.log('Sync worker health check:', {
       isRunning: this.isRunning,
-      serviceRunning: isServiceRunning,
-      lastSync: 'N/A',
+      lastSync: 'Manual sync only',
       totalSynced: 0,
       errors: 0,
       successRate: 0,
     })
 
-    // If service is not running but worker is, restart it
-    if (this.isRunning && !isServiceRunning) {
-      console.log('Data sync service stopped unexpectedly, restarting...')
-      // Data sync service was removed
+    return {
+      isRunning: this.isRunning,
+      lastSync: 'Manual sync only',
+      stats: { message: 'Event-driven sync worker' },
     }
   }
 
@@ -104,7 +109,7 @@ class SyncWorker {
     return {
       isRunning: this.isRunning,
       serviceRunning: false,
-      stats: { message: 'Data sync service was removed' },
+      stats: { message: 'Event-driven sync worker' },
     }
   }
 }
@@ -112,7 +117,4 @@ class SyncWorker {
 // Create and export singleton instance
 export const syncWorker = new SyncWorker()
 
-// Auto-start in production
-if (process.env.NODE_ENV === 'production') {
-  syncWorker.start()
-}
+// Note: No auto-start in production - Vercel doesn't support background processes

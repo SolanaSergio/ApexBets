@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { edgeFunctionClient } from '@/lib/services/edge-function-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 // Explicitly set runtime to suppress warnings
@@ -39,40 +39,40 @@ export async function GET(request: NextRequest) {
       limit,
     })
 
-    // Check if Supabase client is available
-    if (!productionSupabaseClient.isConnected()) {
-      structuredLogger.error('Supabase client not available', {
+    structuredLogger.info('Calling Edge Function query-predictions', {
+      service: 'predictions-api',
+      requestId,
+      sport,
+      gameId,
+      limit,
+    })
+
+    // Use Edge Function instead of direct Supabase client
+    const edgeResponse = await edgeFunctionClient.queryPredictions({
+      sport,
+      ...(gameId && { gameId }),
+      limit: limit,
+      offset: 0,
+    })
+
+    if (!edgeResponse.success) {
+      structuredLogger.error('Edge Function query-predictions failed', {
         service: 'predictions-api',
         requestId,
-        step: 'client-check',
+        error: edgeResponse.error,
       })
       return NextResponse.json(
         {
           success: false,
           error: 'Database service unavailable',
-          details: 'Supabase client not initialized',
+          details: edgeResponse.error,
           requestId,
         },
         { status: 503 }
       )
     }
 
-    structuredLogger.info('Calling productionSupabaseClient.getPredictions', {
-      service: 'predictions-api',
-      requestId,
-      gameId,
-      predictionType,
-      modelName,
-      limit,
-    })
-
-    // Use production Supabase client directly - no external API calls
-    const predictions = await productionSupabaseClient.getPredictions(
-      gameId || undefined,
-      predictionType || undefined,
-      modelName || undefined,
-      limit
-    )
+    const predictions = edgeResponse.data
 
     // Filter by sport if specified
     const filteredPredictions =

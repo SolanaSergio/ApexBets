@@ -118,7 +118,7 @@ export function GamesList({ sport, className = '' }: GamesListProps) {
 
   // Memoize games by status to improve performance
   const liveGames = useMemo(
-    () => filteredGames.filter(game => game.status === 'in_progress'),
+    () => filteredGames.filter(game => game.status === 'live'),
     [filteredGames]
   )
 
@@ -300,8 +300,7 @@ function GameCard({ game, sport }: GameCardProps) {
       return false
     }
   })()
-  const isFinished =
-    game.status === 'completed' || game.status === 'finished' || game.status === 'final'
+  const isFinished = game.status === 'completed'
 
   const getStatusBadge = () => {
     if (isLive) {

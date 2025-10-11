@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useRealTimeData } from '@/components/data/real-time-provider'
-import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
+import { useSportConfigs } from '@/hooks/use-sport-config'
+import { SupportedSport } from '@/lib/services/core/sport-config'
 import { Users, ChevronRight, Activity, ShieldCheck } from 'lucide-react'
 
 interface SportData {
@@ -19,15 +20,18 @@ interface SportData {
 
 export function SportsGrid() {
   const { supportedSports, data } = useRealTimeData()
+  const { configs: sportConfigs, loading } = useSportConfigs()
 
   const sportsData: SportData[] = useMemo(() => {
+    if (loading) return []
+    
     return supportedSports
       .map(sport => {
-        const config = SportConfigManager.getSportConfig(sport)
+        const config = sportConfigs.find(c => c.name === sport)
         if (!config) return null
 
         const sportGames = data.games.filter(game => game.sport === sport)
-        const liveGames = sportGames.filter(game => game.status === 'in_progress')
+        const liveGames = sportGames.filter(game => game.status === 'live')
         const sportTeams = new Set(sportGames.flatMap(g => [g.home_team_id, g.away_team_id])).size
 
         return {
@@ -40,7 +44,7 @@ export function SportsGrid() {
         }
       })
       .filter(Boolean) as SportData[]
-  }, [supportedSports, data.games])
+  }, [supportedSports, data.games, sportConfigs, loading])
 
   const totalLiveGames = sportsData.reduce((sum, sport) => sum + sport.liveGames, 0)
 

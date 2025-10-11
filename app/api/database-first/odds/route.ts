@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { edgeFunctionClient } from '@/lib/services/edge-function-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
 // Explicitly set runtime to suppress warnings
@@ -39,25 +39,7 @@ export async function GET(request: NextRequest) {
       liveOnly,
     })
 
-    // Check if Supabase client is available
-    if (!productionSupabaseClient.isConnected()) {
-      structuredLogger.error('Supabase client not available', {
-        service: 'odds-api',
-        requestId,
-        step: 'client-check',
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Database service unavailable',
-          details: 'Supabase client not initialized',
-          requestId,
-        },
-        { status: 503 }
-      )
-    }
-
-    structuredLogger.info('Calling productionSupabaseClient.getOdds', {
+    structuredLogger.info('Calling Edge Function query-odds', {
       service: 'odds-api',
       requestId,
       sport,
@@ -65,14 +47,38 @@ export async function GET(request: NextRequest) {
       limit,
     })
 
-    // Use production Supabase client directly - no external API calls
-    const odds = await productionSupabaseClient.getOdds(sport, gameId || undefined, limit)
+    // Use Edge Function instead of direct Supabase client
+    const edgeResponse = await edgeFunctionClient.queryOdds({
+      sport,
+      ...(gameId && { gameId }),
+      limit: limit,
+      offset: 0,
+    })
+
+    if (!edgeResponse.success) {
+      structuredLogger.error('Edge Function query-odds failed', {
+        service: 'odds-api',
+        requestId,
+        error: edgeResponse.error,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database service unavailable',
+          details: edgeResponse.error,
+          requestId,
+        },
+        { status: 503 }
+      )
+    }
+
+    const odds = edgeResponse.data
 
     const result = {
       success: true,
       data: odds,
       meta: {
-        source: source || 'database',
+        source: source || 'edge-function',
         count: odds.length,
         sport,
         gameId: gameId || 'all',

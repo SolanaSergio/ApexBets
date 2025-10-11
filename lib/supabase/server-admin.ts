@@ -16,9 +16,9 @@ import { envValidator } from '../config/env-validator'
 export function createAdminClient() {
   console.warn('DEPRECATED: createAdminClient() is deprecated. Use databaseService instead.')
 
-  const config = envValidator.getConfig()
+  const config = envValidator.validateServerSide()
 
-  return createClient(config.NEXT_PUBLIC_SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY, {
+  return createClient(config.NEXT_PUBLIC_SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY!, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -35,7 +35,7 @@ export function createAdminClient() {
 export function createServerClient() {
   console.warn('DEPRECATED: createServerClient() is deprecated. Use databaseService instead.')
 
-  const config = envValidator.getConfig()
+  const config = envValidator.validateServerSide()
 
   return createClient(config.NEXT_PUBLIC_SUPABASE_URL, config.NEXT_PUBLIC_SUPABASE_ANON_KEY, {
     auth: {

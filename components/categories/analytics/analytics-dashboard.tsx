@@ -61,13 +61,13 @@ export default function AnalyticsDashboard({
       const sports = SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
       // Set default sport if none selected
-      if (!selectedSport && sports.length > 0) {
+      if (!propSelectedSport && sports.length > 0) {
         setSelectedSport(sports[0])
       }
     } catch (error) {
       console.error('Error loading supported sports:', error)
     }
-  }, [selectedSport])
+  }, [propSelectedSport])
 
   const loadAvailableTeams = useCallback(async () => {
     if (!selectedSport) return

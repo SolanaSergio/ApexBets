@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { edgeFunctionClient } from '@/lib/services/edge-function-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get('sport') || 'all'
-    const teamId = searchParams.get('team_id')
+    const teamId = searchParams.get('team_id') || undefined
     const limitRaw = Number.parseInt(searchParams.get('limit') || '100')
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 100))
 
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached)
     }
 
-    structuredLogger.info('Calling productionSupabaseClient.getPlayers', {
+    structuredLogger.info('Calling Edge Function query-players', {
       service: 'players-api',
       requestId,
       sport,
@@ -62,14 +62,37 @@ export async function GET(request: NextRequest) {
       limit,
     })
 
-    // Use production Supabase client directly
-    const players = await productionSupabaseClient.getPlayers(sport, teamId || undefined, limit)
+    const edgeResponse = await edgeFunctionClient.queryPlayers({
+      sport,
+      ...(teamId && { teamId }),
+      limit: limit,
+      offset: 0,
+    })
+
+    if (!edgeResponse.success) {
+      structuredLogger.error('Edge Function query-players failed', {
+        service: 'players-api',
+        requestId,
+        error: edgeResponse.error,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database service unavailable',
+          details: edgeResponse.error,
+          requestId,
+        },
+        { status: 503 }
+      )
+    }
+
+    const players = edgeResponse.data
 
     const result = {
       success: true,
       data: players,
       meta: {
-        source: 'database',
+        source: 'edge-function',
         count: players.length,
         sport,
         teamId: teamId || 'all',

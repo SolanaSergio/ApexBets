@@ -4,7 +4,7 @@
  */
 
 import { structuredLogger } from './structured-logger'
-import { productionSupabaseClient } from '../supabase/production-client'
+import { createClient } from '@supabase/supabase-js'
 
 export interface SportConfiguration {
   id: string
@@ -63,72 +63,56 @@ export class DynamicSportsManager {
     }
   }
 
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+
   private async loadSportsConfiguration(): Promise<void> {
     try {
       // Load sports from database
-      const sportsResult = await productionSupabaseClient.executeSQL(`
-        SELECT 
-          s.id,
-          s.name,
-          s.display_name,
-          s.is_active,
-          s.data_types,
-          s.refresh_intervals,
-          s.api_providers,
-          s.season_config,
-          s.current_season
-        FROM sports s
-        WHERE s.is_active = true
-        ORDER BY s.display_name
-      `)
+      const supabase = this.getSupabaseClient()
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_name')
 
-      if (!sportsResult.success || !sportsResult.data) {
-        throw new Error('Failed to load sports configuration from database')
+      if (sportsError) {
+        throw new Error(`Failed to load sports: ${sportsError.message}`)
+      }
+
+      if (!sportsData) {
+        throw new Error('No sports data returned from database')
       }
 
       // Load leagues for each sport
-      for (const sportData of sportsResult.data) {
-        const leaguesResult = await productionSupabaseClient.executeSQL(
-          `
-          SELECT 
-            l.id,
-            l.name,
-            l.display_name,
-            l.sport,
-            l.is_active,
-            l.country,
-            l.season,
-            l.abbreviation,
-            l.level
-          FROM leagues l
-          WHERE l.sport = $1 AND l.is_active = true
-          ORDER BY l.display_name
-        `,
-          [sportData.name]
-        )
+      for (const sportData of sportsData) {
+        const { data: leagues, error: leaguesError } = await supabase
+          .from('leagues')
+          .select('*')
+          .eq('sport', sportData.name)
+          .eq('is_active', true)
+          .order('display_name')
 
-        const leagues: LeagueConfiguration[] =
-          leaguesResult.success && leaguesResult.data
-            ? leaguesResult.data.map((league: any) => ({
-                id: league.id,
-                name: league.name,
-                displayName: league.display_name,
-                sport: league.sport,
-                isActive: league.is_active,
-                country: league.country,
-                season: league.season,
-                abbreviation: league.abbreviation,
-                level: league.level,
-                apiMapping: {}, // Default empty mapping since api_mapping column doesn't exist
-              }))
-            : []
+        if (leaguesError) {
+          structuredLogger.warn('Failed to load leagues for sport', {
+            sport: sportData.name,
+            error: leaguesError.message,
+          })
+          continue
+        }
+
+        const leaguesConfig: LeagueConfiguration[] = leagues || []
 
         const sportConfig: SportConfiguration = {
           id: sportData.id,
           name: sportData.name,
           displayName: sportData.display_name,
           isActive: sportData.is_active,
-          leagues,
+          leagues: leaguesConfig,
           dataTypes: sportData.data_types || ['games', 'teams', 'players', 'standings'],
           refreshIntervals: sportData.refresh_intervals || {
             games: 15,
@@ -243,48 +227,46 @@ export class DynamicSportsManager {
   async addSport(sportConfig: Omit<SportConfiguration, 'id'>): Promise<void> {
     try {
       // Add sport to database
-      const result = await productionSupabaseClient.executeSQL(
-        `
-        INSERT INTO sports (name, display_name, is_active, data_types, refresh_intervals, api_providers, default_league, season_format, current_season)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-        RETURNING id
-      `,
-        [
-          sportConfig.name,
-          sportConfig.displayName,
-          sportConfig.isActive,
-          JSON.stringify(sportConfig.dataTypes),
-          JSON.stringify(sportConfig.refreshIntervals),
-          JSON.stringify(sportConfig.apiProviders),
-          sportConfig.defaultLeague,
-          sportConfig.seasonFormat,
-          sportConfig.currentSeason,
-        ]
-      )
+      const supabase = this.getSupabaseClient()
+      const { data, error } = await supabase
+        .from('sports')
+        .insert({
+          name: sportConfig.name,
+          display_name: sportConfig.displayName,
+          is_active: sportConfig.isActive,
+          data_types: sportConfig.dataTypes,
+          refresh_intervals: sportConfig.refreshIntervals,
+          api_providers: sportConfig.apiProviders,
+          default_league: sportConfig.defaultLeague,
+          season_format: sportConfig.seasonFormat,
+          current_season: sportConfig.currentSeason,
+        })
+        .select('id')
+        .single()
 
-      if (!result.success || !result.data || result.data.length === 0) {
-        throw new Error('Failed to add sport to database')
+      if (error) {
+        throw new Error(`Failed to add sport: ${error.message}`)
       }
 
-      const sportId = result.data[0].id
+      const sportId = data.id
 
       // Add leagues
       for (const league of sportConfig.leagues) {
-        await productionSupabaseClient.executeSQL(
-          `
-          INSERT INTO leagues (name, display_name, sport, is_active, country, season, api_mapping)
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `,
-          [
-            league.name,
-            league.displayName,
-            sportConfig.name,
-            league.isActive,
-            league.country,
-            league.season,
-            JSON.stringify(league.apiMapping),
-          ]
-        )
+        const { error: leagueError } = await supabase
+          .from('leagues')
+          .insert({
+            name: league.name,
+            display_name: league.displayName,
+            sport: sportConfig.name,
+            is_active: league.isActive,
+            country: league.country,
+            season: league.season,
+            api_mapping: league.apiMapping,
+          })
+
+        if (leagueError) {
+          throw new Error(`Failed to add league ${league.name}: ${leagueError.message}`)
+        }
       }
 
       // Refresh configuration
@@ -313,25 +295,24 @@ export class DynamicSportsManager {
 
       const updatedConfig = { ...config, ...updates }
 
-      await productionSupabaseClient.executeSQL(
-        `
-        UPDATE sports 
-        SET display_name = $1, is_active = $2, data_types = $3, refresh_intervals = $4, 
-            api_providers = $5, default_league = $6, season_format = $7, current_season = $8
-        WHERE name = $9
-      `,
-        [
-          updatedConfig.displayName,
-          updatedConfig.isActive,
-          JSON.stringify(updatedConfig.dataTypes),
-          JSON.stringify(updatedConfig.refreshIntervals),
-          JSON.stringify(updatedConfig.apiProviders),
-          updatedConfig.defaultLeague,
-          updatedConfig.seasonFormat,
-          updatedConfig.currentSeason,
-          sport,
-        ]
-      )
+      const supabase = this.getSupabaseClient()
+      const { error } = await supabase
+        .from('sports')
+        .update({
+          display_name: updatedConfig.displayName,
+          is_active: updatedConfig.isActive,
+          data_types: updatedConfig.dataTypes,
+          refresh_intervals: updatedConfig.refreshIntervals,
+          api_providers: updatedConfig.apiProviders,
+          default_league: updatedConfig.defaultLeague,
+          season_format: updatedConfig.seasonFormat,
+          current_season: updatedConfig.currentSeason,
+        })
+        .eq('name', sport)
+
+      if (error) {
+        throw new Error(`Failed to update sport: ${error.message}`)
+      }
 
       // Refresh configuration
       await this.refreshConfiguration()
@@ -352,19 +333,25 @@ export class DynamicSportsManager {
   async removeSport(sport: string): Promise<void> {
     try {
       // Deactivate sport instead of deleting
-      await productionSupabaseClient.executeSQL(
-        `
-        UPDATE sports SET is_active = false WHERE name = $1
-      `,
-        [sport]
-      )
+      const supabase = this.getSupabaseClient()
+      
+      const { error: sportError } = await supabase
+        .from('sports')
+        .update({ is_active: false })
+        .eq('name', sport)
 
-      await productionSupabaseClient.executeSQL(
-        `
-        UPDATE leagues SET is_active = false WHERE sport = $1
-      `,
-        [sport]
-      )
+      if (sportError) {
+        throw new Error(`Failed to deactivate sport: ${sportError.message}`)
+      }
+
+      const { error: leagueError } = await supabase
+        .from('leagues')
+        .update({ is_active: false })
+        .eq('sport', sport)
+
+      if (leagueError) {
+        throw new Error(`Failed to deactivate leagues: ${leagueError.message}`)
+      }
 
       // Refresh configuration
       await this.refreshConfiguration()

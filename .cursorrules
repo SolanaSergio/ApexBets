@@ -46,13 +46,12 @@
 - ALWAYS check for existing similar functionality before implementing
 
 ## Database Rules
-- ALWAYS use Supabase MCP tools for database operations
-- NEVER use direct Supabase client calls - use MCP integration
+- ALWAYS use proper Supabase client for database operations
 - ALWAYS use proper SQL validation
 - ALWAYS handle database errors
 - ALWAYS use transactions for multi-step operations
 - NEVER use raw SQL without validation
-- ALWAYS use MCP tools for: list_tables, execute_sql, apply_migration, etc.
+- ALWAYS use proper Supabase client patterns for database operations
 
 ## Testing Rules
 - ALWAYS test with real data
@@ -73,11 +72,10 @@
 - NEVER use hardcoded mappings for team names, colors, or IDs
 - ALWAYS make all services, utilities, and components sport-agnostic
 
-## Supabase MCP Integration Rules
-- ALWAYS use Supabase MCP tools instead of direct client calls
-- ALWAYS use mcp_supabase_list_projects to discover project ID
-- ALWAYS use mcp_supabase_execute_sql for database queries
-- ALWAYS use mcp_supabase_apply_migration for schema changes
-- ALWAYS use mcp_supabase_list_tables to understand database structure
-- ALWAYS use mcp_supabase_get_logs for debugging
-- NEVER bypass MCP tools for Supabase operations
+## Supabase Integration Rules
+- ALWAYS use proper Supabase client patterns for database operations
+- ALWAYS use environment variables for Supabase configuration
+- ALWAYS handle Supabase errors gracefully
+- ALWAYS use proper authentication patterns
+- ALWAYS validate data before database operations
+- NEVER expose sensitive Supabase credentials

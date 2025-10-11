@@ -37,22 +37,27 @@ export class TennisService extends SportSpecificService {
 
   async getPlayers(params: any = {}): Promise<PlayerData[]> {
     try {
-      // Fetch from database using production client
-      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
-      const players = await productionSupabaseClient.getPlayers(
-        'tennis',
-        params.teamId,
-        params.limit || 100
-      )
-
-      return players.map((player: any) => ({
-        id: player.id,
-        name: player.name,
-        position: player.position,
-        team_id: player.team_id,
+      // Fetch from database using Edge Functions
+      const { edgeFunctionClient } = await import('@/lib/services/edge-function-client')
+      const result = await edgeFunctionClient.queryPlayers({
         sport: 'tennis',
-        ...player,
-      }))
+        teamId: params.teamId,
+        limit: params.limit || 100,
+      })
+
+      if (result.success && result.data) {
+        return result.data.map((player: any) => ({
+          id: player.id,
+          name: player.name,
+          team: player.team,
+          position: player.position,
+          stats: player.stats || {},
+          sport: 'tennis',
+          league: this.league,
+          lastUpdated: new Date().toISOString(),
+        }))
+      }
+      return []
     } catch (error) {
       console.error('Error fetching tennis players:', error)
       return []

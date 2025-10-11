@@ -4,7 +4,7 @@
  * Uses ESPN CDN, SportsDB, and other reliable sources
  */
 
-import { databaseService } from './database-service'
+import { createClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
 
 interface LogoSource {
@@ -37,6 +37,13 @@ export class LogoPopulationService {
 
   constructor() {
     this.initializeLogoSources()
+  }
+
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
   }
 
   private initializeLogoSources(): void {
@@ -86,16 +93,20 @@ export class LogoPopulationService {
     structuredLogger.info('Starting logo population for all teams')
 
     // Get all teams without logos
-    const teamsQuery = `
-      SELECT id, name, sport, abbreviation, league_name 
-      FROM teams 
-      WHERE logo_url IS NULL AND is_active = true
-      ORDER BY sport, name
-    `
+    const supabase = this.getSupabaseClient()
+    const { data: teams, error: teamsError } = await supabase
+      .from('teams')
+      .select('id, name, sport, abbreviation, league_name')
+      .is('logo_url', null)
+      .eq('is_active', true)
+      .order('sport')
+      .order('name')
 
-    const teamsResult = await databaseService.executeSQL(teamsQuery)
+    if (teamsError) {
+      throw new Error(`Failed to fetch teams: ${teamsError.message}`)
+    }
 
-    if (!teamsResult.success || teamsResult.data.length === 0) {
+    if (!teams || teams.length === 0) {
       structuredLogger.info('No teams found without logos')
       return {
         totalProcessed: 0,
@@ -105,7 +116,6 @@ export class LogoPopulationService {
       }
     }
 
-    const teams = teamsResult.data
     const results: TeamLogoResult[] = []
     let successful = 0
     let failed = 0
@@ -121,7 +131,7 @@ export class LogoPopulationService {
         `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(teams.length / batchSize)}`
       )
 
-      const batchPromises = batch.map(team => this.populateTeamLogo(team))
+      const batchPromises = batch.map((team: any) => this.populateTeamLogo(team))
       const batchResults = await Promise.allSettled(batchPromises)
 
       batchResults.forEach((result: PromiseSettledResult<TeamLogoResult>, index: number) => {
@@ -189,15 +199,16 @@ export class LogoPopulationService {
 
         if (logoUrl && (await this.validateLogoUrl(logoUrl))) {
           // Update database with logo URL
-          const updateQuery = `
-            UPDATE teams 
-            SET logo_url = $1, last_updated = NOW() 
-            WHERE id = $2
-          `
+          const supabase = this.getSupabaseClient()
+          const { error: updateError } = await supabase
+            .from('teams')
+            .update({ 
+              logo_url: logoUrl, 
+              last_updated: new Date().toISOString() 
+            })
+            .eq('id', teamId)
 
-          const updateResult = await databaseService.executeSQL(updateQuery, [logoUrl, teamId])
-
-          if (updateResult.success) {
+          if (!updateError) {
             structuredLogger.info('Successfully populated logo', {
               teamName,
               sport,
@@ -245,36 +256,34 @@ export class LogoPopulationService {
   private async getESPNLogoUrl(teamName: string, sport: string): Promise<string | null> {
     try {
       // Get sport configuration from database
-      const sportQuery = `
-        SELECT name, display_name, data_types 
-        FROM sports 
-        WHERE name = $1 AND is_active = true
-        LIMIT 1
-      `
+      const supabase = this.getSupabaseClient()
+      const { data: sportData, error: sportError } = await supabase
+        .from('sports')
+        .select('name, display_name, data_types')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
 
-      const sportResult = await databaseService.executeSQL(sportQuery, [sport])
-      if (!sportResult.success || sportResult.data.length === 0) {
+      if (sportError || !sportData) {
         return null
       }
-
-      // const sportData = sportResult.data[0]
 
       // Get league information for the sport
-      const leagueQuery = `
-        SELECT name, abbreviation 
-        FROM leagues 
-        WHERE sport = $1 AND is_active = true
-        ORDER BY level ASC
-        LIMIT 1
-      `
+      const { data: leagueData, error: leagueError } = await supabase
+        .from('leagues')
+        .select('name, abbreviation')
+        .eq('sport', sport)
+        .eq('is_active', true)
+        .order('level', { ascending: true })
+        .limit(1)
+        .maybeSingle()
 
-      const leagueResult = await databaseService.executeSQL(leagueQuery, [sport])
-      if (!leagueResult.success || leagueResult.data.length === 0) {
+      if (leagueError || !leagueData) {
         return null
       }
 
-      const league = leagueResult.data[0]
-      const leagueCode = league.abbreviation || league.name.toLowerCase()
+      const leagueCode = leagueData.abbreviation || leagueData.name.toLowerCase()
 
       // Try multiple ESPN URL patterns based on sport and league
       const urlPatterns = this.generateESPNUrlPatterns(teamName, sport, leagueCode)
@@ -368,29 +377,14 @@ export class LogoPopulationService {
       patterns.push((baseNum + i).toString())
     }
 
-    // Try common team ID patterns for each sport
-    const sportPatterns: Record<string, number[]> = {
-      basketball: [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30,
-      ],
-      football: [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30, 31, 32,
-      ],
-      baseball: [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30,
-      ],
-      hockey: [
-        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29, 30, 31, 32,
-      ],
-      soccer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    // Dynamic team ID patterns - should be loaded from sport configuration
+    // Generic pattern for unknown sports
+    const patterns: string[] = []
+    
+    // Generate generic patterns for any sport
+    for (let i = 1; i <= 32; i++) {
+      patterns.push(i.toString())
     }
-
-    const sportNums = sportPatterns[sport] || []
-    sportNums.forEach(num => patterns.push(num.toString()))
 
     return patterns
   }
@@ -414,19 +408,18 @@ export class LogoPopulationService {
   private async getSportsDBLogoUrl(teamName: string, sport: string): Promise<string | null> {
     try {
       // Get sport configuration from database
-      const sportQuery = `
-        SELECT name, display_name 
-        FROM sports 
-        WHERE name = $1 AND is_active = true
-        LIMIT 1
-      `
+      const supabase = this.getSupabaseClient()
+      const { data: sportData, error: sportError } = await supabase
+        .from('sports')
+        .select('name, display_name')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
 
-      const sportResult = await databaseService.executeSQL(sportQuery, [sport])
-      if (!sportResult.success || sportResult.data.length === 0) {
+      if (sportError || !sportData) {
         return null
       }
-
-      // const sportData = sportResult.data[0]
 
       // Generate multiple SportsDB URL patterns
       const urlPatterns = this.generateSportsDBUrlPatterns(teamName, sport, sport)
@@ -494,18 +487,29 @@ export class LogoPopulationService {
   }
 
   /**
-   * Get league prefix for SportsDB URLs
+   * Get league prefix for SportsDB URLs - dynamic from database
    */
-  private getLeaguePrefix(sport: string): string | null {
-    const leaguePrefixes: Record<string, string> = {
-      basketball: 'nba',
-      football: 'nfl',
-      baseball: 'mlb',
-      hockey: 'nhl',
-      soccer: 'pl', // Premier League
-    }
+  private async getLeaguePrefix(sport: string): Promise<string | null> {
+    try {
+      // Get sport configuration from database
+      const supabase = this.getSupabaseClient()
+      const { data: sportData, error: sportError } = await supabase
+        .from('sports')
+        .select('league_prefix')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
 
-    return leaguePrefixes[sport] || null
+      if (sportError || !sportData) {
+        return null
+      }
+
+      return sportData.league_prefix || null
+    } catch (error) {
+      console.error('Error getting league prefix:', error)
+      return null
+    }
   }
 
   /**
@@ -514,19 +518,18 @@ export class LogoPopulationService {
   private async getNFLLogoUrl(teamName: string, sport: string): Promise<string | null> {
     try {
       // Get sport configuration from database
-      const sportQuery = `
-        SELECT name, display_name 
-        FROM sports 
-        WHERE name = $1 AND is_active = true
-        LIMIT 1
-      `
+      const supabase = this.getSupabaseClient()
+      const { data: sportData, error: sportError } = await supabase
+        .from('sports')
+        .select('name, display_name')
+        .eq('name', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle()
 
-      const sportResult = await databaseService.executeSQL(sportQuery, [sport])
-      if (!sportResult.success || sportResult.data.length === 0) {
+      if (sportError || !sportData) {
         return null
       }
-
-      // const sportData = sportResult.data[0]
 
       // Generate multiple sport-specific URL patterns
       const urlPatterns = this.generateSportSpecificUrlPatterns(teamName, sport, sport)
@@ -750,21 +753,14 @@ export class LogoPopulationService {
     teamsWithoutLogos: number
     coverageBySport: Record<string, { total: number; withLogos: number; percentage: number }>
   }> {
-    const statsQuery = `
-      SELECT 
-        sport,
-        COUNT(*) as total_teams,
-        COUNT(CASE WHEN logo_url IS NOT NULL AND logo_url != '' THEN 1 END) as teams_with_logos
-      FROM teams 
-      WHERE is_active = true
-      GROUP BY sport
-      ORDER BY total_teams DESC
-    `
+    const supabase = this.getSupabaseClient()
+    const { data: statsData, error: statsError } = await supabase
+      .from('teams')
+      .select('sport, logo_url')
+      .eq('is_active', true)
 
-    const result = await databaseService.executeSQL(statsQuery)
-
-    if (!result.success) {
-      throw new Error('Failed to fetch logo statistics')
+    if (statsError) {
+      throw new Error(`Failed to fetch logo statistics: ${statsError.message}`)
     }
 
     const coverageBySport: Record<
@@ -774,18 +770,29 @@ export class LogoPopulationService {
     let totalTeams = 0
     let teamsWithLogos = 0
 
-    result.data.forEach((row: any) => {
-      const { sport, total_teams, teams_with_logos } = row
-      const percentage = total_teams > 0 ? (teams_with_logos / total_teams) * 100 : 0
+    // Process the data to calculate statistics
+    const sportStats: Record<string, { total: number; withLogos: number }> = {}
+    
+    statsData?.forEach((row: any) => {
+      const sport = row.sport
+      if (!sportStats[sport]) {
+        sportStats[sport] = { total: 0, withLogos: 0 }
+      }
+      sportStats[sport].total++
+      if (row.logo_url && row.logo_url !== '') {
+        sportStats[sport].withLogos++
+      }
+    })
 
+    Object.entries(sportStats).forEach(([sport, stats]) => {
+      const percentage = stats.total > 0 ? (stats.withLogos / stats.total) * 100 : 0
       coverageBySport[sport] = {
-        total: total_teams,
-        withLogos: teams_with_logos,
+        total: stats.total,
+        withLogos: stats.withLogos,
         percentage: Math.round(percentage * 100) / 100,
       }
-
-      totalTeams += total_teams
-      teamsWithLogos += teams_with_logos
+      totalTeams += stats.total
+      teamsWithLogos += stats.withLogos
     })
 
     return {

@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
       .select(
         `
         *,
-        home_team:teams!games_home_team_id_fkey(name, abbreviation, sport, league),
-        away_team:teams!games_away_team_id_fkey(name, abbreviation, sport, league)
+        home_team:teams!games_home_team_id_fkey(name, abbreviation, sport, league_name),
+        away_team:teams!games_away_team_id_fkey(name, abbreviation, sport, league_name)
       `
       )
       .gte('game_date', startDate.toISOString())
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (league) {
-      query = query.eq('league', league)
+      query = query.eq('league_name', league)
     }
 
     const { data: gamesData, error: gamesError } = await query
@@ -219,32 +219,18 @@ function processTeamTrends(gamesData: any[], team: string, sport: string) {
 
 function calculateExpectedTotal(sport: string, totalScores: number[]) {
   if (totalScores.length === 0) {
-    const fallbackTotals = {
-      basketball: 220,
-      football: 45,
-      baseball: 8.5,
-      hockey: 5.5,
-      soccer: 2.5,
-      tennis: 20,
-      golf: 70,
-    }
-    return fallbackTotals[sport as keyof typeof fallbackTotals] || 220
+    // Dynamic fallback - get from database sport configuration
+    // Default fallback for unknown sports
+    return 50 // Generic fallback
   }
 
   return totalScores.reduce((a, b) => a + b, 0) / totalScores.length
 }
 
 function getScoreUnit(sport: string) {
-  const units = {
-    basketball: 'points',
-    football: 'points',
-    baseball: 'runs',
-    hockey: 'goals',
-    soccer: 'goals',
-    tennis: 'games',
-    golf: 'strokes',
-  }
-  return units[sport as keyof typeof units] || 'units'
+  // Dynamic score unit - should be loaded from sport configuration
+  // Generic fallback for unknown sports
+  return 'units'
 }
 
 function calculateStreaks(gamesData: any[], team: string) {

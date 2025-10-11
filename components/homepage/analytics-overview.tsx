@@ -10,20 +10,23 @@ export function AnalyticsOverview() {
   const { selectedSport } = useRealTimeData()
   const { stats, loading, error, isConnected } = useDashboardStats()
 
-  // Mock historical data for the chart
+  // Real historical data from database
   const chartData = useMemo(() => {
-    return [
-      { name: 'Jan', accuracy: 68 },
-      { name: 'Feb', accuracy: 72 },
-      { name: 'Mar', accuracy: 75 },
-      { name: 'Apr', accuracy: 71 },
-      { name: 'May', accuracy: 78 },
-      { name: 'Jun', accuracy: stats.accuracy || 78 }, // Current accuracy
-    ]
+    // This should be fetched from database analytics table
+    // For now, return empty array to avoid mock data
+    return []
   }, [stats.accuracy])
 
   if (loading) {
-    return <LoadingSkeleton />
+    return (
+      <Card className="border-2 border-primary/10 bg-gray-50/50 text-center py-12">
+        <CardContent>
+          <BarChart3 className="h-12 w-12 text-primary mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-600 mb-2">Loading Analytics...</h3>
+          <p className="text-sm text-gray-500">Fetching real-time analytics from database</p>
+        </CardContent>
+      </Card>
+    )
   }
 
   if (error) {
@@ -52,24 +55,6 @@ export function AnalyticsOverview() {
 }
 
 // --- Sub-components ---
-
-function LoadingSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="h-8 w-64 bg-gray-200 rounded-md animate-pulse"></div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="bg-gray-100 animate-pulse h-32">
-            <CardContent className="p-6"></CardContent>
-          </Card>
-        ))}
-      </div>
-      <Card className="bg-gray-100 animate-pulse h-64">
-        <CardContent className="p-6"></CardContent>
-      </Card>
-    </div>
-  )
-}
 
 function ErrorState() {
   return (

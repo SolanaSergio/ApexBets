@@ -1,11 +1,12 @@
 /**
  * Database Audit Service
  * Comprehensive database auditing and health monitoring
+ * Uses proper Supabase client for all database operations
  */
 
-import { productionSupabaseClient } from '../supabase/production-client'
-import { createClient as createSupabaseClient, SupabaseClient } from '@supabase/supabase-js'
 import { structuredLogger } from './structured-logger'
+import { createClient } from '@supabase/supabase-js'
+import { envValidator } from '../config/env-validator'
 
 export interface DatabaseAuditReport {
   success: boolean
@@ -35,7 +36,6 @@ export interface PerformanceMetrics {
 
 export class DatabaseAuditService {
   private static instance: DatabaseAuditService
-  private adminClient: SupabaseClient | null = null
 
   public static getInstance(): DatabaseAuditService {
     if (!DatabaseAuditService.instance) {
@@ -43,6 +43,11 @@ export class DatabaseAuditService {
     }
     return DatabaseAuditService.instance
   }
+
+  // Note: This method is deprecated - use Edge Functions for database operations
+  // private getSupabaseClient() {
+  //   throw new Error('Direct Supabase client access is deprecated. Use Edge Functions for database operations.')
+  // }
 
   /**
    * Run comprehensive database audit
@@ -99,16 +104,25 @@ export class DatabaseAuditService {
     }
   }
 
-  private getAdminClient(): SupabaseClient {
-    if (this.adminClient) return this.adminClient
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-    if (!url) throw new Error('NEXT_PUBLIC_SUPABASE_URL is not set')
-    if (!serviceKey) throw new Error('SUPABASE_SERVICE_ROLE_KEY is not set')
-    this.adminClient = createSupabaseClient(url, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-    return this.adminClient
+  /**
+   * Get Supabase client for database operations
+   */
+  private getSupabaseClient() {
+    const config = envValidator.getServerConfig()
+    return createClient(config.NEXT_PUBLIC_SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY!)
+  }
+
+  /**
+   * Execute SQL using proper Supabase client
+   */
+  private async executeSQL(query: string): Promise<any> {
+    try {
+      const supabase = this.getSupabaseClient()
+      const { data, error } = await supabase.rpc('exec', { sql: query })
+      return { data, error }
+    } catch (error) {
+      return { data: null, error: error instanceof Error ? error.message : String(error) }
+    }
   }
 
   /**
@@ -118,18 +132,19 @@ export class DatabaseAuditService {
     const startTime = Date.now()
 
     try {
-      // Use production client for consistency
-      const result = await productionSupabaseClient.executeSQL('SELECT 1 as health_check')
-
+      // Use proper Supabase client to test database connection
+      const supabase = this.getSupabaseClient()
+      const { data, error } = await supabase.from('sports').select('*').limit(1)
       const executionTime = Date.now() - startTime
-      const isValid = result.success && result.data && result.data.length > 0
+      
+      const isValid = !error
 
       return {
         testName: 'Database Connection',
         status: isValid ? 'PASS' : 'FAIL',
         message: isValid
           ? 'Database connection successful'
-          : `Database connection failed: ${result.error || 'Unknown error'}`,
+          : `Database connection failed: ${error?.message || 'Unknown error'}`,
         executionTime,
       }
     } catch (error) {
@@ -143,14 +158,13 @@ export class DatabaseAuditService {
   }
 
   /**
-   * Test table structure integrity
+   * Test table structure integrity using proper Supabase client
    */
   private async testTableStructure(): Promise<AuditResult> {
     const startTime = Date.now()
 
     try {
-      const supabase = this.getAdminClient()
-
+      const supabase = this.getSupabaseClient()
       const requiredTables = [
         'teams',
         'players',
@@ -227,7 +241,7 @@ export class DatabaseAuditService {
           'SELECT COUNT(*) as count FROM odds WHERE game_id IS NULL',
         ]
         for (const check of integrityChecks) {
-          const result = await productionSupabaseClient.executeSQL(check)
+          const result = await this.executeSQL(check)
           if (result.success && result.data && result.data[0] && Number(result.data[0].count) > 0) {
             issues.push(check)
           }
@@ -286,14 +300,13 @@ export class DatabaseAuditService {
   }
 
   /**
-   * Test performance
+   * Test performance using proper Supabase client
    */
   private async testPerformance(): Promise<AuditResult> {
     const startTime = Date.now()
 
     try {
-      // Fallback-safe performance sampling using Supabase client
-      const supabase = this.getAdminClient()
+      const supabase = this.getSupabaseClient()
       const queryTimes: number[] = []
 
       const timed = async (fn: () => Promise<void>) => {
@@ -302,6 +315,7 @@ export class DatabaseAuditService {
         queryTimes.push(Date.now() - t0)
       }
 
+      // Test database performance
       await timed(async () => {
         await supabase.from('games').select('*', { count: 'exact', head: true })
       })
@@ -356,7 +370,7 @@ export class DatabaseAuditService {
         'idx_games_home_team',
         'idx_games_away_team',
         'idx_odds_game_id',
-        'idx_teams_sport_league',
+        'idx_teams_sport_league_name',
       ]
 
       // Use production Supabase client for Vercel compatibility
@@ -366,9 +380,9 @@ export class DatabaseAuditService {
           SELECT indexname
           FROM pg_indexes 
           WHERE schemaname = 'public'
-          AND indexname IN ('idx_games_date_status', 'idx_games_home_team', 'idx_games_away_team', 'idx_odds_game_id', 'idx_teams_sport_league')
+          AND indexname IN ('idx_games_date_status', 'idx_games_home_team', 'idx_games_away_team', 'idx_odds_game_id', 'idx_teams_sport_league_name')
         `
-        const indexResult = await productionSupabaseClient.executeSQL(indexQuery)
+        const indexResult = await this.executeSQL(indexQuery)
         if (indexResult.success && indexResult.data) {
           indexes = indexResult.data.map((row: any) => ({ indexname: row.indexname }))
         } else {
@@ -438,7 +452,7 @@ export class DatabaseAuditService {
           WHERE tc.constraint_type = 'FOREIGN KEY'
           AND tc.table_schema = 'public'
         `
-        const fkResult = await productionSupabaseClient.executeSQL(fkQuery)
+        const fkResult = await this.executeSQL(fkQuery)
         foreignKeys = fkResult.success ? fkResult.data : []
       } else {
         // Use RPC function for database operations
@@ -492,7 +506,7 @@ export class DatabaseAuditService {
 
       const issues: string[] = []
       for (const check of consistencyChecks) {
-        const result = await productionSupabaseClient.executeSQL(check)
+        const result = await this.executeSQL(check)
         if (result.success && result.data && result.data[0] && Number(result.data[0].count) > 0) {
           issues.push(check)
         }
@@ -526,7 +540,7 @@ export class DatabaseAuditService {
 
     try {
       // This would typically check backup files, but for now we'll just verify data exists
-      const dataCheck = await productionSupabaseClient.executeSQL(
+      const dataCheck = await this.executeSQL(
         'SELECT COUNT(*) as count FROM sports'
       )
       const hasData =
@@ -566,7 +580,7 @@ export class DatabaseAuditService {
         WHERE schemaname = 'public'
         ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
       `
-      const result = await productionSupabaseClient.executeSQL(tableSizesQuery)
+      const result = await this.executeSQL(tableSizesQuery)
       tableSizes = (result.success ? result.data : []).map((t: any) => ({
         table: t.tablename,
         size: t.size,
@@ -699,8 +713,8 @@ export class DatabaseAuditService {
       idx_games_home_team: 'CREATE INDEX IF NOT EXISTS idx_games_home_team ON games(home_team_id)',
       idx_games_away_team: 'CREATE INDEX IF NOT EXISTS idx_games_away_team ON games(away_team_id)',
       idx_odds_game_id: 'CREATE INDEX IF NOT EXISTS idx_odds_game_id ON odds(game_id)',
-      idx_teams_sport_league:
-        'CREATE INDEX IF NOT EXISTS idx_teams_sport_league ON teams(sport, league)',
+      idx_teams_sport_league_name:
+        'CREATE INDEX IF NOT EXISTS idx_teams_sport_league_name ON teams(sport, league_name)',
       // Composite indexes for common query patterns
       idx_games_sport_status_date:
         'CREATE INDEX IF NOT EXISTS idx_games_sport_status_date ON games(sport, status, game_date)',
@@ -720,7 +734,7 @@ export class DatabaseAuditService {
 
     const definition = indexDefinitions[indexName]
     if (definition) {
-      await productionSupabaseClient.executeSQL(definition)
+      await this.executeSQL(definition)
     }
   }
 

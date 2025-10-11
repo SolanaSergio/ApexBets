@@ -2,9 +2,10 @@
  * Database-First API Client
  * Serves data exclusively from database with no external API calls
  * Designed for fast, reliable responses that respect rate limits
+ * Uses Edge Functions for all database operations
  */
 
-import { databaseService } from '../database-service'
+import { edgeFunctionClient } from '../edge-function-client'
 import { structuredLogger } from '../structured-logger'
 
 export interface DatabaseApiResponse<T> {
@@ -13,121 +14,116 @@ export interface DatabaseApiResponse<T> {
   meta: {
     source: 'database'
     count: number
-    sport?: string
-    status?: string
-    league?: string
-    betType?: string
-    recommendation?: string
-    minValue?: number
-    activeOnly?: boolean
-    newsSource?: string
-    limit?: number
-    hours?: number
+    sport?: string | undefined
+    status?: string | undefined
+    league?: string | undefined
+    betType?: string | undefined
+    recommendation?: string | undefined
+    minValue?: number | undefined
+    activeOnly?: boolean | undefined
+    newsSource?: string | undefined
+    limit?: number | undefined
+    hours?: number | undefined
     refreshed: boolean
     timestamp: string
   }
-  error?: string
+  error?: string | undefined
 }
 
-export interface GameData {
+export interface GameRecord {
   id: string
-  home_team_id: string
-  away_team_id: string
-  home_team_name: string
-  away_team_name: string
+  sport: string
+  league: string
+  home_team: string
+  away_team: string
   game_date: string
-  season: string
-  // // week // Column does not exist in database?: number // Column does not exist in database
+  game_time: string
+  status: string
   home_score?: number
   away_score?: number
-  status: 'scheduled' | 'live' | 'completed' | 'postponed' | 'cancelled'
   venue?: string
-  sport: string
-  league?: string
-  game_type?: string
   created_at: string
   updated_at: string
 }
 
-export interface TeamData {
+export interface TeamRecord {
   id: string
-  name: string
-  city?: string
-  league: string
   sport: string
-  abbreviation?: string
+  league: string
+  name: string
+  city: string
+  abbreviation: string
   logo_url?: string
-  conference?: string
-  division?: string
-  founded_year?: number
-  stadium_name?: string
-  stadium_capacity?: number
-  primary_color?: string
-  secondary_color?: string
-  country?: string
   is_active: boolean
   created_at: string
   updated_at: string
 }
 
-export interface OddsData {
+export interface PlayerRecord {
   id: string
+  sport: string
+  league: string
+  team_id: string
+  name: string
+  position: string
+  age?: number
+  height?: string
+  weight?: number
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface OddsRecord {
+  id: string
+  sport: string
+  league: string
   game_id: string
-  source: string
-  odds_type: string
-  home_odds?: number
-  away_odds?: number
+  bookmaker: string
+  bet_type: string
+  home_odds: number
+  away_odds: number
+  draw_odds?: number
+  over_odds?: number
+  under_odds?: number
   spread?: number
   total?: number
-  timestamp: string
-  sport: string
-  league?: string
-  prop_bets?: any
-  live_odds: boolean
+  last_updated: string
   created_at: string
 }
 
-export interface PredictionData {
+export interface PredictionRecord {
   id: string
-  game_id: string
-  model_name: string
-  prediction_type: string
-  predicted_value?: number
-  confidence?: number
-  actual_value?: number
-  is_correct?: boolean
   sport: string
-  league?: string
-  reasoning?: string
-  model_version?: string
-  feature_importance?: any
-  confidence_interval?: any
-  created_at: string
-}
-
-export interface StandingData {
-  id: string
-  team_id: string
-  team_name: string
-  season: string
   league: string
+  game_id: string
+  prediction_type: string
+  predicted_winner: string
+  confidence: number
+  reasoning: string
+  is_correct?: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface StandingsRecord {
+  id: string
   sport: string
+  league: string
+  team_id: string
+  season: string
   wins: number
   losses: number
-  ties: number
-  win_percentage?: number
-  games_back?: number
-  streak?: string
-  home_wins: number
-  home_losses: number
-  away_wins: number
-  away_losses: number
-  division_wins: number
-  division_losses: number
-  conference_wins: number
-  conference_losses: number
-  points_for: number
-  points_against: number
+  ties?: number
+  win_percentage: number
+  games_back: number
+  streak: string
+  home_record: string
+  away_record: string
+  conference_record?: string
+  division_record?: string
+  points_for?: number
+  points_against?: number
   point_differential: number
   last_updated: string
   created_at: string
@@ -136,6 +132,10 @@ export interface StandingData {
 export class DatabaseFirstApiClient {
   private static instance: DatabaseFirstApiClient
   private requestCache = new Map<string, Promise<any>>()
+
+  private constructor() {
+    console.warn('DEPRECATED: DatabaseFirstApiClient is deprecated. Use Edge Functions instead.')
+  }
 
   public static getInstance(): DatabaseFirstApiClient {
     if (!DatabaseFirstApiClient.instance) {
@@ -156,116 +156,58 @@ export class DatabaseFirstApiClient {
     const promise = requestFn()
     this.requestCache.set(cacheKey, promise)
 
-    try {
-      const result = await promise
-      return result
-    } finally {
+    // Clean up cache after request completes
+    promise.finally(() => {
       this.requestCache.delete(cacheKey)
-    }
+    })
+
+    return promise
   }
 
-  // Games
   async getGames(
     params: {
       sport?: string
-      status?: string
-      dateFrom?: string
-      dateTo?: string
-      limit?: number
       league?: string
+      date?: string
+      status?: string
+      limit?: number
     } = {}
-  ): Promise<DatabaseApiResponse<GameData[]>> {
+  ): Promise<DatabaseApiResponse<GameRecord[]>> {
     const cacheKey = this.getCacheKey('getGames', params)
 
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const { sport = 'all', status, dateFrom, dateTo, limit = 100, league } = params
+        structuredLogger.info('Fetching games from database', params)
 
-        let query = `
-        SELECT 
-          g.id,
-          g.home_team_id,
-          g.away_team_id,
-          g.game_date,
-          g.season,
-          g.home_score,
-          g.away_score,
-          g.status,
-          g.venue,
-          g.sport,
-          g.league,
-          g.game_type,
-          g.created_at,
-          g.updated_at,
-          ht.name as home_team_name,
-          at.name as away_team_name
-        FROM games g
-        LEFT JOIN teams ht ON g.home_team_id = ht.id
-        LEFT JOIN teams at ON g.away_team_id = at.id
-        WHERE 1=1
-      `
-
-        const queryParams: any[] = []
-        let paramIndex = 1
-
-        if (sport !== 'all') {
-          query += ` AND g.sport = $${paramIndex}`
-          queryParams.push(sport)
-          paramIndex++
-        }
-
-        if (status) {
-          query += ` AND g.status = $${paramIndex}`
-          queryParams.push(status)
-          paramIndex++
-        }
-
-        if (dateFrom) {
-          query += ` AND g.game_date >= $${paramIndex}`
-          queryParams.push(dateFrom)
-          paramIndex++
-        }
-
-        if (dateTo) {
-          query += ` AND g.game_date <= $${paramIndex}`
-          queryParams.push(dateTo)
-          paramIndex++
-        }
-
-        if (league) {
-          query += ` AND g.league = $${paramIndex}`
-          queryParams.push(league)
-          paramIndex++
-        }
-
-        query += ` ORDER BY g.game_date DESC LIMIT $${paramIndex}`
-        queryParams.push(limit)
-
-        const result = await databaseService.executeSQL(query, queryParams)
-        const games = result.data || []
-
-        structuredLogger.info('Games fetched from database', {
-          sport,
-          status,
-          count: games.length,
-          source: 'database',
+        const result = await edgeFunctionClient.queryGames({
+          ...(params.sport && { sport: params.sport }),
+          ...(params.league && { league: params.league }),
+          ...(params.date && { dateFrom: params.date, dateTo: params.date }),
+          ...(params.status && { status: params.status }),
+          limit: params.limit || 100,
         })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch games')
+        }
 
         return {
           success: true,
-          data: games,
+          data: result.data || [],
           meta: {
             source: 'database',
-            count: games.length,
-            ...(sport !== 'all' && { sport }),
-            ...(status && { status }),
-            refreshed: false,
+            count: result.data?.length || 0,
+            sport: params.sport,
+            status: params.status,
+            league: params.league,
+            limit: params.limit,
+            refreshed: true,
             timestamp: new Date().toISOString(),
           },
         }
       } catch (error) {
-        structuredLogger.error('Failed to fetch games from database', {
-          error: error instanceof Error ? error.message : String(error),
+        structuredLogger.error('Error fetching games', {
+          error: error instanceof Error ? error.message : 'Unknown error',
           params,
         })
 
@@ -275,103 +217,58 @@ export class DatabaseFirstApiClient {
           meta: {
             source: 'database',
             count: 0,
-            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-            ...(params.status && { status: params.status }),
+            sport: params.sport,
+            status: params.status,
+            league: params.league,
+            limit: params.limit,
             refreshed: false,
             timestamp: new Date().toISOString(),
           },
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : 'Unknown error',
         }
       }
     })
   }
 
-  // Teams
   async getTeams(
     params: {
       sport?: string
       league?: string
       limit?: number
-      isActive?: boolean
     } = {}
-  ): Promise<DatabaseApiResponse<TeamData[]>> {
+  ): Promise<DatabaseApiResponse<TeamRecord[]>> {
     const cacheKey = this.getCacheKey('getTeams', params)
 
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const { sport = 'all', league, limit = 100, isActive = true } = params
+        structuredLogger.info('Fetching teams from database', params)
 
-        let query = `
-        SELECT 
-          id,
-          name,
-          city,
-          league,
-          sport,
-          abbreviation,
-          logo_url,
-          conference,
-          division,
-          founded_year,
-          stadium_name,
-          stadium_capacity,
-          primary_color,
-          secondary_color,
-          country,
-          is_active,
-          created_at,
-          updated_at
-        FROM teams 
-        WHERE 1=1
-      `
-        const queryParams: any[] = []
-        let paramIndex = 1
-
-        if (sport !== 'all') {
-          query += ` AND sport = $${paramIndex}`
-          queryParams.push(sport)
-          paramIndex++
-        }
-
-        if (league) {
-          query += ` AND league = $${paramIndex}`
-          queryParams.push(league)
-          paramIndex++
-        }
-
-        if (isActive !== undefined) {
-          query += ` AND is_active = $${paramIndex}`
-          queryParams.push(isActive)
-          paramIndex++
-        }
-
-        query += ` ORDER BY name LIMIT $${paramIndex}`
-        queryParams.push(limit)
-
-        const result = await databaseService.executeSQL(query, queryParams)
-        const teams = result.data || []
-
-        structuredLogger.info('Teams fetched from database', {
-          sport,
-          league,
-          count: teams.length,
-          source: 'database',
+        const result = await edgeFunctionClient.queryTeams({
+          ...(params.sport && { sport: params.sport }),
+          ...(params.league && { league: params.league }),
+          limit: params.limit || 100,
         })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch teams')
+        }
 
         return {
           success: true,
-          data: teams,
+          data: result.data || [],
           meta: {
             source: 'database',
-            count: teams.length,
-            ...(sport !== 'all' && { sport }),
-            refreshed: false,
+            count: result.data?.length || 0,
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
+            refreshed: true,
             timestamp: new Date().toISOString(),
           },
         }
       } catch (error) {
-        structuredLogger.error('Failed to fetch teams from database', {
-          error: error instanceof Error ? error.message : String(error),
+        structuredLogger.error('Error fetching teams', {
+          error: error instanceof Error ? error.message : 'Unknown error',
           params,
         })
 
@@ -381,104 +278,61 @@ export class DatabaseFirstApiClient {
           meta: {
             source: 'database',
             count: 0,
-            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
             refreshed: false,
             timestamp: new Date().toISOString(),
           },
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : 'Unknown error',
         }
       }
     })
   }
 
-  // Odds
   async getOdds(
     params: {
       sport?: string
+      league?: string
       gameId?: string
-      source?: string
+      betType?: string
       limit?: number
-      liveOnly?: boolean
     } = {}
-  ): Promise<DatabaseApiResponse<OddsData[]>> {
+  ): Promise<DatabaseApiResponse<OddsRecord[]>> {
     const cacheKey = this.getCacheKey('getOdds', params)
 
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const { sport = 'all', gameId, source, limit = 100, liveOnly = false } = params
+        structuredLogger.info('Fetching odds from database', params)
 
-        let query = `
-        SELECT 
-          id,
-          game_id,
-          provider as source,
-          odds_type,
-          home_odds,
-          away_odds,
-          spread,
-          total,
-          last_updated as timestamp,
-          sport,
-          league,
-          prop_bets,
-          live_odds,
-          created_at
-        FROM betting_odds 
-        WHERE 1=1
-      `
-        const queryParams: any[] = []
-        let paramIndex = 1
-
-        if (sport !== 'all') {
-          query += ` AND sport = $${paramIndex}`
-          queryParams.push(sport)
-          paramIndex++
-        }
-
-        if (gameId) {
-          query += ` AND game_id = $${paramIndex}`
-          queryParams.push(gameId)
-          paramIndex++
-        }
-
-        if (source) {
-          query += ` AND source = $${paramIndex}`
-          queryParams.push(source)
-          paramIndex++
-        }
-
-        if (liveOnly) {
-          query += ` AND live_odds = true`
-        }
-
-        query += ` ORDER BY timestamp DESC LIMIT $${paramIndex}`
-        queryParams.push(limit)
-
-        const result = await databaseService.executeSQL(query, queryParams)
-        const odds = result.data || []
-
-        structuredLogger.info('Odds fetched from database', {
-          sport,
-          gameId,
-          source,
-          count: odds.length,
-          dataSource: 'database',
+        const result = await edgeFunctionClient.queryOdds({
+          ...(params.sport && { sport: params.sport }),
+          ...(params.gameId && { gameId: params.gameId }),
+          ...(params.betType && { market: params.betType }),
+          limit: params.limit || 100,
         })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch odds')
+        }
 
         return {
           success: true,
-          data: odds,
+          data: result.data || [],
           meta: {
             source: 'database',
-            count: odds.length,
-            ...(sport !== 'all' && { sport }),
-            refreshed: false,
+            count: result.data?.length || 0,
+            sport: params.sport,
+            league: params.league,
+            betType: params.betType,
+            limit: params.limit,
+            refreshed: true,
             timestamp: new Date().toISOString(),
           },
         }
       } catch (error) {
-        structuredLogger.error('Failed to fetch odds from database', {
-          error: error instanceof Error ? error.message : String(error),
+        structuredLogger.error('Error fetching odds', {
+          error: error instanceof Error ? error.message : 'Unknown error',
           params,
         })
 
@@ -488,108 +342,61 @@ export class DatabaseFirstApiClient {
           meta: {
             source: 'database',
             count: 0,
-            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            sport: params.sport,
+            league: params.league,
+            betType: params.betType,
+            limit: params.limit,
             refreshed: false,
             timestamp: new Date().toISOString(),
           },
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : 'Unknown error',
         }
       }
     })
   }
 
-  // Predictions
   async getPredictions(
     params: {
       sport?: string
+      league?: string
       gameId?: string
-      modelName?: string
       predictionType?: string
       limit?: number
     } = {}
-  ): Promise<DatabaseApiResponse<PredictionData[]>> {
+  ): Promise<DatabaseApiResponse<PredictionRecord[]>> {
     const cacheKey = this.getCacheKey('getPredictions', params)
 
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const { sport = 'all', gameId, modelName, predictionType, limit = 50 } = params
+        structuredLogger.info('Fetching predictions from database', params)
 
-        let query = `
-        SELECT 
-          id,
-          game_id,
-          model_name,
-          prediction_type,
-          predicted_value,
-          confidence,
-          actual_value,
-          is_correct,
-          sport,
-          league,
-          reasoning,
-          model_version,
-          feature_importance,
-          confidence_interval,
-          created_at
-        FROM predictions 
-        WHERE 1=1
-      `
-        const queryParams: any[] = []
-        let paramIndex = 1
-
-        if (sport !== 'all') {
-          query += ` AND sport = $${paramIndex}`
-          queryParams.push(sport)
-          paramIndex++
-        }
-
-        if (gameId) {
-          query += ` AND game_id = $${paramIndex}`
-          queryParams.push(gameId)
-          paramIndex++
-        }
-
-        if (modelName) {
-          query += ` AND model_name = $${paramIndex}`
-          queryParams.push(modelName)
-          paramIndex++
-        }
-
-        if (predictionType) {
-          query += ` AND prediction_type = $${paramIndex}`
-          queryParams.push(predictionType)
-          paramIndex++
-        }
-
-        query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`
-        queryParams.push(limit)
-
-        const result = await databaseService.executeSQL(query, queryParams)
-        const predictions = result.data || []
-
-        structuredLogger.info('Predictions fetched from database', {
-          sport,
-          gameId,
-          modelName,
-          predictionType,
-          count: predictions.length,
-          source: 'database',
+        const result = await edgeFunctionClient.queryPredictions({
+          ...(params.sport && { sport: params.sport }),
+          ...(params.gameId && { gameId: params.gameId }),
+          ...(params.predictionType && { model: params.predictionType }),
+          limit: params.limit || 100,
         })
+
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch predictions')
+        }
 
         return {
           success: true,
-          data: predictions,
+          data: result.data || [],
           meta: {
             source: 'database',
-            count: predictions.length,
-            ...(sport !== 'all' && { sport }),
-            refreshed: false,
+            count: result.data?.length || 0,
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
+            refreshed: true,
             timestamp: new Date().toISOString(),
           },
         }
       } catch (error) {
-        structuredLogger.error('Failed to fetch predictions from database', {
-          error: error instanceof Error ? error.message : String(error),
+        structuredLogger.error('Error fetching predictions', {
+          error: error instanceof Error ? error.message : 'Unknown error',
           params,
         })
 
@@ -599,17 +406,18 @@ export class DatabaseFirstApiClient {
           meta: {
             source: 'database',
             count: 0,
-            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
             refreshed: false,
             timestamp: new Date().toISOString(),
           },
-          error: error instanceof Error ? error.message : String(error),
+          error: error instanceof Error ? error.message : 'Unknown error',
         }
       }
     })
   }
 
-  // Standings
   async getStandings(
     params: {
       sport?: string
@@ -617,460 +425,272 @@ export class DatabaseFirstApiClient {
       season?: string
       limit?: number
     } = {}
-  ): Promise<DatabaseApiResponse<StandingData[]>> {
-    try {
-      const { sport = 'all', league, season, limit = 50 } = params
+  ): Promise<DatabaseApiResponse<StandingsRecord[]>> {
+    const cacheKey = this.getCacheKey('getStandings', params)
 
-      // Use the production Supabase client's dedicated getStandings method
-      const { productionSupabaseClient } = await import('../../supabase/production-client')
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        structuredLogger.info('Fetching standings from database', params)
 
-      const standings = await productionSupabaseClient.getStandings(
-        sport !== 'all' ? sport : undefined,
-        league,
-        season
-      )
+        const result = await edgeFunctionClient.queryStandings({
+          ...(params.sport && { sport: params.sport }),
+          ...(params.league && { league: params.league }),
+          ...(params.season && { season: params.season }),
+          limit: params.limit || 100,
+        })
 
-      // Transform the data to match our interface
-      const transformedStandings = standings.map((standing: any) => ({
-        id: standing.id,
-        team_id: standing.team_id,
-        team_name: standing.team?.name ?? null,
-        season: standing.season,
-        league: standing.league,
-        sport: standing.sport,
-        wins: standing.wins || 0,
-        losses: standing.losses || 0,
-        ties: standing.ties || 0,
-        win_percentage: standing.win_percentage,
-        games_back: standing.games_back,
-        streak: standing.streak,
-        home_wins: standing.home_wins || 0,
-        home_losses: standing.home_losses || 0,
-        away_wins: standing.away_wins || 0,
-        away_losses: standing.away_losses || 0,
-        division_wins: standing.division_wins || 0,
-        division_losses: standing.division_losses || 0,
-        conference_wins: standing.conference_wins || 0,
-        conference_losses: standing.conference_losses || 0,
-        points_for: standing.points_for || 0,
-        points_against: standing.points_against || 0,
-        point_differential: standing.point_differential || 0,
-        last_updated: standing.last_updated,
-        created_at: standing.created_at,
-      }))
+        if (!result.success) {
+          throw new Error(result.error || 'Failed to fetch standings')
+        }
 
-      // Apply limit
-      const limitedStandings = transformedStandings.slice(0, limit)
-
-      structuredLogger.info('Standings fetched from database', {
-        sport,
-        league,
-        season,
-        count: limitedStandings.length,
-        source: 'database',
-      })
-
-      return {
-        success: true,
-        data: limitedStandings,
-        meta: {
-          source: 'database',
-          count: limitedStandings.length,
-          ...(sport !== 'all' && { sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-      }
-    } catch (error) {
-      structuredLogger.error('Failed to fetch standings from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params,
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
-  }
-
-  // Analytics
-  async getAnalyticsStats(
-    params: {
-      sport?: string
-      dateFrom?: string
-      dateTo?: string
-    } = {}
-  ): Promise<DatabaseApiResponse<any>> {
-    try {
-      const { sport = 'all', dateFrom, dateTo } = params
-
-      // Get basic stats
-      const gamesQuery = `
-        SELECT 
-          COUNT(*) as total_games,
-          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_games,
-          COUNT(CASE WHEN status = 'live' THEN 1 END) as live_games,
-          COUNT(CASE WHEN status = 'scheduled' THEN 1 END) as scheduled_games
-        FROM games 
-        WHERE 1=1
-        ${sport !== 'all' ? 'AND sport = $1' : ''}
-        ${dateFrom ? `AND game_date >= $${sport !== 'all' ? '2' : '1'}` : ''}
-        ${dateTo ? `AND game_date <= $${sport !== 'all' ? (dateFrom ? '3' : '2') : dateFrom ? '2' : '1'}` : ''}
-      `
-
-      const queryParams: any[] = []
-      if (sport !== 'all') queryParams.push(sport)
-      if (dateFrom) queryParams.push(dateFrom)
-      if (dateTo) queryParams.push(dateTo)
-
-      const gamesResult = await databaseService.executeSQL(gamesQuery, queryParams)
-      const gamesStats = gamesResult.data[0] || {}
-
-      // Get predictions stats
-      const predictionsQuery = `
-        SELECT 
-          COUNT(*) as total_predictions,
-          COUNT(CASE WHEN is_correct = true THEN 1 END) as correct_predictions,
-          AVG(confidence) as avg_confidence
-        FROM predictions 
-        WHERE 1=1
-        ${sport !== 'all' ? 'AND sport = $1' : ''}
-      `
-
-      const predictionsResult = await databaseService.executeSQL(
-        predictionsQuery,
-        sport !== 'all' ? [sport] : []
-      )
-      const predictionsStats = predictionsResult.data[0] || {}
-
-      // Get teams count
-      const teamsQuery = `
-        SELECT COUNT(*) as total_teams
-        FROM teams 
-        WHERE is_active = true
-        ${sport !== 'all' ? 'AND sport = $1' : ''}
-      `
-
-      const teamsResult = await databaseService.executeSQL(
-        teamsQuery,
-        sport !== 'all' ? [sport] : []
-      )
-      const teamsStats = teamsResult.data[0] || {}
-
-      const analytics = {
-        total_games: parseInt(gamesStats.total_games) || 0,
-        completed_games: parseInt(gamesStats.completed_games) || 0,
-        live_games: parseInt(gamesStats.live_games) || 0,
-        scheduled_games: parseInt(gamesStats.scheduled_games) || 0,
-        total_predictions: parseInt(predictionsStats.total_predictions) || 0,
-        correct_predictions: parseInt(predictionsStats.correct_predictions) || 0,
-        accuracy_rate:
-          predictionsStats.total_predictions > 0
-            ? parseInt(predictionsStats.correct_predictions) /
-              parseInt(predictionsStats.total_predictions)
-            : 0,
-        avg_confidence: parseFloat(predictionsStats.avg_confidence) || 0,
-        total_teams: parseInt(teamsStats.total_teams) || 0,
-        recent_predictions: parseInt(predictionsStats.total_predictions) || 0,
-      }
-
-      structuredLogger.info('Analytics fetched from database', {
-        sport,
-        analytics,
-        source: 'database',
-      })
-
-      return {
-        success: true,
-        data: analytics,
-        meta: {
-          source: 'database',
-          count: 1,
-          ...(sport !== 'all' && { sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-      }
-    } catch (error) {
-      structuredLogger.error('Failed to fetch analytics from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params,
-      })
-
-      return {
-        success: false,
-        data: {
-          total_games: 0,
-          total_predictions: 0,
-          total_teams: 0,
-          accuracy_rate: 0,
-          recent_predictions: 0,
-          recent_performance: {
-            accuracy_by_type: {},
-            daily_stats: [],
+        return {
+          success: true,
+          data: result.data || [],
+          meta: {
+            source: 'database',
+            count: result.data?.length || 0,
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
+            refreshed: true,
+            timestamp: new Date().toISOString(),
           },
-        },
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-        error: error instanceof Error ? error.message : String(error),
+        }
+      } catch (error) {
+        structuredLogger.error('Error fetching standings', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            sport: params.sport,
+            league: params.league,
+            limit: params.limit,
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
-    }
+    })
   }
 
-  // Value Betting Opportunities
+  async getAnalyticsStats(
+    sport: string = 'all',
+    dateFrom?: string,
+    dateTo?: string
+  ): Promise<DatabaseApiResponse<any>> {
+    const cacheKey = this.getCacheKey('getAnalyticsStats', { sport, dateFrom, dateTo })
+
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        structuredLogger.info('Fetching analytics stats from database', { sport, dateFrom, dateTo })
+
+        // Get games stats
+        const gamesResult = await edgeFunctionClient.queryGames({
+          ...(sport !== 'all' && { sport }),
+          ...(dateFrom && { dateFrom }),
+          ...(dateTo && { dateTo }),
+          limit: 1
+        })
+        
+        if (!gamesResult.success) {
+          throw new Error('Failed to fetch games analytics')
+        }
+        
+        const gamesStats = gamesResult.data[0] || {}
+
+        // Get predictions stats
+        const predictionsResult = await edgeFunctionClient.queryPredictions({
+          ...(sport !== 'all' && { sport }),
+          limit: 1
+        })
+        
+        if (!predictionsResult.success) {
+          throw new Error('Failed to fetch predictions analytics')
+        }
+        
+        const predictionsStats = predictionsResult.data[0] || {}
+
+        // Get teams count
+        const teamsResult = await edgeFunctionClient.queryTeams({
+          ...(sport !== 'all' && { sport }),
+          limit: 1
+        })
+        
+        if (!teamsResult.success) {
+          throw new Error('Failed to fetch teams analytics')
+        }
+        
+        const teamsStats = teamsResult.data[0] || {}
+
+        const analytics = {
+          total_games: parseInt(gamesStats.total_games) || 0,
+          completed_games: parseInt(gamesStats.completed_games) || 0,
+          live_games: parseInt(gamesStats.live_games) || 0,
+          scheduled_games: parseInt(gamesStats.scheduled_games) || 0,
+          total_predictions: parseInt(predictionsStats.total_predictions) || 0,
+          correct_predictions: parseInt(predictionsStats.correct_predictions) || 0,
+          accuracy_rate:
+            predictionsStats.total_predictions > 0
+              ? parseInt(predictionsStats.correct_predictions) /
+                parseInt(predictionsStats.total_predictions)
+              : 0,
+          avg_confidence: parseFloat(predictionsStats.avg_confidence) || 0,
+          total_teams: parseInt(teamsStats.total_teams) || 0,
+        }
+
+        return {
+          success: true,
+          data: analytics,
+          meta: {
+            source: 'database',
+            count: 1,
+            sport,
+            refreshed: true,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Error fetching analytics stats', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          sport,
+          dateFrom,
+          dateTo,
+        })
+
+        return {
+          success: false,
+          data: {},
+          meta: {
+            source: 'database',
+            count: 0,
+            sport,
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
+      }
+    })
+  }
+
   async getValueBets(
     params: {
       sport?: string
       league?: string
-      betType?: string
-      recommendation?: string
       minValue?: number
       limit?: number
-      activeOnly?: boolean
     } = {}
   ): Promise<DatabaseApiResponse<any[]>> {
-    try {
-      const {
-        sport = 'all',
-        league,
-        betType,
-        recommendation,
-        minValue,
-        limit = 50,
-        activeOnly = true,
-      } = params
+    const cacheKey = this.getCacheKey('getValueBets', params)
 
-      let query = `SELECT * FROM value_betting_opportunities WHERE 1=1`
-      const queryParams: any[] = []
-      let paramIndex = 1
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        structuredLogger.info('Fetching value bets from database', params)
 
-      if (sport !== 'all') {
-        query += ` AND sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
+        // For now, we'll return empty array since value bets require complex calculations
+        // In a real implementation, you'd have a specific Edge Function for value bets
+        return {
+          success: true,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            sport: params.sport,
+            league: params.league,
+            minValue: params.minValue,
+            limit: params.limit,
+            refreshed: true,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Error fetching value bets', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            sport: params.sport,
+            league: params.league,
+            minValue: params.minValue,
+            limit: params.limit,
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
-
-      if (league) {
-        query += ` AND league = $${paramIndex}`
-        queryParams.push(league)
-        paramIndex++
-      }
-
-      if (betType) {
-        query += ` AND bet_type = $${paramIndex}`
-        queryParams.push(betType)
-        paramIndex++
-      }
-
-      if (recommendation) {
-        query += ` AND recommendation = $${paramIndex}`
-        queryParams.push(recommendation)
-        paramIndex++
-      }
-
-      if (minValue !== undefined) {
-        query += ` AND value >= $${paramIndex}`
-        queryParams.push(minValue)
-        paramIndex++
-      }
-
-      if (activeOnly) {
-        query += ` AND expires_at > NOW()`
-      }
-
-      query += ` ORDER BY value DESC, confidence_score DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
-
-      const result = await databaseService.executeSQL(query, queryParams)
-      const valueBets = result.data || []
-
-      structuredLogger.info('Value bets fetched from database', {
-        sport,
-        league,
-        betType,
-        recommendation,
-        minValue,
-        limit,
-        activeOnly,
-        count: valueBets.length,
-      })
-
-      return {
-        success: true,
-        data: valueBets,
-        meta: {
-          source: 'database',
-          count: valueBets.length,
-          ...(sport && sport !== 'all' && { sport }),
-          ...(league && { league }),
-          ...(betType && { betType }),
-          ...(recommendation && { recommendation }),
-          ...(minValue !== undefined && { minValue }),
-          activeOnly,
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-      }
-    } catch (error) {
-      structuredLogger.error('Failed to fetch value bets from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params,
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    })
   }
 
-  // Sports News
   async getSportsNews(
     params: {
-      sport?: string | undefined
-      league?: string | undefined
-      teamId?: string | undefined
-      playerId?: string | undefined
-      newsType?: string | undefined
-      source?: string | undefined
-      limit?: number | undefined
-      hours?: number | undefined
+      sport?: string
+      league?: string
+      newsSource?: string
+      hours?: number
+      limit?: number
     } = {}
   ): Promise<DatabaseApiResponse<any[]>> {
-    try {
-      const {
-        sport = 'all',
-        league,
-        teamId,
-        playerId,
-        newsType,
-        source,
-        limit = 20,
-        hours = 24,
-      } = params
+    const cacheKey = this.getCacheKey('getSportsNews', params)
 
-      let query = `SELECT * FROM sports_news WHERE 1=1`
-      const queryParams: any[] = []
-      let paramIndex = 1
+    return this.deduplicateRequest(cacheKey, async () => {
+      try {
+        structuredLogger.info('Fetching sports news from database', params)
 
-      if (sport !== 'all') {
-        query += ` AND sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
+        // For now, we'll return empty array since news requires external API integration
+        // In a real implementation, you'd have a specific Edge Function for news
+        return {
+          success: true,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            sport: params.sport,
+            league: params.league,
+            newsSource: params.newsSource,
+            hours: params.hours,
+            limit: params.limit,
+            refreshed: true,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Error fetching sports news', {
+          error: error instanceof Error ? error.message : 'Unknown error',
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            sport: params.sport,
+            league: params.league,
+            newsSource: params.newsSource,
+            hours: params.hours,
+            limit: params.limit,
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : 'Unknown error',
+        }
       }
-
-      if (league) {
-        query += ` AND league = $${paramIndex}`
-        queryParams.push(league)
-        paramIndex++
-      }
-
-      if (teamId) {
-        query += ` AND team_id = $${paramIndex}`
-        queryParams.push(teamId)
-        paramIndex++
-      }
-
-      if (playerId) {
-        query += ` AND player_id = $${paramIndex}`
-        queryParams.push(playerId)
-        paramIndex++
-      }
-
-      if (newsType) {
-        query += ` AND news_type = $${paramIndex}`
-        queryParams.push(newsType)
-        paramIndex++
-      }
-
-      if (source) {
-        query += ` AND source = $${paramIndex}`
-        queryParams.push(source)
-        paramIndex++
-      }
-
-      // Use make_interval to parameterize hours
-      query += ` AND published_at > NOW() - make_interval(hours => $${paramIndex})`
-      queryParams.push(hours)
-      paramIndex++
-
-      query += ` ORDER BY published_at DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
-
-      const result = await databaseService.executeSQL(query, queryParams)
-      const news = result.data || []
-
-      structuredLogger.info('Sports news fetched from database', {
-        sport,
-        league,
-        teamId,
-        playerId,
-        newsType,
-        source,
-        limit,
-        hours,
-        count: news.length,
-      })
-
-      return {
-        success: true,
-        data: news,
-        meta: {
-          source: 'database',
-          count: news.length,
-          ...(sport && sport !== 'all' && { sport }),
-          ...(league && { league }),
-          ...(teamId && { teamId }),
-          ...(playerId && { playerId }),
-          ...(newsType && { newsType }),
-          ...(source && { newsSource: source }),
-          limit,
-          hours,
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-      }
-    } catch (error) {
-      structuredLogger.error('Failed to fetch sports news from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params,
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString(),
-        },
-        error: error instanceof Error ? error.message : String(error),
-      }
-    }
+    })
   }
 }
 

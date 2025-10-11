@@ -3,7 +3,7 @@
  * Comprehensive rate limiting with database persistence and provider-specific limits
  */
 
-import { productionSupabaseClient } from '../supabase/production-client'
+import { createClient } from '@supabase/supabase-js'
 
 export interface RateLimitConfig {
   provider: string
@@ -34,6 +34,13 @@ export class EnhancedRateLimiter {
       EnhancedRateLimiter.instance = new EnhancedRateLimiter()
     }
     return EnhancedRateLimiter.instance
+  }
+
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
   }
 
   private initializeConfigs() {
@@ -242,19 +249,16 @@ export class EnhancedRateLimiter {
       const today = now.toISOString().split('T')[0]
 
       // Check minute-based rate limit
-      const minuteQuery = `
-        SELECT requests_count, window_start
-        FROM api_rate_limits
-        WHERE provider = '${provider}' 
-        AND endpoint = '${endpoint}'
-        AND window_start = '${windowStart.toISOString()}'
-      `
+      const supabase = this.getSupabaseClient()
+      const { data: minuteData } = await supabase
+        .from('api_rate_limits')
+        .select('requests_count, window_start')
+        .eq('provider', provider)
+        .eq('endpoint', endpoint)
+        .eq('window_start', windowStart.toISOString())
+        .maybeSingle()
 
-      const minuteResult = await productionSupabaseClient.executeSQL(minuteQuery)
-      const currentMinuteRequests =
-        minuteResult.success && minuteResult.data && minuteResult.data[0]
-          ? minuteResult.data[0].requests_count || 0
-          : 0
+      const currentMinuteRequests = minuteData?.requests_count || 0
 
       if (currentMinuteRequests >= config.requestsPerMinute) {
         return {
@@ -268,20 +272,16 @@ export class EnhancedRateLimiter {
       }
 
       // Check daily rate limit
-      const dailyQuery = `
-        SELECT daily_requests
-        FROM api_rate_limits
-        WHERE provider = '${provider}'
-        AND daily_reset_date = '${today}'
-        ORDER BY created_at DESC
-        LIMIT 1
-      `
+      const { data: dailyData } = await supabase
+        .from('api_rate_limits')
+        .select('daily_requests')
+        .eq('provider', provider)
+        .eq('daily_reset_date', today)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      const dailyResult = await productionSupabaseClient.executeSQL(dailyQuery)
-      const currentDailyRequests =
-        dailyResult.success && dailyResult.data && dailyResult.data[0]
-          ? dailyResult.data[0].daily_requests || 0
-          : 0
+      const currentDailyRequests = dailyData?.daily_requests || 0
 
       if (currentDailyRequests >= config.requestsPerDay) {
         const tomorrow = new Date(now)
@@ -358,28 +358,46 @@ export class EnhancedRateLimiter {
       const today = now.toISOString().split('T')[0]
 
       // Update minute-based counter
-      const updateMinuteQuery = `
-        INSERT INTO api_rate_limits (service_name, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
-        VALUES ('${provider}', '${endpoint}', 1, '${windowStart.toISOString()}', 1, '${today}')
-        ON CONFLICT (service_name, endpoint, window_start)
-        DO UPDATE SET 
-          requests_count = api_rate_limits.requests_count + 1,
-          updated_at = NOW()
-      `
+      const supabase = this.getSupabaseClient()
+      
+      const { error: minuteError } = await supabase
+        .from('api_rate_limits')
+        .upsert({
+          service_name: provider,
+          endpoint: endpoint,
+          requests_count: 1,
+          window_start: windowStart.toISOString(),
+          daily_requests: 1,
+          daily_reset_date: today,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'service_name,endpoint,window_start',
+          ignoreDuplicates: false
+        })
 
-      await productionSupabaseClient.executeSQL(updateMinuteQuery)
+      if (minuteError) {
+        throw new Error(`Failed to update minute counter: ${minuteError.message}`)
+      }
 
       // Update daily counter
-      const updateDailyQuery = `
-        INSERT INTO api_rate_limits (service_name, endpoint, requests_count, window_start, daily_requests, daily_reset_date)
-        VALUES ('${provider}', '${endpoint}', 1, '${windowStart.toISOString()}', 1, '${today}')
-        ON CONFLICT (service_name, endpoint, window_start)
-        DO UPDATE SET 
-          daily_requests = api_rate_limits.daily_requests + 1,
-          updated_at = NOW()
-      `
+      const { error: dailyError } = await supabase
+        .from('api_rate_limits')
+        .upsert({
+          service_name: provider,
+          endpoint: endpoint,
+          requests_count: 1,
+          window_start: windowStart.toISOString(),
+          daily_requests: 1,
+          daily_reset_date: today,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'service_name,endpoint,window_start',
+          ignoreDuplicates: false
+        })
 
-      await productionSupabaseClient.executeSQL(updateDailyQuery)
+      if (dailyError) {
+        throw new Error(`Failed to update daily counter: ${dailyError.message}`)
+      }
     } catch (error) {
       console.error('Failed to update rate limit counters:', error)
     }
@@ -404,25 +422,24 @@ export class EnhancedRateLimiter {
         Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs
       )
 
-      const query = `
-        SELECT 
-          COALESCE(SUM(requests_count), 0) as minute_requests,
-          COALESCE(SUM(daily_requests), 0) as daily_requests
-        FROM api_rate_limits
-        WHERE provider = '${provider}'
-        AND window_start = '${windowStart.toISOString()}'
-      `
+      const supabase = this.getSupabaseClient()
+      const { data: result, error } = await supabase
+        .from('api_rate_limits')
+        .select('requests_count, daily_requests')
+        .eq('provider', provider)
+        .eq('window_start', windowStart.toISOString())
 
-      const result = await productionSupabaseClient.executeSQL(query)
-      const data =
-        result.success && result.data && result.data[0]
-          ? result.data[0]
-          : { minute_requests: 0, daily_requests: 0 }
+      if (error) {
+        throw new Error(`Failed to get rate limit status: ${error.message}`)
+      }
+
+      const minuteRequests = result?.reduce((sum, row) => sum + (row.requests_count || 0), 0) || 0
+      const dailyRequests = result?.reduce((sum, row) => sum + (row.daily_requests || 0), 0) || 0
 
       return {
         provider,
-        currentMinuteRequests: parseInt(data.minute_requests) || 0,
-        currentDailyRequests: parseInt(data.daily_requests) || 0,
+        currentMinuteRequests: minuteRequests,
+        currentDailyRequests: dailyRequests,
         minuteLimit: config.requestsPerMinute,
         dailyLimit: config.requestsPerDay,
         resetTime: windowStart.getTime() + config.windowSizeMs,
@@ -442,13 +459,27 @@ export class EnhancedRateLimiter {
 
   async resetRateLimits(provider?: string): Promise<void> {
     try {
+      const supabase = this.getSupabaseClient()
+      
       if (provider) {
-        const query = `DELETE FROM api_rate_limits WHERE provider = '${provider}'`
-        await productionSupabaseClient.executeSQL(query)
+        const { error } = await supabase
+          .from('api_rate_limits')
+          .delete()
+          .eq('provider', provider)
+        
+        if (error) {
+          throw new Error(`Failed to reset rate limits for ${provider}: ${error.message}`)
+        }
         console.log(`Rate limits reset for provider: ${provider}`)
       } else {
-        const query = 'DELETE FROM api_rate_limits'
-        await productionSupabaseClient.executeSQL(query)
+        const { error } = await supabase
+          .from('api_rate_limits')
+          .delete()
+          .neq('id', 0) // Delete all records
+        
+        if (error) {
+          throw new Error(`Failed to reset all rate limits: ${error.message}`)
+        }
         console.log('All rate limits reset')
       }
     } catch (error) {

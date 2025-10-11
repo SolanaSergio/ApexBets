@@ -468,15 +468,20 @@ export class HockeyService extends SportSpecificService {
 
   private async fetchPlayers(params: any): Promise<PlayerData[]> {
     try {
-      // Fetch from database using production client
-      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
-      const players = await productionSupabaseClient.getPlayers(
-        'hockey',
-        params.teamId,
-        params.limit || 100
-      )
+      // Fetch from database using Edge Functions
+      const { edgeFunctionClient } = await import('@/lib/services/edge-function-client')
+      const result = await edgeFunctionClient.queryPlayers({
+        sport: 'hockey',
+        teamId: params.teamId,
+        limit: params.limit || 100,
+      })
 
-      return players.map((player: any) => ({
+      if (!result.success) {
+        console.warn('Failed to fetch players from Edge Function:', result.error)
+        return []
+      }
+
+      return result.data.map((player: any) => ({
         id: player.id,
         name: player.name,
         position: player.position,

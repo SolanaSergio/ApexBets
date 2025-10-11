@@ -6,14 +6,22 @@ import { PredictionsDashboard } from '@/components/homepage/predictions-dashboar
 import { AnalyticsOverview } from '@/components/homepage/analytics-overview'
 import { SportsGrid } from '@/components/homepage/sports-grid'
 import { SportSelector } from '@/components/homepage/sport-selector'
-import { SportConfigManager } from '@/lib/services/core/sport-config'
+import { fetchServerInitialData } from '@/lib/data/server-data-fetcher'
+
 
 export default async function HomePage() {
-  const supportedSports = await SportConfigManager.getSupportedSports()
+  // Check authentication server-side before fetching data
+  
+  
+  // Only fetch data if user is authenticated
+  const initialData = await fetchServerInitialData()
 
   return (
     <AuthGuard>
-      <RealTimeProvider supportedSports={supportedSports}>
+      <RealTimeProvider 
+        supportedSports={initialData.supportedSports}
+        initialData={initialData}
+      >
         <AppLayout>
           <div className="bg-gray-50/50 min-h-screen">
             <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">

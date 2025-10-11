@@ -53,8 +53,18 @@ export function UserProfile() {
       <Card>
         <CardHeader className="flex flex-row items-center gap-4">
             <Avatar className="h-20 w-20 border-2 border-primary shadow-lg">
-              <AvatarImage src={user?.user_metadata?.avatar_url} />
-              <AvatarFallback className="text-2xl font-bold">{user?.email?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+              {user?.user_metadata?.avatar_url && (
+                <AvatarImage 
+                  src={user.user_metadata.avatar_url} 
+                  alt={user?.email || 'User avatar'}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none'
+                  }}
+                />
+              )}
+              <AvatarFallback className="text-2xl font-bold bg-primary text-primary-foreground">
+                {user?.email?.[0]?.toUpperCase() || 'U'}
+              </AvatarFallback>
             </Avatar>
             <div>
                 <h2 className="text-2xl font-bold">{user?.user_metadata?.full_name || user?.email}</h2>
@@ -114,8 +124,16 @@ export function UserMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-10 w-10 rounded-full">
           <Avatar className="h-10 w-10 border-2 border-primary/50">
-            <AvatarImage src={user?.user_metadata?.avatar_url} />
-            <AvatarFallback className="font-bold">{initials}</AvatarFallback>
+            {user?.user_metadata?.avatar_url && (
+              <AvatarImage 
+                src={user.user_metadata.avatar_url} 
+                alt={user?.email || 'User avatar'}
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+            )}
+            <AvatarFallback className="font-bold bg-primary text-primary-foreground">{initials}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>

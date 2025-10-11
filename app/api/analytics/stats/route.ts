@@ -16,11 +16,11 @@ export async function GET(request: NextRequest) {
     const dateTo = searchParams.get('dateTo')
 
     // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getAnalyticsStats({
+    const result = await databaseFirstApiClient.getAnalyticsStats(
       sport,
-      ...(dateFrom && { dateFrom }),
-      ...(dateTo && { dateTo }),
-    })
+      dateFrom || undefined,
+      dateTo || undefined
+    )
 
     structuredLogger.info('Analytics stats API request processed', {
       sport,

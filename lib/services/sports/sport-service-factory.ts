@@ -4,8 +4,9 @@
  * No hardcoded sport-specific logic
  */
 
-import { envValidator } from '../../config/env-validator'
+import { createClient } from '@supabase/supabase-js'
 import { structuredLogger } from '../structured-logger'
+import { envValidator } from '../../config/env-validator'
 
 export interface SportService {
   getGames(params: any): Promise<any[]>
@@ -104,40 +105,36 @@ class SportServiceFactory {
 
   private async loadSportConfigurations(): Promise<void> {
     try {
-      // Import database service
-      const { databaseService } = await import('../database-service')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
 
-      const query = `
-        SELECT 
-          name,
-          display_name,
-          is_active,
-          data_source as api_providers,
-          season_config->>'defaultLeague' as default_league,
-          season_config->>'supportedLeagues' as supported_leagues
-        FROM sports
-        WHERE is_active = true
-        ORDER BY display_name
-      `
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('name, display_name, is_active, data_source, season_config')
+        .eq('is_active', true)
+        .order('display_name')
 
-      const result = await databaseService.executeSQL(query)
-
-      if (!result.success) {
-        throw new Error(`Failed to load sport configurations: ${result.error}`)
+      if (sportsError) {
+        throw new Error(`Failed to load sport configurations: ${sportsError.message}`)
       }
+
+      const result = { success: true, data: sportsData || [] }
 
       // Clear existing configs
       this.sportConfigs.clear()
 
       // Load configurations from database
       for (const row of result.data || []) {
+        const seasonConfig = row.season_config || {}
         const config: SportConfig = {
           name: row.name,
           displayName: row.display_name,
           isActive: row.is_active,
-          apiProviders: row.api_providers ? [row.api_providers] : [],
-          defaultLeague: row.default_league || null,
-          supportedLeagues: row.supported_leagues ? [row.supported_leagues] : [],
+          apiProviders: row.data_source ? [row.data_source] : [],
+          defaultLeague: seasonConfig.defaultLeague || null,
+          supportedLeagues: seasonConfig.supportedLeagues ? [seasonConfig.supportedLeagues] : [],
         }
 
         this.sportConfigs.set(config.name, config)

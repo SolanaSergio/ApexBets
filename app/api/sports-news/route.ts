@@ -32,11 +32,8 @@ export async function GET(request: NextRequest) {
     // Use database-first API client - no external API calls
     const result = await databaseFirstApiClient.getSportsNews({
       sport,
-      league,
-      teamId,
-      playerId,
-      newsType,
-      source,
+      ...(league && { league }),
+      ...(source && { newsSource: source }),
       limit,
       hours,
     })

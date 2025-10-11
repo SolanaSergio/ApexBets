@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
+import { createClient } from '@/lib/supabase/server'
 import { structuredLogger } from '@/lib/services/structured-logger'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
@@ -89,25 +89,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached)
     }
 
-    // Check if Supabase client is available
-    if (!productionSupabaseClient.isConnected()) {
-      structuredLogger.error('Supabase client not available', {
-        service: 'games-api',
-        requestId,
-        step: 'client-check',
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Database service unavailable',
-          details: 'Supabase client not initialized',
-          requestId,
-        },
-        { status: 503 }
-      )
-    }
-
-    structuredLogger.info('Calling productionSupabaseClient.getGames', {
+    structuredLogger.info('Querying games from database', {
       service: 'games-api',
       requestId,
       sport,
@@ -115,20 +97,72 @@ export async function GET(request: NextRequest) {
       status,
     })
 
-    // Use production Supabase client directly - no external API calls
-    const games = await productionSupabaseClient.getGames(
-      sport,
-      league || undefined,
-      undefined,
-      status
-    )
+    // Query games with team data included
+    const supabase = await createClient()
+    let query = supabase
+      .from('games')
+      .select(`
+        *,
+        home_team:teams!home_team_id(
+          id,
+          name,
+          abbreviation,
+          logo_url,
+          sport,
+          league
+        ),
+        away_team:teams!away_team_id(
+          id,
+          name,
+          abbreviation,
+          logo_url,
+          sport,
+          league
+        )
+      `)
+      .order('game_date', { ascending: true })
+
+    if (sport !== 'all') {
+      query = query.eq('sport', sport)
+    }
+    if (league) {
+      query = query.eq('league', league)
+    }
+    if (status) {
+      query = query.eq('status', status)
+    }
+    if (dateFrom) {
+      query = query.gte('game_date', dateFrom)
+    }
+    if (dateTo) {
+      query = query.lte('game_date', dateTo)
+    }
+
+    const { data: games, error } = await query.limit(limit)
+
+    if (error) {
+      structuredLogger.error('Database query failed', {
+        service: 'games-api',
+        requestId,
+        error: error.message,
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database query failed',
+          details: error.message,
+          requestId,
+        },
+        { status: 500 }
+      )
+    }
 
     const result = {
       success: true,
-      data: games.slice(0, limit),
+      data: games || [],
       meta: {
         source: 'database',
-        count: games.length,
+        count: games?.length || 0,
         sport,
         status,
         league: league || 'all',

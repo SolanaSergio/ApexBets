@@ -3,7 +3,7 @@
  * Centralized schema management for ApexBets database
  */
 
-import { productionSupabaseClient } from '../supabase/production-client'
+import { createClient } from '@supabase/supabase-js'
 
 export class SchemaMigrations {
   private static instance: SchemaMigrations
@@ -18,6 +18,13 @@ export class SchemaMigrations {
       SchemaMigrations.instance = new SchemaMigrations()
     }
     return SchemaMigrations.instance
+  }
+
+  private getSupabaseClient() {
+    return createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
   }
 
   private initializeMigrations() {
@@ -100,7 +107,7 @@ export class SchemaMigrations {
       'enhance_teams_table',
       `
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS sport TEXT;
-      ALTER TABLE teams ADD COLUMN IF NOT EXISTS league TEXT;
+      ALTER TABLE teams ADD COLUMN IF NOT EXISTS league_name TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS conference TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS division TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS founded_year INTEGER;
@@ -113,7 +120,7 @@ export class SchemaMigrations {
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
       CREATE INDEX IF NOT EXISTS idx_teams_sport ON teams(sport);
-      CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
+      CREATE INDEX IF NOT EXISTS idx_teams_league_name ON teams(league_name);
       CREATE INDEX IF NOT EXISTS idx_teams_active ON teams(is_active);
     `
     )
@@ -274,7 +281,13 @@ export class SchemaMigrations {
 
     for (const [name, query] of this.migrations) {
       try {
-        await productionSupabaseClient.executeSQL(query)
+        const supabase = this.getSupabaseClient()
+        const { error } = await supabase.rpc('execute_sql', { sql: query })
+        
+        if (error) {
+          throw new Error(error.message)
+        }
+        
         results.push({ name, success: true })
         console.log(`✅ Migration ${name} completed successfully`)
       } catch (error) {
@@ -295,7 +308,13 @@ export class SchemaMigrations {
     }
 
     try {
-      await productionSupabaseClient.executeSQL(query)
+      const supabase = this.getSupabaseClient()
+      const { error } = await supabase.rpc('execute_sql', { sql: query })
+      
+      if (error) {
+        throw new Error(error.message)
+      }
+      
       console.log(`✅ Migration ${name} completed successfully`)
       return { success: true }
     } catch (error) {

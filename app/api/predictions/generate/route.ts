@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-// Note: No direct DB writes in website runtime; use Supabase Edge Function for mutations
+import { createClient } from '@/lib/supabase/server'
+import { envValidator } from '@/lib/config/env-validator'
 import { EnsembleModel, TeamStats, GameContext } from '@/lib/ml/prediction-algorithms'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 /**
  * Generate new ML predictions for upcoming games
@@ -22,10 +17,17 @@ export async function POST(request: NextRequest) {
     const league = searchParams.get('league') || undefined
     const gameId = searchParams.get('gameId') || undefined
 
-    // Edge Function config
-    const edgeBaseUrl = process.env.NEXT_PUBLIC_SUPABASE_EDGE_URL as string | undefined
-    const fnName = process.env.GENERATE_PREDICTIONS_EDGE_FUNCTION_NAME as string | undefined
-    const edgeSecret = process.env.EDGE_FUNCTION_SECRET as string | undefined
+    // Edge Function config - get from environment validator
+    const config = envValidator.getServerConfig()
+    const edgeBaseUrl = config.NEXT_PUBLIC_SUPABASE_URL
+    const fnName = 'generate-predictions' // Use standard function name
+    const edgeSecret = config.SUPABASE_SERVICE_ROLE_KEY
+
+    // Get Supabase client
+    const supabase = await createClient()
+    if (!supabase) {
+      return NextResponse.json({ success: false, error: 'Database connection failed' }, { status: 500 })
+    }
 
     // Get games to predict (upcoming or specific game)
     let gamesQuery = supabase
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify({
                 action: 'insert_prediction',
                 sport: game.sport,
-                league: game.league,
+                league: game.league_name,
                 gameId: game.id,
                 winner: mlPrediction.homeWinProbability > 0.5 ? 'home' : 'away',
                 confidence: mlPrediction.confidence,
@@ -215,7 +217,7 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify({
                 action: 'insert_prediction_spread',
                 sport: game.sport,
-                league: game.league,
+                league: game.league_name,
                 gameId: game.id,
                 spread: mlPrediction.predictedSpread,
                 confidence: mlPrediction.confidence * 0.9,
@@ -236,7 +238,7 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify({
                 action: 'insert_prediction_total',
                 sport: game.sport,
-                league: game.league,
+                league: game.league_name,
                 gameId: game.id,
                 total: mlPrediction.predictedTotal,
                 confidence: mlPrediction.confidence * 0.85,

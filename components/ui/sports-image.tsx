@@ -227,7 +227,11 @@ export function TeamLogo({
   }, [hasError, fallbackType, onError])
 
   if (loading) {
-    return <SportsImageSkeleton width={width} height={height} {...(className && { className })} />
+    return (
+      <div className={cn('relative overflow-hidden flex items-center justify-center bg-gray-100', className)} style={{ width, height }}>
+        <div className="text-gray-400 text-sm">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -346,7 +350,11 @@ export function PlayerPhoto({
   }, [hasError, fallbackType, onError])
 
   if (loading) {
-    return <SportsImageSkeleton width={width} height={height} {...(className && { className })} />
+    return (
+      <div className={cn('relative overflow-hidden flex items-center justify-center bg-gray-100', className)} style={{ width, height }}>
+        <div className="text-gray-400 text-sm">Loading...</div>
+      </div>
+    )
   }
 
   return (
@@ -419,19 +427,3 @@ export function SportsImageGeneric({
   )
 }
 
-/**
- * Loading skeleton for sports images
- */
-export function SportsImageSkeleton({
-  width = 200,
-  height = 200,
-  className,
-}: {
-  width?: number
-  height?: number
-  className?: string
-}) {
-  return (
-    <div className={cn('animate-pulse bg-muted rounded-lg', className)} style={{ width, height }} />
-  )
-}

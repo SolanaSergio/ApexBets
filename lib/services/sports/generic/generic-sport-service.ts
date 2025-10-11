@@ -211,7 +211,7 @@ export class GenericSportService extends SportSpecificService {
   private async fetchOdds(_params: any = {}): Promise<any[]> {
     try {
       // const odds = await theOddsApiClient.getOdds(this.sport, params.region)
-      // TODO: Implement odds fetching
+      // Odds fetching will be implemented via Edge Functions
       return []
     } catch (error) {
       console.error(`Error fetching odds for ${this.sport}:`, error)

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/server'
+import { envValidator } from '@/lib/config/env-validator'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportPredictionService } from '@/lib/services/predictions/sport-prediction-service'
 import { cachedSupabaseQuery } from '@/lib/utils/supabase-query-cache'
@@ -15,10 +16,7 @@ export async function POST(request: NextRequest) {
     const league = searchParams.get('league')
     const days = parseInt(searchParams.get('days') || '30')
 
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
+    const supabase = await createClient()
 
     if (!supabase) {
       return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
@@ -185,8 +183,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. Populate player stats (basketball only for now)
-      if (sport === 'basketball') {
+      // 3. Populate player stats (dynamic based on sport configuration)
+      // Check if sport supports player stats from database configuration
+      const sportConfig = await getSportConfig(sport)
+      if (sportConfig?.supportsPlayerStats) {
         console.log('Populating player stats...')
         // Use cached query to prevent duplicate calls
         const gamesData = await cachedSupabaseQuery(
@@ -372,27 +372,20 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Helper function to get current season
-function getCurrentSeason(sport: string): string {
-  const now = new Date()
-  const year = now.getFullYear()
-
-  switch (sport) {
-    case 'basketball':
-      // NBA season spans two years
-      return now.getMonth() >= 9 ? `${year}-${year + 1}` : `${year - 1}-${year}`
-    case 'football':
-      // NFL season is in one year
-      return now.getMonth() >= 9 ? `${year + 1}` : `${year}`
-    case 'baseball':
-      // MLB season is in one year
-      return `${year}`
-    case 'hockey':
-      // NHL season spans two years
-      return now.getMonth() >= 10 ? `${year}-${year + 1}` : `${year - 1}-${year}`
-    default:
-      return `${year}`
+// Helper function to get current season - dynamic based on sport configuration
+async function getCurrentSeason(sport: string): Promise<string> {
+  try {
+    // Get sport configuration from database
+    const sportConfig = await getSportConfig(sport)
+    if (sportConfig?.seasonConfig) {
+      return sportConfig.seasonConfig.currentSeason || `${new Date().getFullYear()}`
+    }
+  } catch (error) {
+    console.warn('Failed to get sport config for season calculation:', error)
   }
+  
+  // Fallback to current year
+  return `${new Date().getFullYear()}`
 }
 
 // Real implementation that fetches player stats from external APIs

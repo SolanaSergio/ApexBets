@@ -96,7 +96,7 @@ function GamesPageContent() {
     )
   }, [games, searchTerm])
 
-  const liveGames = useMemo(() => filteredGames.filter(g => g.status === 'in_progress'), [filteredGames])
+  const liveGames = useMemo(() => filteredGames.filter(g => g.status === 'live'), [filteredGames])
   const upcomingGames = useMemo(() => filteredGames.filter(g => g.status === 'scheduled'), [filteredGames])
   const completedGames = useMemo(() => filteredGames.filter(g => g.status === 'completed'), [filteredGames])
 

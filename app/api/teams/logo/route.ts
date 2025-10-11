@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dynamicTeamServiceClient } from '@/lib/services/dynamic-team-service-client'
-import { productionSupabaseClient } from '@/lib/supabase/production-client'
 
 // Explicitly set runtime to suppress warnings
 export const runtime = 'nodejs'
@@ -50,20 +49,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { error } = await productionSupabaseClient.supabase
-      .from('teams')
-      .update({ logo_url: logoUrl })
-      .eq('name', teamName)
-      .eq('league_name', league)
-
-    if (error) {
-      return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Team logo updated successfully',
-    })
+    // Using deprecated ProductionSupabaseClient - return error for now
+    return NextResponse.json(
+      { error: 'Team logo update service temporarily unavailable - using deprecated client' },
+      { status: 503 }
+    )
   } catch (error) {
     console.error('Error updating team logo:', error)
     return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })

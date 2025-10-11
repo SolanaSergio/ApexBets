@@ -3,7 +3,7 @@
  * Loads sport configuration directly from database on server side
  */
 
-// Production-ready approach - no direct Supabase client imports
+import { createClient } from '@supabase/supabase-js'
 import { SportConfig } from './sport-config'
 
 export class ServerSportConfigManager {
@@ -17,33 +17,22 @@ export class ServerSportConfigManager {
     if (this.initialized) return
 
     try {
-      // Production approach - use database service
-      const { databaseService } = await import('../database-service')
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
 
-      const result = await databaseService.executeSQL(`
-        SELECT 
-          name,
-          display_name,
-          icon,
-          color,
-          is_active,
-          data_source,
-          api_key,
-          player_stats_table,
-          positions,
-          scoring_fields,
-          betting_markets,
-          season_config,
-          rate_limits,
-          update_frequency
-        FROM sports
-        WHERE is_active = true
-        ORDER BY name
-      `)
+      const { data: sportsData, error: sportsError } = await supabase
+        .from('sports')
+        .select('name, display_name, icon, color, is_active, data_source, api_key, player_stats_table, positions, scoring_fields, betting_markets, season_config, rate_limits, update_frequency')
+        .eq('is_active', true)
+        .order('name')
 
-      if (!result.success) {
-        throw new Error(`Failed to fetch sports: ${result.error}`)
+      if (sportsError) {
+        throw new Error(`Failed to fetch sports: ${sportsError.message}`)
       }
+
+      const result = { success: true, data: sportsData || [] }
 
       const sports = result.data
 

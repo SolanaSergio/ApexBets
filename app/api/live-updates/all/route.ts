@@ -313,8 +313,8 @@ function normalizeGames(games: any[], sport: string): any[] {
     }
 
     // Normalize team data with sport context
-    const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league)
-    const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league)
+    const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league_name)
+    const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league_name)
 
     const gameData = {
       id: game.id,
@@ -327,7 +327,7 @@ function normalizeGames(games: any[], sport: string): any[] {
       away_score: game.away_score,
       status: game.status,
       venue: game.venue,
-      league: game.league,
+      league: game.league_name,
       sport: game.sport,
       attendance: game.attendance,
       game_type: game.game_type,
@@ -339,6 +339,6 @@ function normalizeGames(games: any[], sport: string): any[] {
     }
 
     // Normalize and return the game data with sport-specific normalization
-    return normalizeGameData(gameData, sport, game.league)
+    return normalizeGameData(gameData, sport, game.league_name)
   })
 }

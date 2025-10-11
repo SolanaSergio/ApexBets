@@ -8,26 +8,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { structuredLogger } from '@/lib/services/structured-logger'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
+import { handleApiError, handleDatabaseError } from '@/lib/api/error-handler'
+import type { ApiSuccessResponse, Game, GameFilters, GameSummary } from '@/types/api-responses'
 
 const CACHE_TTL = 60 // 1 minute
 
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+  
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get('sport') || 'all'
-    const status = searchParams.get('status') as
-      | 'scheduled'
-      | 'live'
-      | 'completed'
-      | 'postponed'
-      | 'cancelled'
-      | undefined
-    const dateFrom = searchParams.get('date_from')
-    const dateTo = searchParams.get('date_to')
-    const limit = Number.parseInt(searchParams.get('limit') || '100')
-    const league = searchParams.get('league')
+    const filters: GameFilters = {
+      sport: searchParams.get('sport') || 'all',
+      status: searchParams.get('status') as any,
+      dateFrom: searchParams.get('date_from') || undefined,
+      dateTo: searchParams.get('date_to') || undefined,
+      league: searchParams.get('league') || undefined,
+      limit: Number.parseInt(searchParams.get('limit') || '100')
+    }
 
-    const cacheKey = `games-${sport}-${status}-${dateFrom}-${dateTo}-${limit}-${league}`
+    const cacheKey = `games-${filters.sport}-${filters.status}-${filters.dateFrom}-${filters.dateTo}-${filters.limit}-${filters.league}`
     const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -36,12 +36,10 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     if (!supabase) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Database connection failed',
-        },
-        { status: 500 }
+      return handleApiError(
+        new Error('Database connection failed'),
+        requestId,
+        { filters }
       )
     }
 
@@ -52,59 +50,48 @@ export async function GET(request: NextRequest) {
         `
         *,
         home_team:teams!games_home_team_id_fkey(
-          id, name, abbreviation, logo_url, city, league
+          id, name, abbreviation, logo_url, city, league_name
         ),
         away_team:teams!games_away_team_id_fkey(
-          id, name, abbreviation, logo_url, city, league
+          id, name, abbreviation, logo_url, city, league_name
         )
       `
       )
       .order('game_date', { ascending: false })
 
     // Apply filters
-    if (sport !== 'all') {
-      query = query.eq('sport', sport)
+    if (filters.sport !== 'all') {
+      query = query.eq('sport', filters.sport)
     }
 
-    if (status) {
-      query = query.eq('status', status)
+    if (filters.status) {
+      query = query.eq('status', filters.status)
     }
 
-    if (dateFrom) {
-      query = query.gte('game_date', dateFrom)
+    if (filters.dateFrom) {
+      query = query.gte('game_date', filters.dateFrom)
     }
 
-    if (dateTo) {
-      query = query.lte('game_date', dateTo)
+    if (filters.dateTo) {
+      query = query.lte('game_date', filters.dateTo)
     }
 
-    if (league) {
-      query = query.eq('league_name', league)
+    if (filters.league) {
+      query = query.eq('league_name', filters.league)
     }
 
-    if (limit > 0) {
-      query = query.limit(limit)
+    if (filters.limit && filters.limit > 0) {
+      query = query.limit(filters.limit)
     }
 
     const { data: games, error } = await query
 
     if (error) {
-      structuredLogger.error('Games API database error', {
-        error: error.message,
-        sport,
-        status,
-      })
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Failed to fetch games from database',
-        },
-        { status: 500 }
-      )
+      return handleDatabaseError(error, requestId, { filters })
     }
 
     // Process and format games data
-    const processedGames = (games || []).map(game => ({
+    const processedGames: Game[] = (games || []).map(game => ({
       ...game,
       home_team_name: game.home_team?.name ?? null,
       away_team_name: game.away_team?.name ?? null,
@@ -117,7 +104,7 @@ export async function GET(request: NextRequest) {
     }))
 
     // Calculate summary statistics
-    const summary = {
+    const summary: GameSummary = {
       total: processedGames.length,
       live: processedGames.filter(g => g.status === 'live').length,
       completed: processedGames.filter(g => g.status === 'completed').length,
@@ -130,43 +117,38 @@ export async function GET(request: NextRequest) {
     }
 
     structuredLogger.info('Games API request processed', {
-      sport,
-      status,
-      league,
+      sport: filters.sport,
+      status: filters.status,
+      league: filters.league,
       count: processedGames.length,
       summary,
       source: 'database',
+      requestId
     })
 
-    const result = {
+    const result: ApiSuccessResponse<Game[]> = {
       success: true,
       data: processedGames,
       meta: {
         timestamp: new Date().toISOString(),
-        sport,
-        status,
-        league,
+        sport: filters.sport,
+        status: filters.status,
+        league: filters.league,
         count: processedGames.length,
         summary,
         source: 'database',
-      },
+        refreshed: true
+      }
     }
 
     await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
   } catch (error) {
-    structuredLogger.error('Games API error', {
-      error: error instanceof Error ? error.message : String(error),
-    })
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
+    return handleApiError(
+      error instanceof Error ? error : new Error('Unknown error'),
+      requestId,
+      { endpoint: 'games' }
     )
   }
 }
