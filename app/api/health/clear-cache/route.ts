@@ -7,19 +7,22 @@ export async function POST() {
     // Clear both database and memory cache
     await databaseCacheService.clear()
     cacheService.clear()
-    
+
     return NextResponse.json({
       success: true,
       message: 'All caches cleared successfully',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error('Cache clear error:', error)
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      timestamp: new Date().toISOString()
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString(),
+      },
+      { status: 500 }
+    )
   }
 }
 

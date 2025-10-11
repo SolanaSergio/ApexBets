@@ -1,13 +1,12 @@
 /**
  * Bulletproof Image Service
- * 3-tier failsafe: Memory cache → Database cache → ESPN CDN → SVG generation
+ * 3-tier failsafe: Memory cache → API cache → ESPN CDN → Static fallback
  * ALWAYS returns valid image - never fails
  */
 
 import { structuredLogger } from './structured-logger'
-import { svgGenerator, TeamColors } from './svg-generator'
+import { fallbackImageService } from './svg-generator'
 import { espnCDNMapper } from './espn-cdn-mapper'
-import { databaseService } from './database-service'
 
 export interface ImageCacheEntry {
   image_url: string
@@ -19,7 +18,7 @@ export interface ImageCacheEntry {
 
 export interface BulletproofImageResult {
   url: string
-  source: 'memory' | 'database' | 'espn-cdn' | 'espn-api' | 'svg'
+  source: 'memory' | 'database' | 'espn-cdn' | 'espn-api' | 'static'
   cached: boolean
   fallback: boolean
 }
@@ -30,7 +29,7 @@ export class BulletproofImageService {
   private cacheStats = {
     hits: 0,
     misses: 0,
-    fallbacks: 0
+    fallbacks: 0,
   }
 
   public static getInstance(): BulletproofImageService {
@@ -51,7 +50,7 @@ export class BulletproofImageService {
   ): Promise<BulletproofImageResult> {
     try {
       const cacheKey = `logo:${teamName}:${sport}:${league}`
-      
+
       // 1. Memory cache check (instant)
       if (this.memoryCache.has(cacheKey)) {
         this.cacheStats.hits++
@@ -59,139 +58,110 @@ export class BulletproofImageService {
           url: this.memoryCache.get(cacheKey)!,
           source: 'memory',
           cached: true,
-          fallback: false
+          fallback: false,
         }
       }
 
-      // 2. Database cache check (via Supabase client)
-      const cached = await this.checkDatabaseCache(teamName, sport, 'team_logo')
-      structuredLogger.debug('Database cache check result', {
+      // 2. API cache check (server-side database lookup)
+      const cached = await this.checkApiCache(teamName, sport, 'team')
+      structuredLogger.debug('API cache check result', {
         teamName,
         sport,
         league,
         cached: !!cached,
-        cachedUrl: cached?.image_url,
-        isExpired: cached ? this.isExpired(cached) : false
+        cachedUrl: cached?.url,
       })
-      
-      if (cached && !this.isExpired(cached)) {
-        this.memoryCache.set(cacheKey, cached.image_url)
+
+      if (cached) {
+        this.memoryCache.set(cacheKey, cached.url)
         this.cacheStats.hits++
-        structuredLogger.debug('Using database cached logo', {
+        structuredLogger.debug('Using API cached logo', {
           teamName,
           sport,
           league,
-          url: cached.image_url
+          url: cached.url,
         })
         return {
-          url: cached.image_url,
+          url: cached.url,
           source: 'database',
           cached: true,
-          fallback: false
+          fallback: false,
         }
-      }
-
-      // Get team colors from database for SVG fallback
-      let teamColors: TeamColors | undefined
-      try {
-        const query = `
-          SELECT colors 
-          FROM teams 
-          WHERE name = $1 AND sport = $2 
-          LIMIT 1
-        `
-        
-        const result = await databaseService.executeSQL(query, [teamName, sport])
-        
-        if (result.success && result.data.length > 0) {
-          const teamData = result.data[0] as { colors?: { primary?: string; secondary?: string } }
-          
-          if (teamData?.colors?.primary && teamData?.colors?.secondary) {
-            teamColors = {
-              primary: teamData.colors.primary,
-              secondary: teamData.colors.secondary
-            }
-          }
-        }
-      } catch (error) {
-        structuredLogger.debug('Failed to fetch team colors from database', { teamName, sport })
       }
 
       // 3. Try ESPN CDN
       structuredLogger.debug('Attempting ESPN CDN fallback', {
         teamName,
         sport,
-        league
+        league,
       })
-      
+
       const espnUrl = await espnCDNMapper.getTeamLogoURL(teamName, sport, league)
       structuredLogger.debug('ESPN CDN result', {
         teamName,
         sport,
         league,
-        espnUrl: espnUrl || 'null'
+        espnUrl: espnUrl || 'null',
       })
-      
+
       if (espnUrl) {
-        await this.cacheImage(teamName, sport, 'team_logo', espnUrl, 'espn-cdn')
         this.memoryCache.set(cacheKey, espnUrl)
         this.cacheStats.misses++
         structuredLogger.debug('Using ESPN CDN logo', {
           teamName,
           sport,
           league,
-          url: espnUrl
+          url: espnUrl,
         })
         return {
           url: espnUrl,
           source: 'espn-cdn',
           cached: false,
-          fallback: false
+          fallback: false,
         }
       }
 
-      // 4. Generate SVG (ALWAYS WORKS)
-      structuredLogger.warn('All logo sources failed, generating SVG fallback', {
+      // 4. Static fallback (ALWAYS WORKS)
+      structuredLogger.warn('All logo sources failed, using static fallback', {
         teamName,
         sport,
         league,
-        databaseCacheFailed: !cached,
-        espnCdnFailed: !espnUrl
+        apiCacheFailed: !cached,
+        espnCdnFailed: !espnUrl,
       })
-      
-      const svgDataUri = await this.generateTeamSVG(teamName, sport, league, teamColors)
-      await this.cacheImage(teamName, sport, 'team_logo', svgDataUri, 'svg')
-      this.memoryCache.set(cacheKey, svgDataUri)
+
+      const staticFallback = fallbackImageService.getGenericFallback('team')
+      this.memoryCache.set(cacheKey, staticFallback)
       this.cacheStats.fallbacks++
-      
-      structuredLogger.debug('Generated SVG fallback', {
+
+      structuredLogger.debug('Using static fallback', {
         teamName,
         sport,
         league,
-        svgLength: svgDataUri.length
+        fallbackUrl: staticFallback,
       })
-      
+
       return {
-        url: svgDataUri,
-        source: 'svg',
+        url: staticFallback,
+        source: 'static',
         cached: false,
-        fallback: true
+        fallback: true,
       }
     } catch (error) {
       structuredLogger.error('Bulletproof image service failed', {
         teamName,
         sport,
         league,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
-      
-      // Ultimate fallback - basic SVG
-      const fallbackSvg = await svgGenerator.generateTeamLogo(teamName, sport, league)
+
+      // Ultimate fallback - static image
+      const staticFallback = fallbackImageService.getGenericFallback('team')
       return {
-        url: svgGenerator.svgToDataUri(fallbackSvg),
-        source: 'svg',
+        url: staticFallback,
+        source: 'static',
         cached: false,
-        fallback: true
+        fallback: true,
       }
     }
   }
@@ -204,12 +174,11 @@ export class BulletproofImageService {
     playerName: string,
     playerId: string,
     sport: string,
-    teamName?: string,
-    colors?: TeamColors
+    teamName?: string
   ): Promise<BulletproofImageResult> {
     try {
       const cacheKey = `photo:${playerName}:${sport}:${playerId}`
-      
+
       // 1. Memory cache check
       if (this.memoryCache.has(cacheKey)) {
         this.cacheStats.hits++
@@ -217,48 +186,46 @@ export class BulletproofImageService {
           url: this.memoryCache.get(cacheKey)!,
           source: 'memory',
           cached: true,
-          fallback: false
+          fallback: false,
         }
       }
 
-      // 2. Database cache check
-      const cached = await this.checkDatabaseCache(playerName, sport, 'player_photo')
-      if (cached && !this.isExpired(cached)) {
-        this.memoryCache.set(cacheKey, cached.image_url)
+      // 2. API cache check
+      const cached = await this.checkApiCache(playerName, sport, 'player')
+      if (cached) {
+        this.memoryCache.set(cacheKey, cached.url)
         this.cacheStats.hits++
         return {
-          url: cached.image_url,
+          url: cached.url,
           source: 'database',
           cached: true,
-          fallback: false
+          fallback: false,
         }
       }
 
       // 3. Try ESPN CDN
       const espnUrl = await espnCDNMapper.getPlayerPhotoURL(playerId, sport)
       if (espnUrl) {
-        await this.cacheImage(playerName, sport, 'player_photo', espnUrl, 'espn-cdn')
         this.memoryCache.set(cacheKey, espnUrl)
         this.cacheStats.misses++
         return {
           url: espnUrl,
           source: 'espn-cdn',
           cached: false,
-          fallback: false
+          fallback: false,
         }
       }
 
-      // 4. Generate SVG (ALWAYS WORKS)
-      const svgDataUri = await this.generatePlayerSVG(playerName, sport, teamName, colors)
-      await this.cacheImage(playerName, sport, 'player_photo', svgDataUri, 'svg')
-      this.memoryCache.set(cacheKey, svgDataUri)
+      // 4. Static fallback (ALWAYS WORKS)
+      const staticFallback = fallbackImageService.getGenericFallback('player')
+      this.memoryCache.set(cacheKey, staticFallback)
       this.cacheStats.fallbacks++
-      
+
       return {
-        url: svgDataUri,
-        source: 'svg',
+        url: staticFallback,
+        source: 'static',
         cached: false,
-        fallback: true
+        fallback: true,
       }
     } catch (error) {
       structuredLogger.error('Bulletproof player photo service failed', {
@@ -266,195 +233,79 @@ export class BulletproofImageService {
         playerId,
         sport,
         teamName,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
-      
-      // Ultimate fallback - basic SVG
-      const fallbackSvg = await svgGenerator.generatePlayerPhoto(playerName, sport, teamName)
+
+      // Ultimate fallback - static image
+      const staticFallback = fallbackImageService.getGenericFallback('player')
       return {
-        url: svgGenerator.svgToDataUri(fallbackSvg),
-        source: 'svg',
+        url: staticFallback,
+        source: 'static',
         cached: false,
-        fallback: true
+        fallback: true,
       }
     }
   }
 
   /**
-   * Check database cache via database service
+   * Check API cache - uses server-side API route
    */
-  private async checkDatabaseCache(
+  private async checkApiCache(
     name: string,
     sport: string,
-    type: 'team_logo' | 'player_photo'
-  ): Promise<ImageCacheEntry | null> {
+    entity: 'team' | 'player'
+  ): Promise<{ url: string; source: string } | null> {
     try {
-      if (type === 'team_logo') {
-        const query = `
-          SELECT logo_url, colors, last_updated 
-          FROM teams 
-          WHERE name = $1 AND sport = $2 
-          LIMIT 1
-        `
-        
-        structuredLogger.debug('Executing database cache query', {
+      // Skip API calls during build phase
+      if (process.env.NEXT_PHASE === 'phase-production-build') {
+        structuredLogger.debug('Skipping API cache check during build phase', {
           name,
           sport,
-          type,
-          query: query.substring(0, 100) + '...'
+          entity,
         })
-        
-        const result = await databaseService.executeSQL(query, [name, sport])
-        
-        structuredLogger.debug('Database cache query result', {
-          name,
-          sport,
-          type,
-          success: result.success,
-          dataLength: result.data?.length || 0,
-          error: result.error
-        })
-        
-        if (!result.success || result.data.length === 0) {
-          structuredLogger.debug('Database cache miss - no data found', {
-            name,
-            sport,
-            type,
-            success: result.success,
-            dataLength: result.data?.length || 0
-          })
-          return null
-        }
-        
-        const data = result.data[0] as { logo_url?: string; last_updated?: string }
-        
-        if (!data?.logo_url) {
-          structuredLogger.debug('Database cache miss - no logo_url', {
-            name,
-            sport,
-            type,
-            data: data
-          })
-          return null
-        }
-        
-        structuredLogger.debug('Database cache hit', {
-          name,
-          sport,
-          type,
-          logoUrl: data.logo_url,
-          lastUpdated: data.last_updated
-        })
-        
-        return {
-          image_url: data.logo_url,
-          source: 'database',
-          verified_at: data.last_updated || new Date().toISOString(),
-          cache_hits: 0
-        }
-      } else {
-        const query = `
-          SELECT headshot_url, last_updated 
-          FROM players 
-          WHERE name = $1 AND sport = $2 
-          LIMIT 1
-        `
-        
-        const result = await databaseService.executeSQL(query, [name, sport])
-        
-        if (!result.success || result.data.length === 0) {
-          return null
-        }
-        
-        const data = result.data[0] as { headshot_url?: string; last_updated?: string }
-        
-        if (!data?.headshot_url) {
-          return null
-        }
-        
-        return {
-          image_url: data.headshot_url,
-          source: 'database',
-          verified_at: data.last_updated || new Date().toISOString(),
-          cache_hits: 0
-        }
+        return null
       }
-    } catch (error) {
-      structuredLogger.error('Database cache check failed', {
+
+      const params = new URLSearchParams({
+        entity,
         name,
         sport,
-        type,
-        error: error instanceof Error ? error.message : String(error)
+      })
+
+      const response = await fetch(`/api/images/cache?${params}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        return {
+          url: data.url,
+          source: data.source,
+        }
+      }
+
+      if (response.status === 404) {
+        structuredLogger.debug('No cached image found in API', {
+          name,
+          sport,
+          entity,
+        })
+        return null
+      }
+
+      throw new Error(`API cache check failed with status ${response.status}`)
+    } catch (error) {
+      structuredLogger.error('API cache check failed', {
+        name,
+        sport,
+        entity,
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
-  }
-
-  /**
-   * Cache image in database via MCP
-   */
-  private async cacheImage(
-    name: string,
-    sport: string,
-    type: string,
-    _url: string,
-    source: string
-  ): Promise<void> {
-    try {
-      // MCP database insert will be implemented when Supabase connection is available
-      const ttl = type === 'team_logo' ? 90 : 30 // days
-      const expiresAt = new Date(Date.now() + ttl * 24 * 60 * 60 * 1000)
-      
-      structuredLogger.debug('Image cached', {
-        name,
-        sport,
-        type,
-        source,
-        expiresAt: expiresAt.toISOString()
-      })
-    } catch (error) {
-      structuredLogger.error('Image cache failed', {
-        name,
-        sport,
-        type,
-        source,
-        error: error instanceof Error ? error.message : String(error)
-      })
-    }
-  }
-
-  /**
-   * Check if cache entry is expired
-   */
-  private isExpired(entry: ImageCacheEntry): boolean {
-    if (!entry.expires_at) return false
-    return new Date(entry.expires_at) < new Date()
-  }
-
-  /**
-   * Generate team SVG
-   */
-  private async generateTeamSVG(
-    teamName: string,
-    sport: string,
-    league: string,
-    colors?: TeamColors
-  ): Promise<string> {
-    const svg = await svgGenerator.generateTeamLogo(teamName, sport, league, colors)
-    return svgGenerator.svgToDataUri(svg)
-  }
-
-  /**
-   * Generate player SVG
-   */
-  private async generatePlayerSVG(
-    playerName: string,
-    sport: string,
-    teamName?: string,
-    colors?: TeamColors
-  ): Promise<string> {
-    const svg = await svgGenerator.generatePlayerPhoto(playerName, sport, teamName, colors)
-    return svgGenerator.svgToDataUri(svg)
   }
 
   /**
@@ -482,24 +333,24 @@ export class BulletproofImageService {
       hits: this.cacheStats.hits,
       misses: this.cacheStats.misses,
       fallbacks: this.cacheStats.fallbacks,
-      hitRate: total > 0 ? this.cacheStats.hits / total : 0
+      hitRate: total > 0 ? this.cacheStats.hits / total : 0,
     }
   }
 
   /**
    * Warm up cache with popular images
    */
-  async warmupCache(teams: Array<{name: string, sport: string, league: string}>): Promise<void> {
+  async warmupCache(teams: Array<{ name: string; sport: string; league: string }>): Promise<void> {
     structuredLogger.info('Starting cache warmup', { teamCount: teams.length })
-    
-    const promises = teams.map(async (team) => {
+
+    const promises = teams.map(async team => {
       try {
         await this.getTeamLogo(team.name, team.sport, team.league)
       } catch (error) {
         structuredLogger.error('Cache warmup failed for team', {
           team: team.name,
           sport: team.sport,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         })
       }
     })

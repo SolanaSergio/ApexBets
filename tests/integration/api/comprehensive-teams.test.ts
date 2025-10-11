@@ -14,7 +14,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(Array.isArray(data.data)).toBe(true)
 
@@ -42,7 +42,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All teams should be basketball teams
@@ -64,7 +64,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All teams should be NBA teams
@@ -80,20 +80,44 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
         const knownNBATeams = [
-          'Lakers', 'Warriors', 'Celtics', 'Bulls', 'Heat', 'Spurs',
-          'Knicks', 'Nets', 'Rockets', 'Mavericks', 'Suns', 'Nuggets',
-          'Clippers', 'Trail Blazers', 'Jazz', 'Thunder', 'Timberwolves',
-          'Pelicans', 'Kings', 'Grizzlies', 'Hawks', 'Hornets', 'Magic',
-          'Pistons', 'Pacers', 'Bucks', 'Cavaliers', 'Raptors', '76ers'
+          'Lakers',
+          'Warriors',
+          'Celtics',
+          'Bulls',
+          'Heat',
+          'Spurs',
+          'Knicks',
+          'Nets',
+          'Rockets',
+          'Mavericks',
+          'Suns',
+          'Nuggets',
+          'Clippers',
+          'Trail Blazers',
+          'Jazz',
+          'Thunder',
+          'Timberwolves',
+          'Pelicans',
+          'Kings',
+          'Grizzlies',
+          'Hawks',
+          'Hornets',
+          'Magic',
+          'Pistons',
+          'Pacers',
+          'Bucks',
+          'Cavaliers',
+          'Raptors',
+          '76ers',
         ]
 
         const teamNames = data.data.map((team: any) => team.name)
-        const hasKnownTeam = knownNBATeams.some(knownTeam => 
+        const hasKnownTeam = knownNBATeams.some(knownTeam =>
           teamNames.some((name: string) => name.includes(knownTeam))
         )
 
@@ -108,7 +132,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
@@ -129,7 +153,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
@@ -148,7 +172,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
@@ -167,7 +191,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 1) {
@@ -184,7 +208,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(data.data.length).toBe(0)
     })
@@ -196,7 +220,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
     })
   })
@@ -208,7 +232,7 @@ describe('Comprehensive Teams API Tests', () => {
         city: 'Los Angeles',
         league: 'NBA',
         sport: 'basketball',
-        abbreviation: 'TLK'
+        abbreviation: 'TLK',
       }
 
       const response = await fetch(`${baseUrl}/teams`, {
@@ -236,7 +260,7 @@ describe('Comprehensive Teams API Tests', () => {
     it('should create team with minimal required fields', async () => {
       const teamData = {
         name: 'Minimal Team',
-        sport: 'basketball'
+        sport: 'basketball',
       }
 
       const response = await fetch(`${baseUrl}/teams`, {
@@ -260,7 +284,7 @@ describe('Comprehensive Teams API Tests', () => {
 
     it('should reject team creation with missing required fields', async () => {
       const teamData = {
-        city: 'Los Angeles'
+        city: 'Los Angeles',
         // Missing name and sport
       }
 
@@ -280,7 +304,7 @@ describe('Comprehensive Teams API Tests', () => {
         name: 'Team With Logo',
         sport: 'basketball',
         league: 'NBA',
-        logo_url: 'https://example.com/logo.png'
+        logo_url: 'https://example.com/logo.png',
       }
 
       const response = await fetch(`${baseUrl}/teams`, {
@@ -307,7 +331,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -326,7 +350,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -342,7 +366,7 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       const teamIds = data.data.map((team: any) => team.id)
@@ -357,13 +381,13 @@ describe('Comprehensive Teams API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
         expect(team.created_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
         expect(team.updated_at).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
-        
+
         // Verify timestamps are valid dates
         expect(new Date(team.created_at)).toBeInstanceOf(Date)
         expect(new Date(team.updated_at)).toBeInstanceOf(Date)
@@ -382,12 +406,12 @@ describe('Comprehensive Teams API Tests', () => {
     })
 
     it('should handle concurrent requests efficiently', async () => {
-      const requests = Array(5).fill(null).map(() => 
-        fetch(`${baseUrl}/teams`)
-      )
+      const requests = Array(5)
+        .fill(null)
+        .map(() => fetch(`${baseUrl}/teams`))
 
       const responses = await Promise.all(requests)
-      
+
       responses.forEach(response => {
         expect(response.status).toBe(200)
       })

@@ -26,7 +26,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
   /**
    * Validates HMAC-SHA256 signature for webhook payload
    * Uses timing-safe comparison to prevent timing attacks
-   * 
+   *
    * @param payload - The webhook payload (will be JSON stringified)
    * @param signature - The signature from webhook headers (e.g., X-Hub-Signature-256)
    * @param secret - The webhook secret for HMAC generation
@@ -60,7 +60,10 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
       )
     } catch (error) {
       // Log error for debugging but don't expose details
-      console.error('HMAC signature validation error:', error instanceof Error ? error.message : 'Unknown error')
+      console.error(
+        'HMAC signature validation error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
       return false
     }
   }
@@ -68,7 +71,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
   /**
    * Validates IP address against allowlist
    * Empty allowlist means all IPs are allowed
-   * 
+   *
    * @param ip - The client IP address
    * @param allowlist - Array of allowed IP addresses
    * @returns boolean indicating if IP is allowed
@@ -91,14 +94,17 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
       // Check if IP is in allowlist
       return allowlist.includes(cleanIp)
     } catch (error) {
-      console.error('IP validation error:', error instanceof Error ? error.message : 'Unknown error')
+      console.error(
+        'IP validation error:',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
       return false
     }
   }
 
   /**
    * Generates HMAC signature for testing purposes
-   * 
+   *
    * @param payload - The payload to sign
    * @param secret - The secret key
    * @returns The full signature with prefix
@@ -109,14 +115,14 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
       .createHmac(this.algorithm, secret)
       .update(payloadString, 'utf8')
       .digest('hex')
-    
+
     return `${this.signaturePrefix}${signature}`
   }
 
   /**
    * Extracts client IP from request headers
    * Handles X-Forwarded-For and other proxy headers
-   * 
+   *
    * @param headers - Request headers object
    * @returns The client IP address
    */
@@ -153,7 +159,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
   /**
    * Cleans IP address by removing port information
    * Handles both IPv4 and IPv6 addresses
-   * 
+   *
    * @param ip - Raw IP address that may include port
    * @returns Clean IP address without port
    */
@@ -162,7 +168,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
     if (ip.startsWith('[') && ip.includes(']:')) {
       return ip.substring(1, ip.indexOf(']:'))
     }
-    
+
     // Handle IPv4 addresses with ports 192.168.1.1:8080
     if (ip.includes(':') && !ip.includes('::')) {
       // Check if it's IPv4 with port (contains only one colon)
@@ -171,7 +177,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
         return ip.split(':')[0]
       }
     }
-    
+
     // Return as-is for IPv6 without port or already clean addresses
     return ip
   }
@@ -179,7 +185,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
   /**
    * Validates webhook request completely
    * Combines signature and IP validation
-   * 
+   *
    * @param payload - The webhook payload
    * @param signature - The signature from headers
    * @param secret - The webhook secret
@@ -208,7 +214,7 @@ export class HMACWebhookAuthenticator implements WebhookAuthenticator {
 
     return {
       isValid: errors.length === 0,
-      errors
+      errors,
     }
   }
 }

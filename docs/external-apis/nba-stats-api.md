@@ -2,7 +2,9 @@
 
 ## Overview
 
-The NBA Stats API is the official API provided by the NBA for accessing comprehensive basketball data. It's completely free and provides the most accurate and up-to-date NBA statistics, player information, and game data.
+The NBA Stats API is the official API provided by the NBA for accessing
+comprehensive basketball data. It's completely free and provides the most
+accurate and up-to-date NBA statistics, player information, and game data.
 
 **Base URL:** `https://stats.nba.com/stats`  
 **Documentation:** https://stats.nba.com/stats/  
@@ -12,9 +14,12 @@ The NBA Stats API is the official API provided by the NBA for accessing comprehe
 ## Authentication
 
 ### No Authentication Required
-The NBA Stats API doesn't require authentication or API keys, making it very accessible for developers.
+
+The NBA Stats API doesn't require authentication or API keys, making it very
+accessible for developers.
 
 ### Usage in Code
+
 ```typescript
 import { nbaStatsClient } from '@/lib/sports-apis'
 
@@ -27,19 +32,23 @@ const players = await nbaStatsClient.getPlayers()
 ### Players
 
 #### Get All Players
+
 **Endpoint:** `GET /commonallplayers`
 
 **Parameters:**
+
 - `LeagueID` (string, optional) - League ID (default: "00" for NBA)
 - `Season` (string, optional) - Season (e.g., "2024-25")
 - `IsOnlyCurrentSeason` (string, optional) - "1" for current season only
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=2024-25&IsOnlyCurrentSeason=1"
 ```
 
 **Example Response:**
+
 ```json
 {
   "resource": "commonallplayers",
@@ -105,19 +114,23 @@ curl -X GET "https://stats.nba.com/stats/commonallplayers?LeagueID=00&Season=202
 ### Teams
 
 #### Get All Teams
+
 **Endpoint:** `GET /commonteaminfo`
 
 **Parameters:**
+
 - `LeagueID` (string, optional) - League ID (default: "00" for NBA)
 - `Season` (string, optional) - Season (e.g., "2024-25")
 - `TeamID` (string, optional) - Specific team ID
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://stats.nba.com/stats/commonteaminfo?LeagueID=00&Season=2024-25"
 ```
 
 **Example Response:**
+
 ```json
 {
   "resource": "commonteaminfo",
@@ -162,18 +175,22 @@ curl -X GET "https://stats.nba.com/stats/commonteaminfo?LeagueID=00&Season=2024-
 ### Games
 
 #### Get Scoreboard
+
 **Endpoint:** `GET /scoreboard`
 
 **Parameters:**
+
 - `GameDate` (string, optional) - Date in MM/DD/YYYY format
 - `LeagueID` (string, optional) - League ID (default: "00" for NBA)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://stats.nba.com/stats/scoreboard?GameDate=01/15/2024&LeagueID=00"
 ```
 
 **Example Response:**
+
 ```json
 {
   "resource": "scoreboard",
@@ -326,19 +343,23 @@ curl -X GET "https://stats.nba.com/stats/scoreboard?GameDate=01/15/2024&LeagueID
 ### Player Statistics
 
 #### Get Player Game Log
+
 **Endpoint:** `GET /playergamelog`
 
 **Parameters:**
+
 - `PlayerID` (string, required) - Player ID
 - `Season` (string, optional) - Season (e.g., "2024-25")
 - `SeasonType` (string, optional) - "Regular Season", "Playoffs", "Pre Season"
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://stats.nba.com/stats/playergamelog?PlayerID=2544&Season=2024-25&SeasonType=Regular%20Season"
 ```
 
 **Example Response:**
+
 ```json
 {
   "resource": "playergamelog",
@@ -416,19 +437,23 @@ curl -X GET "https://stats.nba.com/stats/playergamelog?PlayerID=2544&Season=2024
 ### Team Statistics
 
 #### Get Team Dashboard
+
 **Endpoint:** `GET /teamdashboardbygeneralsplits`
 
 **Parameters:**
+
 - `TeamID` (string, required) - Team ID
 - `Season` (string, optional) - Season (e.g., "2024-25")
 - `SeasonType` (string, optional) - "Regular Season", "Playoffs", "Pre Season"
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://stats.nba.com/stats/teamdashboardbygeneralsplits?TeamID=1610612747&Season=2024-25&SeasonType=Regular%20Season"
 ```
 
 **Example Response:**
+
 ```json
 {
   "resource": "teamdashboardbygeneralsplits",
@@ -481,13 +506,13 @@ curl -X GET "https://stats.nba.com/stats/teamdashboardbygeneralsplits?TeamID=161
           2400,
           45,
           90,
-          0.500,
+          0.5,
           12,
           35,
           0.343,
           18,
           25,
-          0.720,
+          0.72,
           10,
           35,
           45,
@@ -510,17 +535,19 @@ curl -X GET "https://stats.nba.com/stats/teamdashboardbygeneralsplits?TeamID=161
 ## Rate Limits
 
 ### Recommended Limits
+
 - **Per Minute:** 100 requests (conservative)
 - **Per Hour:** 1000 requests
 - **Per Day:** 10000 requests
 
 ### Rate Limit Handling
+
 ```typescript
 // Conservative rate limiting for NBA Stats API
 const rateLimits = {
   requestsPerMinute: 100,
   requestsPerHour: 1000,
-  requestsPerDay: 10000
+  requestsPerDay: 10000,
 }
 ```
 
@@ -528,15 +555,16 @@ const rateLimits = {
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 200 | Success | Request successful |
-| 400 | Bad Request | Check request parameters |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Reduce request frequency |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                 |
+| ----------- | --------------------- | ------------------------ |
+| 200         | Success               | Request successful       |
+| 400         | Bad Request           | Check request parameters |
+| 404         | Not Found             | Verify endpoint URL      |
+| 429         | Too Many Requests     | Reduce request frequency |
+| 500         | Internal Server Error | Retry request            |
 
 ### Error Response Format
+
 ```json
 {
   "resource": "endpoint",
@@ -548,6 +576,7 @@ const rateLimits = {
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { nbaStatsClient } from '@/lib/sports-apis'
 
@@ -555,7 +584,7 @@ import { nbaStatsClient } from '@/lib/sports-apis'
 async function getNBAPlayers() {
   try {
     const players = await nbaStatsClient.getPlayers()
-    
+
     return players.resultSets[0].rowSet.map(player => ({
       id: player[0], // PERSON_ID
       name: player[2], // DISPLAY_FIRST_LAST
@@ -567,7 +596,7 @@ async function getNBAPlayers() {
       age: player[17], // AGE
       experience: player[18], // EXP
       school: player[19], // SCHOOL
-      country: player[20] // COUNTRY
+      country: player[20], // COUNTRY
     }))
   } catch (error) {
     console.error('Failed to fetch NBA players:', error)
@@ -579,7 +608,7 @@ async function getNBAPlayers() {
 async function getNBATeams() {
   try {
     const teams = await nbaStatsClient.getTeams()
-    
+
     return teams.resultSets[0].rowSet.map(team => ({
       id: team[0], // TEAM_ID
       name: team[3], // TEAM_NAME
@@ -588,7 +617,7 @@ async function getNBATeams() {
       division: team[6], // TEAM_DIVISION
       city: team[7], // TEAM_CITY
       state: team[8], // TEAM_STATE
-      founded: team[9] // YEAR_FOUNDED
+      founded: team[9], // YEAR_FOUNDED
     }))
   } catch (error) {
     console.error('Failed to fetch NBA teams:', error)
@@ -600,14 +629,14 @@ async function getNBATeams() {
 async function getGamesForDate(date: string) {
   try {
     const games = await nbaStatsClient.getScoreboard(date)
-    
+
     const gameHeaders = games.resultSets[0].rowSet
     const lineScores = games.resultSets[1].rowSet
-    
+
     return gameHeaders.map(game => {
       const homeTeam = lineScores.find(score => score[3] === game[6]) // HOME_TEAM_ID
       const awayTeam = lineScores.find(score => score[3] === game[7]) // VISITOR_TEAM_ID
-      
+
       return {
         id: game[2], // GAME_ID
         date: game[0], // GAME_DATE_EST
@@ -616,14 +645,14 @@ async function getGamesForDate(date: string) {
           id: homeTeam[3], // TEAM_ID
           name: homeTeam[6], // TEAM_NAME
           abbreviation: homeTeam[4], // TEAM_ABBREVIATION
-          score: homeTeam[23] // PTS
+          score: homeTeam[23], // PTS
         },
         awayTeam: {
           id: awayTeam[3], // TEAM_ID
           name: awayTeam[6], // TEAM_NAME
           abbreviation: awayTeam[4], // TEAM_ABBREVIATION
-          score: awayTeam[23] // PTS
-        }
+          score: awayTeam[23], // PTS
+        },
       }
     })
   } catch (error) {
@@ -636,7 +665,7 @@ async function getGamesForDate(date: string) {
 async function getPlayerStats(playerId: string, season: string = '2024-25') {
   try {
     const stats = await nbaStatsClient.getPlayerGameLog(playerId, season)
-    
+
     return stats.resultSets[0].rowSet.map(game => ({
       gameId: game[2], // Game_ID
       date: game[3], // GAME_DATE
@@ -658,7 +687,7 @@ async function getPlayerStats(playerId: string, season: string = '2024-25') {
       freeThrowsMade: game[13], // FTM
       freeThrowsAttempted: game[14], // FTA
       freeThrowPercentage: game[15], // FT_PCT
-      plusMinus: game[25] // PLUS_MINUS
+      plusMinus: game[25], // PLUS_MINUS
     }))
   } catch (error) {
     console.error('Failed to fetch player stats:', error)
@@ -668,35 +697,36 @@ async function getPlayerStats(playerId: string, season: string = '2024-25') {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchNBAStatsData(endpoint, params = {}) {
   const baseUrl = 'https://stats.nba.com/stats'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'User-Agent': 'ApexBets/1.0.0',
-        'Referer': 'https://stats.nba.com/',
-        'Origin': 'https://stats.nba.com'
-      }
+        Referer: 'https://stats.nba.com/',
+        Origin: 'https://stats.nba.com',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Check for empty result sets
     if (!data.resultSets || data.resultSets.length === 0) {
       throw new Error('No data returned from NBA Stats API')
     }
-    
+
     return data
   } catch (error) {
     console.error('NBA Stats API request failed:', error)
@@ -708,35 +738,39 @@ async function fetchNBAStatsData(endpoint, params = {}) {
 const players = await fetchNBAStatsData('/commonallplayers', {
   LeagueID: '00',
   Season: '2024-25',
-  IsOnlyCurrentSeason: '1'
+  IsOnlyCurrentSeason: '1',
 })
 ```
 
 ## Best Practices
 
 ### 1. Headers and User-Agent
+
 Always include proper headers to avoid being blocked:
+
 ```typescript
 const headers = {
-  'Accept': 'application/json',
+  Accept: 'application/json',
   'User-Agent': 'ApexBets/1.0.0',
-  'Referer': 'https://stats.nba.com/',
-  'Origin': 'https://stats.nba.com'
+  Referer: 'https://stats.nba.com/',
+  Origin: 'https://stats.nba.com',
 }
 ```
 
 ### 2. Data Parsing
+
 NBA Stats API returns data in a specific format with headers and row sets:
+
 ```typescript
 function parseNBAStatsResponse(response: any, resultSetName: string) {
   const resultSet = response.resultSets.find(rs => rs.name === resultSetName)
   if (!resultSet) {
     throw new Error(`Result set ${resultSetName} not found`)
   }
-  
+
   const headers = resultSet.headers
   const rows = resultSet.rowSet
-  
+
   return rows.map(row => {
     const obj: any = {}
     headers.forEach((header: string, index: number) => {
@@ -748,6 +782,7 @@ function parseNBAStatsResponse(response: any, resultSetName: string) {
 ```
 
 ### 3. Error Handling with Retry
+
 ```typescript
 async function safeNBAStatsCall<T>(
   apiCall: () => Promise<T>,
@@ -763,46 +798,50 @@ async function safeNBAStatsCall<T>(
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
-      
+
       if (i === maxRetries - 1) {
         console.error('Max retries exceeded:', error)
         return null
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
   }
-  
+
   return null
 }
 ```
 
 ### 4. Caching Strategy
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedNBAData(endpoint: string, params: any) {
   const cacheKey = `nba-stats-${endpoint}-${JSON.stringify(params)}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const data = await nbaStatsClient.request(endpoint, params)
   await setCache(cacheKey, data, 300) // Cache for 5 minutes
-  
+
   return data
 }
 ```
 
 ## Integration with ApexBets
 
-The NBA Stats API is integrated into the ApexBets system as the primary data source for NBA data. It's used in the following services:
+The NBA Stats API is integrated into the ApexBets system as the primary data
+source for NBA data. It's used in the following services:
 
 - **BasketballService** - Primary data source for NBA games and statistics
 - **PlayerStatsService** - Player statistics and performance data
 - **TeamService** - Team information and standings
 - **GameService** - Game schedules and results
 
-The API is configured with conservative rate limiting, proper headers, and robust error handling to ensure reliable data access while respecting the NBA's servers.
+The API is configured with conservative rate limiting, proper headers, and
+robust error handling to ensure reliable data access while respecting the NBA's
+servers.

@@ -45,17 +45,17 @@ class SportServiceFactory {
     try {
       // Load sport configurations from database
       await this.loadSportConfigurations()
-      
+
       // Initialize sport services dynamically
       await this.initializeSportServices()
-      
+
       structuredLogger.info('Sport service factory initialized', {
         supportedSports: Array.from(this.sportConfigs.keys()),
-        totalServices: this.sportServices.size
+        totalServices: this.sportServices.size,
       })
     } catch (error) {
       structuredLogger.error('Failed to initialize sport service factory', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -106,7 +106,7 @@ class SportServiceFactory {
     try {
       // Import database service
       const { databaseService } = await import('../database-service')
-      
+
       const query = `
         SELECT 
           name,
@@ -119,9 +119,9 @@ class SportServiceFactory {
         WHERE is_active = true
         ORDER BY display_name
       `
-      
+
       const result = await databaseService.executeSQL(query)
-      
+
       if (!result.success) {
         throw new Error(`Failed to load sport configurations: ${result.error}`)
       }
@@ -137,23 +137,22 @@ class SportServiceFactory {
           isActive: row.is_active,
           apiProviders: row.api_providers ? [row.api_providers] : [],
           defaultLeague: row.default_league || null,
-          supportedLeagues: row.supported_leagues ? [row.supported_leagues] : []
+          supportedLeagues: row.supported_leagues ? [row.supported_leagues] : [],
         }
-        
+
         this.sportConfigs.set(config.name, config)
       }
 
       structuredLogger.info('Loaded sport configurations from database', {
         count: this.sportConfigs.size,
-        sports: Array.from(this.sportConfigs.keys())
+        sports: Array.from(this.sportConfigs.keys()),
       })
-
     } catch (error) {
       structuredLogger.error('Failed to load sport configurations', {
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
       })
-      
+
       // If database fails, fall back to environment-based configuration
       await this.loadFromEnvironment()
     }
@@ -161,7 +160,7 @@ class SportServiceFactory {
 
   private async loadFromEnvironment(): Promise<void> {
     const supportedSports = envValidator.getSupportedSports()
-    
+
     if (supportedSports.length === 0) {
       structuredLogger.warn('No sports configured in environment')
       return
@@ -174,15 +173,15 @@ class SportServiceFactory {
         displayName: sport.charAt(0).toUpperCase() + sport.slice(1),
         isActive: true,
         apiProviders: ['sportsdb'], // Default provider
-        supportedLeagues: []
+        supportedLeagues: [],
       }
-      
+
       this.sportConfigs.set(sport, config)
     }
 
     structuredLogger.info('Loaded sport configurations from environment', {
       count: this.sportConfigs.size,
-      sports: Array.from(this.sportConfigs.keys())
+      sports: Array.from(this.sportConfigs.keys()),
     })
   }
 
@@ -192,12 +191,12 @@ class SportServiceFactory {
         // Dynamically import sport service based on configuration
         const service = await this.createSportService(sportName, config)
         this.sportServices.set(sportName, service)
-        
+
         structuredLogger.debug('Initialized sport service', { sport: sportName })
       } catch (error) {
         structuredLogger.error('Failed to initialize sport service', {
           sport: sportName,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         })
       }
     }
@@ -210,23 +209,23 @@ class SportServiceFactory {
       async getGames(params: any): Promise<any[]> {
         return self.executeSportRequest(sportName, 'games', params, config)
       },
-      
+
       async getTeams(params: any): Promise<any[]> {
         return self.executeSportRequest(sportName, 'teams', params, config)
       },
-      
+
       async getPlayers(params: any): Promise<any[]> {
         return self.executeSportRequest(sportName, 'players', params, config)
       },
-      
+
       async getStandings(league?: string): Promise<any[]> {
         return self.executeSportRequest(sportName, 'standings', { league }, config)
       },
-      
+
       async getOdds(params: any): Promise<any[]> {
         return self.executeSportRequest(sportName, 'odds', params, config)
       },
-      
+
       async healthCheck(): Promise<boolean> {
         try {
           await self.executeSportRequest(sportName, 'health', {}, config)
@@ -234,34 +233,38 @@ class SportServiceFactory {
         } catch {
           return false
         }
-      }
+      },
     }
   }
 
-  private async executeSportRequest(sport: string, dataType: string, params: any, config: SportConfig): Promise<any[]> {
+  private async executeSportRequest(
+    sport: string,
+    dataType: string,
+    params: any,
+    config: SportConfig
+  ): Promise<any[]> {
     try {
       // Import API fallback strategy
       const { APIFallbackStrategy } = await import('../api-fallback-strategy')
       const apiStrategy = APIFallbackStrategy.getInstance()
-      
+
       // Use configured API providers
       const requestParams = {
         sport,
         dataType: dataType as any,
         params,
         providers: config.apiProviders,
-        priority: 'medium' as const
+        priority: 'medium' as const,
       }
-      
+
       const result = await apiStrategy.executeRequest(requestParams)
       return Array.isArray(result.data) ? result.data : []
-      
     } catch (error) {
       structuredLogger.error('Sport request failed', {
         sport,
         dataType,
         params,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return []
     }

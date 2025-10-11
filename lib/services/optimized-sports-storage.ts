@@ -57,12 +57,12 @@ export class OptimizedSportsStorage {
           home_score: game.home_score || game.homeScore || null,
           away_score: game.away_score || game.awayScore || null,
           venue: game.venue || null,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         }))
 
         const insertQuery = `
           INSERT INTO games (id, sport, league_id, season, home_team_id, away_team_id, game_date, status, home_score, away_score, venue, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league_id}', '${v.season}', ${v.home_team_id ? `'${v.home_team_id}'` : 'NULL'}, ${v.away_team_id ? `'${v.away_team_id}'` : 'NULL'}, '${v.game_date}', '${v.status}', ${v.home_score || 'NULL'}, ${v.away_score || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.home_team_id ? `'${v.home_team_id}'` : 'NULL'}, ${v.away_team_id ? `'${v.away_team_id}'` : 'NULL'}, '${v.game_date}', '${v.status}', ${v.home_score || 'NULL'}, ${v.away_score || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -75,7 +75,11 @@ export class OptimizedSportsStorage {
 
       structuredLogger.info('Stored games', { count: games.length, sport, league })
     } catch (error) {
-      structuredLogger.error('Failed to store games', { error: error instanceof Error ? error.message : String(error), sport, league })
+      structuredLogger.error('Failed to store games', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        league,
+      })
       throw error
     }
   }
@@ -91,24 +95,44 @@ export class OptimizedSportsStorage {
           name: this.escape(String(team.name || team.teamName || team.full_name || '')),
           sport: this.escape(String(sport)),
           league: this.escape(String(league)),
-          abbreviation: this.escape(String(team.abbreviation || team.abbr || team.teamAbbreviation || '')),
+          abbreviation: this.escape(
+            String(team.abbreviation || team.abbr || team.teamAbbreviation || '')
+          ),
           city: this.escape(String(team.city || team.homeTeam || '')),
-          logo_url: team.logo_url ? this.escape(String(team.logo_url)) : (team.logoUrl ? this.escape(String(team.logoUrl)) : (team.logo ? this.escape(String(team.logo)) : null)),
+          logo_url: team.logo_url
+            ? this.escape(String(team.logo_url))
+            : team.logoUrl
+              ? this.escape(String(team.logoUrl))
+              : team.logo
+                ? this.escape(String(team.logo))
+                : null,
           conference: team.conference ? this.escape(String(team.conference)) : null,
           division: team.division ? this.escape(String(team.division)) : null,
           founded_year: team.foundedYear || team.founded || null,
-          stadium_name: team.stadiumName ? this.escape(String(team.stadiumName)) : (team.stadium ? this.escape(String(team.stadium)) : null),
+          stadium_name: team.stadiumName
+            ? this.escape(String(team.stadiumName))
+            : team.stadium
+              ? this.escape(String(team.stadium))
+              : null,
           stadium_capacity: team.stadiumCapacity || team.capacity || null,
-          primary_color: team.primaryColor ? this.escape(String(team.primaryColor)) : (team.primary_color ? this.escape(String(team.primary_color)) : null),
-          secondary_color: team.secondaryColor ? this.escape(String(team.secondaryColor)) : (team.secondary_color ? this.escape(String(team.secondary_color)) : null),
+          primary_color: team.primaryColor
+            ? this.escape(String(team.primaryColor))
+            : team.primary_color
+              ? this.escape(String(team.primary_color))
+              : null,
+          secondary_color: team.secondaryColor
+            ? this.escape(String(team.secondaryColor))
+            : team.secondary_color
+              ? this.escape(String(team.secondary_color))
+              : null,
           country: team.country ? this.escape(String(team.country)) : null,
           is_active: team.isActive !== false,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         }))
 
         const insertQuery = `
           INSERT INTO teams (id, name, sport, league_id, abbreviation, city, logo_url, conference, division, founded_year, venue, venue_capacity, colors, country, is_active, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', '${v.league_id}', '${v.abbreviation}', '${v.city}', ${v.logo_url ? `'${v.logo_url}'` : 'NULL'}, ${v.conference ? `'${v.conference}'` : 'NULL'}, ${v.division ? `'${v.division}'` : 'NULL'}, ${v.founded_year || 'NULL'}, ${v.venue ? `'${v.venue}'` : 'NULL'}, ${v.venue_capacity || 'NULL'}, ${v.colors ? `'${JSON.stringify(v.colors)}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.is_active}, '${v.last_updated}')`).join(', ')}
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', '${v.league}', '${v.abbreviation}', '${v.city}', ${v.logo_url ? `'${v.logo_url}'` : 'NULL'}, ${v.conference ? `'${v.conference}'` : 'NULL'}, ${v.division ? `'${v.division}'` : 'NULL'}, ${v.founded_year || 'NULL'}, ${v.stadium_name ? `'${v.stadium_name}'` : 'NULL'}, ${v.stadium_capacity || 'NULL'}, ${v.primary_color && v.secondary_color ? `'${JSON.stringify({ primary: v.primary_color, secondary: v.secondary_color })}'` : 'NULL'}, ${v.country ? `'${v.country}'` : 'NULL'}, ${v.is_active}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -121,7 +145,11 @@ export class OptimizedSportsStorage {
 
       structuredLogger.info('Stored teams', { count: teams.length, sport, league })
     } catch (error) {
-      structuredLogger.error('Failed to store teams', { error: error instanceof Error ? error.message : String(error), sport, league })
+      structuredLogger.error('Failed to store teams', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        league,
+      })
       throw error
     }
   }
@@ -148,12 +176,12 @@ export class OptimizedSportsStorage {
           jersey_number: player.jerseyNumber || player.jersey_number || null,
           is_active: player.isActive !== false,
           headshot_url: player.headshotUrl || player.headshot_url || player.headshot || null,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         }))
 
         const insertQuery = `
           INSERT INTO players (id, name, sport, position, team_id, league, jersey_number, height, weight, age, birth_date, nationality, salary, contract_end_date, is_active, external_id, created_at, updated_at)
-          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', ${v.position ? `'${v.position}'` : 'NULL'}, ${v.team_id ? `'${v.team_id}'` : 'NULL'}, ${v.league ? `'${v.league}'` : 'NULL'}, ${v.jersey_number || 'NULL'}, ${v.height ? `'${v.height}'` : 'NULL'}, ${v.weight || 'NULL'}, ${v.age || 'NULL'}, ${v.birth_date ? `'${v.birth_date}'` : 'NULL'}, ${v.nationality ? `'${v.nationality}'` : 'NULL'}, ${v.salary || 'NULL'}, ${v.contract_end_date ? `'${v.contract_end_date}'` : 'NULL'}, ${v.is_active}, ${v.external_id ? `'${v.external_id}'` : 'NULL'}, '${v.created_at}', '${v.updated_at}')`).join(', ')}
+          VALUES ${values.map(v => `('${v.id}', '${v.name}', '${v.sport}', ${v.position ? `'${v.position}'` : 'NULL'}, ${v.team_id ? `'${v.team_id}'` : 'NULL'}, ${league ? `'${league}'` : 'NULL'}, ${v.jersey_number || 'NULL'}, ${v.height ? `'${v.height}'` : 'NULL'}, ${v.weight || 'NULL'}, ${v.age || 'NULL'}, 'NULL', ${v.country ? `'${v.country}'` : 'NULL'}, 'NULL', 'NULL', ${v.is_active}, 'NULL', '${v.last_updated}', '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -166,14 +194,23 @@ export class OptimizedSportsStorage {
 
       structuredLogger.info('Stored players', { count: players.length, sport, league })
     } catch (error) {
-      structuredLogger.error('Failed to store players', { error: error instanceof Error ? error.message : String(error), sport, league })
+      structuredLogger.error('Failed to store players', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        league,
+      })
       throw error
     }
   }
 
-  async getGames(sport: string, league?: string, date?: string, status?: string): Promise<StorageResult<any[]>> {
+  async getGames(
+    sport: string,
+    league?: string,
+    date?: string,
+    status?: string
+  ): Promise<StorageResult<any[]>> {
     const startTime = Date.now()
-    
+
     try {
       let query = `
         SELECT g.*, 
@@ -207,7 +244,7 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error('Failed to get games:', error)
@@ -216,17 +253,17 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime: Date.now() - startTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
   }
 
   async getTeams(sport: string, league?: string): Promise<StorageResult<any[]>> {
     const startTime = Date.now()
-    
+
     try {
       let query = `SELECT * FROM teams WHERE sport = '${sport}'`
-      
+
       if (league) {
         query += ` AND league = '${league}'`
       }
@@ -241,26 +278,34 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
-      structuredLogger.error('Failed to get teams', { error: error instanceof Error ? error.message : String(error), sport, league })
+      structuredLogger.error('Failed to get teams', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        league,
+      })
       return {
         data: [],
         cached: false,
         source: 'database',
         responseTime: Date.now() - startTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
   }
 
-  async getPlayers(sport: string, teamId?: string, limit: number = 100): Promise<StorageResult<any[]>> {
+  async getPlayers(
+    sport: string,
+    teamId?: string,
+    limit: number = 100
+  ): Promise<StorageResult<any[]>> {
     const startTime = Date.now()
-    
+
     try {
       let query = `SELECT * FROM players WHERE sport = '${sport}'`
-      
+
       if (teamId) {
         query += ` AND team_id = '${teamId}'`
       }
@@ -275,16 +320,20 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
-      structuredLogger.error('Failed to get players', { error: error instanceof Error ? error.message : String(error), sport, teamId })
+      structuredLogger.error('Failed to get players', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        teamId,
+      })
       return {
         data: [],
         cached: false,
         source: 'database',
         responseTime: Date.now() - startTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
   }
@@ -310,12 +359,12 @@ export class OptimizedSportsStorage {
           games_behind: standing.games_behind || standing.gamesBehind || null,
           points_for: standing.points_for || standing.pointsFor || 0,
           points_against: standing.points_against || standing.pointsAgainst || 0,
-          last_updated: new Date().toISOString()
+          last_updated: new Date().toISOString(),
         }))
 
         const insertQuery = `
           INSERT INTO league_standings (id, sport, league_id, season, team_id, team_name, position, wins, losses, ties, win_percentage, games_back, points_for, points_against, last_updated)
-          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league_id}', '${v.season}', ${v.team_id ? `'${v.team_id}'` : 'NULL'}, '${v.team_name}', ${v.position}, ${v.wins}, ${v.losses}, ${v.ties}, ${v.win_percentage || 'NULL'}, ${v.games_back || 'NULL'}, ${v.points_for}, ${v.points_against}, '${v.last_updated}')`).join(', ')}
+          VALUES ${values.map(v => `('${v.id}', '${v.sport}', '${v.league}', '${v.season}', ${v.team_id ? `'${v.team_id}'` : 'NULL'}, '${v.team_name}', ${v.position}, ${v.wins}, ${v.losses}, ${v.ties}, ${v.win_percentage || 'NULL'}, ${v.games_behind || 'NULL'}, ${v.points_for}, ${v.points_against}, '${v.last_updated}')`).join(', ')}
         `
 
         await productionSupabaseClient.executeSQL(insertQuery)
@@ -323,14 +372,22 @@ export class OptimizedSportsStorage {
 
       structuredLogger.info('Stored standings', { count: standings.length, sport, league })
     } catch (error) {
-      structuredLogger.error('Failed to store standings', { error: error instanceof Error ? error.message : String(error), sport, league })
+      structuredLogger.error('Failed to store standings', {
+        error: error instanceof Error ? error.message : String(error),
+        sport,
+        league,
+      })
       throw error
     }
   }
 
-  async getStandings(sport: string, league: string, season?: string): Promise<StorageResult<any[]>> {
+  async getStandings(
+    sport: string,
+    league: string,
+    season?: string
+  ): Promise<StorageResult<any[]>> {
     const startTime = Date.now()
-    
+
     try {
       let query = `
         SELECT s.*, t.name as team_name, t.abbreviation, t.logo_url
@@ -353,7 +410,7 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error('Failed to get standings:', error)
@@ -362,7 +419,7 @@ export class OptimizedSportsStorage {
         cached: false,
         source: 'database',
         responseTime: Date.now() - startTime,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
   }
@@ -406,21 +463,47 @@ export class OptimizedSportsStorage {
     lastUpdated: string
   }> {
     try {
-      const [gamesResult, teamsResult, playersResult, standingsResult, cacheResult] = await Promise.all([
-        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM games'),
-        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM teams'),
-        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM players'),
-        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM standings'),
-        productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM cache_entries')
-      ])
+      const [gamesResult, teamsResult, playersResult, standingsResult, cacheResult] =
+        await Promise.all([
+          productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM games'),
+          productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM teams'),
+          productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM players'),
+          productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM standings'),
+          productionSupabaseClient.executeSQL('SELECT COUNT(*) as count FROM cache_entries'),
+        ])
 
       return {
-        totalGames: parseInt(gamesResult.success && gamesResult.data && gamesResult.data[0] ? gamesResult.data[0].count : 0) || 0,
-        totalTeams: parseInt(teamsResult.success && teamsResult.data && teamsResult.data[0] ? teamsResult.data[0].count : 0) || 0,
-        totalPlayers: parseInt(playersResult.success && playersResult.data && playersResult.data[0] ? playersResult.data[0].count : 0) || 0,
-        totalStandings: parseInt(standingsResult.success && standingsResult.data && standingsResult.data[0] ? standingsResult.data[0].count : 0) || 0,
-        cacheEntries: parseInt(cacheResult.success && cacheResult.data && cacheResult.data[0] ? cacheResult.data[0].count : 0) || 0,
-        lastUpdated: new Date().toISOString()
+        totalGames:
+          parseInt(
+            gamesResult.success && gamesResult.data && gamesResult.data[0]
+              ? gamesResult.data[0].count
+              : 0
+          ) || 0,
+        totalTeams:
+          parseInt(
+            teamsResult.success && teamsResult.data && teamsResult.data[0]
+              ? teamsResult.data[0].count
+              : 0
+          ) || 0,
+        totalPlayers:
+          parseInt(
+            playersResult.success && playersResult.data && playersResult.data[0]
+              ? playersResult.data[0].count
+              : 0
+          ) || 0,
+        totalStandings:
+          parseInt(
+            standingsResult.success && standingsResult.data && standingsResult.data[0]
+              ? standingsResult.data[0].count
+              : 0
+          ) || 0,
+        cacheEntries:
+          parseInt(
+            cacheResult.success && cacheResult.data && cacheResult.data[0]
+              ? cacheResult.data[0].count
+              : 0
+          ) || 0,
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error('Failed to get storage stats:', error)
@@ -430,7 +513,7 @@ export class OptimizedSportsStorage {
         totalPlayers: 0,
         totalStandings: 0,
         cacheEntries: 0,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
   }
@@ -450,7 +533,7 @@ export class OptimizedSportsStorage {
   private getCurrentSeason(_sport: string): string {
     const year = new Date().getFullYear()
     const month = new Date().getMonth()
-    
+
     // Most sports seasons start in fall/winter
     if (month >= 8) {
       return `${year}-${(year + 1).toString().slice(-2)}`

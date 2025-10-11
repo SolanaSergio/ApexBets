@@ -9,29 +9,31 @@ import { dynamicClientConfig } from './dynamic-client-config'
 // Static configuration that doesn't change
 export const STATIC_CONFIG = {
   // API Configuration
-  API_BASE_URL: (typeof process.env.NEXT_PUBLIC_API_URL === 'string' && (process.env.NEXT_PUBLIC_API_URL as string).trim().length > 0)
-    ? (process.env.NEXT_PUBLIC_API_URL as string)
-    : '',
-  
+  API_BASE_URL:
+    typeof process.env.NEXT_PUBLIC_API_URL === 'string' &&
+    (process.env.NEXT_PUBLIC_API_URL as string).trim().length > 0
+      ? (process.env.NEXT_PUBLIC_API_URL as string)
+      : '',
+
   // Pagination
   PAGINATION: {
     DEFAULT_PAGE_SIZE: 20,
     MAX_PAGE_SIZE: 100,
   },
-  
+
   // Sports Configuration (dynamic; populated at runtime via services)
   SPORTS: {
     SUPPORTED: [] as string[],
     DEFAULT: '' as string,
   },
-  
+
   // Feature Flags
   FEATURES: {
     ENABLE_REAL_TIME_UPDATES: true,
     ENABLE_CACHING: true,
     ENABLE_ERROR_BOUNDARIES: true,
     ENABLE_LOADING_STATES: true,
-  }
+  },
 } as const
 
 // Dynamic configuration loaded from database
@@ -58,7 +60,7 @@ export const CLIENT_CONFIG = {
     MAX_RETRIES: 3,
     RETRY_DELAY: 1000,
     TIMEOUT: 10000,
-  }
+  },
 } as const
 
 export type ClientConfig = typeof STATIC_CONFIG

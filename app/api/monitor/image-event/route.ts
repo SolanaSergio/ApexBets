@@ -15,10 +15,7 @@ export async function POST(request: NextRequest) {
     // Check if request has a body
     const contentLength = request.headers.get('content-length')
     if (!contentLength || contentLength === '0') {
-      return NextResponse.json(
-        { success: false, error: 'Request body is empty' },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: 'Request body is empty' }, { status: 400 })
     }
 
     // Parse JSON with error handling
@@ -40,22 +37,27 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-    
+
     // Validate required fields
     const { entityType, entityName, source, success, sport, url, error, loadTime } = body
-    
+
     if (!entityType || !entityName || !source || success === undefined) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Missing required fields: entityType, entityName, source, and success are required' 
+        {
+          success: false,
+          error:
+            'Missing required fields: entityType, entityName, source, and success are required',
         },
         { status: 400 }
       )
     }
 
     // Validate field types
-    if (typeof entityType !== 'string' || typeof entityName !== 'string' || typeof source !== 'string') {
+    if (
+      typeof entityType !== 'string' ||
+      typeof entityName !== 'string' ||
+      typeof source !== 'string'
+    ) {
       return NextResponse.json(
         { success: false, error: 'entityType, entityName, and source must be strings' },
         { status: 400 }
@@ -78,19 +80,19 @@ export async function POST(request: NextRequest) {
       success,
       url,
       error,
-      loadTime
+      loadTime,
     })
 
     return NextResponse.json({
       success: true,
-      message: 'Image event tracked successfully'
+      message: 'Image event tracked successfully',
     })
   } catch (error) {
     console.error('Error tracking image event:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to track image event' 
+      {
+        success: false,
+        error: 'Failed to track image event',
       },
       { status: 500 }
     )

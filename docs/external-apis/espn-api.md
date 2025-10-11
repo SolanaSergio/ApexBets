@@ -2,7 +2,10 @@
 
 ## Overview
 
-ESPN provides free sports data through their public API endpoints. While not officially documented, ESPN's API endpoints are widely used and provide comprehensive data for multiple sports including NBA, NFL, MLB, NHL, and college sports.
+ESPN provides free sports data through their public API endpoints. While not
+officially documented, ESPN's API endpoints are widely used and provide
+comprehensive data for multiple sports including NBA, NFL, MLB, NHL, and college
+sports.
 
 **Base URL:** `http://site.api.espn.com/apis/site/v2/sports`  
 **Documentation:** Unofficial - endpoints discovered through network analysis  
@@ -12,9 +15,12 @@ ESPN provides free sports data through their public API endpoints. While not off
 ## Authentication
 
 ### No Authentication Required
-ESPN's API doesn't require authentication or API keys, making it accessible for developers.
+
+ESPN's API doesn't require authentication or API keys, making it accessible for
+developers.
 
 ### Usage in Code
+
 ```typescript
 import { espnClient } from '@/lib/sports-apis'
 
@@ -27,20 +33,24 @@ const games = await espnClient.getGames('basketball', 'nba')
 ### Scoreboard
 
 #### Get Scoreboard
+
 **Endpoint:** `GET /{sport}/{league}/scoreboard`
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name (e.g., "basketball", "football")
 - `league` (string, required) - League name (e.g., "nba", "nfl")
 - `dates` (string, optional) - Date in YYYYMMDD format
 - `limit` (number, optional) - Number of games to return
 
 **Example Request:**
+
 ```bash
 curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20240115"
 ```
 
 **Example Response:**
+
 ```json
 {
   "leagues": [
@@ -354,20 +364,24 @@ curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/scorebo
 ### Standings
 
 #### Get Standings
+
 **Endpoint:** `GET /{sport}/{league}/standings`
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name
 - `league` (string, required) - League name
 - `season` (string, optional) - Season year
 - `group` (string, optional) - Group type (e.g., "conference", "division")
 
 **Example Request:**
+
 ```bash
 curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings"
 ```
 
 **Example Response:**
+
 ```json
 {
   "name": "NBA Standings",
@@ -456,19 +470,23 @@ curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/standin
 ### Teams
 
 #### Get Teams
+
 **Endpoint:** `GET /{sport}/{league}/teams`
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name
 - `league` (string, required) - League name
 - `limit` (number, optional) - Number of teams to return
 
 **Example Request:**
+
 ```bash
 curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams"
 ```
 
 **Example Response:**
+
 ```json
 {
   "sports": [
@@ -527,17 +545,19 @@ curl -X GET "http://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams"
 ## Rate Limits
 
 ### Recommended Limits
+
 - **Per Minute:** 60 requests (conservative)
 - **Per Hour:** 1000 requests
 - **Per Day:** 10000 requests
 
 ### Rate Limit Handling
+
 ```typescript
 // Conservative rate limiting for ESPN API
 const rateLimits = {
   requestsPerMinute: 60,
   requestsPerHour: 1000,
-  requestsPerDay: 10000
+  requestsPerDay: 10000,
 }
 ```
 
@@ -545,15 +565,16 @@ const rateLimits = {
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 200 | Success | Request successful |
-| 400 | Bad Request | Check request parameters |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Reduce request frequency |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                 |
+| ----------- | --------------------- | ------------------------ |
+| 200         | Success               | Request successful       |
+| 400         | Bad Request           | Check request parameters |
+| 404         | Not Found             | Verify endpoint URL      |
+| 429         | Too Many Requests     | Reduce request frequency |
+| 500         | Internal Server Error | Retry request            |
 
 ### Error Response Format
+
 ```json
 {
   "error": "Invalid request",
@@ -564,6 +585,7 @@ const rateLimits = {
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { espnClient } from '@/lib/sports-apis'
 
@@ -571,16 +593,24 @@ import { espnClient } from '@/lib/sports-apis'
 async function getNBAScoreboard(date?: string) {
   try {
     const scoreboard = await espnClient.getScoreboard('basketball', 'nba', date)
-    
+
     return scoreboard.events.map(event => ({
       id: event.id,
-      homeTeam: event.competitions[0].competitors.find(c => c.homeAway === 'home')?.team,
-      awayTeam: event.competitions[0].competitors.find(c => c.homeAway === 'away')?.team,
-      homeScore: event.competitions[0].competitors.find(c => c.homeAway === 'home')?.score,
-      awayScore: event.competitions[0].competitors.find(c => c.homeAway === 'away')?.score,
+      homeTeam: event.competitions[0].competitors.find(
+        c => c.homeAway === 'home'
+      )?.team,
+      awayTeam: event.competitions[0].competitors.find(
+        c => c.homeAway === 'away'
+      )?.team,
+      homeScore: event.competitions[0].competitors.find(
+        c => c.homeAway === 'home'
+      )?.score,
+      awayScore: event.competitions[0].competitors.find(
+        c => c.homeAway === 'away'
+      )?.score,
       date: event.date,
       status: event.competitions[0].status.type.description,
-      venue: event.competitions[0].venue?.fullName
+      venue: event.competitions[0].venue?.fullName,
     }))
   } catch (error) {
     console.error('Failed to fetch NBA scoreboard:', error)
@@ -592,7 +622,7 @@ async function getNBAScoreboard(date?: string) {
 async function getNBAStandings() {
   try {
     const standings = await espnClient.getStandings('basketball', 'nba')
-    
+
     return standings.children.map(conference => ({
       conference: conference.name,
       teams: conference.standings.entries.map(entry => ({
@@ -600,8 +630,8 @@ async function getNBAStandings() {
         gamesPlayed: entry.stats.find(s => s.name === 'gamesPlayed')?.value,
         wins: entry.stats.find(s => s.name === 'wins')?.value,
         losses: entry.stats.find(s => s.name === 'losses')?.value,
-        winPercentage: entry.stats.find(s => s.name === 'winPercent')?.value
-      }))
+        winPercentage: entry.stats.find(s => s.name === 'winPercent')?.value,
+      })),
     }))
   } catch (error) {
     console.error('Failed to fetch NBA standings:', error)
@@ -613,7 +643,7 @@ async function getNBAStandings() {
 async function getNBATeams() {
   try {
     const teams = await espnClient.getTeams('basketball', 'nba')
-    
+
     return teams.sports[0].leagues[0].teams.map(team => ({
       id: team.id,
       name: team.displayName,
@@ -622,7 +652,7 @@ async function getNBATeams() {
       color: team.color,
       alternateColor: team.alternateColor,
       logo: team.logos[0]?.href,
-      isActive: team.isActive
+      isActive: team.isActive,
     }))
   } catch (error) {
     console.error('Failed to fetch NBA teams:', error)
@@ -632,33 +662,34 @@ async function getNBATeams() {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchESPNData(endpoint, params = {}) {
   const baseUrl = 'http://site.api.espn.com/apis/site/v2/sports'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'ApexBets/1.0.0'
-      }
+        Accept: 'application/json',
+        'User-Agent': 'ApexBets/1.0.0',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Check for empty responses
     if (!data || (data.events && data.events.length === 0)) {
       throw new Error('No data returned from ESPN API')
     }
-    
+
     return data
   } catch (error) {
     console.error('ESPN API request failed:', error)
@@ -668,24 +699,28 @@ async function fetchESPNData(endpoint, params = {}) {
 
 // Usage
 const scoreboard = await fetchESPNData('/basketball/nba/scoreboard', {
-  dates: '20240115'
+  dates: '20240115',
 })
 ```
 
 ## Best Practices
 
 ### 1. Headers and User-Agent
+
 Always include proper headers to avoid being blocked:
+
 ```typescript
 const headers = {
-  'Accept': 'application/json',
+  Accept: 'application/json',
   'User-Agent': 'ApexBets/1.0.0',
-  'Referer': 'https://www.espn.com/'
+  Referer: 'https://www.espn.com/',
 }
 ```
 
 ### 2. Data Validation
+
 Always validate responses as ESPN API can return empty data:
+
 ```typescript
 function validateESPNEvent(event: any): boolean {
   return (
@@ -702,6 +737,7 @@ const validEvents = events.events?.filter(validateESPNEvent) || []
 ```
 
 ### 3. Error Handling with Retry
+
 ```typescript
 async function safeESPNCall<T>(
   apiCall: () => Promise<T>,
@@ -717,42 +753,44 @@ async function safeESPNCall<T>(
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
-      
+
       if (i === maxRetries - 1) {
         console.error('Max retries exceeded:', error)
         return null
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
   }
-  
+
   return null
 }
 ```
 
 ### 4. Caching Strategy
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedESPNData(endpoint: string, params: any) {
   const cacheKey = `espn-${endpoint}-${JSON.stringify(params)}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const data = await espnClient.request(endpoint, params)
   await setCache(cacheKey, data, 300) // Cache for 5 minutes
-  
+
   return data
 }
 ```
 
 ## Integration with ApexBets
 
-The ESPN API is integrated into the ApexBets system as a reliable fallback data source. It's used in the following services:
+The ESPN API is integrated into the ApexBets system as a reliable fallback data
+source. It's used in the following services:
 
 - **BasketballService** - Fallback for NBA data when primary APIs fail
 - **FootballService** - Fallback for NFL data
@@ -760,4 +798,6 @@ The ESPN API is integrated into the ApexBets system as a reliable fallback data 
 - **HockeyService** - Fallback for NHL data
 - **StandingsService** - League standings and rankings
 
-The API is configured with conservative rate limiting, proper headers, and robust error handling to ensure reliable data access while being respectful to ESPN's servers.
+The API is configured with conservative rate limiting, proper headers, and
+robust error handling to ensure reliable data access while being respectful to
+ESPN's servers.

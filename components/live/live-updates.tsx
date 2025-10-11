@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { dynamicClientConfig } from "@/lib/config/dynamic-client-config"
-import Image from "next/image"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Skeleton } from "@/components/ui/skeleton"
+import { useState, useEffect, useCallback } from 'react'
+import { dynamicClientConfig } from '@/lib/config/dynamic-client-config'
+import Image from 'next/image'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   RefreshCw,
   Play,
@@ -19,8 +19,8 @@ import {
   Clock,
   AlertCircle,
   Wifi,
-  WifiOff
-} from "lucide-react"
+  WifiOff,
+} from 'lucide-react'
 
 interface LiveGame {
   id: string
@@ -75,7 +75,7 @@ interface LiveUpdatesProps {
 }
 
 export function LiveUpdates({ sport }: LiveUpdatesProps) {
-  const [activeTab, setActiveTab] = useState("scores")
+  const [activeTab, setActiveTab] = useState('scores')
   const [isLive, setIsLive] = useState(false)
   const [liveGames, setLiveGames] = useState<LiveGame[]>([])
   const [liveOdds, setLiveOdds] = useState<LiveOdds[]>([])
@@ -83,7 +83,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>('connected')
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected'>(
+    'connected'
+  )
 
   const fetchLiveData = useCallback(async () => {
     try {
@@ -99,23 +101,26 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
         // ONLY show games that are actually live (in progress) with real scores
         const trulyLiveGames = (data.live || []).filter((game: any) => {
           const status = game.status?.toLowerCase() || ''
-          const hasLiveStatus = status === 'live' ||
-                               status === 'in_progress' ||
-                               status === 'in progress' ||
-                               status.includes('live') ||
-                               status.includes('progress') ||
-                               status.includes('quarter') ||
-                               status.includes('period') ||
-                               status.includes('inning') ||
-                               status.includes('half')
+          const hasLiveStatus =
+            status === 'live' ||
+            status === 'in_progress' ||
+            status === 'in progress' ||
+            status.includes('live') ||
+            status.includes('progress') ||
+            status.includes('quarter') ||
+            status.includes('period') ||
+            status.includes('inning') ||
+            status.includes('half')
 
           // Must have real scores (not 0-0) to be considered truly live
-          const hasRealScores = (game.homeScore > 0 || game.awayScore > 0)
+          const hasRealScores = game.homeScore > 0 || game.awayScore > 0
 
           return hasLiveStatus && hasRealScores
         })
 
-        console.log(`Fetched ${data.live?.length || 0} live games, filtered to ${trulyLiveGames.length} truly live games`)
+        console.log(
+          `Fetched ${data.live?.length || 0} live games, filtered to ${trulyLiveGames.length} truly live games`
+        )
         setLiveGames(trulyLiveGames)
       } else if (activeTab === 'odds') {
         const response = await fetch(`/api/odds?sport=${sport}`)
@@ -140,37 +145,42 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
   useEffect(() => {
     if (isLive) {
       fetchLiveData()
-      
+
       // Dynamic polling with sport-specific intervals
       const setupPolling = async () => {
         try {
           const config = await dynamicClientConfig.getConfig()
-          const sportInterval = await dynamicClientConfig.getSportRefreshInterval(sport || 'basketball', 'games')
-          
+          const sportInterval = await dynamicClientConfig.getSportRefreshInterval(
+            sport || 'basketball',
+            'games'
+          )
+
           let pollInterval = Math.min(sportInterval, config.ui.refreshInterval)
           let consecutiveNoChanges = 0
           const maxInterval = Math.min(sportInterval * 10, 300000) // Max 5 minutes
           const minInterval = Math.max(sportInterval / 3, 10000) // Min 10 seconds
-          
+
           const poll = () => {
             const previousData = {
               games: liveGames.length,
               odds: liveOdds.length,
-              valueBets: valueBets.length
+              valueBets: valueBets.length,
             }
-            
+
             fetchLiveData().then(() => {
               const currentData = {
                 games: liveGames.length,
                 odds: liveOdds.length,
-                valueBets: valueBets.length
+                valueBets: valueBets.length,
               }
-              
+
               // Check if data changed
               const hasChanges = Object.keys(previousData).some(
-                key => previousData[key as keyof typeof previousData] !== currentData[key as keyof typeof currentData]
+                key =>
+                  previousData[key as keyof typeof previousData] !==
+                  currentData[key as keyof typeof currentData]
               )
-              
+
               if (hasChanges) {
                 consecutiveNoChanges = 0
                 pollInterval = Math.max(minInterval, pollInterval * 0.8) // Decrease interval
@@ -178,13 +188,13 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 consecutiveNoChanges++
                 pollInterval = Math.min(maxInterval, pollInterval * 1.2) // Increase interval
               }
-              
+
               if (isLive) {
                 setTimeout(poll, pollInterval)
               }
             })
           }
-          
+
           const timeoutId = setTimeout(poll, pollInterval)
           return () => clearTimeout(timeoutId)
         } catch (error) {
@@ -200,9 +210,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
           return () => clearTimeout(timeoutId)
         }
       }
-      
+
       setupPolling()
-      
+
       return () => {
         // Cleanup will be handled by the timeout clearing in setupPolling
       }
@@ -236,7 +246,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${isLive ? 'bg-red-500 animate-pulse' : 'bg-gray-400'}`}
+              />
               Live Updates
               {liveGames.length > 0 && (
                 <Badge className="bg-red-500 text-white ml-2 animate-pulse">
@@ -253,11 +265,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                 )}
                 {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
               </div>
-              <Badge variant="outline">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </Badge>
+              <Badge variant="outline">Last updated: {lastUpdated.toLocaleTimeString()}</Badge>
               <Button
-                variant={isLive ? "destructive" : "default"}
+                variant={isLive ? 'destructive' : 'default'}
                 size="sm"
                 onClick={toggleLiveUpdates}
                 disabled={loading}
@@ -274,12 +284,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                   </>
                 )}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={fetchLiveData}
-                disabled={loading}
-              >
+              <Button variant="outline" size="sm" onClick={fetchLiveData} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
@@ -294,7 +299,10 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
             <Target className="h-4 w-4" />
             Live Scores
             {liveGames.length > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+              <Badge
+                variant="destructive"
+                className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+              >
                 {liveGames.length}
               </Badge>
             )}
@@ -303,7 +311,10 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
             <DollarSign className="h-4 w-4" />
             Live Odds
             {liveOdds.length > 0 && (
-              <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+              <Badge
+                variant="secondary"
+                className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+              >
                 {liveOdds.length}
               </Badge>
             )}
@@ -312,7 +323,10 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
             <TrendingUp className="h-4 w-4" />
             Value Bets
             {valueBets.length > 0 && (
-              <Badge variant="default" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
+              <Badge
+                variant="default"
+                className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+              >
                 {valueBets.length}
               </Badge>
             )}
@@ -325,9 +339,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
               <CardTitle className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
                 Live Game Scores
-                <Badge className="bg-red-500 text-white">
-                  {liveGames.length} Games Live
-                </Badge>
+                <Badge className="bg-red-500 text-white">{liveGames.length} Games Live</Badge>
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -340,8 +352,11 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
 
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                  {[1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-4 border rounded-lg"
+                    >
                       <div className="flex-1">
                         <Skeleton className="h-4 w-1/3 mb-2" />
                         <Skeleton className="h-3 w-1/2" />
@@ -356,7 +371,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                     <Target className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No Live Games</h3>
                     <p className="text-muted-foreground mb-4">
-                      {sport ? `No ${sport} games are currently in progress.` : 'No games are currently in progress.'}
+                      {sport
+                        ? `No ${sport} games are currently in progress.`
+                        : 'No games are currently in progress.'}
                     </p>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <p>• Check back later for live action</p>
@@ -387,7 +404,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 rounded-full object-contain"
-                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                onError={e => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
                               />
                             )}
                             <span className="font-semibold text-lg">{game.awayTeam}</span>
@@ -401,7 +420,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                                 width={32}
                                 height={32}
                                 className="w-8 h-8 rounded-full object-contain"
-                                onError={(e) => { e.currentTarget.style.display = 'none' }}
+                                onError={e => {
+                                  e.currentTarget.style.display = 'none'
+                                }}
                               />
                             )}
                             <span className="font-semibold text-lg">{game.homeTeam}</span>
@@ -428,7 +449,8 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                         </div>
 
                         <div className="text-sm text-muted-foreground mt-2">
-                          {game.league}{game.venue && ` • ${game.venue}`}
+                          {game.league}
+                          {game.venue && ` • ${game.venue}`}
                           {game.dataSource && (
                             <span className="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
                               {game.dataSource}
@@ -446,7 +468,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {game.awayScore !== undefined && game.homeScore !== undefined ? 'LIVE SCORE' : 'STARTING SOON'}
+                          {game.awayScore !== undefined && game.homeScore !== undefined
+                            ? 'LIVE SCORE'
+                            : 'STARTING SOON'}
                         </div>
                       </div>
                     </div>
@@ -465,7 +489,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
             <CardContent>
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
+                  {[1, 2, 3].map(i => (
                     <div key={i} className="p-4 border rounded-lg">
                       <Skeleton className="h-4 w-1/3 mb-2" />
                       <Skeleton className="h-8 w-full" />
@@ -478,7 +502,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                     <DollarSign className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No Live Odds</h3>
                     <p className="text-muted-foreground mb-4">
-                      {sport ? `No ${sport} odds data available at the moment.` : 'No odds data available at the moment.'}
+                      {sport
+                        ? `No ${sport} odds data available at the moment.`
+                        : 'No odds data available at the moment.'}
                     </p>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <p>• Odds update frequently during games</p>
@@ -544,7 +570,7 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
             <CardContent>
               {loading ? (
                 <div className="space-y-4">
-                  {[1, 2, 3].map((i) => (
+                  {[1, 2, 3].map(i => (
                     <div key={i} className="p-4 border rounded-lg">
                       <Skeleton className="h-4 w-1/3 mb-2" />
                       <Skeleton className="h-8 w-full" />
@@ -557,7 +583,9 @@ export function LiveUpdates({ sport }: LiveUpdatesProps) {
                     <TrendingUp className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-xl font-semibold mb-2">No Value Bets</h3>
                     <p className="text-muted-foreground mb-4">
-                      {sport ? `No ${sport} value betting opportunities found.` : 'No value betting opportunities found.'}
+                      {sport
+                        ? `No ${sport} value betting opportunities found.`
+                        : 'No value betting opportunities found.'}
                     </p>
                     <div className="space-y-2 text-sm text-muted-foreground">
                       <p>• Value bets appear when odds are favorable</p>

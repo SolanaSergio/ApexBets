@@ -1,6 +1,8 @@
 # ApexBets Verification System
 
-This directory contains a comprehensive verification system for ApexBets that tracks what works and what doesn't, avoiding repeat testing and maintaining centralized status.
+This directory contains a comprehensive verification system for ApexBets that
+tracks what works and what doesn't, avoiding repeat testing and maintaining
+centralized status.
 
 ## Overview
 
@@ -79,6 +81,7 @@ node tests/generate-verification-report.js
 ## Verification Categories
 
 ### 1. API Endpoints
+
 - Health Check
 - Games
 - Teams
@@ -90,18 +93,21 @@ node tests/generate-verification-report.js
 - Value Bets
 
 ### 2. Data Sources
+
 - SportsDB API
 - BallDontLie API
 - Odds API (if configured)
 - API-SPORTS (if configured)
 
 ### 3. Database
+
 - Connection
 - Schema
 - Data Integrity
 - Live Updates
 
 ### 4. Sports Data
+
 - Basketball
 - Football
 - Baseball
@@ -111,12 +117,14 @@ node tests/generate-verification-report.js
 - Golf
 
 ### 5. Live Data
+
 - Real-time Updates
 - Live Scores
 - Live Odds
 - Live Predictions
 
 ### 6. Player Statistics
+
 - Basketball
 - Football
 - Baseball
@@ -124,6 +132,7 @@ node tests/generate-verification-report.js
 - Soccer
 
 ### 7. Team Statistics
+
 - Standings
 - Performance
 - Historical
@@ -148,10 +157,13 @@ The verification system includes smart testing features:
 ## Reports
 
 ### Status Report
+
 Shows current status of all components with last test times.
 
 ### Verification Report
+
 Detailed report with:
+
 - Executive summary
 - Category breakdown
 - Working/broken/unknown components
@@ -160,6 +172,7 @@ Detailed report with:
 - Next steps
 
 ### JSON Report
+
 Machine-readable report for integration with other tools.
 
 ## Configuration
@@ -184,7 +197,8 @@ The verification system integrates with:
 ## Best Practices
 
 1. **Run Quick Verification First** - Use `pnpm run verify` for fast checks
-2. **Check Status Regularly** - Use `pnpm run verify:status` to see current state
+2. **Check Status Regularly** - Use `pnpm run verify:status` to see current
+   state
 3. **Generate Reports** - Use `pnpm run verify:report` for detailed analysis
 4. **Fix Broken Components** - Address broken tests immediately
 5. **Monitor Unknown Components** - Test unknown components to determine status

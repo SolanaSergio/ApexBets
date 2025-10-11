@@ -1,14 +1,19 @@
 # Supabase Edge Function - Sports Data Sync
 
-This is a fully sport-agnostic data synchronization Edge Function that runs on Supabase's Deno runtime.
+This is a fully sport-agnostic data synchronization Edge Function that runs on
+Supabase's Deno runtime.
 
 ## TypeScript Configuration
 
-This Edge Function uses Deno's TypeScript runtime, which has different module resolution than Node.js. The TypeScript errors you see in your IDE are expected because:
+This Edge Function uses Deno's TypeScript runtime, which has different module
+resolution than Node.js. The TypeScript errors you see in your IDE are expected
+because:
 
-1. **Deno uses URL-based imports** - `https://deno.land/std@0.168.0/http/server.ts`
+1. **Deno uses URL-based imports** -
+   `https://deno.land/std@0.168.0/http/server.ts`
 2. **Your IDE uses Node.js TypeScript** - which doesn't understand Deno URLs
-3. **This is normal and expected** - the function will work correctly when deployed
+3. **This is normal and expected** - the function will work correctly when
+   deployed
 
 ## Files Structure
 
@@ -124,4 +129,6 @@ Any sport can be added by setting the appropriate environment variables:
 
 ---
 
-**Note**: The TypeScript errors in your IDE are expected and don't affect the function's operation. The function will work correctly when deployed to Supabase.
+**Note**: The TypeScript errors in your IDE are expected and don't affect the
+function's operation. The function will work correctly when deployed to
+Supabase.

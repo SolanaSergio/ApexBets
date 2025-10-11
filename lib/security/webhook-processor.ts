@@ -4,7 +4,11 @@
  */
 
 import { createClient } from '../supabase/server'
-import { WebhookValidator, type WebhookPayload, type BatchWebhookPayload } from './webhook-validator'
+import {
+  WebhookValidator,
+  type WebhookPayload,
+  type BatchWebhookPayload,
+} from './webhook-validator'
 import { WebhookDeduplicator } from './webhook-deduplicator'
 // Removed data-sync-service import - service was deleted as unnecessary
 
@@ -37,7 +41,7 @@ export class WebhookProcessor {
    * @returns Promise<ProcessingResult>
    */
   static async processWebhook(
-    payload: WebhookPayload, 
+    payload: WebhookPayload,
     context: WebhookProcessingContext
   ): Promise<ProcessingResult> {
     const startTime = Date.now()
@@ -60,7 +64,7 @@ export class WebhookProcessor {
           message: 'Webhook already processed (duplicate)',
           requestId,
           processingTimeMs: Date.now() - startTime,
-          skipped: 1
+          skipped: 1,
         }
       }
 
@@ -104,13 +108,12 @@ export class WebhookProcessor {
 
       return {
         ...result,
-        processingTimeMs: processingTime
+        processingTimeMs: processingTime,
       }
-
     } catch (error) {
       const processingTime = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : 'Unknown processing error'
-      
+
       console.error(`[${requestId}] Webhook processing error:`, error)
 
       // Mark as failed if we have a hash
@@ -126,7 +129,7 @@ export class WebhookProcessor {
         message: 'Webhook processing failed',
         requestId,
         processingTimeMs: processingTime,
-        errors: [errorMessage]
+        errors: [errorMessage],
       }
     }
   }
@@ -140,7 +143,7 @@ export class WebhookProcessor {
   ): Promise<ProcessingResult> {
     const { requestId } = context
     const startTime = Date.now()
-    
+
     console.log(`[${requestId}] Processing batch webhook with ${payload.events.length} events`)
 
     let processed = 0
@@ -152,7 +155,7 @@ export class WebhookProcessor {
       const event = payload.events[i]
       const eventContext = {
         ...context,
-        requestId: `${requestId}_batch_${i}`
+        requestId: `${requestId}_batch_${i}`,
       }
 
       try {
@@ -179,7 +182,7 @@ export class WebhookProcessor {
       processingTimeMs: Date.now() - startTime,
       processed,
       skipped,
-      errors: errors.length > 0 ? errors : []
+      errors: errors.length > 0 ? errors : [],
     }
   }
 
@@ -202,7 +205,7 @@ export class WebhookProcessor {
 
       // Build update object with only provided fields
       const updateData: any = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       if (data.status !== undefined) updateData.status = data.status
@@ -227,16 +230,14 @@ export class WebhookProcessor {
 
       if (count === 0) {
         console.warn(`[${requestId}] Game ${data.game_id} not found, creating new record`)
-        
+
         // Try to create new game record
-        const { error: insertError } = await supabase
-          .from('games')
-          .insert({
-            id: data.game_id,
-            sport: payload.sport,
-            league: payload.league,
-            ...updateData
-          })
+        const { error: insertError } = await supabase.from('games').insert({
+          id: data.game_id,
+          sport: payload.sport,
+          league: payload.league,
+          ...updateData,
+        })
 
         if (insertError) {
           throw new Error(`Failed to create game: ${insertError.message}`)
@@ -244,16 +245,17 @@ export class WebhookProcessor {
       }
 
       console.log(`[${requestId}] Game ${data.game_id} updated successfully`)
-      
+
       return {
         success: true,
         message: `Game ${data.game_id} updated successfully`,
         requestId,
-        processingTimeMs: 0 // Will be set by caller
+        processingTimeMs: 0, // Will be set by caller
       }
-
     } catch (error) {
-      throw new Error(`Game update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Game update failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -274,7 +276,7 @@ export class WebhookProcessor {
       }
 
       const updateData: any = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       if (data.home_score !== undefined) updateData.home_score = data.home_score
@@ -283,26 +285,24 @@ export class WebhookProcessor {
       if (data.period !== undefined) updateData.period = data.period
       if (data.time_remaining !== undefined) updateData.time_remaining = data.time_remaining
 
-      const { error } = await supabase
-        .from('games')
-        .update(updateData)
-        .eq('id', data.game_id)
+      const { error } = await supabase.from('games').update(updateData).eq('id', data.game_id)
 
       if (error) {
         throw new Error(`Database error: ${error.message}`)
       }
 
       console.log(`[${requestId}] Score updated for game ${data.game_id}`)
-      
+
       return {
         success: true,
         message: `Score updated for game ${data.game_id}`,
         requestId,
-        processingTimeMs: 0
+        processingTimeMs: 0,
       }
-
     } catch (error) {
-      throw new Error(`Score update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Score update failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -333,30 +333,29 @@ export class WebhookProcessor {
         total: data.total,
         bookmaker: data.bookmaker || payload.source || 'webhook',
         source: data.source || payload.source || 'webhook',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       }
 
-      const { error } = await supabase
-        .from('odds')
-        .upsert(oddsData, {
-          onConflict: 'id'
-        })
+      const { error } = await supabase.from('odds').upsert(oddsData, {
+        onConflict: 'id',
+      })
 
       if (error) {
         throw new Error(`Database error: ${error.message}`)
       }
 
       console.log(`[${requestId}] Odds updated for game ${data.game_id}`)
-      
+
       return {
         success: true,
         message: `Odds updated for game ${data.game_id}`,
         requestId,
-        processingTimeMs: 0
+        processingTimeMs: 0,
       }
-
     } catch (error) {
-      throw new Error(`Odds update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Odds update failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -377,7 +376,7 @@ export class WebhookProcessor {
       }
 
       const updateData: any = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       if (data.name !== undefined) updateData.name = data.name
@@ -385,10 +384,7 @@ export class WebhookProcessor {
       if (data.logo_url !== undefined) updateData.logo_url = data.logo_url
 
       // Update team
-      const { error } = await supabase
-        .from('teams')
-        .update(updateData)
-        .eq('id', data.team_id)
+      const { error } = await supabase.from('teams').update(updateData).eq('id', data.team_id)
 
       if (error) {
         throw new Error(`Database error: ${error.message}`)
@@ -410,13 +406,13 @@ export class WebhookProcessor {
           games_back: data.standings.games_back,
           conference: data.standings.conference,
           division: data.standings.division,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         }
 
         const { error: standingsError } = await supabase
           .from('league_standings')
           .upsert(standingsData, {
-            onConflict: 'id'
+            onConflict: 'id',
           })
 
         if (standingsError) {
@@ -425,16 +421,17 @@ export class WebhookProcessor {
       }
 
       console.log(`[${requestId}] Team ${data.team_id} updated successfully`)
-      
+
       return {
         success: true,
         message: `Team ${data.team_id} updated successfully`,
         requestId,
-        processingTimeMs: 0
+        processingTimeMs: 0,
       }
-
     } catch (error) {
-      throw new Error(`Team update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Team update failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -455,7 +452,7 @@ export class WebhookProcessor {
       }
 
       const updateData: any = {
-        updated_at: new Date().toISOString()
+        updated_at: new Date().toISOString(),
       }
 
       if (data.name !== undefined) updateData.name = data.name
@@ -463,26 +460,24 @@ export class WebhookProcessor {
       if (data.position !== undefined) updateData.position = data.position
       if (data.jersey_number !== undefined) updateData.jersey_number = data.jersey_number
 
-      const { error } = await supabase
-        .from('players')
-        .update(updateData)
-        .eq('id', data.player_id)
+      const { error } = await supabase.from('players').update(updateData).eq('id', data.player_id)
 
       if (error) {
         throw new Error(`Database error: ${error.message}`)
       }
 
       console.log(`[${requestId}] Player ${data.player_id} updated successfully`)
-      
+
       return {
         success: true,
         message: `Player ${data.player_id} updated successfully`,
         requestId,
-        processingTimeMs: 0
+        processingTimeMs: 0,
       }
-
     } catch (error) {
-      throw new Error(`Player update failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Player update failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 
@@ -497,19 +492,20 @@ export class WebhookProcessor {
 
     try {
       console.log(`[${requestId}] Triggering full sync for ${payload.sport}/${payload.league}`)
-      
+
       // Trigger data sync service
       // Data sync service was removed
-      
+
       return {
         success: true,
         message: `Full sync completed for ${payload.sport}/${payload.league}`,
         requestId,
-        processingTimeMs: 0
+        processingTimeMs: 0,
       }
-
     } catch (error) {
-      throw new Error(`Full sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      throw new Error(
+        `Full sync failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
     }
   }
 }

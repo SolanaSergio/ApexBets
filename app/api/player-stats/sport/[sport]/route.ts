@@ -7,10 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { sport: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { sport: string } }) {
   try {
     const { sport } = params
     const { searchParams } = new URL(request.url)
@@ -25,7 +22,7 @@ export async function GET(
       return NextResponse.json(
         {
           success: false,
-          error: 'Sport parameter is required'
+          error: 'Sport parameter is required',
         },
         { status: 400 }
       )
@@ -34,10 +31,13 @@ export async function GET(
     const supabase = await createClient()
 
     if (!supabase) {
-      return NextResponse.json({
-        success: false,
-        error: "Database connection failed"
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database connection failed',
+        },
+        { status: 500 }
+      )
     }
 
     // Determine the correct player stats table based on sport
@@ -66,10 +66,7 @@ export async function GET(
     }
 
     // Build query with proper filtering
-    let query = supabase
-      .from(statsTable)
-      .select('*')
-      .order('created_at', { ascending: false })
+    let query = supabase.from(statsTable).select('*').order('created_at', { ascending: false })
 
     // Apply filters
     if (teamId) {
@@ -93,12 +90,15 @@ export async function GET(
         statsTable,
         league,
         teamId,
-        gameId
+        gameId,
       })
-      return NextResponse.json({
-        success: false,
-        error: "Failed to fetch player statistics from database"
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch player statistics from database',
+        },
+        { status: 500 }
+      )
     }
 
     // Process and format player stats data
@@ -110,22 +110,28 @@ export async function GET(
       team_city: stat.team?.city || '',
       game_date: stat.game?.game_date || null,
       game_status: stat.game?.status || null,
-      game_sport: stat.game?.sport || sport
+      game_sport: stat.game?.sport || sport,
     }))
 
     // Calculate summary statistics
     const summary = {
       total: processedStats.length,
-      byTeam: processedStats.reduce((acc, stat) => {
-        const teamName = stat.team_name
-        acc[teamName] = (acc[teamName] || 0) + 1
-        return acc
-      }, {} as Record<string, number>),
-      byGame: processedStats.reduce((acc, stat) => {
-        const gameId = stat.game_id
-        acc[gameId] = (acc[gameId] || 0) + 1
-        return acc
-      }, {} as Record<string, number>)
+      byTeam: processedStats.reduce(
+        (acc, stat) => {
+          const teamName = stat.team_name
+          acc[teamName] = (acc[teamName] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      ),
+      byGame: processedStats.reduce(
+        (acc, stat) => {
+          const gameId = stat.game_id
+          acc[gameId] = (acc[gameId] || 0) + 1
+          return acc
+        },
+        {} as Record<string, number>
+      ),
     }
 
     structuredLogger.info('Player stats API request processed', {
@@ -135,7 +141,7 @@ export async function GET(
       teamId,
       gameId,
       count: processedStats.length,
-      source: 'database'
+      source: 'database',
     })
 
     return NextResponse.json({
@@ -148,20 +154,19 @@ export async function GET(
         season: season || 'current',
         count: processedStats.length,
         summary,
-        source: 'database'
-      }
+        source: 'database',
+      },
     })
-
   } catch (error) {
     structuredLogger.error('Player stats API error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     })
 
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

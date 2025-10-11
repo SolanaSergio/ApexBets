@@ -7,10 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportPredictionService } from '@/lib/services/predictions/sport-prediction-service'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { sport: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { sport: string } }) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'predictions'
@@ -24,10 +21,7 @@ export async function GET(
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {
-      return NextResponse.json(
-        { error: `Unsupported sport: ${sport}` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Unsupported sport: ${sport}` }, { status: 400 })
     }
 
     const predictionService = new SportPredictionService(sport, league)
@@ -36,7 +30,7 @@ export async function GET(
       timestamp: new Date().toISOString(),
       sport,
       league: league || serviceFactory.getDefaultLeague(sport),
-      action
+      action,
     }
 
     switch (action) {
@@ -75,7 +69,9 @@ export async function GET(
 
       default:
         return NextResponse.json(
-          { error: `Invalid action: ${action}. Supported actions: predictions, value-bets, model-performance, accuracy, health` },
+          {
+            error: `Invalid action: ${action}. Supported actions: predictions, value-bets, model-performance, accuracy, health`,
+          },
           { status: 400 }
         )
     }
@@ -83,26 +79,22 @@ export async function GET(
     return NextResponse.json({
       success: true,
       data,
-      meta
+      meta,
     })
-
   } catch (error) {
     console.error(`Predictions API error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: params.sport
+        sport: params.sport,
       },
       { status: 500 }
     )
   }
 }
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { sport: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: { sport: string } }) {
   try {
     const body = await request.json()
     const { action, data: requestData } = body
@@ -110,10 +102,7 @@ export async function POST(
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {
-      return NextResponse.json(
-        { error: `Unsupported sport: ${sport}` },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: `Unsupported sport: ${sport}` }, { status: 400 })
     }
 
     const predictionService = new SportPredictionService(sport, requestData?.league)
@@ -121,7 +110,7 @@ export async function POST(
     const meta: any = {
       timestamp: new Date().toISOString(),
       sport,
-      action
+      action,
     }
 
     switch (action) {
@@ -129,13 +118,13 @@ export async function POST(
         // Refresh prediction data
         const [predictions, valueBets] = await Promise.all([
           predictionService.getPredictions({ limit: 10 }),
-          predictionService.getValueBettingOpportunities({ limit: 5 })
+          predictionService.getValueBettingOpportunities({ limit: 5 }),
         ])
-        
+
         result = {
           sport,
           predictions: predictions.length,
-          valueBets: valueBets.length
+          valueBets: valueBets.length,
         }
         break
 
@@ -146,9 +135,9 @@ export async function POST(
             { status: 400 }
           )
         }
-        
-        const gamePredictions = await predictionService.getPredictions({ 
-          gameId: requestData.gameId
+
+        const gamePredictions = await predictionService.getPredictions({
+          gameId: requestData.gameId,
         })
         result = gamePredictions[0] || null
         break
@@ -159,7 +148,9 @@ export async function POST(
 
       default:
         return NextResponse.json(
-          { error: `Invalid action: ${action}. Supported actions: refresh, generate-prediction, health-check` },
+          {
+            error: `Invalid action: ${action}. Supported actions: refresh, generate-prediction, health-check`,
+          },
           { status: 400 }
         )
     }
@@ -167,16 +158,15 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: result,
-      meta
+      meta,
     })
-
   } catch (error) {
     console.error(`Predictions API POST error for ${params.sport}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: params.sport
+        sport: params.sport,
       },
       { status: 500 }
     )

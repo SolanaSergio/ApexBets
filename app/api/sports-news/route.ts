@@ -14,14 +14,14 @@ const CACHE_TTL = 60 * 5 // 5 minutes
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league") ?? undefined
-    const teamId = searchParams.get("teamId") ?? undefined
-    const playerId = searchParams.get("playerId") ?? undefined
-    const newsType = searchParams.get("newsType") ?? undefined
-    const source = searchParams.get("source") ?? undefined
-    const limit = Number.parseInt(searchParams.get("limit") || "20")
-    const hours = Number.parseInt(searchParams.get("hours") || "24")
+    const sport = searchParams.get('sport') || 'all'
+    const league = searchParams.get('league') ?? undefined
+    const teamId = searchParams.get('teamId') ?? undefined
+    const playerId = searchParams.get('playerId') ?? undefined
+    const newsType = searchParams.get('newsType') ?? undefined
+    const source = searchParams.get('source') ?? undefined
+    const limit = Number.parseInt(searchParams.get('limit') || '20')
+    const hours = Number.parseInt(searchParams.get('hours') || '24')
 
     const cacheKey = `sports-news-${sport}-${league}-${teamId}-${playerId}-${newsType}-${source}-${limit}-${hours}`
     const cached = await databaseCacheService.get(cacheKey)
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       newsType,
       source,
       limit,
-      hours
+      hours,
     })
 
     if (!result.success) {
@@ -51,14 +51,17 @@ export async function GET(request: NextRequest) {
         newsType,
         source,
         limit,
-        hours
+        hours,
       })
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch sports news',
-        details: result.error
-      }, { status: 500 })
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch sports news',
+          details: result.error,
+        },
+        { status: 500 }
+      )
     }
 
     structuredLogger.info('Sports news API success', {
@@ -70,7 +73,7 @@ export async function GET(request: NextRequest) {
       source,
       limit,
       hours,
-      count: result.data?.length || 0
+      count: result.data?.length || 0,
     })
 
     const response = {
@@ -88,24 +91,26 @@ export async function GET(request: NextRequest) {
         limit,
         hours,
         refreshed: false,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     }
 
     await databaseCacheService.set(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
-
   } catch (error) {
     structuredLogger.error('Sports news API unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     })
 
-    return NextResponse.json({
-      success: false,
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

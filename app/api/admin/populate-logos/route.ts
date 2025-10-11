@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
       sport,
       teamName,
       forceUpdate,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
 
     let result
@@ -25,19 +25,21 @@ export async function POST(request: NextRequest) {
         WHERE name = $1 AND sport = $2 AND is_active = true
         LIMIT 1
       `
-      
+
       const teamsResult = await databaseService.executeSQL(teamsQuery, [teamName, sport])
-      
+
       if (!teamsResult.success || teamsResult.data.length === 0) {
-        return NextResponse.json({
-          success: false,
-          error: `Team '${teamName}' not found in sport '${sport}'`
-        }, { status: 404 })
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Team '${teamName}' not found in sport '${sport}'`,
+          },
+          { status: 404 }
+        )
       }
 
       const team = teamsResult.data[0]
       result = await logoPopulationService.populateTeamLogo(team)
-      
     } else if (sport) {
       // Populate logos for specific sport
       const teamsQuery = `
@@ -46,14 +48,17 @@ export async function POST(request: NextRequest) {
         WHERE sport = $1 AND (logo_url IS NULL OR $2 = true) AND is_active = true
         ORDER BY name
       `
-      
+
       const teamsResult = await databaseService.executeSQL(teamsQuery, [sport, forceUpdate])
-      
+
       if (!teamsResult.success) {
-        return NextResponse.json({
-          success: false,
-          error: 'Failed to fetch teams'
-        }, { status: 500 })
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'Failed to fetch teams',
+          },
+          { status: 500 }
+        )
       }
 
       const teams = teamsResult.data
@@ -67,7 +72,7 @@ export async function POST(request: NextRequest) {
         const batch = teams.slice(i, i + batchSize)
         const batchPromises = batch.map(team => logoPopulationService.populateTeamLogo(team))
         const batchResults = await Promise.allSettled(batchPromises)
-        
+
         batchResults.forEach((batchResult, index) => {
           if (batchResult.status === 'fulfilled') {
             results.push(batchResult.value)
@@ -85,7 +90,7 @@ export async function POST(request: NextRequest) {
               logoUrl: null,
               source: 'error',
               success: false,
-              error: batchResult.reason?.message || 'Unknown error'
+              error: batchResult.reason?.message || 'Unknown error',
             })
             failed++
           }
@@ -101,9 +106,8 @@ export async function POST(request: NextRequest) {
         totalProcessed: teams.length,
         successful,
         failed,
-        results
+        results,
       }
-      
     } else {
       // Populate all logos
       result = await logoPopulationService.populateAllLogos()
@@ -114,27 +118,29 @@ export async function POST(request: NextRequest) {
       result: {
         totalProcessed: (result as any).totalProcessed || 1,
         successful: (result as any).successful || ((result as any).success ? 1 : 0),
-        failed: (result as any).failed || ((result as any).success ? 0 : 1)
-      }
+        failed: (result as any).failed || ((result as any).success ? 0 : 1),
+      },
     })
 
     return NextResponse.json({
       success: true,
       message: 'Logo population completed successfully',
-      data: result
+      data: result,
     })
-
   } catch (error) {
     structuredLogger.error('Logo population failed', {
       error: error instanceof Error ? error.message : String(error),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
 
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to populate logos',
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to populate logos',
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -147,7 +153,7 @@ export async function GET(request: NextRequest) {
       const stats = await logoPopulationService.getLogoStats()
       return NextResponse.json({
         success: true,
-        data: stats
+        data: stats,
       })
     }
 
@@ -156,18 +162,20 @@ export async function GET(request: NextRequest) {
       message: 'Logo population service is running',
       endpoints: {
         'POST /api/admin/populate-logos': 'Populate team logos',
-        'GET /api/admin/populate-logos?action=stats': 'Get logo statistics'
-      }
+        'GET /api/admin/populate-logos?action=stats': 'Get logo statistics',
+      },
     })
-
   } catch (error) {
     structuredLogger.error('Failed to get logo stats', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     })
 
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to get logo statistics'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to get logo statistics',
+      },
+      { status: 500 }
+    )
   }
 }

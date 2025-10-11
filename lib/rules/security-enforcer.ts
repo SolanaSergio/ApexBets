@@ -32,7 +32,7 @@ export class SecurityEnforcer {
       'credential',
       'api_key',
       'access_token',
-      'refresh_token'
+      'refresh_token',
     ]
 
     for (const key in sanitized) {
@@ -70,7 +70,7 @@ export class SecurityEnforcer {
       /example/i,
       /replace_with/i,
       /enter_your/i,
-      /add_your/i
+      /add_your/i,
     ]
 
     for (const pattern of placeholderPatterns) {
@@ -97,7 +97,7 @@ export class SecurityEnforcer {
         /(\b(OR|AND)\s+'.*'\s*=\s*'.*')/i,
         /(UNION\s+SELECT)/i,
         /(DROP\s+TABLE)/i,
-        /(DELETE\s+FROM)/i
+        /(DELETE\s+FROM)/i,
       ]
 
       for (const pattern of sqlPatterns) {
@@ -113,7 +113,7 @@ export class SecurityEnforcer {
         /on\w+\s*=/i,
         /<iframe/i,
         /<object/i,
-        /<embed/i
+        /<embed/i,
       ]
 
       for (const pattern of xssPatterns) {
@@ -147,20 +147,14 @@ export class SecurityEnforcer {
 
     try {
       const parsedUrl = new URL(url)
-      
+
       // Only allow HTTPS in production
       if (process.env.NODE_ENV === 'production' && parsedUrl.protocol !== 'https:') {
         throw new Error(`Invalid ${fieldName}: only HTTPS URLs allowed in production`)
       }
 
       // Check for suspicious domains
-      const suspiciousDomains = [
-        'localhost',
-        '127.0.0.1',
-        '0.0.0.0',
-        'internal',
-        'local'
-      ]
+      const suspiciousDomains = ['localhost', '127.0.0.1', '0.0.0.0', 'internal', 'local']
 
       if (suspiciousDomains.some(domain => parsedUrl.hostname.includes(domain))) {
         throw new Error(`Invalid ${fieldName}: suspicious domain detected`)
@@ -168,7 +162,9 @@ export class SecurityEnforcer {
 
       return url
     } catch (error) {
-      throw new Error(`Invalid ${fieldName}: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error(
+        `Invalid ${fieldName}: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
   }
 
@@ -188,7 +184,7 @@ export class SecurityEnforcer {
       /(UNION\s+SELECT)/i,
       /(EXEC\s*\()/i,
       /(xp_cmdshell)/i,
-      /(sp_executesql)/i
+      /(sp_executesql)/i,
     ]
 
     for (const pattern of dangerousPatterns) {
@@ -210,7 +206,7 @@ export class SecurityEnforcer {
       /enter_your/i,
       /add_your/i,
       /<.*>/i, // HTML tags
-      /\{\{.*\}\}/i // Template variables
+      /\{\{.*\}\}/i, // Template variables
     ]
 
     return placeholderPatterns.some(pattern => pattern.test(str))
@@ -243,11 +239,11 @@ export class SecurityEnforcer {
   generateSecureRandom(length: number = 32): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
     let result = ''
-    
+
     for (let i = 0; i < length; i++) {
       result += chars.charAt(Math.floor(Math.random() * chars.length))
     }
-    
+
     return result
   }
 
@@ -259,7 +255,7 @@ export class SecurityEnforcer {
     let hash = 0
     for (let i = 0; i < data.length; i++) {
       const char = data.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(16)

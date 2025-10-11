@@ -24,19 +24,19 @@ export class SchemaValidator {
     try {
       // Basic schema validation logic
       // This would typically connect to the database and validate schema
-      
+
       // For now, return a successful validation
       return {
         isValid: true,
         errors: [],
-        warnings: []
+        warnings: [],
       }
     } catch (error) {
       errors.push(`Schema validation failed: ${error}`)
       return {
         isValid: false,
         errors,
-        warnings
+        warnings,
       }
     }
   }
@@ -48,18 +48,18 @@ export class SchemaValidator {
     try {
       // Table-specific validation logic
       // This would typically check table structure, indexes, constraints, etc.
-      
+
       return {
         isValid: true,
         errors: [],
-        warnings: []
+        warnings: [],
       }
     } catch (error) {
       errors.push(`Table ${tableName} validation failed: ${error}`)
       return {
         isValid: false,
         errors,
-        warnings
+        warnings,
       }
     }
   }
@@ -70,40 +70,40 @@ export class SchemaValidator {
     try {
       // Basic data integrity checks
       // In a real implementation, these would query the database
-      
+
       checks.push({
         checkName: 'orphaned_records',
         passed: true,
         message: 'No orphaned records found',
-        severity: 'low'
+        severity: 'low',
       })
 
       checks.push({
         checkName: 'duplicate_entries',
         passed: true,
         message: 'No duplicate entries found',
-        severity: 'medium'
+        severity: 'medium',
       })
 
       checks.push({
         checkName: 'invalid_data',
         passed: true,
         message: 'All data validation checks passed',
-        severity: 'high'
+        severity: 'high',
       })
 
       checks.push({
         checkName: 'foreign_key_constraints',
         passed: true,
         message: 'All foreign key constraints are valid',
-        severity: 'high'
+        severity: 'high',
       })
 
       checks.push({
         checkName: 'data_consistency',
         passed: true,
         message: 'Data consistency checks passed',
-        severity: 'medium'
+        severity: 'medium',
       })
 
       return checks
@@ -112,7 +112,7 @@ export class SchemaValidator {
         checkName: 'integrity_check_error',
         passed: false,
         message: `Integrity check failed: ${error}`,
-        severity: 'high'
+        severity: 'high',
       })
       return checks
     }
@@ -142,7 +142,11 @@ export class SchemaValidator {
     try {
       return { success: true, actions: [], errors: [] }
     } catch (error) {
-      return { success: false, actions: [], errors: [error instanceof Error ? error.message : String(error)] }
+      return {
+        success: false,
+        actions: [],
+        errors: [error instanceof Error ? error.message : String(error)],
+      }
     }
   }
 }

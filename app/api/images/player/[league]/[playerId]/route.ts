@@ -19,8 +19,7 @@ export async function GET(
       decodedPlayerId, // playerName
       decodedPlayerId, // playerId
       'unknown', // sport - will be determined by service
-      undefined, // teamName
-      undefined // colors
+      undefined // teamName
     )
 
     // Extract SVG content from data URI if it's SVG
@@ -38,7 +37,7 @@ export async function GET(
         'Cache-Control': 'public, max-age=31536000, immutable',
         'Access-Control-Allow-Origin': '*',
         'X-Image-Source': result.source,
-        'X-Image-Fallback': result.fallback ? 'true' : 'false'
+        'X-Image-Fallback': result.fallback ? 'true' : 'false',
       },
     })
   } catch (error) {
@@ -60,7 +59,7 @@ export async function GET(
         'Content-Type': 'image/svg+xml',
         'Cache-Control': 'public, max-age=3600',
         'X-Image-Source': 'fallback',
-        'X-Image-Fallback': 'true'
+        'X-Image-Fallback': 'true',
       },
     })
   }

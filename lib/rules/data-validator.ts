@@ -26,7 +26,7 @@ export class DataValidator {
       if (data.length === 0) {
         throw new Error('Invalid sports data: empty array')
       }
-      
+
       for (const item of data) {
         this.validateSportsItem(item)
       }
@@ -203,7 +203,7 @@ export class DataValidator {
    */
   validateNumber(input: any, min?: number, max?: number): number {
     const num = Number(input)
-    
+
     if (isNaN(num)) {
       throw new Error('Invalid input: must be a number')
     }

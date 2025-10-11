@@ -14,7 +14,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(Array.isArray(data.data)).toBe(true)
 
@@ -43,7 +43,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // Should have NBA teams
@@ -61,7 +61,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // Should have basketball teams
@@ -79,7 +79,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
     })
 
@@ -90,20 +90,44 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
         const knownNBATeams = [
-          'Lakers', 'Warriors', 'Celtics', 'Bulls', 'Heat', 'Spurs',
-          'Knicks', 'Nets', 'Rockets', 'Mavericks', 'Suns', 'Nuggets',
-          'Clippers', 'Trail Blazers', 'Jazz', 'Thunder', 'Timberwolves',
-          'Pelicans', 'Kings', 'Grizzlies', 'Hawks', 'Hornets', 'Magic',
-          'Pistons', 'Pacers', 'Bucks', 'Cavaliers', 'Raptors', '76ers'
+          'Lakers',
+          'Warriors',
+          'Celtics',
+          'Bulls',
+          'Heat',
+          'Spurs',
+          'Knicks',
+          'Nets',
+          'Rockets',
+          'Mavericks',
+          'Suns',
+          'Nuggets',
+          'Clippers',
+          'Trail Blazers',
+          'Jazz',
+          'Thunder',
+          'Timberwolves',
+          'Pelicans',
+          'Kings',
+          'Grizzlies',
+          'Hawks',
+          'Hornets',
+          'Magic',
+          'Pistons',
+          'Pacers',
+          'Bucks',
+          'Cavaliers',
+          'Raptors',
+          '76ers',
         ]
 
         const teamNames = data.data.map((team: any) => team.team)
-        const hasKnownTeam = knownNBATeams.some(knownTeam => 
+        const hasKnownTeam = knownNBATeams.some(knownTeam =>
           teamNames.some((name: string) => name.includes(knownTeam))
         )
 
@@ -118,7 +142,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -139,7 +163,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -156,7 +180,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 1) {
@@ -173,7 +197,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
     })
 
@@ -184,7 +208,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
     })
   })
@@ -197,7 +221,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -207,7 +231,7 @@ describe('Comprehensive Standings API Tests', () => {
         expect(team.losses).toBeDefined()
         expect(team.league).toBeDefined()
         expect(team.sport).toBeDefined()
-        
+
         // Verify types
         expect(typeof team.rank).toBe('number')
         expect(typeof team.team).toBe('string')
@@ -225,7 +249,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       const ranks = data.data.map((team: any) => team.rank)
@@ -240,7 +264,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       const teamNames = data.data.map((team: any) => team.team)
@@ -256,7 +280,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -274,7 +298,7 @@ describe('Comprehensive Standings API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       data.data.forEach((team: any) => {
@@ -297,12 +321,12 @@ describe('Comprehensive Standings API Tests', () => {
     })
 
     it('should handle concurrent requests efficiently', async () => {
-      const requests = Array(5).fill(null).map(() => 
-        fetch(`${baseUrl}/standings?sport=basketball`)
-      )
+      const requests = Array(5)
+        .fill(null)
+        .map(() => fetch(`${baseUrl}/standings?sport=basketball`))
 
       const responses = await Promise.all(requests)
-      
+
       responses.forEach(response => {
         expect(response.status).toBe(200)
       })

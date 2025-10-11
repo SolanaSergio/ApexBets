@@ -51,41 +51,38 @@ const nextConfig = {
   },
   // Configure allowed development origins for cross-origin requests
   allowedDevOrigins: ['localhost', '127.0.0.1', '192.168.1.197'],
-  // Webpack optimizations
+  // Webpack optimizations - simplified to prevent module resolution issues
   webpack: (config, { dev, isServer }) => {
-    // Optimize bundle splitting
+    // Only apply optimizations in production builds
     if (!dev && !isServer) {
+      // Simplified chunk splitting to prevent module resolution issues
       config.optimization.splitChunks = {
         chunks: 'all',
         cacheGroups: {
+          default: {
+            minChunks: 2,
+            priority: -20,
+            reuseExistingChunk: true,
+          },
           vendor: {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
+            priority: -10,
             chunks: 'all',
-          },
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            enforce: true,
           },
         },
       }
     }
     
-    // Optimize cache serialization to avoid large string warnings
+    // Simplified cache configuration
     if (config.cache && config.cache.type === 'filesystem') {
       config.cache.maxMemoryGenerations = 1
-      config.cache.maxAge = 1000 * 60 * 60 * 24 * 7 // 7 days
-      // Reduce cache warnings by optimizing serialization
-      config.cache.compression = 'gzip'
-      config.cache.store = 'pack'
+      config.cache.maxAge = 1000 * 60 * 60 * 24 // 1 day
     }
     
-    // Suppress webpack cache warnings for large strings
+    // Reduce logging verbosity
     config.infrastructureLogging = {
-      level: 'error',
-      debug: false
+      level: 'warn',
     }
     
     return config

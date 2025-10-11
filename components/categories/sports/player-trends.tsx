@@ -1,11 +1,19 @@
-"use client"
+'use client'
 
-import { useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, Target, Activity, User } from "lucide-react"
-import { usePlayerStats } from "@/components/data/real-time-provider"
-import { Player } from "@/lib/api-client-database-first"
+import { useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TrendingUp, Target, Activity, User } from 'lucide-react'
+import { usePlayerStats } from '@/components/data/real-time-provider'
+import { Player } from '@/lib/api-client-database-first'
 
 interface PlayerTrendsProps {
   selectedPlayer?: Player | null
@@ -74,9 +82,27 @@ export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="points" stroke="#8884d8" strokeWidth={2} name="Points" />
-                <Line type="monotone" dataKey="rebounds" stroke="#82ca9d" strokeWidth={2} name="Rebounds" />
-                <Line type="monotone" dataKey="assists" stroke="#ffc658" strokeWidth={2} name="Assists" />
+                <Line
+                  type="monotone"
+                  dataKey="points"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  name="Points"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="rebounds"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                  name="Rebounds"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="assists"
+                  stroke="#ffc658"
+                  strokeWidth={2}
+                  name="Assists"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -90,10 +116,11 @@ export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Points</p>
                 <p className="text-2xl font-bold">
-                  {trendsData.length > 0 ? 
-                    (trendsData.reduce((acc, curr) => acc + curr.points, 0) / trendsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {trendsData.length > 0
+                    ? (
+                        trendsData.reduce((acc, curr) => acc + curr.points, 0) / trendsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <Target className="h-8 w-8 text-muted-foreground" />
@@ -107,10 +134,11 @@ export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Rebounds</p>
                 <p className="text-2xl font-bold">
-                  {trendsData.length > 0 ? 
-                    (trendsData.reduce((acc, curr) => acc + curr.rebounds, 0) / trendsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {trendsData.length > 0
+                    ? (
+                        trendsData.reduce((acc, curr) => acc + curr.rebounds, 0) / trendsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <Activity className="h-8 w-8 text-muted-foreground" />
@@ -124,10 +152,11 @@ export default function PlayerTrends({ selectedPlayer }: PlayerTrendsProps) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Assists</p>
                 <p className="text-2xl font-bold">
-                  {trendsData.length > 0 ? 
-                    (trendsData.reduce((acc, curr) => acc + curr.assists, 0) / trendsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {trendsData.length > 0
+                    ? (
+                        trendsData.reduce((acc, curr) => acc + curr.assists, 0) / trendsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />

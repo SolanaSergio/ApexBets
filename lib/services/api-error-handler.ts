@@ -34,9 +34,9 @@ export class APIErrorHandler {
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       ],
-      ...config
+      ...config,
     }
   }
 
@@ -54,7 +54,7 @@ export class APIErrorHandler {
         error: `${provider}: In cooldown period due to recent failures`,
         shouldRetry: false,
         shouldRotateUserAgent: false,
-        cooldownUntil: this.getCooldownUntil(provider)
+        cooldownUntil: this.getCooldownUntil(provider),
       }
     }
 
@@ -64,7 +64,7 @@ export class APIErrorHandler {
         success: false,
         error: `${provider}: Rate limit exceeded`,
         shouldRetry: true,
-        shouldRotateUserAgent: false
+        shouldRotateUserAgent: false,
       }
     }
 
@@ -75,7 +75,7 @@ export class APIErrorHandler {
         success: false,
         error: `${provider}: Access forbidden - user agent rotated`,
         shouldRetry: true,
-        shouldRotateUserAgent: true
+        shouldRotateUserAgent: true,
       }
     }
 
@@ -85,7 +85,7 @@ export class APIErrorHandler {
         success: false,
         error: `${provider}: Server error ${statusCode}`,
         shouldRetry: true,
-        shouldRotateUserAgent: false
+        shouldRotateUserAgent: false,
       }
     }
 
@@ -95,7 +95,7 @@ export class APIErrorHandler {
         success: false,
         error: `${provider}: Request timeout`,
         shouldRetry: true,
-        shouldRotateUserAgent: false
+        shouldRotateUserAgent: false,
       }
     }
 
@@ -105,7 +105,7 @@ export class APIErrorHandler {
         success: false,
         error: `${provider}: Network error`,
         shouldRetry: true,
-        shouldRotateUserAgent: false
+        shouldRotateUserAgent: false,
       }
     }
 
@@ -115,7 +115,7 @@ export class APIErrorHandler {
       success: false,
       error: `${provider}: ${errorMessage}`,
       shouldRetry: this.shouldRetry(provider),
-      shouldRotateUserAgent: false
+      shouldRotateUserAgent: false,
     }
   }
 
@@ -159,7 +159,9 @@ export class APIErrorHandler {
     this.lastFailureTimes.set(provider, Date.now())
 
     if (currentFailures + 1 >= this.config.maxRetries) {
-      console.warn(`${provider}: ${currentFailures + 1} consecutive failures, entering ${this.config.cooldownPeriod / 1000}s cooldown period`)
+      console.warn(
+        `${provider}: ${currentFailures + 1} consecutive failures, entering ${this.config.cooldownPeriod / 1000}s cooldown period`
+      )
     }
   }
 
@@ -210,25 +212,28 @@ export class APIErrorHandler {
       failureCount: this.failureCounts.get(provider) || 0,
       lastFailure: this.lastFailureTimes.get(provider) || 0,
       isInCooldown,
-      ...(isInCooldown && { cooldownUntil: this.getCooldownUntil(provider) })
+      ...(isInCooldown && { cooldownUntil: this.getCooldownUntil(provider) }),
     }
   }
 
   /**
    * Get all provider statistics
    */
-  getAllProviderStats(): Record<string, {
-    failureCount: number
-    lastFailure: number
-    isInCooldown: boolean
-    cooldownUntil?: number
-  }> {
+  getAllProviderStats(): Record<
+    string,
+    {
+      failureCount: number
+      lastFailure: number
+      isInCooldown: boolean
+      cooldownUntil?: number
+    }
+  > {
     const stats: Record<string, any> = {}
-    
+
     for (const provider of this.failureCounts.keys()) {
       stats[provider] = this.getProviderStats(provider)
     }
-    
+
     return stats
   }
 }

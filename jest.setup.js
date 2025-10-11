@@ -10,32 +10,32 @@ process.env.NEXT_PUBLIC_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://loc
 // Global test utilities
 global.testUtils = {
   // Helper to wait for async operations
-  wait: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
-  
+  wait: ms => new Promise(resolve => setTimeout(resolve, ms)),
+
   // Helper to generate test data
-  generateTestData: (type: string) => {
+  generateTestData: type => {
     const testData = {
       team: {
         name: 'Test Team',
         sport: 'nfl',
         league: 'NFL',
-        colors: { primary: '#FF0000', secondary: '#0000FF' }
+        colors: { primary: '#FF0000', secondary: '#0000FF' },
       },
       player: {
         name: 'Test Player',
         sport: 'nfl',
         team: 'Test Team',
-        position: 'QB'
+        position: 'QB',
       },
       game: {
         home_team: 'Test Team 1',
         away_team: 'Test Team 2',
         sport: 'nfl',
-        date: new Date().toISOString()
-      }
+        date: new Date().toISOString(),
+      },
     }
-    return testData[type as keyof typeof testData] || {}
-  }
+    return testData[type] || {}
+  },
 }
 
 // Mock console methods to reduce noise in tests
@@ -46,7 +46,7 @@ global.console = {
   debug: jest.fn(),
   info: jest.fn(),
   warn: jest.fn(),
-  error: jest.fn()
+  error: jest.fn(),
 }
 
 // Restore console after tests

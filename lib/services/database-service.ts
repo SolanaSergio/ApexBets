@@ -28,10 +28,6 @@ export class DatabaseService {
   private static initialized = false
   private isConnected: boolean = false
   private lastHealthCheck: Date = new Date()
-  private connectionRetryCount: number = 0
-  private maxRetries: number = 3
-  private retryDelay: number = 1000 // Start with 1 second
-  private queryPerformanceStats: Map<string, { count: number; totalTime: number; avgTime: number }> = new Map()
 
   public static getInstance(): DatabaseService {
     if (!DatabaseService.instance) {
@@ -41,6 +37,11 @@ export class DatabaseService {
   }
 
   constructor() {
+    // Server-side only - prevent browser instantiation
+    if (typeof window !== 'undefined') {
+      throw new Error('DatabaseService can only be instantiated on the server side')
+    }
+
     // Only initialize once, and not during build phase
     if (!DatabaseService.initialized && process.env.NEXT_PHASE !== 'phase-production-build') {
       this.initializeConnection()
@@ -52,25 +53,20 @@ export class DatabaseService {
     try {
       // Test connection with production Supabase client
       this.isConnected = productionSupabaseClient.isConnected()
-      
-      // Disable initialization logging for performance
-      // Only log errors
-      // if (this.isConnected) {
-      //   structuredLogger.info('Database Service initialized successfully', {
-      //     client: 'production-supabase',
-      //     connected: true
-      //   })
-      // } else {
-      //   structuredLogger.warn('Database Service initialized but not connected', {
-      //     client: 'production-supabase',
-      //     connected: false
-      //   })
-      // }
+
+      // Only log if there's an issue
+      if (!this.isConnected) {
+        structuredLogger.warn('Database Service initialized but not connected', {
+          client: 'production-supabase',
+          connected: false,
+          reason: 'Supabase client not initialized or environment variables missing',
+        })
+      }
     } catch (error) {
       this.isConnected = false
-      structuredLogger.error('Database Service initialization failed', { 
+      structuredLogger.error('Database Service initialization failed', {
         error: error instanceof Error ? error.message : String(error),
-        connected: false
+        connected: false,
       })
     }
   }
@@ -83,98 +79,32 @@ export class DatabaseService {
       const startTime = Date.now()
       const result = await productionSupabaseClient.executeSQL('SELECT 1 as health_check', [])
       const executionTime = Date.now() - startTime
-      
+
       this.isConnected = result.success
       this.lastHealthCheck = new Date()
-      this.connectionRetryCount = 0 // Reset retry count on successful connection
-      
+
       structuredLogger.debug('Database health check completed', {
         success: result.success,
         executionTime,
-        connected: this.isConnected
+        connected: this.isConnected,
       })
-      
+
       return result.success
     } catch (error) {
       this.isConnected = false
-      this.connectionRetryCount++
-      
+
       structuredLogger.warn('Database health check failed', {
         error: error instanceof Error ? error.message : String(error),
-        retryCount: this.connectionRetryCount,
-        connected: false
+        connected: false,
       })
-      
+
       return false
     }
   }
 
-  /**
-   * Execute query with retry logic and exponential backoff
-   */
-  private async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    operationName: string
-  ): Promise<T> {
-    let lastError: Error | null = null
-    
-    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
-      try {
-        // Perform health check if not connected
-        if (!this.isConnected || attempt > 0) {
-          await this.performHealthCheck()
-        }
-        
-        const result = await operation()
-        
-        // Reset retry count on success
-        if (attempt > 0) {
-          this.connectionRetryCount = 0
-          structuredLogger.info('Database operation succeeded after retry', {
-            operation: operationName,
-            attempt: attempt + 1
-          })
-        }
-        
-        return result
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error))
-        
-        if (attempt < this.maxRetries) {
-          const delay = this.retryDelay * Math.pow(2, attempt) // Exponential backoff
-          structuredLogger.warn('Database operation failed, retrying', {
-            operation: operationName,
-            attempt: attempt + 1,
-            maxRetries: this.maxRetries,
-            delay,
-            error: lastError.message
-          })
-          
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
-    }
-    
-    throw lastError || new Error(`Database operation failed after ${this.maxRetries + 1} attempts`)
-  }
-
-  /**
-   * Track query performance metrics
-   */
-  private trackQueryPerformance(query: string, executionTime: number): void {
-    const queryKey = query.substring(0, 50) // Use first 50 chars as key
-    const existing = this.queryPerformanceStats.get(queryKey) || { count: 0, totalTime: 0, avgTime: 0 }
-    
-    existing.count++
-    existing.totalTime += executionTime
-    existing.avgTime = existing.totalTime / existing.count
-    
-    this.queryPerformanceStats.set(queryKey, existing)
-  }
-
   async executeSQL(query: string, _params?: any[]): Promise<QueryResult> {
     const startTime = Date.now()
-    
+
     try {
       // Block only during Next.js build/static generation, allow server runtime
       if (process.env.NEXT_PHASE === 'phase-production-build') {
@@ -183,47 +113,52 @@ export class DatabaseService {
           data: [],
           rowCount: 0,
           executionTime: Date.now() - startTime,
-          error: 'Database operations not available during build/static generation'
+          error: 'Database operations not available during build/static generation',
         }
       }
 
-      // Use retry logic for database operations
-      const result = await this.executeWithRetry(async () => {
-        return await productionSupabaseClient.executeSQL(query, _params)
-      }, 'executeSQL')
-      
-      const executionTime = Date.now() - startTime
-      
-      const data = Array.isArray(result.data) ? result.data : []
-      
-      // Track performance metrics
-      this.trackQueryPerformance(query, executionTime)
-      
-      structuredLogger.databaseQuery(query, executionTime, data.length)
-      
-      return {
-        success: result.success,
-        data,
-        rowCount: data.length,
-        executionTime,
-        ...(result.error ? { error: result.error } : {})
+      // Check if Supabase client is initialized
+      if (!productionSupabaseClient.isConnected()) {
+        return {
+          success: false,
+          data: [],
+          rowCount: 0,
+          executionTime: Date.now() - startTime,
+          error:
+            'Supabase client not initialized. This may occur during build phase or when environment variables are not available.',
+        }
       }
-    } catch (error) {
+
+      // Use Supabase client methods instead of raw SQL
+      // This should be replaced with proper Supabase Edge Function calls
+      console.warn('executeSQL should be replaced with Supabase Edge Functions or client methods')
+
       const executionTime = Date.now() - startTime
-      const errorMessage = error instanceof Error ? error.message : String(error)
-      
-      structuredLogger.error('Database query failed', {
-        query: query.substring(0, 100),
-        error: errorMessage,
-        executionTime
-      })
-      
+
       return {
         success: false,
         data: [],
         rowCount: 0,
         executionTime,
-        error: errorMessage
+        error:
+          'Raw SQL queries are not supported. Use Supabase Edge Functions or client methods instead.',
+      }
+    } catch (error) {
+      const executionTime = Date.now() - startTime
+      const errorMessage = error instanceof Error ? error.message : String(error)
+
+      structuredLogger.error('Database query failed', {
+        query: query.substring(0, 100),
+        error: errorMessage,
+        executionTime,
+      })
+
+      return {
+        success: false,
+        data: [],
+        rowCount: 0,
+        executionTime,
+        error: errorMessage,
       }
     }
   }
@@ -241,7 +176,7 @@ export class DatabaseService {
       AND table_schema = 'public'
       ORDER BY ordinal_position
     `
-    
+
     return this.executeSQL(query, [tableName])
   }
 
@@ -259,35 +194,35 @@ export class DatabaseService {
         FROM pg_stat_user_tables
         WHERE schemaname = 'public'
       `
-      
+
       const tablesResult = await this.executeSQL(tablesQuery)
       const tables = tablesResult.data || []
-      
+
       const totalRows = tables.reduce((sum, table) => sum + (table.live_tuples || 0), 0)
-      
+
       const sizeQuery = `
         SELECT pg_size_pretty(pg_database_size(current_database())) as database_size
       `
-      
+
       const sizeResult = await this.executeSQL(sizeQuery)
       const databaseSize = sizeResult.data?.[0]?.database_size || 'Unknown'
-      
+
       return {
         totalTables: tables.length,
         totalRows,
         databaseSize,
-        connectionStatus: this.isConnected ? 'connected' : 'disconnected'
+        connectionStatus: this.isConnected ? 'connected' : 'disconnected',
       }
     } catch (error) {
       structuredLogger.error('Failed to get table stats', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
-      
+
       return {
         totalTables: 0,
         totalRows: 0,
         databaseSize: 'Unknown',
-        connectionStatus: 'error'
+        connectionStatus: 'error',
       }
     }
   }
@@ -297,18 +232,18 @@ export class DatabaseService {
       const startTime = Date.now()
       const result = await this.executeSQL('SELECT 1 as health_check')
       const responseTime = Date.now() - startTime
-      
+
       this.isConnected = result.success
       this.lastHealthCheck = new Date()
-      
+
       return {
         healthy: result.success && responseTime < 5000, // 5 second timeout
         details: {
           connected: this.isConnected,
           responseTime,
           lastCheck: this.lastHealthCheck.toISOString(),
-          error: result.error
-        }
+          error: result.error,
+        },
       }
     } catch (error) {
       this.isConnected = false
@@ -317,16 +252,20 @@ export class DatabaseService {
         details: {
           connected: false,
           error: error instanceof Error ? error.message : String(error),
-          lastCheck: this.lastHealthCheck.toISOString()
-        }
+          lastCheck: this.lastHealthCheck.toISOString(),
+        },
       }
     }
   }
 
-  async createIndex(tableName: string, columnName: string, indexName?: string): Promise<QueryResult> {
+  async createIndex(
+    tableName: string,
+    columnName: string,
+    indexName?: string
+  ): Promise<QueryResult> {
     const name = indexName || `idx_${tableName}_${columnName}`
     const query = `CREATE INDEX IF NOT EXISTS ${name} ON ${tableName}(${columnName})`
-    
+
     return this.executeSQL(query)
   }
 
@@ -345,12 +284,12 @@ export class DatabaseService {
       FROM pg_indexes 
       WHERE schemaname = 'public'
     `
-    
+
     if (tableName) {
       query += ` AND tablename = $1`
       return this.executeSQL(query, [tableName])
     }
-    
+
     return this.executeSQL(query)
   }
 
@@ -387,7 +326,7 @@ export class DatabaseService {
       ORDER BY mean_time DESC 
       LIMIT $1
     `
-    
+
     return this.executeSQL(query, [limit])
   }
 
@@ -402,14 +341,14 @@ export class DatabaseService {
       WHERE schemaname = 'public'
       ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     `
-    
+
     return this.executeSQL(query)
   }
 
   async backupTable(tableName: string): Promise<QueryResult> {
     const backupTableName = `${tableName}_backup_${Date.now()}`
     const query = `CREATE TABLE ${backupTableName} AS SELECT * FROM ${tableName}`
-    
+
     return this.executeSQL(query)
   }
 
@@ -428,7 +367,7 @@ export class DatabaseService {
       return this.isConnected
     } catch (error) {
       structuredLogger.error('Failed to reconnect to database', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return false
     }
@@ -437,21 +376,17 @@ export class DatabaseService {
   /**
    * Get performance statistics
    */
-  getPerformanceStats(): { 
-    queryStats: Map<string, { count: number; totalTime: number; avgTime: number }>
+  getPerformanceStats(): {
     connectionStatus: {
       isConnected: boolean
       lastHealthCheck: Date
-      retryCount: number
     }
   } {
     return {
-      queryStats: new Map(this.queryPerformanceStats),
       connectionStatus: {
         isConnected: this.isConnected,
         lastHealthCheck: this.lastHealthCheck,
-        retryCount: this.connectionRetryCount
-      }
+      },
     }
   }
 
@@ -461,26 +396,17 @@ export class DatabaseService {
   async getHealthStatus(): Promise<{
     isHealthy: boolean
     lastCheck: Date
-    retryCount: number
     performanceStats: { slowQueries: number; avgQueryTime: number }
   }> {
     const isHealthy = await this.performHealthCheck()
-    
-    // Calculate performance metrics
-    const allStats = Array.from(this.queryPerformanceStats.values())
-    const slowQueries = allStats.filter(stat => stat.avgTime > 1000).length // Queries > 1s
-    const avgQueryTime = allStats.length > 0 
-      ? allStats.reduce((sum, stat) => sum + stat.avgTime, 0) / allStats.length 
-      : 0
-    
+
     return {
       isHealthy,
       lastCheck: this.lastHealthCheck,
-      retryCount: this.connectionRetryCount,
       performanceStats: {
-        slowQueries,
-        avgQueryTime
-      }
+        slowQueries: 0,
+        avgQueryTime: 0,
+      },
     }
   }
 

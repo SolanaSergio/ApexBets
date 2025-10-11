@@ -10,12 +10,15 @@ import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 60 // 1 minute
 
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const timezone = searchParams.get("timezone") || "UTC"
-    const limitRaw = Number.parseInt(searchParams.get("limit") || "50")
+    const sport = searchParams.get('sport') || 'all'
+    const timezone = searchParams.get('timezone') || 'UTC'
+    const limitRaw = Number.parseInt(searchParams.get('limit') || '50')
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 50))
 
     const cacheKey = `database-first-games-today-${sport}-${timezone}-${limit}`
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
       timeZone: timezone,
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit'
+      day: '2-digit',
     }).format(now)
 
     const [yearStr, monthStr, dayStr] = todayInUserTimezone.split('-')
@@ -56,7 +59,7 @@ export async function GET(request: NextRequest) {
       status: 'scheduled',
       dateFrom: todayStartUTC.toISOString(),
       dateTo: todayEndUTC.toISOString(),
-      limit
+      limit,
     })
 
     // Add timezone-aware formatting
@@ -64,35 +67,35 @@ export async function GET(request: NextRequest) {
       result.data = result.data.map((game: any) => {
         if (game.game_date) {
           const utcDate = new Date(game.game_date)
-          const localDate = new Date(utcDate.toLocaleString("en-US", { timeZone: timezone }))
-          
+          const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: timezone }))
+
           return {
             ...game,
             game_date: game.game_date, // Keep original UTC date
             game_date_local: localDate.toISOString(), // Add local timezone date
-            game_date_formatted: localDate.toLocaleString("en-US", {
+            game_date_formatted: localDate.toLocaleString('en-US', {
               timeZone: timezone,
               year: 'numeric',
               month: 'short',
               day: 'numeric',
               hour: 'numeric',
               minute: '2-digit',
-              hour12: true
+              hour12: true,
             }),
             time_until_game: getTimeUntilGame(utcDate, timezone),
             is_today: true,
-            is_tomorrow: false
+            is_tomorrow: false,
           }
         }
         return game
       })
     }
 
-    structuredLogger.info('Today\'s games API request processed', {
+    structuredLogger.info("Today's games API request processed", {
       sport,
       timezone,
       count: result.data.length,
-      source: result.meta.source
+      source: result.meta.source,
     })
 
     const response = {
@@ -102,25 +105,24 @@ export async function GET(request: NextRequest) {
         timezone,
         date_range: {
           start: todayStartUTC.toISOString(),
-          end: todayEndUTC.toISOString()
-        }
-      }
+          end: todayEndUTC.toISOString(),
+        },
+      },
     }
 
     await databaseCacheService.set(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
-
   } catch (error) {
-    structuredLogger.error('Today\'s games API error', {
-      error: error instanceof Error ? error.message : String(error)
+    structuredLogger.error("Today's games API error", {
+      error: error instanceof Error ? error.message : String(error),
     })
-    
+
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch today\'s games',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        error: "Failed to fetch today's games",
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -136,18 +138,18 @@ function getTimezoneOffsetMinutes(date: Date, timezone: string): number {
 
 function getTimeUntilGame(gameDate: Date, timezone: string): string {
   const now = new Date()
-  const gameTime = new Date(gameDate.toLocaleString("en-US", { timeZone: timezone }))
-  const nowInTimezone = new Date(now.toLocaleString("en-US", { timeZone: timezone }))
-  
+  const gameTime = new Date(gameDate.toLocaleString('en-US', { timeZone: timezone }))
+  const nowInTimezone = new Date(now.toLocaleString('en-US', { timeZone: timezone }))
+
   const diffMs = gameTime.getTime() - nowInTimezone.getTime()
-  
+
   if (diffMs < 0) {
-    return "Game started"
+    return 'Game started'
   }
-  
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60))
   const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60))
-  
+
   if (hours > 0) {
     return `${hours}h ${minutes}m`
   } else {

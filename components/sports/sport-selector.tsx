@@ -1,11 +1,10 @@
+'use client'
 
-"use client"
-
-import * as React from "react"
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { useSports, Sport } from "@/hooks/use-sports"
-import { Trophy } from "lucide-react"
+import * as React from 'react'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { useSports, Sport } from '@/hooks/use-sports'
+import { Trophy } from 'lucide-react'
 
 interface SportSelectorProps {
   selectedSport: string
@@ -35,15 +34,15 @@ export function SportSelector({ selectedSport, onSportChange }: SportSelectorPro
         const isSelected = selectedSport === sport.name
         const sportColor = sport.color_primary
           ? `from-[${sport.color_primary}] to-[${sport.color_primary}]/80`
-          : "from-primary to-primary/80"
+          : 'from-primary to-primary/80'
 
         return (
           <Button
             key={sport.id}
             onClick={() => onSportChange(sport.name)}
-            variant={isSelected ? "default" : "outline"}
+            variant={isSelected ? 'default' : 'outline'}
             className={`px-3 sm:px-4 py-2 text-sm transition-colors ${
-              isSelected ? `bg-gradient-to-r ${sportColor} text-white` : ""
+              isSelected ? `bg-gradient-to-r ${sportColor} text-white` : ''
             }`}
           >
             {sport.icon_url ? (

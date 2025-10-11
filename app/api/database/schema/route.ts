@@ -19,21 +19,20 @@ export async function GET(request: NextRequest) {
       data: validationResult,
       meta: {
         checkIntegrity,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Database schema validation API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to validate database schema',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )
@@ -55,25 +54,24 @@ export async function POST(request: NextRequest) {
       success: true,
       data: {
         validationResult,
-        fixResults
+        fixResults,
       },
       meta: {
         checkIntegrity,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Database schema validation API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to validate database schema',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )

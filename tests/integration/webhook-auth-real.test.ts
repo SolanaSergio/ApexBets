@@ -15,10 +15,10 @@ describe('Webhook Authentication Integration (Real Server)', () => {
       game_id: 'test_game_123',
       status: 'live',
       home_score: 14,
-      away_score: 7
+      away_score: 7,
     },
     sport: 'nfl',
-    league: 'nfl'
+    league: 'nfl',
   }
 
   beforeAll(() => {
@@ -32,16 +32,16 @@ describe('Webhook Authentication Integration (Real Server)', () => {
     test('should accept valid HMAC signature', async () => {
       const payload = JSON.stringify(validPayload)
       const signature = hmacWebhookAuthenticator.generateSignature(payload, TEST_SECRET)
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': signature
+          'X-Hub-Signature-256': signature,
         },
-        body: payload
+        body: payload,
       })
-      
+
       expect(response.status).toBe(200)
       const data = await response.json()
       expect(data.success).toBe(true)
@@ -52,16 +52,16 @@ describe('Webhook Authentication Integration (Real Server)', () => {
     test('should reject invalid HMAC signature', async () => {
       const payload = JSON.stringify(validPayload)
       const invalidSignature = 'sha256=invalid_signature_here'
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': invalidSignature
+          'X-Hub-Signature-256': invalidSignature,
         },
-        body: payload
+        body: payload,
       })
-      
+
       expect(response.status).toBe(401)
       const data = await response.json()
       expect(data.error).toBe('Invalid webhook signature')
@@ -71,15 +71,15 @@ describe('Webhook Authentication Integration (Real Server)', () => {
 
     test('should reject missing signature', async () => {
       const payload = JSON.stringify(validPayload)
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: payload
+        body: payload,
       })
-      
+
       expect(response.status).toBe(401)
       const data = await response.json()
       expect(data.error).toBe('Missing webhook signature')
@@ -89,20 +89,20 @@ describe('Webhook Authentication Integration (Real Server)', () => {
     test('should detect payload tampering', async () => {
       const originalPayload = validPayload
       const tamperedPayload = { ...validPayload, data: { ...validPayload.data, home_score: 999 } }
-      
+
       // Generate signature for original payload
       const signature = hmacWebhookAuthenticator.generateSignature(originalPayload, TEST_SECRET)
-      
+
       // Send tampered payload with original signature
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': signature
+          'X-Hub-Signature-256': signature,
         },
-        body: JSON.stringify(tamperedPayload)
+        body: JSON.stringify(tamperedPayload),
       })
-      
+
       expect(response.status).toBe(401)
       const data = await response.json()
       expect(data.error).toBe('Invalid webhook signature')
@@ -113,16 +113,16 @@ describe('Webhook Authentication Integration (Real Server)', () => {
     test('should handle invalid JSON', async () => {
       const invalidJson = '{ invalid json'
       const signature = hmacWebhookAuthenticator.generateSignature(invalidJson, TEST_SECRET)
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': signature
+          'X-Hub-Signature-256': signature,
         },
-        body: invalidJson
+        body: invalidJson,
       })
-      
+
       expect(response.status).toBe(400)
       const data = await response.json()
       expect(data.error).toBe('Invalid JSON payload')
@@ -134,21 +134,21 @@ describe('Webhook Authentication Integration (Real Server)', () => {
         type: 'unknown_type',
         data: {},
         sport: 'nfl',
-        league: 'nfl'
+        league: 'nfl',
       }
-      
+
       const payload = JSON.stringify(unknownPayload)
       const signature = hmacWebhookAuthenticator.generateSignature(payload, TEST_SECRET)
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': signature
+          'X-Hub-Signature-256': signature,
         },
-        body: payload
+        body: payload,
       })
-      
+
       expect(response.status).toBe(400)
       const data = await response.json()
       expect(data.error).toBe('Unknown webhook type')
@@ -159,26 +159,26 @@ describe('Webhook Authentication Integration (Real Server)', () => {
     test('should include proper response headers and format', async () => {
       const payload = JSON.stringify(validPayload)
       const signature = hmacWebhookAuthenticator.generateSignature(payload, TEST_SECRET)
-      
+
       const response = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Hub-Signature-256': signature
+          'X-Hub-Signature-256': signature,
         },
-        body: payload
+        body: payload,
       })
-      
+
       expect(response.status).toBe(200)
       expect(response.headers.get('Content-Type')).toContain('application/json')
       expect(response.headers.get('X-Request-ID')).toBeDefined()
-      
+
       const data = await response.json()
       expect(data).toHaveProperty('success', true)
       expect(data).toHaveProperty('message', 'Webhook processed')
       expect(data).toHaveProperty('request_id')
       expect(data).toHaveProperty('timestamp')
-      
+
       // Validate timestamp format
       expect(new Date(data.timestamp).getTime()).toBeGreaterThan(Date.now() - 5000)
     })
@@ -193,8 +193,8 @@ describe('Webhook Authentication Integration (Real Server)', () => {
           home_score: 21,
           away_score: 14,
           quarter: 3,
-          time_remaining: '5:30'
-        }
+          time_remaining: '5:30',
+        },
       },
       {
         type: 'odds_update',
@@ -203,8 +203,8 @@ describe('Webhook Authentication Integration (Real Server)', () => {
           odds_type: 'moneyline',
           home_odds: -150,
           away_odds: 130,
-          source: 'test_provider'
-        }
+          source: 'test_provider',
+        },
       },
       {
         type: 'team_update',
@@ -212,13 +212,13 @@ describe('Webhook Authentication Integration (Real Server)', () => {
           team_id: 'test_team_123',
           name: 'Test Team',
           abbreviation: 'TT',
-          record: { wins: 10, losses: 5 }
-        }
+          record: { wins: 10, losses: 5 },
+        },
       },
       {
         type: 'full_sync',
-        data: {}
-      }
+        data: {},
+      },
     ]
 
     testCases.forEach(({ type, data }) => {
@@ -227,21 +227,21 @@ describe('Webhook Authentication Integration (Real Server)', () => {
           type,
           data,
           sport: 'nfl',
-          league: 'nfl'
+          league: 'nfl',
         }
-        
+
         const payload = JSON.stringify(webhookPayload)
         const signature = hmacWebhookAuthenticator.generateSignature(payload, TEST_SECRET)
-        
+
         const response = await fetch(WEBHOOK_URL, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Hub-Signature-256': signature
+            'X-Hub-Signature-256': signature,
           },
-          body: payload
+          body: payload,
         })
-        
+
         expect(response.status).toBe(200)
         const responseData = await response.json()
         expect(responseData.success).toBe(true)

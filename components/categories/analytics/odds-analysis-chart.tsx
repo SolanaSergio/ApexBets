@@ -1,9 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, DollarSign } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TrendingUp, DollarSign } from 'lucide-react'
 
 interface OddsAnalysisChartProps {
   team: string
@@ -12,23 +20,30 @@ interface OddsAnalysisChartProps {
   league: string
 }
 
-export default function OddsAnalysisChart({ team, timeRange, sport, league }: OddsAnalysisChartProps) {
+export default function OddsAnalysisChart({
+  team,
+  timeRange,
+  sport,
+  league,
+}: OddsAnalysisChartProps) {
   const [oddsData, setOddsData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchOddsData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch real odds data from API
-      const response = await fetch(`/api/analytics/odds-analysis?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`)
-      
+      const response = await fetch(
+        `/api/analytics/odds-analysis?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`
+      )
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
       }
-      
+
       const data = await response.json()
-      
+
       if (data.success) {
         setOddsData(data.odds || [])
       } else {
@@ -79,9 +94,27 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="homeOdds" stroke="#8884d8" strokeWidth={2} name="Home Odds" />
-                <Line type="monotone" dataKey="awayOdds" stroke="#82ca9d" strokeWidth={2} name="Away Odds" />
-                <Line type="monotone" dataKey="total" stroke="#ffc658" strokeWidth={2} name="Total" />
+                <Line
+                  type="monotone"
+                  dataKey="homeOdds"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  name="Home Odds"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="awayOdds"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                  name="Away Odds"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="total"
+                  stroke="#ffc658"
+                  strokeWidth={2}
+                  name="Total"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -95,10 +128,11 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Home Odds</p>
                 <p className="text-2xl font-bold">
-                  {oddsData.length > 0 ? 
-                    (oddsData.reduce((acc, curr) => acc + curr.homeOdds, 0) / oddsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {oddsData.length > 0
+                    ? (
+                        oddsData.reduce((acc, curr) => acc + curr.homeOdds, 0) / oddsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-muted-foreground" />
@@ -112,10 +146,11 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Away Odds</p>
                 <p className="text-2xl font-bold">
-                  {oddsData.length > 0 ? 
-                    (oddsData.reduce((acc, curr) => acc + curr.awayOdds, 0) / oddsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {oddsData.length > 0
+                    ? (
+                        oddsData.reduce((acc, curr) => acc + curr.awayOdds, 0) / oddsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-muted-foreground" />
@@ -129,10 +164,11 @@ export default function OddsAnalysisChart({ team, timeRange, sport, league }: Od
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Total</p>
                 <p className="text-2xl font-bold">
-                  {oddsData.length > 0 ? 
-                    (oddsData.reduce((acc, curr) => acc + curr.total, 0) / oddsData.length).toFixed(1) : 
-                    '0'
-                  }
+                  {oddsData.length > 0
+                    ? (
+                        oddsData.reduce((acc, curr) => acc + curr.total, 0) / oddsData.length
+                      ).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />

@@ -8,6 +8,7 @@ import { ServiceConfig } from '../../core/base-service'
 import type { GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
 import { sportsDBClient } from '../../../sports-apis/sportsdb-client'
 import { espnClient } from '../../../sports-apis/espn-client'
+import { unifiedCacheService } from '../../unified-cache-service'
 
 export class GenericSportService extends SportSpecificService {
   // Dynamic sport mapping - NO hardcoded values
@@ -18,7 +19,7 @@ export class GenericSportService extends SportSpecificService {
       cacheTTL: 10 * 60 * 1000, // 10 minutes for generic sports
       rateLimitService: 'sportsdb',
       retryAttempts: 2,
-      retryDelay: 2000
+      retryDelay: 2000,
     }
     super(sport, league, config)
   }
@@ -30,9 +31,9 @@ export class GenericSportService extends SportSpecificService {
   private async getAPISportName(sport: string): Promise<string> {
     // Check cache first
     const cacheKey = `sport-api-name:${sport}`
-    const cached = await this.cache?.get(cacheKey)
+    const cached = await unifiedCacheService.get<string>(cacheKey)
     if (cached) return cached
-    
+
     try {
       // Query database for API mapping
       const { createClient } = require('@supabase/supabase-js')
@@ -40,33 +41,35 @@ export class GenericSportService extends SportSpecificService {
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       )
-      
+
       const { data } = await supabase
         .from('api_mappings')
         .select('sport_name_mapping')
         .eq('sport', sport)
         .eq('provider', 'sportsdb')
         .single()
-      
+
       if (data?.sport_name_mapping?.apiName) {
-        await this.cache?.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
+        await unifiedCacheService.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
         return data.sport_name_mapping.apiName
       }
     } catch (error) {
       console.warn(`Failed to get API sport name for ${sport} from database:`, error)
     }
-    
+
     // Fallback: capitalize first letter (dynamic transformation)
     const apiName = sport.charAt(0).toUpperCase() + sport.slice(1)
-    await this.cache?.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
+    await unifiedCacheService.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
     return apiName
   }
 
-  async getGames(params: {
-    date?: string
-    status?: 'scheduled' | 'live' | 'finished'
-    teamId?: string
-  } = {}): Promise<GameData[]> {
+  async getGames(
+    params: {
+      date?: string
+      status?: 'scheduled' | 'live' | 'finished'
+      teamId?: string
+    } = {}
+  ): Promise<GameData[]> {
     const key = this.getCacheKey('games', JSON.stringify(params))
     const ttl = params.status === 'live' ? 60 * 1000 : this.config.cacheTTL
 
@@ -105,9 +108,11 @@ export class GenericSportService extends SportSpecificService {
     try {
       const sportName = await this.getAPISportName(this.sport) // Dynamic mapping
       const date = params.date || new Date().toISOString().split('T')[0]
-      
-      console.log(`GenericSportService.fetchGames - sport: ${this.sport}, sportName: ${sportName}, date: ${date}`)
-      
+
+      console.log(
+        `GenericSportService.fetchGames - sport: ${this.sport}, sportName: ${sportName}, date: ${date}`
+      )
+
       // Try SportsDB first
       try {
         const events = await sportsDBClient.getEventsByDate(date, sportName)
@@ -115,20 +120,20 @@ export class GenericSportService extends SportSpecificService {
         return mappedGames.filter(game => game !== null) // Filter out null games
       } catch (sportsDbError) {
         console.warn(`SportsDB failed for ${this.sport}:`, sportsDbError)
-        
+
         // Fallback to ESPN if available
         try {
           const espnSport = this.getESPNSportMapping(this.sport)
           if (espnSport) {
-          const games = await espnClient.getNBAScoreboard()
-          const mappedGames = games.map((game: any) => this.mapESPNGameData(game))
-          return mappedGames.filter(game => game !== null) // Filter out null games
+            const games = await espnClient.getNBAScoreboard()
+            const mappedGames = games.map((game: any) => this.mapESPNGameData(game))
+            return mappedGames.filter(game => game !== null) // Filter out null games
           }
         } catch (espnError) {
           console.warn(`ESPN fallback failed for ${this.sport}:`, espnError)
         }
       }
-      
+
       return []
     } catch (error) {
       console.error(`Error fetching games for ${this.sport}:`, error)
@@ -152,9 +157,19 @@ export class GenericSportService extends SportSpecificService {
 
   private async fetchPlayers(_params: any): Promise<PlayerData[]> {
     try {
-      // Generic sports may not have detailed player data
-      // Return empty array or basic placeholder data
-      return []
+      const teams = await this.fetchTeams({})
+      if (teams.length === 0) {
+        return []
+      }
+
+      const allPlayers: PlayerData[] = []
+      for (const team of teams) {
+        const players = await sportsDBClient.getPlayersByTeam(team.id)
+        const mappedPlayers = players.map((player: any) => this.mapPlayerData(player))
+        allPlayers.push(...mappedPlayers)
+      }
+
+      return allPlayers
     } catch (error) {
       console.error(`Error fetching players for ${this.sport}:`, error)
       return []
@@ -174,18 +189,29 @@ export class GenericSportService extends SportSpecificService {
 
   private async fetchStandings(_season?: string): Promise<any[]> {
     try {
-      // Generic sports may not have standings
-      return []
+      const sportName = await this.getAPISportName(this.sport)
+      const leagues = await sportsDBClient.getLeaguesBySport(sportName)
+      if (leagues.length === 0) {
+        return []
+      }
+
+      const allStandings: any[] = []
+      for (const league of leagues) {
+        const standings = await sportsDBClient.getTeamsByLeague(league.idLeague)
+        allStandings.push(...standings)
+      }
+
+      return allStandings
     } catch (error) {
       console.error(`Error fetching standings for ${this.sport}:`, error)
       return []
     }
   }
 
-  private async fetchOdds(_params: any): Promise<any[]> {
+  private async fetchOdds(_params: any = {}): Promise<any[]> {
     try {
-      // Generic sports may not have odds data readily available
-      console.warn(`Odds not available for ${this.sport}`)
+      // const odds = await theOddsApiClient.getOdds(this.sport, params.region)
+      // TODO: Implement odds fetching
       return []
     } catch (error) {
       console.error(`Error fetching odds for ${this.sport}:`, error)
@@ -223,7 +249,7 @@ export class GenericSportService extends SportSpecificService {
     // NO hardcoded fallback values - only use real API data
     if (!event.strHomeTeam || !event.strAwayTeam) {
       console.warn(`Incomplete game data: ${JSON.stringify(event)}`)
-      return null // Return null instead of hardcoded data
+      throw new Error('Incomplete game data - missing team information')
     }
 
     return {
@@ -231,7 +257,7 @@ export class GenericSportService extends SportSpecificService {
       sport: this.sport,
       league: this.league,
       homeTeam: event.strHomeTeam, // Real team name from API
-      awayTeam: event.strAwayTeam,  // Real team name from API
+      awayTeam: event.strAwayTeam, // Real team name from API
       date: event.dateEvent || new Date().toISOString().split('T')[0],
       time: event.strTime || '00:00:00',
       status: this.mapGameStatus(event.strStatus),
@@ -239,7 +265,7 @@ export class GenericSportService extends SportSpecificService {
       season: event.strSeason || new Date().getFullYear().toString(),
       homeScore: event.intHomeScore ? parseInt(event.intHomeScore) : null,
       awayScore: event.intAwayScore ? parseInt(event.intAwayScore) : null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -260,7 +286,7 @@ export class GenericSportService extends SportSpecificService {
       season: game.season?.year?.toString() || new Date().getFullYear().toString(),
       homeScore: homeTeam?.score ? parseInt(homeTeam.score) : null,
       awayScore: awayTeam?.score ? parseInt(awayTeam.score) : null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -273,7 +299,7 @@ export class GenericSportService extends SportSpecificService {
       abbreviation: team.strTeamShort || team.abbreviation || '',
       logo: team.strTeamBadge || team.logo || '',
       city: team.strLocation || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -286,13 +312,13 @@ export class GenericSportService extends SportSpecificService {
       team: rawData.strTeam || rawData.team?.displayName || '',
       position: rawData.strPosition || rawData.position || '',
       stats: rawData.stats || {},
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
   private mapGameStatus(status: string): 'scheduled' | 'live' | 'finished' {
     if (!status) return 'scheduled'
-    
+
     const lowerStatus = status.toLowerCase()
     if (lowerStatus.includes('finished') || lowerStatus.includes('final')) {
       return 'finished'
@@ -305,7 +331,7 @@ export class GenericSportService extends SportSpecificService {
 
   private mapESPNGameStatus(status: string): 'scheduled' | 'live' | 'finished' {
     if (!status) return 'scheduled'
-    
+
     const lowerStatus = status.toLowerCase()
     if (lowerStatus.includes('final')) {
       return 'finished'
@@ -318,10 +344,10 @@ export class GenericSportService extends SportSpecificService {
 
   private getESPNSportMapping(sport: string): string | null {
     const mapping: Record<string, string> = {
-      'golf': 'golf',
-      'tennis': 'tennis',
-      'mma': 'mma',
-      'boxing': 'boxing'
+      golf: 'golf',
+      tennis: 'tennis',
+      mma: 'mma',
+      boxing: 'boxing',
     }
     return mapping[sport] || null
   }

@@ -61,7 +61,7 @@ export class DataIntegrityService {
         success,
         issues,
         executionTime,
-        timestamp: new Date()
+        timestamp: new Date(),
       }
 
       structuredLogger.info('Data integrity check completed', {
@@ -69,11 +69,10 @@ export class DataIntegrityService {
         totalIssues: issues.length,
         errorIssues: issues.filter(i => i.type === 'error').length,
         warningIssues: issues.filter(i => i.type === 'warning').length,
-        executionTime
+        executionTime,
       })
 
       return result
-
     } catch (error) {
       const executionTime = Date.now() - startTime
       const errorMessage = `Data integrity check failed: ${error instanceof Error ? error.message : String(error)}`
@@ -82,14 +81,16 @@ export class DataIntegrityService {
 
       return {
         success: false,
-        issues: [{
-          type: 'error',
-          table: 'system',
-          description: errorMessage,
-          count: 1
-        }],
+        issues: [
+          {
+            type: 'error',
+            table: 'system',
+            description: errorMessage,
+            count: 1,
+          },
+        ],
         executionTime,
-        timestamp: new Date()
+        timestamp: new Date(),
       }
     }
   }
@@ -111,7 +112,7 @@ export class DataIntegrityService {
           type: 'error',
           table: 'odds',
           description: 'Orphaned odds records found',
-          count: orphanedOdds
+          count: orphanedOdds,
         })
       }
 
@@ -128,7 +129,7 @@ export class DataIntegrityService {
           type: 'error',
           table: 'predictions',
           description: 'Orphaned predictions records found',
-          count: orphanedPredictions
+          count: orphanedPredictions,
         })
       }
 
@@ -145,16 +146,15 @@ export class DataIntegrityService {
           type: 'error',
           table: 'player_stats',
           description: 'Orphaned player stats records found',
-          count: orphanedPlayerStats
+          count: orphanedPlayerStats,
         })
       }
-
     } catch (error) {
       issues.push({
         type: 'error',
         table: 'orphaned_records',
         description: `Failed to check orphaned records: ${error instanceof Error ? error.message : String(error)}`,
-        count: 1
+        count: 1,
       })
     }
 
@@ -178,7 +178,7 @@ export class DataIntegrityService {
           type: 'error',
           table: 'games',
           description: 'Games with missing required fields found',
-          count: gamesMissingFields
+          count: gamesMissingFields,
         })
       }
 
@@ -195,7 +195,7 @@ export class DataIntegrityService {
           type: 'error',
           table: 'teams',
           description: 'Teams with missing required fields found',
-          count: teamsMissingFields
+          count: teamsMissingFields,
         })
       }
 
@@ -212,16 +212,15 @@ export class DataIntegrityService {
           type: 'error',
           table: 'players',
           description: 'Players with missing required fields found',
-          count: playersMissingFields
+          count: playersMissingFields,
         })
       }
-
     } catch (error) {
       issues.push({
         type: 'error',
         table: 'missing_fields',
         description: `Failed to check missing required fields: ${error instanceof Error ? error.message : String(error)}`,
-        count: 1
+        count: 1,
       })
     }
 
@@ -246,7 +245,7 @@ export class DataIntegrityService {
           type: 'warning',
           table: 'games',
           description: 'Games with invalid scores found',
-          count: invalidScores
+          count: invalidScores,
         })
       }
 
@@ -263,16 +262,15 @@ export class DataIntegrityService {
           type: 'warning',
           table: 'players',
           description: 'Players with invalid ages found',
-          count: invalidAges
+          count: invalidAges,
         })
       }
-
     } catch (error) {
       issues.push({
         type: 'error',
         table: 'data_consistency',
         description: `Failed to check data consistency: ${error instanceof Error ? error.message : String(error)}`,
-        count: 1
+        count: 1,
       })
     }
 
@@ -300,7 +298,7 @@ export class DataIntegrityService {
           type: 'warning',
           table: 'games',
           description: 'Duplicate games found',
-          count: duplicateGames
+          count: duplicateGames,
         })
       }
 
@@ -321,16 +319,15 @@ export class DataIntegrityService {
           type: 'warning',
           table: 'teams',
           description: 'Duplicate teams found',
-          count: duplicateTeams
+          count: duplicateTeams,
         })
       }
-
     } catch (error) {
       issues.push({
         type: 'error',
         table: 'duplicates',
         description: `Failed to check duplicate records: ${error instanceof Error ? error.message : String(error)}`,
-        count: 1
+        count: 1,
       })
     }
 

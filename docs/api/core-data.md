@@ -1,16 +1,19 @@
 # Core Data APIs
 
-This section covers the fundamental data APIs that provide core sports information.
+This section covers the fundamental data APIs that provide core sports
+information.
 
 ## Health Check
 
 **Endpoint:** `GET /api/health`
 
-**Description:** Comprehensive system health monitoring including database, Redis, and service status.
+**Description:** Comprehensive system health monitoring including database,
+Redis, and service status.
 
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "status": "healthy",
@@ -27,11 +30,13 @@ This section covers the fundamental data APIs that provide core sports informati
 ```
 
 **Status Codes:**
+
 - `200` - All systems healthy
 - `503` - One or more systems unhealthy
 - `500` - Health check failed
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/health"
 ```
@@ -47,6 +52,7 @@ curl -X GET "https://your-domain.com/api/health"
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -88,6 +94,7 @@ curl -X GET "https://your-domain.com/api/health"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/sports"
 ```
@@ -101,12 +108,14 @@ curl -X GET "https://your-domain.com/api/sports"
 **Description:** Retrieve team information for specified sport and league.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `limit` (number, optional) - Maximum results (default: 100)
 - `isActive` (boolean, optional) - Filter active teams (default: true)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -137,6 +146,7 @@ curl -X GET "https://your-domain.com/api/sports"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/teams?sport=basketball&league=NBA&limit=30"
 ```
@@ -150,14 +160,17 @@ curl -X GET "https://your-domain.com/api/teams?sport=basketball&league=NBA&limit
 **Description:** Retrieve game schedules, results, and information.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
-- `status` (string, optional) - Game status: "scheduled", "live", "completed", "postponed", "cancelled"
+- `status` (string, optional) - Game status: "scheduled", "live", "completed",
+  "postponed", "cancelled"
 - `dateFrom` (string, optional) - Start date (ISO format)
 - `dateTo` (string, optional) - End date (ISO format)
 - `limit` (number, optional) - Maximum results (default: 100)
 - `league` (string, optional) - League name
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -208,6 +221,7 @@ curl -X GET "https://your-domain.com/api/teams?sport=basketball&league=NBA&limit
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/games?sport=basketball&status=scheduled&limit=10"
 ```
@@ -221,12 +235,14 @@ curl -X GET "https://your-domain.com/api/games?sport=basketball&status=scheduled
 **Description:** Retrieve league standings and team rankings.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `season` (string, optional) - Season (default: "2024-25")
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -271,6 +287,7 @@ curl -X GET "https://your-domain.com/api/games?sport=basketball&status=scheduled
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/standings?sport=basketball&league=NBA&season=2024-25"
 ```
@@ -284,6 +301,7 @@ curl -X GET "https://your-domain.com/api/standings?sport=basketball&league=NBA&s
 **Description:** Retrieve comprehensive player statistics.
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name
 - `league` (string, optional) - League name
 - `teamId` (string, optional) - Team ID filter
@@ -295,6 +313,7 @@ curl -X GET "https://your-domain.com/api/standings?sport=basketball&league=NBA&s
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -345,6 +364,7 @@ curl -X GET "https://your-domain.com/api/standings?sport=basketball&league=NBA&s
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/player-stats?sport=basketball&league=NBA&sortBy=points_per_game&limit=20"
 ```
@@ -358,6 +378,7 @@ curl -X GET "https://your-domain.com/api/player-stats?sport=basketball&league=NB
 **Description:** Retrieve betting odds data for games.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `gameId` (string, optional) - Specific game ID
 - `source` (string, optional) - Odds provider filter
@@ -365,6 +386,7 @@ curl -X GET "https://your-domain.com/api/player-stats?sport=basketball&league=NB
 - `liveOnly` (boolean, optional) - Live games only (default: false)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -400,6 +422,7 @@ curl -X GET "https://your-domain.com/api/player-stats?sport=basketball&league=NB
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/odds?sport=basketball&liveOnly=true&limit=20"
 ```

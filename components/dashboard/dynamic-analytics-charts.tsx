@@ -1,19 +1,19 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { ModernChart } from "@/components/charts/modern-chart"
-import { databaseFirstApiClient } from "@/lib/api-client-database-first"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { useState, useEffect } from 'react'
+import { ModernChart } from '@/components/charts/modern-chart'
+import { databaseFirstApiClient } from '@/lib/api-client-database-first'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
 
 interface AnalyticsData {
-  performanceTrends: Array<{ label: string; value: number; trend: "up" | "down" | "neutral" }>
+  performanceTrends: Array<{ label: string; value: number; trend: 'up' | 'down' | 'neutral' }>
   sportsDistribution: Array<{ label: string; value: number; color: string }>
 }
 
 export function DynamicAnalyticsCharts() {
   const [data, setData] = useState<AnalyticsData>({
     performanceTrends: [],
-    sportsDistribution: []
+    sportsDistribution: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -24,75 +24,77 @@ export function DynamicAnalyticsCharts() {
   const loadAnalyticsData = async () => {
     try {
       setLoading(true)
-      
+
       // Get supported sports
       const supportedSports = SportConfigManager.getSupportedSports()
-      
+
       let totalGames = 0
       let totalTeams = 0
       let totalLiveGames = 0
       const sportStats: Record<string, number> = {}
-      
+
       // Collect data across all sports
       for (const sport of supportedSports) {
         try {
           const [games, teams, liveGames] = await Promise.all([
             databaseFirstApiClient.getGames({ sport }),
             databaseFirstApiClient.getTeams({ sport }),
-            databaseFirstApiClient.getGames({ sport, status: 'live' })
+            databaseFirstApiClient.getGames({ sport, status: 'live' }),
           ])
-          
+
           totalGames += games.length
           totalTeams += teams.length
           totalLiveGames += liveGames.length
-          
+
           const config = SportConfigManager.getSportConfig(sport)
           sportStats[config?.name || sport] = games.length
         } catch (error) {
           console.error(`Error loading data for ${sport}:`, error)
         }
       }
-      
+
       // Calculate accuracy rate (simulated based on data quality)
       const accuracyRate = Math.min(95, Math.max(75, 85 + Math.random() * 10))
-      
+
       // Performance trends data
       const performanceTrends = [
-        { label: "Accuracy", value: Math.round(accuracyRate), trend: "up" as const },
-        { label: "Live Games", value: totalLiveGames, trend: totalLiveGames > 0 ? "up" as const : "neutral" as const },
-        { label: "Teams", value: totalTeams, trend: "neutral" as const },
-        { label: "Predictions", value: totalGames * 2, trend: "up" as const }
+        { label: 'Accuracy', value: Math.round(accuracyRate), trend: 'up' as const },
+        {
+          label: 'Live Games',
+          value: totalLiveGames,
+          trend: totalLiveGames > 0 ? ('up' as const) : ('neutral' as const),
+        },
+        { label: 'Teams', value: totalTeams, trend: 'neutral' as const },
+        { label: 'Predictions', value: totalGames * 2, trend: 'up' as const },
       ]
-      
+
       // Sports distribution data
       const totalSportGames = Object.values(sportStats).reduce((sum, count) => sum + count, 0)
-      const colors = ["#06b6d4", "#8b5cf6", "#10b981", "#3b82f6", "#f59e0b", "#ef4444"]
-      
+      const colors = ['#06b6d4', '#8b5cf6', '#10b981', '#3b82f6', '#f59e0b', '#ef4444']
+
       const sportsDistribution = Object.entries(sportStats)
         .map(([sport, count], index) => ({
           label: sport,
           value: totalSportGames > 0 ? Math.round((count / totalSportGames) * 100) : 0,
-          color: colors[index % colors.length]
+          color: colors[index % colors.length],
         }))
         .filter(item => item.value > 0)
-      
+
       setData({
         performanceTrends,
-        sportsDistribution
+        sportsDistribution,
       })
     } catch (error) {
       console.error('Error loading analytics data:', error)
       // Fallback data
       setData({
         performanceTrends: [
-          { label: "Accuracy", value: 85, trend: "up" },
-          { label: "Live Games", value: 0, trend: "neutral" },
-          { label: "Teams", value: 0, trend: "neutral" },
-          { label: "Predictions", value: 0, trend: "neutral" }
+          { label: 'Accuracy', value: 85, trend: 'up' },
+          { label: 'Live Games', value: 0, trend: 'neutral' },
+          { label: 'Teams', value: 0, trend: 'neutral' },
+          { label: 'Predictions', value: 0, trend: 'neutral' },
         ],
-        sportsDistribution: [
-          { label: "No Data", value: 100, color: "#6b7280" }
-        ]
+        sportsDistribution: [{ label: 'No Data', value: 100, color: '#6b7280' }],
       })
     } finally {
       setLoading(false)

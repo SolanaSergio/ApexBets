@@ -7,7 +7,7 @@ import { createClient } from '../supabase/server'
 
 export class DatabaseOptimizer {
   private static instance: DatabaseOptimizer
-  private queryCache = new Map<string, { data: any, timestamp: number, ttl: number }>()
+  private queryCache = new Map<string, { data: any; timestamp: number; ttl: number }>()
   private readonly CACHE_TTL = 30000 // 30 seconds default
 
   static getInstance(): DatabaseOptimizer {
@@ -23,7 +23,7 @@ export class DatabaseOptimizer {
   async getLiveGames(sport: string = 'all', limit: number = 50) {
     const cacheKey = `live-games-${sport}-${limit}`
     const cached = this.queryCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data
     }
@@ -34,7 +34,8 @@ export class DatabaseOptimizer {
 
       let query = supabase
         .from('games')
-        .select(`
+        .select(
+          `
           id,
           home_team_id,
           away_team_id,
@@ -53,7 +54,8 @@ export class DatabaseOptimizer {
           updated_at,
           home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
           away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-        `)
+        `
+        )
         .in('status', ['live', 'in_progress', 'in progress'])
         .order('game_date', { ascending: true })
         .limit(limit)
@@ -70,12 +72,12 @@ export class DatabaseOptimizer {
       }
 
       const result = data || []
-      
+
       // Cache the result
       this.queryCache.set(cacheKey, {
         data: result,
         timestamp: Date.now(),
-        ttl: this.CACHE_TTL
+        ttl: this.CACHE_TTL,
       })
 
       return result
@@ -91,7 +93,7 @@ export class DatabaseOptimizer {
   async getRecentGames(sport: string = 'all', hours: number = 24, limit: number = 20) {
     const cacheKey = `recent-games-${sport}-${hours}-${limit}`
     const cached = this.queryCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data
     }
@@ -104,7 +106,8 @@ export class DatabaseOptimizer {
 
       let query = supabase
         .from('games')
-        .select(`
+        .select(
+          `
           id,
           home_team_id,
           away_team_id,
@@ -123,7 +126,8 @@ export class DatabaseOptimizer {
           updated_at,
           home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
           away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-        `)
+        `
+        )
         .eq('status', 'completed')
         .gte('created_at', cutoffTime)
         .order('game_date', { ascending: false })
@@ -141,12 +145,12 @@ export class DatabaseOptimizer {
       }
 
       const result = data || []
-      
+
       // Cache the result
       this.queryCache.set(cacheKey, {
         data: result,
         timestamp: Date.now(),
-        ttl: this.CACHE_TTL
+        ttl: this.CACHE_TTL,
       })
 
       return result
@@ -162,7 +166,7 @@ export class DatabaseOptimizer {
   async getUpcomingGames(sport: string = 'all', days: number = 7, limit: number = 20) {
     const cacheKey = `upcoming-games-${sport}-${days}-${limit}`
     const cached = this.queryCache.get(cacheKey)
-    
+
     if (cached && Date.now() - cached.timestamp < cached.ttl) {
       return cached.data
     }
@@ -176,7 +180,8 @@ export class DatabaseOptimizer {
 
       let query = supabase
         .from('games')
-        .select(`
+        .select(
+          `
           id,
           home_team_id,
           away_team_id,
@@ -195,7 +200,8 @@ export class DatabaseOptimizer {
           updated_at,
           home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
           away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-        `)
+        `
+        )
         .eq('status', 'scheduled')
         .gte('game_date', now)
         .lte('game_date', futureTime)
@@ -214,12 +220,12 @@ export class DatabaseOptimizer {
       }
 
       const result = data || []
-      
+
       // Cache the result
       this.queryCache.set(cacheKey, {
         data: result,
         timestamp: Date.now(),
-        ttl: this.CACHE_TTL
+        ttl: this.CACHE_TTL,
       })
 
       return result
@@ -232,21 +238,24 @@ export class DatabaseOptimizer {
   /**
    * Batch query for multiple game types
    */
-  async getGamesBatch(sport: string = 'all', options: {
-    live?: boolean
-    recent?: boolean
-    upcoming?: boolean
-    liveLimit?: number
-    recentLimit?: number
-    upcomingLimit?: number
-  } = {}) {
+  async getGamesBatch(
+    sport: string = 'all',
+    options: {
+      live?: boolean
+      recent?: boolean
+      upcoming?: boolean
+      liveLimit?: number
+      recentLimit?: number
+      upcomingLimit?: number
+    } = {}
+  ) {
     const {
       live = true,
       recent = true,
       upcoming = true,
       liveLimit = 20,
       recentLimit = 10,
-      upcomingLimit = 10
+      upcomingLimit = 10,
     } = options
 
     const promises = []
@@ -263,18 +272,18 @@ export class DatabaseOptimizer {
 
     try {
       const results = await Promise.allSettled(promises)
-      
+
       return {
         live: live ? (results[0]?.status === 'fulfilled' ? results[0].value : []) : [],
         recent: recent ? (results[1]?.status === 'fulfilled' ? results[1].value : []) : [],
-        upcoming: upcoming ? (results[2]?.status === 'fulfilled' ? results[2].value : []) : []
+        upcoming: upcoming ? (results[2]?.status === 'fulfilled' ? results[2].value : []) : [],
       }
     } catch (error) {
       console.error('Batch query failed:', error)
       return {
         live: [],
         recent: [],
-        upcoming: []
+        upcoming: [],
       }
     }
   }
@@ -301,7 +310,7 @@ export class DatabaseOptimizer {
     return {
       size: this.queryCache.size,
       keys: Array.from(this.queryCache.keys()),
-      memoryUsage: JSON.stringify(Array.from(this.queryCache.values())).length
+      memoryUsage: JSON.stringify(Array.from(this.queryCache.values())).length,
     }
   }
 

@@ -51,7 +51,7 @@ export class SportAnalyticsService extends BaseService {
       cacheTTL: 15 * 60 * 1000, // 15 minutes
       rateLimitService: 'analytics',
       retryAttempts: 2,
-      retryDelay: 500
+      retryDelay: 500,
     }
     super(config)
     this.sport = sport
@@ -72,14 +72,14 @@ export class SportAnalyticsService extends BaseService {
    */
   async getSportAnalytics(): Promise<AnalyticsMetrics> {
     const key = this.getCacheKey('analytics', this.sport, this.league)
-    
+
     return this.getCachedOrFetch(key, async () => {
       const service = await serviceFactory.getService(this.sport, this.league)
-      
+
       const [games, teams, players] = await Promise.all([
         service.getGames(),
         service.getTeams(),
-        service.getPlayers()
+        service.getPlayers(),
       ])
 
       const totalGames = games.length
@@ -87,10 +87,15 @@ export class SportAnalyticsService extends BaseService {
       const totalPlayers = players.length
 
       // Calculate average score
-      const finishedGames = games.filter(game => game.status === 'finished' && game.homeScore !== undefined && game.awayScore !== undefined)
-      const averageScore = finishedGames.length > 0 
-        ? finishedGames.reduce((sum, game) => sum + (game.homeScore! + game.awayScore!), 0) / (finishedGames.length * 2)
-        : 0
+      const finishedGames = games.filter(
+        game =>
+          game.status === 'finished' && game.homeScore !== undefined && game.awayScore !== undefined
+      )
+      const averageScore =
+        finishedGames.length > 0
+          ? finishedGames.reduce((sum, game) => sum + (game.homeScore! + game.awayScore!), 0) /
+            (finishedGames.length * 2)
+          : 0
 
       // Calculate win rate and home advantage based on actual data
       const homeWins = finishedGames.filter(game => game.homeScore! > game.awayScore!).length
@@ -106,7 +111,7 @@ export class SportAnalyticsService extends BaseService {
         averageScore: Math.round(averageScore * 100) / 100,
         winRate: Math.round(winRate * 100) / 100,
         homeAdvantage: Math.round(homeAdvantage * 100) / 100,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     })
   }
@@ -116,10 +121,12 @@ export class SportAnalyticsService extends BaseService {
    */
   async getTeamPerformance(teamId?: string): Promise<TeamPerformance[]> {
     const key = this.getCacheKey('team-performance', this.sport, this.league, teamId || 'all')
-    
+
     return this.getCachedOrFetch(key, async () => {
       const service = await serviceFactory.getService(this.sport, this.league)
-      const teams = teamId ? [await service.getTeamById(teamId)].filter(Boolean) : await service.getTeams()
+      const teams = teamId
+        ? [await service.getTeamById(teamId)].filter(Boolean)
+        : await service.getTeams()
       const games = await service.getGames()
 
       const performances: TeamPerformance[] = []
@@ -127,12 +134,15 @@ export class SportAnalyticsService extends BaseService {
       for (const team of teams) {
         if (!team) continue
 
-        const teamGames = games.filter(game => 
-          game.homeTeam === team.name || game.awayTeam === team.name
+        const teamGames = games.filter(
+          game => game.homeTeam === team.name || game.awayTeam === team.name
         )
 
-        const finishedGames = teamGames.filter(game => 
-          game.status === 'finished' && game.homeScore !== undefined && game.awayScore !== undefined
+        const finishedGames = teamGames.filter(
+          game =>
+            game.status === 'finished' &&
+            game.homeScore !== undefined &&
+            game.awayScore !== undefined
         )
 
         const wins = finishedGames.filter(game => {
@@ -184,7 +194,7 @@ export class SportAnalyticsService extends BaseService {
           pointDifferential,
           homeRecord: { wins: homeWins, losses: homeLosses },
           awayRecord: { wins: awayWins, losses: awayLosses },
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         })
       }
 
@@ -197,10 +207,12 @@ export class SportAnalyticsService extends BaseService {
    */
   async getPlayerPerformance(playerId?: string): Promise<PlayerPerformance[]> {
     const key = this.getCacheKey('player-performance', this.sport, this.league, playerId || 'all')
-    
+
     return this.getCachedOrFetch(key, async () => {
       const service = await serviceFactory.getService(this.sport, this.league)
-      const players = playerId ? [await service.getPlayerById(playerId)].filter(Boolean) : await service.getPlayers()
+      const players = playerId
+        ? [await service.getPlayerById(playerId)].filter(Boolean)
+        : await service.getPlayers()
 
       const performances: PlayerPerformance[] = []
 
@@ -216,7 +228,7 @@ export class SportAnalyticsService extends BaseService {
           gamesPlayed: 0, // Would calculate from actual data
           averageStats: player.stats || {},
           seasonHighs: {}, // Would calculate from actual data
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         })
       }
 
@@ -229,10 +241,8 @@ export class SportAnalyticsService extends BaseService {
    */
   async getTrendingTeams(limit: number = 5): Promise<TeamPerformance[]> {
     const performances = await this.getTeamPerformance()
-    
-    return performances
-      .sort((a, b) => b.winPercentage - a.winPercentage)
-      .slice(0, limit)
+
+    return performances.sort((a, b) => b.winPercentage - a.winPercentage).slice(0, limit)
   }
 
   /**
@@ -240,7 +250,7 @@ export class SportAnalyticsService extends BaseService {
    */
   async getValueBettingOpportunities(minValue: number = 0.1): Promise<any[]> {
     const key = this.getCacheKey('value-bets', this.sport, this.league, minValue.toString())
-    
+
     return this.getCachedOrFetch(key, async () => {
       // This would integrate with odds and prediction services
       return []

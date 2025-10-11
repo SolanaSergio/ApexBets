@@ -100,7 +100,9 @@ export class BallDontLieClient {
   constructor() {
     this.apiKey = process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || null
     if (!this.apiKey || this.apiKey === 'your_balldontlie_api_key_here') {
-      console.warn('BallDontLie API key not found or using placeholder. Set NEXT_PUBLIC_BALLDONTLIE_API_KEY environment variable for full functionality.')
+      console.warn(
+        'BallDontLie API key not found or using placeholder. Set NEXT_PUBLIC_BALLDONTLIE_API_KEY environment variable for full functionality.'
+      )
       this.apiKey = null
     }
   }
@@ -111,22 +113,26 @@ export class BallDontLieClient {
 
   // Rate limiting is now handled by the centralized enhanced rate limiter
 
-  private async request<T>(endpoint: string, params: Record<string, string | number> = {}, retryAttempt: number = 0): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    params: Record<string, string | number> = {},
+    retryAttempt: number = 0
+  ): Promise<T> {
     // Queue requests to prevent overwhelming the API
-    return this.requestQueue = this.requestQueue.then(async () => {
+    return (this.requestQueue = this.requestQueue.then(async () => {
       // Rate limiting is handled by the centralized enhanced rate limiter
-      
+
       const url = new URL(`${this.baseUrl}${endpoint}`)
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           url.searchParams.set(key, value.toString())
         }
       })
-      
+
       try {
         // Add authentication headers - Ball Don't Lie uses direct API key
         const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         }
 
         if (this.apiKey) {
@@ -136,7 +142,7 @@ export class BallDontLieClient {
         }
 
         const response = await fetch(url.toString(), { headers })
-        
+
         if (!response.ok) {
           // Handle 401 Unauthorized specifically
           if (response.status === 401) {
@@ -146,29 +152,33 @@ export class BallDontLieClient {
           if (response.status === 429) {
             const retryAfter = response.headers.get('Retry-After')
             const delay = retryAfter ? parseInt(retryAfter) * 1000 : 90000 // 1.5 minutes default
-            console.warn(`BallDontLie API: Rate limit exceeded (4 req/min), backing off for ${delay}ms`)
-            
+            console.warn(
+              `BallDontLie API: Rate limit exceeded (4 req/min), backing off for ${delay}ms`
+            )
+
             if (retryAttempt < this.maxRetries) {
               await new Promise(resolve => setTimeout(resolve, delay))
               return this.request<T>(endpoint, params, retryAttempt + 1)
             } else {
-              throw new Error(`BallDontLie API: Rate limit exceeded after ${this.maxRetries} retries. Free tier: 4 requests/minute limit.`)
+              throw new Error(
+                `BallDontLie API: Rate limit exceeded after ${this.maxRetries} retries. Free tier: 4 requests/minute limit.`
+              )
             }
           }
-          
+
           if (response.status >= 500 && retryAttempt < this.maxRetries) {
             console.warn(`BallDontLie API: Server error ${response.status}, retrying...`)
             await new Promise(resolve => setTimeout(resolve, 2000 * (retryAttempt + 1)))
             return this.request<T>(endpoint, params, retryAttempt + 1)
           }
-          
+
           console.warn(`BallDontLie API Error: ${response.status} ${response.statusText}`)
-          
+
           // Don't return empty data for auth errors, throw instead
           if (response.status === 401 || response.status === 403) {
             throw new Error(`BallDontLie API: Authentication failed (${response.status})`)
           }
-          
+
           return { data: [], meta: {} } as T
         }
 
@@ -176,28 +186,32 @@ export class BallDontLieClient {
         return data
       } catch (error) {
         if (retryAttempt < this.maxRetries) {
-          console.warn(`BallDontLie API: Network error, retrying... (${retryAttempt + 1}/${this.maxRetries})`)
+          console.warn(
+            `BallDontLie API: Network error, retrying... (${retryAttempt + 1}/${this.maxRetries})`
+          )
           await new Promise(resolve => setTimeout(resolve, 3000 * (retryAttempt + 1)))
           return this.request<T>(endpoint, params, retryAttempt + 1)
         }
-        
+
         console.error('BallDontLie API request failed:', error)
         throw error
       }
-    })
+    }))
   }
 
   // Players
-  async getPlayers(params: {
-    cursor?: number
-    per_page?: number
-    search?: string
-    first_name?: string
-    last_name?: string
-    team_ids?: number[]
-  } = {}): Promise<{ data: BallDontLiePlayer[]; meta: any }> {
+  async getPlayers(
+    params: {
+      cursor?: number
+      per_page?: number
+      search?: string
+      first_name?: string
+      last_name?: string
+      team_ids?: number[]
+    } = {}
+  ): Promise<{ data: BallDontLiePlayer[]; meta: any }> {
     const queryParams: Record<string, string | number> = {}
-    
+
     if (params.cursor) queryParams.cursor = params.cursor
     if (params.per_page) queryParams.per_page = params.per_page
     if (params.search) queryParams.search = params.search
@@ -214,10 +228,12 @@ export class BallDontLieClient {
   }
 
   // Teams
-  async getTeams(params: {
-    cursor?: number
-    per_page?: number
-  } = {}): Promise<{ data: BallDontLieTeam[]; meta: any }> {
+  async getTeams(
+    params: {
+      cursor?: number
+      per_page?: number
+    } = {}
+  ): Promise<{ data: BallDontLieTeam[]; meta: any }> {
     return this.request<{ data: BallDontLieTeam[]; meta: any }>('/teams', params)
   }
 
@@ -227,18 +243,20 @@ export class BallDontLieClient {
   }
 
   // Games
-  async getGames(params: {
-    cursor?: number
-    per_page?: number
-    dates?: string[]
-    seasons?: number[]
-    team_ids?: number[]
-    postseason?: boolean
-    start_date?: string
-    end_date?: string
-  } = {}): Promise<{ data: BallDontLieGame[]; meta: any }> {
+  async getGames(
+    params: {
+      cursor?: number
+      per_page?: number
+      dates?: string[]
+      seasons?: number[]
+      team_ids?: number[]
+      postseason?: boolean
+      start_date?: string
+      end_date?: string
+    } = {}
+  ): Promise<{ data: BallDontLieGame[]; meta: any }> {
     const queryParams: Record<string, string | number> = {}
-    
+
     if (params.cursor) queryParams.cursor = params.cursor
     if (params.per_page) queryParams.per_page = params.per_page
     if (params.dates) queryParams['dates[]'] = params.dates.join(',')
@@ -262,19 +280,21 @@ export class BallDontLieClient {
   }
 
   // Stats
-  async getStats(params: {
-    cursor?: number
-    per_page?: number
-    dates?: string[]
-    seasons?: number[]
-    player_ids?: number[]
-    game_ids?: number[]
-    postseason?: boolean
-    start_date?: string
-    end_date?: string
-  } = {}): Promise<{ data: BallDontLieStats[]; meta: any }> {
+  async getStats(
+    params: {
+      cursor?: number
+      per_page?: number
+      dates?: string[]
+      seasons?: number[]
+      player_ids?: number[]
+      game_ids?: number[]
+      postseason?: boolean
+      start_date?: string
+      end_date?: string
+    } = {}
+  ): Promise<{ data: BallDontLieStats[]; meta: any }> {
     const queryParams: Record<string, string | number> = {}
-    
+
     if (params.cursor) queryParams.cursor = params.cursor
     if (params.per_page) queryParams.per_page = params.per_page
     if (params.dates) queryParams['dates[]'] = params.dates.join(',')
@@ -294,9 +314,9 @@ export class BallDontLieClient {
     player_ids?: number[]
   }): Promise<{ data: any[]; meta: any }> {
     const queryParams: Record<string, string | number> = {
-      season: params.season
+      season: params.season,
     }
-    
+
     if (params.player_ids) {
       queryParams['player_ids[]'] = params.player_ids.join(',')
     }
@@ -305,15 +325,17 @@ export class BallDontLieClient {
   }
 
   // Advanced stats
-  async getAdvancedStats(params: {
-    cursor?: number
-    per_page?: number
-    seasons?: number[]
-    player_ids?: number[]
-    team_ids?: number[]
-  } = {}): Promise<{ data: any[]; meta: any }> {
+  async getAdvancedStats(
+    params: {
+      cursor?: number
+      per_page?: number
+      seasons?: number[]
+      player_ids?: number[]
+      team_ids?: number[]
+    } = {}
+  ): Promise<{ data: any[]; meta: any }> {
     const queryParams: Record<string, string | number> = {}
-    
+
     if (params.cursor) queryParams.cursor = params.cursor
     if (params.per_page) queryParams.per_page = params.per_page
     if (params.seasons) queryParams['seasons[]'] = params.seasons.join(',')
@@ -347,7 +369,7 @@ export class BallDontLieClient {
         console.warn('BallDontLie API: Not configured (missing API key)')
         return false
       }
-      
+
       const result = await this.getTeams({ per_page: 1 })
       return result && result.data && Array.isArray(result.data)
     } catch (error) {

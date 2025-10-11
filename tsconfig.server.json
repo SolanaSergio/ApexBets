@@ -12,7 +12,7 @@
     "resolveJsonModule": true,
     "isolatedModules": false,
     "downlevelIteration": true,
-    
+
     // Type Checking
     "strict": true,
     "noUnusedLocals": false,
@@ -20,7 +20,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "exactOptionalPropertyTypes": false,
-    
+
     // Emit - Enable compilation for server
     "noEmit": false,
     "outDir": "./dist/server",
@@ -28,10 +28,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    
+
     // Interop Constraints
     "forceConsistentCasingInFileNames": true,
-    
+
     "paths": {
       "@/*": ["./*"],
       "@/components/*": ["./components/*"],
@@ -42,10 +42,7 @@
       "@/types/*": ["./types/*"]
     }
   },
-  "include": [
-    "lib/**/*.ts",
-    "lib/**/*.js",
-  ],
+  "include": ["lib/**/*.ts", "lib/**/*.js"],
   "exclude": [
     "node_modules",
     ".next",

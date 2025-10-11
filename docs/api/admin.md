@@ -1,6 +1,7 @@
 # Admin APIs
 
-This section covers administrative endpoints for system monitoring, management, and maintenance.
+This section covers administrative endpoints for system monitoring, management,
+and maintenance.
 
 ## API Status
 
@@ -11,6 +12,7 @@ This section covers administrative endpoints for system monitoring, management, 
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -55,6 +57,7 @@ This section covers administrative endpoints for system monitoring, management, 
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/admin/api-status"
 ```
@@ -68,9 +71,11 @@ curl -X GET "https://your-domain.com/api/admin/api-status"
 **Description:** Reset rate limits for a specific provider.
 
 **Parameters:**
+
 - `provider` (string, required) - Provider name in request body
 
 **Request Body:**
+
 ```json
 {
   "provider": "thesportsdb"
@@ -78,6 +83,7 @@ curl -X GET "https://your-domain.com/api/admin/api-status"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -86,6 +92,7 @@ curl -X GET "https://your-domain.com/api/admin/api-status"
 ```
 
 **Example:**
+
 ```bash
 curl -X POST "https://your-domain.com/api/admin/reset-rate-limits" \
   -H "Content-Type: application/json" \
@@ -103,6 +110,7 @@ curl -X POST "https://your-domain.com/api/admin/reset-rate-limits" \
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -152,6 +160,7 @@ curl -X POST "https://your-domain.com/api/admin/reset-rate-limits" \
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database/status"
 ```
@@ -165,10 +174,12 @@ curl -X GET "https://your-domain.com/api/database/status"
 **Description:** Database schema information and table structures.
 
 **Parameters:**
+
 - `table` (string, optional) - Specific table name
 - `format` (string, optional) - Response format: "json", "sql" (default: "json")
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -231,6 +242,7 @@ curl -X GET "https://your-domain.com/api/database/status"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database/schema?table=games"
 ```
@@ -244,10 +256,13 @@ curl -X GET "https://your-domain.com/api/database/schema?table=games"
 **Description:** Database integrity and consistency checks.
 
 **Parameters:**
-- `checkType` (string, optional) - Check type: "all", "foreign_keys", "constraints", "data"
+
+- `checkType` (string, optional) - Check type: "all", "foreign_keys",
+  "constraints", "data"
 - `table` (string, optional) - Specific table to check
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -298,6 +313,7 @@ curl -X GET "https://your-domain.com/api/database/schema?table=games"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database/integrity?checkType=all"
 ```
@@ -311,10 +327,12 @@ curl -X GET "https://your-domain.com/api/database/integrity?checkType=all"
 **Description:** Manage API keys for external providers.
 
 **Parameters:**
+
 - `provider` (string, optional) - Specific provider name
 - `status` (string, optional) - Key status: "active", "inactive", "expired"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -377,6 +395,7 @@ curl -X GET "https://your-domain.com/api/database/integrity?checkType=all"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/admin/api-keys?status=active"
 ```
@@ -392,6 +411,7 @@ curl -X GET "https://your-domain.com/api/admin/api-keys?status=active"
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -438,6 +458,7 @@ curl -X GET "https://your-domain.com/api/admin/api-keys?status=active"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/admin/circuit-breakers"
 ```
@@ -451,9 +472,12 @@ curl -X GET "https://your-domain.com/api/admin/circuit-breakers"
 **Description:** Reset circuit breakers for specific providers.
 
 **Parameters:**
-- `provider` (string, optional) - Specific provider name (if not provided, resets all)
+
+- `provider` (string, optional) - Specific provider name (if not provided,
+  resets all)
 
 **Request Body:**
+
 ```json
 {
   "provider": "balldontlie"
@@ -461,6 +485,7 @@ curl -X GET "https://your-domain.com/api/admin/circuit-breakers"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -475,6 +500,7 @@ curl -X GET "https://your-domain.com/api/admin/circuit-breakers"
 ```
 
 **Example:**
+
 ```bash
 curl -X POST "https://your-domain.com/api/admin/reset-circuit-breakers" \
   -H "Content-Type: application/json" \
@@ -490,10 +516,13 @@ curl -X POST "https://your-domain.com/api/admin/reset-circuit-breakers" \
 **Description:** System performance metrics and monitoring.
 
 **Parameters:**
-- `metric` (string, optional) - Specific metric: "cpu", "memory", "database", "api"
+
+- `metric` (string, optional) - Specific metric: "cpu", "memory", "database",
+  "api"
 - `period` (string, optional) - Time period: "1h", "24h", "7d"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -547,6 +576,7 @@ curl -X POST "https://your-domain.com/api/admin/reset-circuit-breakers" \
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/admin/performance?metric=all&period=24h"
 ```
@@ -560,10 +590,12 @@ curl -X GET "https://your-domain.com/api/admin/performance?metric=all&period=24h
 **Description:** Clear application cache and reset cache statistics.
 
 **Parameters:**
+
 - `type` (string, optional) - Cache type: "all", "redis", "memory", "api"
 - `pattern` (string, optional) - Cache key pattern to clear
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -578,6 +610,7 @@ curl -X GET "https://your-domain.com/api/admin/performance?metric=all&period=24h
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/health/clear-cache?type=all"
 ```

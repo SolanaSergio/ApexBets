@@ -3,7 +3,12 @@
  * Tennis-specific service implementation
  */
 
-import { SportSpecificService, GameData, TeamData, PlayerData } from '../core/sport-specific-service'
+import {
+  SportSpecificService,
+  GameData,
+  TeamData,
+  PlayerData,
+} from '../core/sport-specific-service'
 import { ServiceConfig } from '../core/base-service'
 
 export class TennisService extends SportSpecificService {
@@ -13,7 +18,7 @@ export class TennisService extends SportSpecificService {
       cacheTTL: 15 * 60 * 1000, // 15 minutes
       rateLimitService: 'tennis',
       retryAttempts: 2,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super('tennis', league, config)
   }
@@ -34,15 +39,19 @@ export class TennisService extends SportSpecificService {
     try {
       // Fetch from database using production client
       const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
-      const players = await productionSupabaseClient.getPlayers('tennis', params.teamId, params.limit || 100)
-      
+      const players = await productionSupabaseClient.getPlayers(
+        'tennis',
+        params.teamId,
+        params.limit || 100
+      )
+
       return players.map((player: any) => ({
         id: player.id,
         name: player.name,
         position: player.position,
         team_id: player.team_id,
         sport: 'tennis',
-        ...player
+        ...player,
       }))
     } catch (error) {
       console.error('Error fetching tennis players:', error)
@@ -86,7 +95,7 @@ export class TennisService extends SportSpecificService {
       homeScore: rawData.homeScore,
       awayScore: rawData.awayScore,
       venue: rawData.venue || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -97,7 +106,7 @@ export class TennisService extends SportSpecificService {
       league: this.league,
       name: rawData.name || '',
       abbreviation: rawData.abbreviation || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -109,7 +118,7 @@ export class TennisService extends SportSpecificService {
       name: rawData.name || '',
       team: rawData.team || '',
       position: rawData.position || 'Player',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 }

@@ -26,7 +26,6 @@ export interface PlayerTrend {
 }
 
 export class DynamicSportProcessor {
-
   /**
    * Initialize with project ID
    */
@@ -45,53 +44,60 @@ export class DynamicSportProcessor {
     }
 
     const playerMap: Record<string, any> = {}
-    
+
     playerStats.forEach(stat => {
       const playerName = stat.player_name
       if (!playerName) return
-      
+
       if (!playerMap[playerName]) {
         playerMap[playerName] = {
           name: playerName,
           position: stat.position,
           games: 0,
           stats: {},
-          team: (stat.games?.home_team?.name || stat.games?.away_team?.name) ?? null
+          team: (stat.games?.home_team?.name || stat.games?.away_team?.name) ?? null,
         }
       }
-      
+
       playerMap[playerName].games++
-      
+
       // Aggregate stats using dynamic field mapping
       const statFields = DynamicSportConfigService.getSportStatsColumns(sport).statFields
       this.aggregatePlayerStats(playerMap[playerName], stat, statFields)
     })
-    
+
     // Calculate averages and format results
-    return Object.values(playerMap).map((player: any) => {
-      const games = player.games
-      const stats = player.stats
-      
-      const averages = this.calculateAverages(stats, games)
-      
-      return {
-        ...player,
-        averages,
-        totalStats: stats
-      }
-    }).sort((a: any, b: any) => {
-      // Sort by primary stat
-      const primaryStat = DynamicSportConfigService.getSportStatsColumns(sport).primaryStat
-      const aValue = parseFloat(a.averages?.[primaryStat] || '0')
-      const bValue = parseFloat(b.averages?.[primaryStat] || '0')
-      return bValue - aValue
-    }).slice(0, 20) // Top 20 performers
+    return Object.values(playerMap)
+      .map((player: any) => {
+        const games = player.games
+        const stats = player.stats
+
+        const averages = this.calculateAverages(stats, games)
+
+        return {
+          ...player,
+          averages,
+          totalStats: stats,
+        }
+      })
+      .sort((a: any, b: any) => {
+        // Sort by primary stat
+        const primaryStat = DynamicSportConfigService.getSportStatsColumns(sport).primaryStat
+        const aValue = parseFloat(a.averages?.[primaryStat] || '0')
+        const bValue = parseFloat(b.averages?.[primaryStat] || '0')
+        return bValue - aValue
+      })
+      .slice(0, 20) // Top 20 performers
   }
 
   /**
    * Aggregate player statistics using dynamic field mapping
    */
-  private static aggregatePlayerStats(player: any, stat: any, statFields: Record<string, string>): void {
+  private static aggregatePlayerStats(
+    player: any,
+    stat: any,
+    statFields: Record<string, string>
+  ): void {
     Object.entries(statFields).forEach(([displayName, dbField]) => {
       const value = stat[dbField] || 0
       player.stats[displayName] = (player.stats[displayName] || 0) + value
@@ -101,17 +107,24 @@ export class DynamicSportProcessor {
   /**
    * Calculate averages based on sport configuration
    */
-  private static calculateAverages(stats: Record<string, number>, games: number): Record<string, string> {
+  private static calculateAverages(
+    stats: Record<string, number>,
+    games: number
+  ): Record<string, string> {
     const averages: Record<string, string> = {}
-    
+
     if (games === 0) {
       return averages
     }
 
     // const statFields = DynamicSportConfigService.getSportStatsColumns(sport).statFields
-    
+
     Object.entries(stats).forEach(([statName, total]) => {
-      if (statName === 'battingAvg' || statName === 'onBasePercentage' || statName === 'sluggingPercentage') {
+      if (
+        statName === 'battingAvg' ||
+        statName === 'onBasePercentage' ||
+        statName === 'sluggingPercentage'
+      ) {
         // These are already percentages, don't divide by games
         averages[statName] = total.toFixed(3)
       } else if (statName.includes('Pct') || statName.includes('Percentage')) {
@@ -131,30 +144,29 @@ export class DynamicSportProcessor {
    */
   static processPlayerTrends(playerStats: any[], sport: string): PlayerTrend[] {
     if (playerStats.length === 0) return []
-    
+
     const config = DynamicSportConfigService.getSportConfig(sport)
     if (!config) return []
-    
+
     const trends: PlayerTrend[] = []
     const recentGames = playerStats.slice(-10) // Last 10 games
     const previousGames = playerStats.slice(-20, -10) // Previous 10 games
-    
+
     if (recentGames.length === 0) return []
-    
+
     const statFields = DynamicSportConfigService.getSportStatsColumns(sport).statFields
-    
+
     // Calculate trends for each stat field
     Object.entries(statFields).forEach(([displayName, dbField]) => {
       const recentAvg = this.calculateAverageForStat(recentGames, dbField)
       const previousAvg = this.calculateAverageForStat(previousGames, dbField)
-      
+
       if (recentAvg > 0 || previousAvg > 0) {
         const change = recentAvg - previousAvg
         const changePercentage = previousAvg > 0 ? (change / previousAvg) * 100 : 0
-        const trend: 'up' | 'down' | 'stable' = 
-          changePercentage > 5 ? 'up' : 
-          changePercentage < -5 ? 'down' : 'stable'
-        
+        const trend: 'up' | 'down' | 'stable' =
+          changePercentage > 5 ? 'up' : changePercentage < -5 ? 'down' : 'stable'
+
         trends.push({
           playerName: recentGames[0]?.player_name ?? null,
           stat: displayName,
@@ -162,11 +174,11 @@ export class DynamicSportProcessor {
           previousValue: previousAvg,
           change,
           changePercentage,
-          trend
+          trend,
         })
       }
     })
-    
+
     return trends
   }
 
@@ -175,7 +187,7 @@ export class DynamicSportProcessor {
    */
   private static calculateAverageForStat(games: any[], statField: string): number {
     if (games.length === 0) return 0
-    
+
     const total = games.reduce((sum, game) => sum + (game[statField] || 0), 0)
     return total / games.length
   }
@@ -192,7 +204,7 @@ export class DynamicSportProcessor {
     return {
       primaryStat: config.primaryStat,
       statFields: config.statFields,
-      tableName: config.tableName
+      tableName: config.tableName,
     }
   }
 
@@ -220,11 +232,11 @@ export class DynamicSportProcessor {
   } | null {
     const config = DynamicSportConfigService.getSportConfig(sport)
     if (!config) return null
-    
+
     return {
       displayName: config.displayName,
       icon: config.icon,
-      color: config.color
+      color: config.color,
     }
   }
 }

@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { usePathname } from 'next/navigation'
 
@@ -10,10 +10,7 @@ export function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname()
 
   return (
-    <div 
-      key={pathname}
-      className="w-full animate-fade-in"
-    >
+    <div key={pathname} className="w-full animate-fade-in">
       {children}
     </div>
   )
@@ -25,11 +22,7 @@ interface FadeInProps {
 }
 
 export function FadeIn({ children, className }: FadeInProps) {
-  return (
-    <div className={`animate-fade-in ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`animate-fade-in ${className}`}>{children}</div>
 }
 
 interface SlideInProps {
@@ -37,15 +30,8 @@ interface SlideInProps {
   className?: string
 }
 
-export function SlideIn({ 
-  children,
-  className 
-}: SlideInProps) {
-  return (
-    <div className={`animate-fade-in ${className}`}>
-      {children}
-    </div>
-  )
+export function SlideIn({ children, className }: SlideInProps) {
+  return <div className={`animate-fade-in ${className}`}>{children}</div>
 }
 
 interface StaggerContainerProps {
@@ -53,15 +39,8 @@ interface StaggerContainerProps {
   className?: string
 }
 
-export function StaggerContainer({ 
-  children, 
-  className
-}: StaggerContainerProps) {
-  return (
-    <div className={className}>
-      {children}
-    </div>
-  )
+export function StaggerContainer({ children, className }: StaggerContainerProps) {
+  return <div className={className}>{children}</div>
 }
 
 interface StaggerItemProps {
@@ -70,13 +49,9 @@ interface StaggerItemProps {
   index?: number
 }
 
-export function StaggerItem({ 
-  children, 
-  className,
-  index
-}: StaggerItemProps) {
+export function StaggerItem({ children, className, index }: StaggerItemProps) {
   return (
-    <div 
+    <div
       className={`animate-fade-in ${className}`}
       style={index ? { animationDelay: `${index * 100}ms` } : undefined}
     >
@@ -93,7 +68,7 @@ interface ScaleInProps {
 
 export function ScaleIn({ children, className, delay }: ScaleInProps) {
   return (
-    <div 
+    <div
       className={`animate-fade-in ${className}`}
       style={delay ? { animationDelay: `${delay}ms` } : undefined}
     >
@@ -108,9 +83,5 @@ interface BounceInProps {
 }
 
 export function BounceIn({ children, className }: BounceInProps) {
-  return (
-    <div className={`animate-fade-in ${className}`}>
-      {children}
-    </div>
-  )
+  return <div className={`animate-fade-in ${className}`}>{children}</div>
 }

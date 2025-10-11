@@ -17,12 +17,12 @@ export class CacheService {
     sets: 0,
     deletes: 0,
     totalEntries: 0,
-    totalSize: 0
+    totalSize: 0,
   }
 
   get<T>(key: string): T | null {
     const entry = this.cache.get(key)
-    
+
     if (!entry) {
       this.stats.misses++
       return null
@@ -53,7 +53,7 @@ export class CacheService {
     this.cache.set(key, {
       data,
       expires,
-      createdAt: now
+      createdAt: now,
     })
 
     this.stats.sets++
@@ -78,7 +78,7 @@ export class CacheService {
 
   keys(pattern?: RegExp): string[] {
     const allKeys = Array.from(this.cache.keys())
-    
+
     if (!pattern) {
       return allKeys
     }
@@ -103,9 +103,10 @@ export class CacheService {
   getStats() {
     return {
       ...this.stats,
-      hitRate: this.stats.hits + this.stats.misses > 0 
-        ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100 
-        : 0
+      hitRate:
+        this.stats.hits + this.stats.misses > 0
+          ? (this.stats.hits / (this.stats.hits + this.stats.misses)) * 100
+          : 0,
     }
   }
 
@@ -136,6 +137,9 @@ export class CacheService {
 export const cacheService = new CacheService()
 
 // Cleanup expired entries every 5 minutes
-setInterval(() => {
-  cacheService.cleanup()
-}, 5 * 60 * 1000)
+setInterval(
+  () => {
+    cacheService.cleanup()
+  },
+  5 * 60 * 1000
+)

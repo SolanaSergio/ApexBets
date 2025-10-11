@@ -1,14 +1,17 @@
 # Prediction APIs
 
-This section covers machine learning prediction endpoints that generate forecasts for upcoming games.
+This section covers machine learning prediction endpoints that generate
+forecasts for upcoming games.
 
 ## Generate Predictions
 
 **Endpoint:** `POST /api/predictions/generate`
 
-**Description:** Generate new ML predictions for upcoming games using advanced algorithms.
+**Description:** Generate new ML predictions for upcoming games using advanced
+algorithms.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "basketball")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID to predict
@@ -16,6 +19,7 @@ This section covers machine learning prediction endpoints that generate forecast
 **Request Body:** None required
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -42,10 +46,10 @@ This section covers machine learning prediction endpoints that generate forecast
         ],
         "featureImportance": {
           "home_record": 0.25,
-          "recent_form": 0.20,
+          "recent_form": 0.2,
           "head_to_head": 0.15,
-          "rest_days": 0.10,
-          "injuries": 0.10,
+          "rest_days": 0.1,
+          "injuries": 0.1,
           "weather": 0.05,
           "venue": 0.15
         }
@@ -67,6 +71,7 @@ This section covers machine learning prediction endpoints that generate forecast
 ```
 
 **Example:**
+
 ```bash
 curl -X POST "https://your-domain.com/api/predictions/generate?sport=basketball&league=NBA"
 ```
@@ -80,11 +85,13 @@ curl -X POST "https://your-domain.com/api/predictions/generate?sport=basketball&
 **Description:** Retrieve predictions for upcoming games in the next few days.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `limit` (number, optional) - Maximum results (default: 10)
 - `days` (number, optional) - Days ahead to look (default: 7)
 
 **Response:**
+
 ```json
 [
   {
@@ -113,6 +120,7 @@ curl -X POST "https://your-domain.com/api/predictions/generate?sport=basketball&
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/upcoming?sport=basketball&limit=5&days=7"
 ```
@@ -126,12 +134,14 @@ curl -X GET "https://your-domain.com/api/predictions/upcoming?sport=basketball&l
 **Description:** Retrieve predictions for a specific sport.
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name in URL path
 - `league` (string, optional) - League name
 - `limit` (number, optional) - Maximum results (default: 10)
 - `status` (string, optional) - Game status: "scheduled", "live"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -149,7 +159,7 @@ curl -X GET "https://your-domain.com/api/predictions/upcoming?sport=basketball&l
       "reasoning": "Home court advantage; Recent form; Head-to-head record",
       "feature_importance": {
         "home_record": 0.25,
-        "recent_form": 0.20,
+        "recent_form": 0.2,
         "head_to_head": 0.15
       },
       "confidence_interval": {
@@ -177,6 +187,7 @@ curl -X GET "https://your-domain.com/api/predictions/upcoming?sport=basketball&l
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/basketball?league=NBA&limit=10"
 ```
@@ -187,11 +198,13 @@ curl -X GET "https://your-domain.com/api/predictions/basketball?league=NBA&limit
 
 **Endpoint:** `GET /api/predictions/models`
 
-**Description:** Information about available prediction models and their performance.
+**Description:** Information about available prediction models and their
+performance.
 
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -201,7 +214,13 @@ curl -X GET "https://your-domain.com/api/predictions/basketball?league=NBA&limit
         "name": "ensemble_ml_v2.1",
         "version": "2.1.0",
         "description": "Ensemble machine learning model combining multiple algorithms",
-        "sports_supported": ["basketball", "football", "baseball", "hockey", "soccer"],
+        "sports_supported": [
+          "basketball",
+          "football",
+          "baseball",
+          "hockey",
+          "soccer"
+        ],
         "prediction_types": ["winner", "spread", "total_points"],
         "performance": {
           "overall_accuracy": 0.72,
@@ -232,6 +251,7 @@ curl -X GET "https://your-domain.com/api/predictions/basketball?league=NBA&limit
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/models"
 ```
@@ -245,6 +265,7 @@ curl -X GET "https://your-domain.com/api/predictions/models"
 **Description:** Historical prediction performance and accuracy data.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `model` (string, optional) - Model name
@@ -253,6 +274,7 @@ curl -X GET "https://your-domain.com/api/predictions/models"
 - `limit` (number, optional) - Maximum results (default: 100)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -293,6 +315,7 @@ curl -X GET "https://your-domain.com/api/predictions/models"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/history?sport=basketball&startDate=2024-01-01&endDate=2024-01-31"
 ```
@@ -303,15 +326,18 @@ curl -X GET "https://your-domain.com/api/predictions/history?sport=basketball&st
 
 **Endpoint:** `GET /api/predictions/confidence`
 
-**Description:** Analysis of prediction confidence levels and their correlation with accuracy.
+**Description:** Analysis of prediction confidence levels and their correlation
+with accuracy.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `model` (string, optional) - Model name
 - `period` (string, optional) - Time period: "7d", "30d", "90d", "season"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -350,10 +376,10 @@ curl -X GET "https://your-domain.com/api/predictions/history?sport=basketball&st
       ],
       "calibration": {
         "reliability_diagram": [
-          {"confidence": 0.65, "accuracy": 0.62},
-          {"confidence": 0.75, "accuracy": 0.68},
-          {"confidence": 0.85, "accuracy": 0.73},
-          {"confidence": 0.94, "accuracy": 0.88}
+          { "confidence": 0.65, "accuracy": 0.62 },
+          { "confidence": 0.75, "accuracy": 0.68 },
+          { "confidence": 0.85, "accuracy": 0.73 },
+          { "confidence": 0.94, "accuracy": 0.88 }
         ],
         "brier_score": 0.18,
         "log_loss": 0.45
@@ -374,6 +400,7 @@ curl -X GET "https://your-domain.com/api/predictions/history?sport=basketball&st
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball&period=30d"
 ```
@@ -384,14 +411,17 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
 
 **Endpoint:** `GET /api/predictions/factors`
 
-**Description:** Detailed breakdown of factors used in predictions and their importance.
+**Description:** Detailed breakdown of factors used in predictions and their
+importance.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `model` (string, optional) - Model name
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -411,7 +441,7 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
       {
         "name": "recent_form",
         "description": "Team's performance in last 10 games",
-        "importance": 0.20,
+        "importance": 0.2,
         "weight": "high",
         "data_source": "game_results",
         "update_frequency": "daily"
@@ -427,7 +457,7 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
       {
         "name": "rest_days",
         "description": "Days of rest since last game",
-        "importance": 0.10,
+        "importance": 0.1,
         "weight": "medium",
         "data_source": "schedule",
         "update_frequency": "daily"
@@ -435,7 +465,7 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
       {
         "name": "injuries",
         "description": "Key player injury status",
-        "importance": 0.10,
+        "importance": 0.1,
         "weight": "medium",
         "data_source": "injury_reports",
         "update_frequency": "daily"
@@ -460,7 +490,7 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
     "factor_correlation": {
       "home_record_vs_recent_form": 0.65,
       "recent_form_vs_head_to_head": 0.45,
-      "rest_days_vs_performance": 0.30
+      "rest_days_vs_performance": 0.3
     },
     "last_updated": "2024-01-01T00:00:00.000Z"
   },
@@ -472,6 +502,7 @@ curl -X GET "https://your-domain.com/api/predictions/confidence?sport=basketball
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/predictions/factors?sport=basketball&model=ensemble_ml_v2.1"
 ```

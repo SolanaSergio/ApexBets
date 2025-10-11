@@ -76,7 +76,7 @@ export class SportTeamStatsService extends BaseService {
       cacheTTL: 30 * 60 * 1000, // 30 minutes
       rateLimitService: 'team-stats',
       retryAttempts: 2,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super(config)
     this.sport = sport
@@ -97,7 +97,7 @@ export class SportTeamStatsService extends BaseService {
    */
   async getTeamStandings(season?: string): Promise<TeamStandings | null> {
     const key = this.getCacheKey('team-standings', this.sport, this.league, season || 'current')
-    
+
     return this.getCachedOrFetch(key, async () => {
       try {
         // Get team standings directly from database
@@ -111,9 +111,9 @@ export class SportTeamStatsService extends BaseService {
 
         return {
           league: this.league,
-          season: season || await this.getCurrentSeason(),
+          season: season || (await this.getCurrentSeason()),
           standings,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         }
       } catch (error) {
         console.error(`Error fetching team standings for ${this.sport}:`, error)
@@ -126,8 +126,14 @@ export class SportTeamStatsService extends BaseService {
    * Get statistics for a specific team
    */
   async getTeamStats(teamId: string, season?: string): Promise<TeamStats | null> {
-    const key = this.getCacheKey('team-stats-by-id', this.sport, this.league, teamId, season || 'current')
-    
+    const key = this.getCacheKey(
+      'team-stats-by-id',
+      this.sport,
+      this.league,
+      teamId,
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         return await this.fetchTeamStats(teamId, season)
@@ -142,13 +148,19 @@ export class SportTeamStatsService extends BaseService {
    * Get team performance analysis
    */
   async getTeamPerformance(teamId: string, season?: string): Promise<TeamPerformance | null> {
-    const key = this.getCacheKey('team-performance', this.sport, this.league, teamId, season || 'current')
-    
+    const key = this.getCacheKey(
+      'team-performance',
+      this.sport,
+      this.league,
+      teamId,
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         const service = await serviceFactory.getService(this.sport, this.league)
         const team = await service.getTeamById(teamId)
-        
+
         if (!team) {
           return null
         }
@@ -157,7 +169,7 @@ export class SportTeamStatsService extends BaseService {
         const recentGames = await service.getGames({
           teamId,
           status: 'finished',
-          limit: 20
+          limit: 20,
         })
 
         // Calculate performance metrics
@@ -174,8 +186,10 @@ export class SportTeamStatsService extends BaseService {
           homeRecord,
           awayRecord,
           streak,
-          last10Games: await Promise.all(recentGames.slice(0, 10).map((game: any) => this.mapGameToTeamStats(game, teamId))),
-          seasonHighlights
+          last10Games: await Promise.all(
+            recentGames.slice(0, 10).map((game: any) => this.mapGameToTeamStats(game, teamId))
+          ),
+          seasonHighlights,
         }
       } catch (error) {
         console.error(`Error fetching team performance for ${teamId}:`, error)
@@ -188,12 +202,18 @@ export class SportTeamStatsService extends BaseService {
    * Compare multiple teams
    */
   async compareTeams(teamIds: string[], season?: string): Promise<TeamComparison | null> {
-    const key = this.getCacheKey('team-comparison', this.sport, this.league, teamIds.join(','), season || 'current')
-    
+    const key = this.getCacheKey(
+      'team-comparison',
+      this.sport,
+      this.league,
+      teamIds.join(','),
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         const teams: TeamStats[] = []
-        
+
         for (const teamId of teamIds) {
           const stats = await this.getTeamStats(teamId, season)
           if (stats) {
@@ -211,7 +231,7 @@ export class SportTeamStatsService extends BaseService {
 
         return {
           teams,
-          comparison
+          comparison,
         }
       } catch (error) {
         console.error('Error comparing teams:', error)
@@ -224,8 +244,14 @@ export class SportTeamStatsService extends BaseService {
    * Get league leaders for specific statistics
    */
   async getLeagueLeaders(stat: string, season?: string, limit: number = 10): Promise<TeamStats[]> {
-    const key = this.getCacheKey('league-leaders', this.sport, this.league, stat, season || 'current')
-    
+    const key = this.getCacheKey(
+      'league-leaders',
+      this.sport,
+      this.league,
+      stat,
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         const standings = await this.getTeamStandings(season)
@@ -234,7 +260,7 @@ export class SportTeamStatsService extends BaseService {
         }
 
         const allTeams = standings.standings.flatMap(division => division.teams)
-        
+
         return allTeams
           .filter(team => team.stats[stat] !== undefined)
           .sort((a, b) => (b.stats[stat] as number) - (a.stats[stat] as number))
@@ -253,7 +279,7 @@ export class SportTeamStatsService extends BaseService {
     try {
       const { createClient } = await import('../../supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -261,10 +287,12 @@ export class SportTeamStatsService extends BaseService {
       // Get team standings from league_standings table
       const { data, error } = await supabase
         .from('league_standings')
-        .select(`
+        .select(
+          `
           *,
           team:teams!league_standings_team_id_fkey(name, abbreviation, conference, division)
-        `)
+        `
+        )
         .eq('sport', this.sport)
         .eq('league_name', this.league)
         .eq('season', season || this.getCurrentSeason())
@@ -276,7 +304,7 @@ export class SportTeamStatsService extends BaseService {
 
       // Get current season if not provided
       const currentSeason = season || (await this.getCurrentSeason())
-      
+
       // Convert to TeamStats format
       const teamStats: TeamStats[] = (data || []).map(standing => ({
         teamId: standing.team_id,
@@ -305,10 +333,10 @@ export class SportTeamStatsService extends BaseService {
           homeLosses: standing.home_losses || 0,
           awayWins: standing.away_wins || 0,
           awayLosses: standing.away_losses || 0,
-          pointDifferential: standing.point_differential || 0
+          pointDifferential: standing.point_differential || 0,
         },
         rankings: {},
-        lastUpdated: standing.last_updated || new Date().toISOString()
+        lastUpdated: standing.last_updated || new Date().toISOString(),
       }))
 
       return teamStats
@@ -325,7 +353,7 @@ export class SportTeamStatsService extends BaseService {
     try {
       const service = await serviceFactory.getService(this.sport, this.league)
       const team = await service.getTeamById(teamId)
-      
+
       if (!team) {
         return null
       }
@@ -334,7 +362,7 @@ export class SportTeamStatsService extends BaseService {
       const games = await service.getGames({
         teamId,
         status: 'finished',
-        limit: 100
+        limit: 100,
       })
 
       // Calculate team statistics
@@ -347,7 +375,7 @@ export class SportTeamStatsService extends BaseService {
         abbreviation: team.abbreviation || team.name.substring(0, 3).toUpperCase(),
         sport: this.sport,
         league: this.league,
-        season: season || await this.getCurrentSeason(),
+        season: season || (await this.getCurrentSeason()),
         gamesPlayed: stats.gamesPlayed,
         wins: stats.wins,
         losses: stats.losses,
@@ -355,7 +383,7 @@ export class SportTeamStatsService extends BaseService {
         winPercentage: Math.round(winPercentage * 1000) / 1000,
         stats: stats.rawStats,
         rankings: {}, // Will be calculated separately
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error(`Error fetching stats for team ${teamId}:`, error)
@@ -396,40 +424,53 @@ export class SportTeamStatsService extends BaseService {
       wins,
       losses,
       ties,
-      rawStats
+      rawStats,
     }
   }
 
   /**
    * Add sport-specific statistics from real game data
    */
-  private async addSportSpecificStats(rawStats: Record<string, number>, game: any, _teamId: string, isHomeTeam: boolean): Promise<void> {
+  private async addSportSpecificStats(
+    rawStats: Record<string, number>,
+    game: any,
+    _teamId: string,
+    isHomeTeam: boolean
+  ): Promise<void> {
     try {
       // Get sport configuration to determine scoring field names
       const sportConfig = await SportConfigManager.getSportConfig(this.sport)
-      
+
       if (sportConfig?.scoringFields) {
         // Use configured scoring fields
         const scoring = sportConfig.scoringFields
-        const scoreField = (typeof scoring === 'object' && 'primary' in scoring) ? scoring.primary : 'score'
-        const scoreForField = (typeof scoring === 'object' && 'for' in scoring) ? scoring.for : `${scoreField}For`
-        const scoreAgainstField = (typeof scoring === 'object' && 'against' in scoring) ? scoring.against : `${scoreField}Against`
-        
+        const scoreField =
+          typeof scoring === 'object' && 'primary' in scoring ? scoring.primary : 'score'
+        const scoreForField =
+          typeof scoring === 'object' && 'for' in scoring ? scoring.for : `${scoreField}For`
+        const scoreAgainstField =
+          typeof scoring === 'object' && 'against' in scoring
+            ? scoring.against
+            : `${scoreField}Against`
+
         const score = isHomeTeam ? game.homeScore : game.awayScore
         rawStats[scoreForField] = (rawStats[scoreForField] || 0) + score
-        rawStats[scoreAgainstField] = (rawStats[scoreAgainstField] || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
+        rawStats[scoreAgainstField] =
+          (rawStats[scoreAgainstField] || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
       } else {
         // Fallback to generic scoring
         const score = isHomeTeam ? game.homeScore : game.awayScore
         rawStats.scoreFor = (rawStats.scoreFor || 0) + score
-        rawStats.scoreAgainst = (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
+        rawStats.scoreAgainst =
+          (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
       }
     } catch (error) {
       console.warn(`Failed to get sport config for ${this.sport}:`, error)
       // Fallback to generic scoring
       const score = isHomeTeam ? game.homeScore : game.awayScore
       rawStats.scoreFor = (rawStats.scoreFor || 0) + score
-      rawStats.scoreAgainst = (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
+      rawStats.scoreAgainst =
+        (rawStats.scoreAgainst || 0) + (isHomeTeam ? game.awayScore : game.homeScore)
     }
   }
 
@@ -456,8 +497,8 @@ export class SportTeamStatsService extends BaseService {
       conference,
       divisions: Object.keys(standings[conference]).map(division => ({
         division,
-        teams: standings[conference][division]
-      }))
+        teams: standings[conference][division],
+      })),
     }))
   }
 
@@ -466,23 +507,28 @@ export class SportTeamStatsService extends BaseService {
    */
   private calculateRecentForm(games: any[], teamId: string): string {
     const recentGames = games.slice(0, 5) // Last 5 games
-    return recentGames.map(game => {
-      const isHomeTeam = game.homeTeam === teamId || game.homeTeamId === teamId
-      const homeScore = game.homeScore || 0
-      const awayScore = game.awayScore || 0
+    return recentGames
+      .map(game => {
+        const isHomeTeam = game.homeTeam === teamId || game.homeTeamId === teamId
+        const homeScore = game.homeScore || 0
+        const awayScore = game.awayScore || 0
 
-      if (isHomeTeam) {
-        return homeScore > awayScore ? 'W' : homeScore < awayScore ? 'L' : 'T'
-      } else {
-        return awayScore > homeScore ? 'W' : awayScore < homeScore ? 'L' : 'T'
-      }
-    }).join('')
+        if (isHomeTeam) {
+          return homeScore > awayScore ? 'W' : homeScore < awayScore ? 'L' : 'T'
+        } else {
+          return awayScore > homeScore ? 'W' : awayScore < homeScore ? 'L' : 'T'
+        }
+      })
+      .join('')
   }
 
   /**
    * Calculate home record
    */
-  private calculateHomeRecord(games: any[], teamId: string): { wins: number; losses: number; ties?: number } {
+  private calculateHomeRecord(
+    games: any[],
+    teamId: string
+  ): { wins: number; losses: number; ties?: number } {
     const homeGames = games.filter(game => game.homeTeam === teamId || game.homeTeamId === teamId)
     let wins = 0
     let losses = 0
@@ -503,7 +549,10 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Calculate away record
    */
-  private calculateAwayRecord(games: any[], teamId: string): { wins: number; losses: number; ties?: number } {
+  private calculateAwayRecord(
+    games: any[],
+    teamId: string
+  ): { wins: number; losses: number; ties?: number } {
     const awayGames = games.filter(game => game.awayTeam === teamId || game.awayTeamId === teamId)
     let wins = 0
     let losses = 0
@@ -524,7 +573,10 @@ export class SportTeamStatsService extends BaseService {
   /**
    * Calculate current streak
    */
-  private calculateStreak(games: any[], teamId: string): { type: 'win' | 'loss' | 'tie'; count: number } {
+  private calculateStreak(
+    games: any[],
+    teamId: string
+  ): { type: 'win' | 'loss' | 'tie'; count: number } {
     const recentGames = games.slice(0, 10) // Check last 10 games
     let streakType: 'win' | 'loss' | 'tie' = 'win'
     let count = 0
@@ -621,7 +673,7 @@ export class SportTeamStatsService extends BaseService {
       longestWinStreak,
       longestLossStreak,
       bestMonth: bestMonth || 'N/A',
-      worstMonth: worstMonth || 'N/A'
+      worstMonth: worstMonth || 'N/A',
     }
   }
 
@@ -654,7 +706,7 @@ export class SportTeamStatsService extends BaseService {
       winPercentage: result === 'win' ? 1 : 0,
       stats: {},
       rankings: {},
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -681,17 +733,17 @@ export class SportTeamStatsService extends BaseService {
       const numericValues: number[] = []
 
       teams.forEach(team => {
-        const value = team.stats[stat] as number || 0
+        const value = (team.stats[stat] as number) || 0
         values[team.name] = value
         numericValues.push(value)
       })
 
       const maxValue = Math.max(...numericValues)
-      const leader = teams.find(t => (t.stats[stat] as number || 0) === maxValue)?.name || ''
+      const leader = teams.find(t => ((t.stats[stat] as number) || 0) === maxValue)?.name || ''
 
       const difference: Record<string, number> = {}
       teams.forEach(team => {
-        const value = team.stats[stat] as number || 0
+        const value = (team.stats[stat] as number) || 0
         difference[team.name] = value - maxValue
       })
 
@@ -699,7 +751,7 @@ export class SportTeamStatsService extends BaseService {
         stat,
         values,
         leader,
-        difference
+        difference,
       }
     })
   }

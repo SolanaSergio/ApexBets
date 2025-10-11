@@ -29,7 +29,8 @@ export class StructuredLogger {
 
   constructor() {
     // Set log level based on environment - reduce verbosity in production
-    this.logLevel = (process.env.LOG_LEVEL as any) || (process.env.NODE_ENV === 'production' ? 'warn' : 'info')
+    this.logLevel =
+      (process.env.LOG_LEVEL as any) || (process.env.NODE_ENV === 'production' ? 'warn' : 'info')
   }
 
   private shouldLog(level: string): boolean {
@@ -39,13 +40,18 @@ export class StructuredLogger {
     return messageLevelIndex >= currentLevelIndex
   }
 
-  private formatLog(level: string, message: string, context?: LogContext, service?: string): LogEntry {
+  private formatLog(
+    level: string,
+    message: string,
+    context?: LogContext,
+    service?: string
+  ): LogEntry {
     return {
       timestamp: new Date().toISOString(),
       level: level as any,
       message,
       ...(context && { context }),
-      ...(service && { service })
+      ...(service && { service }),
     }
   }
 
@@ -54,7 +60,7 @@ export class StructuredLogger {
 
     const logMessage = {
       ...entry,
-      ...(entry.context && { ...entry.context })
+      ...(entry.context && { ...entry.context }),
     }
 
     switch (entry.level) {
@@ -95,23 +101,37 @@ export class StructuredLogger {
   }
 
   // Convenience methods for common patterns
-  apiCall(method: string, endpoint: string, status: number, duration: number, context?: LogContext): void {
-    this.info(`API ${method} ${endpoint}`, {
-      method,
-      endpoint,
-      status,
-      duration,
-      ...context
-    }, 'api')
+  apiCall(
+    method: string,
+    endpoint: string,
+    status: number,
+    duration: number,
+    context?: LogContext
+  ): void {
+    this.info(
+      `API ${method} ${endpoint}`,
+      {
+        method,
+        endpoint,
+        status,
+        duration,
+        ...context,
+      },
+      'api'
+    )
   }
 
   databaseQuery(query: string, duration: number, rowCount?: number, context?: LogContext): void {
-    this.debug(`Database query executed`, {
-      query: query.substring(0, 100) + (query.length > 100 ? '...' : ''),
-      duration,
-      rowCount,
-      ...context
-    }, 'database')
+    this.debug(
+      `Database query executed`,
+      {
+        query: query.substring(0, 100) + (query.length > 100 ? '...' : ''),
+        duration,
+        rowCount,
+        ...context,
+      },
+      'database'
+    )
   }
 
   cacheHit(key: string, context?: LogContext): void {
@@ -123,29 +143,41 @@ export class StructuredLogger {
   }
 
   rateLimitExceeded(identifier: string, limit: number, context?: LogContext): void {
-    this.warn(`Rate limit exceeded`, {
-      identifier,
-      limit,
-      ...context
-    }, 'rate-limiter')
+    this.warn(
+      `Rate limit exceeded`,
+      {
+        identifier,
+        limit,
+        ...context,
+      },
+      'rate-limiter'
+    )
   }
 
   serviceError(service: string, error: Error, context?: LogContext): void {
-    this.error(`Service error in ${service}`, {
-      service,
-      error: error.message,
-      stack: error.stack,
-      ...context
-    }, service)
+    this.error(
+      `Service error in ${service}`,
+      {
+        service,
+        error: error.message,
+        stack: error.stack,
+        ...context,
+      },
+      service
+    )
   }
 
   performanceMetric(metric: string, value: number, unit: string, context?: LogContext): void {
-    this.info(`Performance metric`, {
-      metric,
-      value,
-      unit,
-      ...context
-    }, 'performance')
+    this.info(
+      `Performance metric`,
+      {
+        metric,
+        value,
+        unit,
+        ...context,
+      },
+      'performance'
+    )
   }
 
   // Set log level at runtime

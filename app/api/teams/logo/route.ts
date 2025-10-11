@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { dynamicTeamServiceClient } from '@/lib/services/dynamic-team-service-client'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 /**
  * GET /api/teams/logo?teamName=...&league=...
  * Get team logo with full metadata
@@ -17,10 +20,10 @@ export async function GET(request: NextRequest) {
     }
 
     const url = await dynamicTeamServiceClient.getTeamLogoUrl(teamName, league as any)
-    
+
     return NextResponse.json({
       success: true,
-      data: { url }
+      data: { url },
     })
   } catch (error) {
     console.error('Error fetching team logo:', error)
@@ -35,13 +38,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    
+
     const { teamName, league, logoUrl } = body
 
     if (!teamName || !league || !logoUrl) {
-      return NextResponse.json({ 
-        error: 'teamName, league, and logoUrl are required' 
-      }, { status: 400 })
+      return NextResponse.json(
+        {
+          error: 'teamName, league, and logoUrl are required',
+        },
+        { status: 400 }
+      )
     }
 
     const { error } = await productionSupabaseClient.supabase
@@ -54,9 +60,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to update team logo' }, { status: 500 })
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Team logo updated successfully' 
+    return NextResponse.json({
+      success: true,
+      message: 'Team logo updated successfully',
     })
   } catch (error) {
     console.error('Error updating team logo:', error)
@@ -80,9 +86,9 @@ export async function DELETE(request: NextRequest) {
       // No global cache to clear here; return success
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Logo cache cleared successfully' 
+    return NextResponse.json({
+      success: true,
+      message: 'Logo cache cleared successfully',
     })
   } catch (error) {
     console.error('Error clearing logo cache:', error)

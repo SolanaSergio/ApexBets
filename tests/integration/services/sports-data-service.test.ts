@@ -21,7 +21,7 @@ describe('Sports Data Service Integration Tests', () => {
           date: expect.any(String),
           status: expect.any(String),
           league: expect.any(String),
-          sport: expect.any(String)
+          sport: expect.any(String),
         })
 
         // Verify date format
@@ -59,7 +59,9 @@ describe('Sports Data Service Integration Tests', () => {
 
       // Live games should have live status
       games.forEach((game: any) => {
-        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(game.status)
+        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(
+          game.status
+        )
       })
     })
 
@@ -88,7 +90,7 @@ describe('Sports Data Service Integration Tests', () => {
           name: expect.any(String),
           abbreviation: expect.any(String),
           league: expect.any(String),
-          sport: expect.any(String)
+          sport: expect.any(String),
         })
 
         // Verify team name is not empty
@@ -115,9 +117,7 @@ describe('Sports Data Service Integration Tests', () => {
 
       // Results should contain Lakers
       if (teams.length > 0) {
-        const hasLakers = teams.some((team: any) => 
-          team.name.toLowerCase().includes('lakers')
-        )
+        const hasLakers = teams.some((team: any) => team.name.toLowerCase().includes('lakers'))
         expect(hasLakers).toBe(true)
       }
     })
@@ -137,7 +137,7 @@ describe('Sports Data Service Integration Tests', () => {
           away_team: expect.any(String),
           commence_time: expect.any(String),
           sport_key: expect.any(String),
-          sport_title: expect.any(String)
+          sport_title: expect.any(String),
         })
 
         // Verify commence_time is a valid ISO string
@@ -165,14 +165,14 @@ describe('Sports Data Service Integration Tests', () => {
 
       if (odds.length > 0) {
         const odd = odds[0]
-        
+
         // Should have bookmakers with different market types
         if (odd.bookmakers && odd.bookmakers.length > 0) {
           const bookmaker = odd.bookmakers[0]
           const marketKeys = bookmaker.markets.map((m: any) => m.key)
-          
+
           // Should contain at least one of the requested market types
-          const hasRequestedMarkets = ['h2h', 'spreads'].some(market => 
+          const hasRequestedMarkets = ['h2h', 'spreads'].some(market =>
             marketKeys.some((key: string) => key.includes(market))
           )
           expect(hasRequestedMarkets).toBe(true)
@@ -196,11 +196,13 @@ describe('Sports Data Service Integration Tests', () => {
           date: expect.any(String),
           status: expect.any(String),
           league: expect.any(String),
-          sport: expect.any(String)
+          sport: expect.any(String),
         })
 
         // Live games should have live status
-        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(game.status)
+        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(
+          game.status
+        )
       }
     })
   })
@@ -209,7 +211,7 @@ describe('Sports Data Service Integration Tests', () => {
     it('should fetch real game by ID', async () => {
       // First get a game ID
       const games = await cachedUnifiedApiClient.getGames('basketball')
-      
+
       if (games.length > 0) {
         const game = games[0]
         expect(game).toMatchObject({
@@ -219,7 +221,7 @@ describe('Sports Data Service Integration Tests', () => {
           date: expect.any(String),
           status: expect.any(String),
           league: expect.any(String),
-          sport: expect.any(String)
+          sport: expect.any(String),
         })
       }
     })
@@ -242,7 +244,7 @@ describe('Sports Data Service Integration Tests', () => {
 
       expect(stats).toMatchObject({
         size: expect.any(Number),
-        keys: expect.any(Array)
+        keys: expect.any(Array),
       })
 
       expect(stats.totalEntries).toBeGreaterThanOrEqual(0)
@@ -252,7 +254,7 @@ describe('Sports Data Service Integration Tests', () => {
     it('should clear cache', async () => {
       // Make some requests to populate cache
       await cachedUnifiedApiClient.getGames('basketball')
-      
+
       cachedUnifiedApiClient.clearCache()
       const statsAfter = await cachedUnifiedApiClient.getCacheStats()
 
@@ -269,7 +271,7 @@ describe('Sports Data Service Integration Tests', () => {
 
       expect(detailedStats).toMatchObject({
         totalEntries: expect.any(Number),
-        totalSize: expect.any(Number)
+        totalSize: expect.any(Number),
       })
 
       expect(detailedStats.memory.hits).toBeGreaterThanOrEqual(0)

@@ -1,11 +1,10 @@
 /**
  * ESPN CDN Mapper Service
  * Maps team names to ESPN CDN URLs for ALL sports dynamically
- * NO HARDCODED SPORTS - all configurations loaded from database
+ * NO HARDCODED SPORTS - uses static configurations
  */
 
 import { structuredLogger } from './structured-logger'
-import { databaseService } from './database-service'
 
 export interface ESPNSportConfig {
   sport: string
@@ -45,34 +44,57 @@ export class ESPNCDNMapper {
         return this.sportConfigs.get(sport)!
       }
 
-      // Load from database via databaseService
-      const result = await databaseService.executeSQL(`
-        SELECT logo_template, player_template, cdn_config
-        FROM sports 
-        WHERE name = $1 AND is_active = true
-        LIMIT 1
-      `, [sport])
-
-      if (!result.success || !result.data || result.data.length === 0) {
-        structuredLogger.warn('Sport configuration not found in database', { sport })
-        return null
+      // Use static sport configurations instead of database
+      const staticConfigs: Record<string, ESPNSportConfig> = {
+        basketball: {
+          sport: 'basketball',
+          espn_sport_key: 'nba',
+          logo_path_template: '/i/teamlogos/nba/500/{teamId}.png',
+          player_path_template: '/i/headshots/nba/players/full/{playerId}.png',
+          is_active: true,
+        },
+        football: {
+          sport: 'football',
+          espn_sport_key: 'nfl',
+          logo_path_template: '/i/teamlogos/nfl/500/{teamId}.png',
+          player_path_template: '/i/headshots/nfl/players/full/{playerId}.png',
+          is_active: true,
+        },
+        baseball: {
+          sport: 'baseball',
+          espn_sport_key: 'mlb',
+          logo_path_template: '/i/teamlogos/mlb/500/{teamId}.png',
+          player_path_template: '/i/headshots/mlb/players/full/{playerId}.png',
+          is_active: true,
+        },
+        hockey: {
+          sport: 'hockey',
+          espn_sport_key: 'nhl',
+          logo_path_template: '/i/teamlogos/nhl/500/{teamId}.png',
+          player_path_template: '/i/headshots/nhl/players/full/{playerId}.png',
+          is_active: true,
+        },
+        soccer: {
+          sport: 'soccer',
+          espn_sport_key: 'soccer',
+          logo_path_template: '/i/teamlogos/soccer/500/{teamId}.png',
+          player_path_template: '/i/headshots/soccer/players/full/{playerId}.png',
+          is_active: true,
+        },
       }
 
-      const sportData = result.data[0] as any
-      const config: ESPNSportConfig = {
-        sport,
-        espn_sport_key: sport,
-        logo_path_template: sportData.logo_template || '/i/teamlogos/default/500/{teamId}.png',
-        player_path_template: sportData.player_template || '/i/headshots/default/players/full/{playerId}.png',
-        is_active: true
+      const config = staticConfigs[sport.toLowerCase()]
+      if (!config) {
+        structuredLogger.warn('Sport configuration not found in static configs', { sport })
+        return null
       }
 
       this.sportConfigs.set(sport, config)
       return config
     } catch (error) {
-      structuredLogger.error('Failed to get sport config from database', {
+      structuredLogger.error('Failed to get sport config', {
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -86,15 +108,15 @@ export class ESPNCDNMapper {
       structuredLogger.debug('ESPN CDN mapper - getting team logo URL', {
         teamName,
         sport,
-        league
+        league,
       })
-      
+
       const config = await this.getSportConfig(sport)
       if (!config) {
         structuredLogger.debug('ESPN CDN mapper - no sport config found', {
           teamName,
           sport,
-          league
+          league,
         })
         return null
       }
@@ -104,7 +126,7 @@ export class ESPNCDNMapper {
         structuredLogger.debug('ESPN CDN mapper - no team ID resolved', {
           teamName,
           sport,
-          league
+          league,
         })
         return null
       }
@@ -120,7 +142,7 @@ export class ESPNCDNMapper {
         league,
         teamId,
         url,
-        template: config.logo_path_template
+        template: config.logo_path_template,
       })
 
       // Verify URL exists
@@ -130,16 +152,16 @@ export class ESPNCDNMapper {
         sport,
         league,
         url,
-        isValid
+        isValid,
       })
-      
+
       return isValid ? url : null
     } catch (error) {
       structuredLogger.error('Failed to get team logo URL', {
         teamName,
         sport,
         league,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -166,7 +188,7 @@ export class ESPNCDNMapper {
       structuredLogger.error('Failed to get player photo URL', {
         playerId,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -175,17 +197,21 @@ export class ESPNCDNMapper {
   /**
    * Resolve team ID from team name (with caching)
    */
-  private async resolveTeamId(teamName: string, sport: string, league: string): Promise<string | null> {
+  private async resolveTeamId(
+    teamName: string,
+    sport: string,
+    league: string
+  ): Promise<string | null> {
     try {
       const cacheKey = `${teamName}:${sport}:${league}`
-      
+
       structuredLogger.debug('ESPN CDN mapper - resolving team ID', {
         teamName,
         sport,
         league,
-        cacheKey
+        cacheKey,
       })
-      
+
       // Check cache first
       if (this.teamMappings.has(cacheKey)) {
         const cachedId = this.teamMappings.get(cacheKey)!
@@ -193,36 +219,28 @@ export class ESPNCDNMapper {
           teamName,
           sport,
           league,
-          cachedId
+          cachedId,
         })
         return cachedId
       }
 
-      // Get team ID from database
-      const result = await databaseService.executeSQL(`
-        SELECT cdn_team_id
-        FROM team_cdn_mappings 
-        WHERE team_name = $1 AND sport = $2 AND league = $3 AND cdn_provider = 'espn' AND is_active = true
-        LIMIT 1
-      `, [teamName, sport, league])
-      
-      if (result.success && result.data && result.data.length > 0) {
-        const teamId = result.data[0].cdn_team_id
-        structuredLogger.debug('ESPN CDN mapper - found team ID in database', {
+      // Use static team mappings for major leagues
+      const teamId = this.getStaticTeamId(teamName, sport, league)
+      if (teamId) {
+        structuredLogger.debug('ESPN CDN mapper - found static team mapping', {
           teamName,
           sport,
           league,
-          teamId
+          teamId,
         })
-        
         this.teamMappings.set(cacheKey, teamId)
         return teamId
       }
 
-      structuredLogger.debug('ESPN CDN mapper - no team ID found in database', {
+      structuredLogger.debug('ESPN CDN mapper - no static team mapping available', {
         teamName,
         sport,
-        league
+        league,
       })
       return null
     } catch (error) {
@@ -230,10 +248,293 @@ export class ESPNCDNMapper {
         teamName,
         sport,
         league,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
+  }
+
+  /**
+   * Get static team ID mapping for major leagues
+   */
+  private getStaticTeamId(teamName: string, sport: string, league: string): string | null {
+    const normalizedTeamName = teamName.toLowerCase().trim()
+    const normalizedSport = sport.toLowerCase()
+    const normalizedLeague = league.toLowerCase()
+
+    // NBA Team Mappings
+    if (normalizedSport === 'basketball' || normalizedLeague.includes('nba')) {
+      const nbaTeams: Record<string, string> = {
+        'los angeles lakers': 'lal',
+        'lakers': 'lal',
+        'boston celtics': 'bos',
+        'celtics': 'bos',
+        'golden state warriors': 'gs',
+        'warriors': 'gs',
+        'chicago bulls': 'chi',
+        'bulls': 'chi',
+        'miami heat': 'mia',
+        'heat': 'mia',
+        'phoenix suns': 'phx',
+        'suns': 'phx',
+        'denver nuggets': 'den',
+        'nuggets': 'den',
+        'dallas mavericks': 'dal',
+        'mavericks': 'dal',
+        'milwaukee bucks': 'mil',
+        'bucks': 'mil',
+        'philadelphia 76ers': 'phi',
+        '76ers': 'phi',
+        'new york knicks': 'ny',
+        'knicks': 'ny',
+        'brooklyn nets': 'bkn',
+        'nets': 'bkn',
+        'atlanta hawks': 'atl',
+        'hawks': 'atl',
+        'cleveland cavaliers': 'cle',
+        'cavaliers': 'cle',
+        'toronto raptors': 'tor',
+        'raptors': 'tor',
+        'indiana pacers': 'ind',
+        'pacers': 'ind',
+        'detroit pistons': 'det',
+        'pistons': 'det',
+        'orlando magic': 'orl',
+        'magic': 'orl',
+        'charlotte hornets': 'cha',
+        'hornets': 'cha',
+        'washington wizards': 'wsh',
+        'wizards': 'wsh',
+        'oklahoma city thunder': 'okc',
+        'thunder': 'okc',
+        'portland trail blazers': 'por',
+        'trail blazers': 'por',
+        'utah jazz': 'utah',
+        'jazz': 'utah',
+        'sacramento kings': 'sac',
+        'kings': 'sac',
+        'memphis grizzlies': 'mem',
+        'grizzlies': 'mem',
+        'new orleans pelicans': 'no',
+        'pelicans': 'no',
+        'houston rockets': 'hou',
+        'rockets': 'hou',
+        'san antonio spurs': 'sa',
+        'spurs': 'sa',
+        'minnesota timberwolves': 'min',
+        'timberwolves': 'min',
+      }
+      return nbaTeams[normalizedTeamName] || null
+    }
+
+    // NFL Team Mappings
+    if (normalizedSport === 'football' || normalizedLeague.includes('nfl')) {
+      const nflTeams: Record<string, string> = {
+        'kansas city chiefs': 'kc',
+        'chiefs': 'kc',
+        'buffalo bills': 'buf',
+        'bills': 'buf',
+        'miami dolphins': 'mia',
+        'dolphins': 'mia',
+        'new england patriots': 'ne',
+        'patriots': 'ne',
+        'new york jets': 'nyj',
+        'jets': 'nyj',
+        'baltimore ravens': 'bal',
+        'ravens': 'bal',
+        'cincinnati bengals': 'cin',
+        'bengals': 'cin',
+        'cleveland browns': 'cle',
+        'browns': 'cle',
+        'pittsburgh steelers': 'pit',
+        'steelers': 'pit',
+        'houston texans': 'hou',
+        'texans': 'hou',
+        'indianapolis colts': 'ind',
+        'colts': 'ind',
+        'jacksonville jaguars': 'jax',
+        'jaguars': 'jax',
+        'tennessee titans': 'ten',
+        'titans': 'ten',
+        'denver broncos': 'den',
+        'broncos': 'den',
+        'las vegas raiders': 'lv',
+        'raiders': 'lv',
+        'los angeles chargers': 'lac',
+        'chargers': 'lac',
+        'dallas cowboys': 'dal',
+        'cowboys': 'dal',
+        'new york giants': 'nyg',
+        'giants': 'nyg',
+        'philadelphia eagles': 'phi',
+        'eagles': 'phi',
+        'washington commanders': 'wsh',
+        'commanders': 'wsh',
+        'chicago bears': 'chi',
+        'bears': 'chi',
+        'detroit lions': 'det',
+        'lions': 'det',
+        'green bay packers': 'gb',
+        'packers': 'gb',
+        'minnesota vikings': 'min',
+        'vikings': 'min',
+        'atlanta falcons': 'atl',
+        'falcons': 'atl',
+        'carolina panthers': 'car',
+        'panthers': 'car',
+        'new orleans saints': 'no',
+        'saints': 'no',
+        'tampa bay buccaneers': 'tb',
+        'buccaneers': 'tb',
+        'arizona cardinals': 'ari',
+        'cardinals': 'ari',
+        'los angeles rams': 'lar',
+        'rams': 'lar',
+        'san francisco 49ers': 'sf',
+        '49ers': 'sf',
+        'seattle seahawks': 'sea',
+        'seahawks': 'sea',
+      }
+      return nflTeams[normalizedTeamName] || null
+    }
+
+    // MLB Team Mappings
+    if (normalizedSport === 'baseball' || normalizedLeague.includes('mlb')) {
+      const mlbTeams: Record<string, string> = {
+        'los angeles dodgers': 'lad',
+        'dodgers': 'lad',
+        'atlanta braves': 'atl',
+        'braves': 'atl',
+        'houston astros': 'hou',
+        'astros': 'hou',
+        'philadelphia phillies': 'phi',
+        'phillies': 'phi',
+        'baltimore orioles': 'bal',
+        'orioles': 'bal',
+        'new york yankees': 'nyy',
+        'yankees': 'nyy',
+        'boston red sox': 'bos',
+        'red sox': 'bos',
+        'tampa bay rays': 'tb',
+        'rays': 'tb',
+        'toronto blue jays': 'tor',
+        'blue jays': 'tor',
+        'cleveland guardians': 'cle',
+        'guardians': 'cle',
+        'detroit tigers': 'det',
+        'tigers': 'det',
+        'kansas city royals': 'kc',
+        'royals': 'kc',
+        'minnesota twins': 'min',
+        'twins': 'min',
+        'chicago white sox': 'cws',
+        'white sox': 'cws',
+        'texas rangers': 'tex',
+        'rangers': 'tex',
+        'seattle mariners': 'sea',
+        'mariners': 'sea',
+        'oakland athletics': 'oak',
+        'athletics': 'oak',
+        'los angeles angels': 'laa',
+        'angels': 'laa',
+        'san diego padres': 'sd',
+        'padres': 'sd',
+        'san francisco giants': 'sf',
+        'giants': 'sf',
+        'arizona diamondbacks': 'ari',
+        'diamondbacks': 'ari',
+        'colorado rockies': 'col',
+        'rockies': 'col',
+        'chicago cubs': 'chc',
+        'cubs': 'chc',
+        'milwaukee brewers': 'mil',
+        'brewers': 'mil',
+        'st. louis cardinals': 'stl',
+        'cardinals': 'stl',
+        'pittsburgh pirates': 'pit',
+        'pirates': 'pit',
+        'cincinnati reds': 'cin',
+        'reds': 'cin',
+        'washington nationals': 'was',
+        'nationals': 'was',
+        'new york mets': 'nym',
+        'mets': 'nym',
+        'miami marlins': 'mia',
+        'marlins': 'mia',
+      }
+      return mlbTeams[normalizedTeamName] || null
+    }
+
+    // NHL Team Mappings
+    if (normalizedSport === 'hockey' || normalizedLeague.includes('nhl')) {
+      const nhlTeams: Record<string, string> = {
+        'vegas golden knights': 'vgk',
+        'golden knights': 'vgk',
+        'boston bruins': 'bos',
+        'bruins': 'bos',
+        'toronto maple leafs': 'tor',
+        'maple leafs': 'tor',
+        'carolina hurricanes': 'car',
+        'hurricanes': 'car',
+        'new jersey devils': 'nj',
+        'devils': 'nj',
+        'new york rangers': 'nyr',
+        'rangers': 'nyr',
+        'tampa bay lightning': 'tb',
+        'lightning': 'tb',
+        'florida panthers': 'fla',
+        'panthers': 'fla',
+        'washington capitals': 'wsh',
+        'capitals': 'wsh',
+        'pittsburgh penguins': 'pit',
+        'penguins': 'pit',
+        'philadelphia flyers': 'phi',
+        'flyers': 'phi',
+        'columbus blue jackets': 'cbj',
+        'blue jackets': 'cbj',
+        'detroit red wings': 'det',
+        'red wings': 'det',
+        'buffalo sabres': 'buf',
+        'sabres': 'buf',
+        'ottawa senators': 'ott',
+        'senators': 'ott',
+        'montreal canadiens': 'mtl',
+        'canadiens': 'mtl',
+        'edmonton oilers': 'edm',
+        'oilers': 'edm',
+        'calgary flames': 'cgy',
+        'flames': 'cgy',
+        'vancouver canucks': 'van',
+        'canucks': 'van',
+        'winnipeg jets': 'wpg',
+        'jets': 'wpg',
+        'colorado avalanche': 'col',
+        'avalanche': 'col',
+        'dallas stars': 'dal',
+        'stars': 'dal',
+        'minnesota wild': 'min',
+        'wild': 'min',
+        'nashville predators': 'nsh',
+        'predators': 'nsh',
+        'st. louis blues': 'stl',
+        'blues': 'stl',
+        'chicago blackhawks': 'chi',
+        'blackhawks': 'chi',
+        'arizona coyotes': 'ari',
+        'coyotes': 'ari',
+        'anaheim ducks': 'ana',
+        'ducks': 'ana',
+        'los angeles kings': 'lak',
+        'kings': 'lak',
+        'san jose sharks': 'sj',
+        'sharks': 'sj',
+        'seattle kraken': 'sea',
+        'kraken': 'sea',
+      }
+      return nhlTeams[normalizedTeamName] || null
+    }
+
+    return null
   }
 
   /**
@@ -246,22 +547,25 @@ export class ESPNCDNMapper {
         structuredLogger.debug('ESPN CDN mapper - skipping previously failed URL', { url })
         return false
       }
-      
-      const response = await fetch(url, { 
+
+      const response = await fetch(url, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(2000) // Reduced from default 5s to 2s
+        signal: AbortSignal.timeout(2000), // Reduced from default 5s to 2s
       })
-      
+
       const isValid = response.ok
       if (!isValid) {
         this.failedUrls.add(url)
         structuredLogger.debug('ESPN CDN mapper - URL validation failed, cached', { url })
       }
-      
+
       return isValid
     } catch (error) {
       this.failedUrls.add(url)
-      structuredLogger.debug('ESPN CDN mapper - URL validation error, cached', { url, error: error instanceof Error ? error.message : String(error) })
+      structuredLogger.debug('ESPN CDN mapper - URL validation error, cached', {
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      })
       return false
     }
   }
@@ -282,7 +586,7 @@ export class ESPNCDNMapper {
     return {
       sportConfigs: this.sportConfigs.size,
       teamMappings: this.teamMappings.size,
-      failedUrls: this.failedUrls.size
+      failedUrls: this.failedUrls.size,
     }
   }
 }

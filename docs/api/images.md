@@ -2,7 +2,9 @@
 
 ## Overview
 
-The ApexBets image service implements a robust 4-tier fallback system for team logos and player photos, prioritizing database-cached URLs while ensuring 100% availability through intelligent fallbacks.
+The ApexBets image service implements a robust 4-tier fallback system for team
+logos and player photos, prioritizing database-cached URLs while ensuring 100%
+availability through intelligent fallbacks.
 
 ## Architecture
 
@@ -28,7 +30,7 @@ CREATE TABLE teams (
   last_updated TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Players table  
+-- Players table
 CREATE TABLE players (
   id UUID PRIMARY KEY,
   name VARCHAR(200) NOT NULL,
@@ -63,7 +65,11 @@ The main service implementing the 4-tier fallback system:
 
 ```typescript
 // Get team logo with full fallback chain
-const result = await bulletproofImageService.getTeamLogo(teamName, sport, league)
+const result = await bulletproofImageService.getTeamLogo(
+  teamName,
+  sport,
+  league
+)
 
 // Result includes:
 // - url: The final image URL
@@ -92,7 +98,12 @@ Generates dynamic SVG logos with team colors:
 
 ```typescript
 // Generate SVG logo with team colors
-const svgDataUri = await svgGenerator.generateTeamLogo(teamName, sport, league, teamColors)
+const svgDataUri = await svgGenerator.generateTeamLogo(
+  teamName,
+  sport,
+  league,
+  teamColors
+)
 // Returns: data:image/svg+xml;base64,...
 ```
 
@@ -110,7 +121,7 @@ imageMonitoringService.trackImageLoad({
   sport: 'basketball',
   source: 'database',
   success: true,
-  loadTime: 150
+  loadTime: 150,
 })
 
 // Get health metrics
@@ -256,7 +267,7 @@ POST /api/admin/verify-logos?sport=football
 **File**: `components/ui/team-logo.tsx`
 
 ```tsx
-<TeamLogo 
+<TeamLogo
   teamName="Lakers"
   sport="basketball"
   league="NBA"
@@ -271,7 +282,7 @@ POST /api/admin/verify-logos?sport=football
 
 ```tsx
 // Team logo
-<TeamLogo 
+<TeamLogo
   teamName="Warriors"
   league="NBA"
   width={64}
@@ -279,7 +290,7 @@ POST /api/admin/verify-logos?sport=football
 />
 
 // Player photo
-<PlayerPhoto 
+<PlayerPhoto
   playerId="lebron-james"
   playerName="LeBron James"
   width={48}
@@ -295,7 +306,7 @@ Set up automated tasks in Supabase:
 
 ```sql
 -- Daily auto-update at 2 AM
-SELECT cron.schedule('auto-update-images-daily', '0 2 * * *', 
+SELECT cron.schedule('auto-update-images-daily', '0 2 * * *',
   $$SELECT net.http_post('https://[project-ref].supabase.co/functions/v1/auto-update-images')$$);
 
 -- Weekly verification on Sunday at 3 AM

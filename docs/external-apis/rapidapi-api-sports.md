@@ -2,7 +2,9 @@
 
 ## Overview
 
-RapidAPI is a marketplace that provides access to thousands of APIs, including API-Sports which offers comprehensive multi-sport data. API-Sports provides data for football (soccer), basketball, baseball, hockey, and other sports.
+RapidAPI is a marketplace that provides access to thousands of APIs, including
+API-Sports which offers comprehensive multi-sport data. API-Sports provides data
+for football (soccer), basketball, baseball, hockey, and other sports.
 
 **Base URL:** `https://api-football-v1.p.rapidapi.com/v3`  
 **Documentation:** https://rapidapi.com/api-sports/api/api-football/  
@@ -12,6 +14,7 @@ RapidAPI is a marketplace that provides access to thousands of APIs, including A
 ## Authentication
 
 ### RapidAPI Key Setup
+
 1. Visit [RapidAPI](https://rapidapi.com/)
 2. Sign up for a free account
 3. Subscribe to API-Sports (free tier available)
@@ -24,6 +27,7 @@ NEXT_PUBLIC_RAPIDAPI_KEY=your_rapidapi_key_here
 ```
 
 ### Usage in Code
+
 ```typescript
 import { apiSportsClient } from '@/lib/sports-apis'
 
@@ -36,9 +40,11 @@ const leagues = await apiSportsClient.getLeagues()
 ### Leagues
 
 #### Get Leagues
+
 **Endpoint:** `GET /leagues`
 
 **Parameters:**
+
 - `id` (number, optional) - League ID
 - `name` (string, optional) - League name
 - `country` (string, optional) - Country name
@@ -49,6 +55,7 @@ const leagues = await apiSportsClient.getLeagues()
 - `current` (boolean, optional) - Current season only
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api-football-v1.p.rapidapi.com/v3/leagues?country=England" \
   -H "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY" \
@@ -56,6 +63,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/leagues?country=England" 
 ```
 
 **Example Response:**
+
 ```json
 {
   "get": "leagues",
@@ -93,9 +101,11 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/leagues?country=England" 
 ### Teams
 
 #### Get Teams
+
 **Endpoint:** `GET /teams`
 
 **Parameters:**
+
 - `league` (number, optional) - League ID
 - `season` (number, optional) - Season year
 - `id` (number, optional) - Team ID
@@ -105,6 +115,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/leagues?country=England" 
 - `search` (string, optional) - Search term
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams?league=39&season=2024" \
   -H "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY" \
@@ -112,6 +123,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams?league=39&season=20
 ```
 
 **Example Response:**
+
 ```json
 {
   "get": "teams",
@@ -149,9 +161,11 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams?league=39&season=20
 ### Fixtures (Games)
 
 #### Get Fixtures
+
 **Endpoint:** `GET /fixtures`
 
 **Parameters:**
+
 - `league` (number, optional) - League ID
 - `season` (number, optional) - Season year
 - `team` (number, optional) - Team ID
@@ -163,6 +177,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams?league=39&season=20
 - `last` (number, optional) - Last N games
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=39&season=2024&date=2024-01-15" \
   -H "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY" \
@@ -170,6 +185,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=39&season
 ```
 
 **Example Response:**
+
 ```json
 {
   "get": "fixtures",
@@ -256,13 +272,16 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/fixtures?league=39&season
 ### Standings
 
 #### Get Standings
+
 **Endpoint:** `GET /standings`
 
 **Parameters:**
+
 - `league` (number, required) - League ID
 - `season` (number, required) - Season year
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api-football-v1.p.rapidapi.com/v3/standings?league=39&season=2024" \
   -H "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY" \
@@ -270,6 +289,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/standings?league=39&seaso
 ```
 
 **Example Response:**
+
 ```json
 {
   "get": "standings",
@@ -346,14 +366,17 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/standings?league=39&seaso
 ### Team Statistics
 
 #### Get Team Statistics
+
 **Endpoint:** `GET /teams/statistics`
 
 **Parameters:**
+
 - `league` (number, required) - League ID
 - `season` (number, required) - Season year
 - `team` (number, required) - Team ID
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams/statistics?league=39&season=2024&team=33" \
   -H "X-RapidAPI-Key: YOUR_RAPIDAPI_KEY" \
@@ -361,6 +384,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams/statistics?league=3
 ```
 
 **Example Response:**
+
 ```json
 {
   "get": "teams/statistics",
@@ -493,16 +517,19 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams/statistics?league=3
 ## Rate Limits
 
 ### Free Tier
+
 - **Per Minute:** 100 requests
 - **Per Month:** 100 requests
 - **Concurrent Requests:** 1
 
 ### Paid Plans
+
 - **Basic:** 500 requests/month
 - **Pro:** 10,000 requests/month
 - **Ultra:** 100,000 requests/month
 
 ### Rate Limit Headers
+
 ```json
 {
   "X-RateLimit-Limit": "100",
@@ -515,16 +542,17 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams/statistics?league=3
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 400 | Bad Request | Check request parameters |
-| 401 | Unauthorized | Verify RapidAPI key |
-| 403 | Forbidden | Check subscription status |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Upgrade plan or wait |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                  |
+| ----------- | --------------------- | ------------------------- |
+| 400         | Bad Request           | Check request parameters  |
+| 401         | Unauthorized          | Verify RapidAPI key       |
+| 403         | Forbidden             | Check subscription status |
+| 404         | Not Found             | Verify endpoint URL       |
+| 429         | Too Many Requests     | Upgrade plan or wait      |
+| 500         | Internal Server Error | Retry request             |
 
 ### Error Response Format
+
 ```json
 {
   "get": "fixtures",
@@ -540,6 +568,7 @@ curl -X GET "https://api-football-v1.p.rapidapi.com/v3/teams/statistics?league=3
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { apiSportsClient } from '@/lib/sports-apis'
 
@@ -547,7 +576,7 @@ import { apiSportsClient } from '@/lib/sports-apis'
 async function getPremierLeagueTeams() {
   try {
     const teams = await apiSportsClient.getTeams(39, 2024) // Premier League ID: 39
-    
+
     return teams.response.map(team => ({
       id: team.team.id,
       name: team.team.name,
@@ -558,8 +587,8 @@ async function getPremierLeagueTeams() {
       venue: {
         name: team.venue.name,
         city: team.venue.city,
-        capacity: team.venue.capacity
-      }
+        capacity: team.venue.capacity,
+      },
     }))
   } catch (error) {
     console.error('Failed to fetch teams:', error)
@@ -573,9 +602,9 @@ async function getFixturesForDate(date: string) {
     const fixtures = await apiSportsClient.getFixtures({
       league: 39, // Premier League
       season: 2024,
-      date: date
+      date: date,
     })
-    
+
     return fixtures.response.map(fixture => ({
       id: fixture.fixture.id,
       homeTeam: fixture.teams.home.name,
@@ -584,7 +613,7 @@ async function getFixturesForDate(date: string) {
       awayScore: fixture.goals.away,
       date: fixture.fixture.date,
       status: fixture.fixture.status.short,
-      venue: fixture.fixture.venue.name
+      venue: fixture.fixture.venue.name,
     }))
   } catch (error) {
     console.error('Failed to fetch fixtures:', error)
@@ -596,7 +625,7 @@ async function getFixturesForDate(date: string) {
 async function getLeagueStandings(leagueId: number, season: number) {
   try {
     const standings = await apiSportsClient.getStandings(leagueId, season)
-    
+
     return standings.response[0].league.standings[0].map(team => ({
       rank: team.rank,
       teamName: team.team.name,
@@ -609,7 +638,7 @@ async function getLeagueStandings(leagueId: number, season: number) {
       draws: team.all.draw,
       losses: team.all.lose,
       goalsFor: team.all.goals.for,
-      goalsAgainst: team.all.goals.against
+      goalsAgainst: team.all.goals.against,
     }))
   } catch (error) {
     console.error('Failed to fetch standings:', error)
@@ -619,35 +648,36 @@ async function getLeagueStandings(leagueId: number, season: number) {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchApiSportsData(endpoint, params = {}) {
   const apiKey = process.env.RAPIDAPI_KEY
   const baseUrl = 'https://api-football-v1.p.rapidapi.com/v3'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
         'X-RapidAPI-Key': apiKey,
         'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
-        'Accept': 'application/json'
-      }
+        Accept: 'application/json',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Check for API errors
     if (data.errors && Object.keys(data.errors).length > 0) {
       throw new Error(`API Error: ${JSON.stringify(data.errors)}`)
     }
-    
+
     return data
   } catch (error) {
     console.error('API request failed:', error)
@@ -657,26 +687,28 @@ async function fetchApiSportsData(endpoint, params = {}) {
 
 // Usage
 const leagues = await fetchApiSportsData('/leagues', {
-  country: 'England'
+  country: 'England',
 })
 ```
 
 ## Best Practices
 
 ### 1. Subscription Management
+
 Monitor your API usage to avoid hitting limits:
+
 ```typescript
 class ApiSportsUsageTracker {
   private usage: Map<string, number> = new Map()
-  
+
   async trackRequest(endpoint: string) {
     const current = this.usage.get(endpoint) || 0
     this.usage.set(endpoint, current + 1)
-    
+
     // Log usage for monitoring
     console.log(`API-Sports usage for ${endpoint}: ${current + 1}`)
   }
-  
+
   getUsageStats() {
     return Object.fromEntries(this.usage)
   }
@@ -684,6 +716,7 @@ class ApiSportsUsageTracker {
 ```
 
 ### 2. Error Handling with Retry
+
 ```typescript
 async function safeApiSportsCall<T>(
   apiCall: () => Promise<T>,
@@ -699,41 +732,43 @@ async function safeApiSportsCall<T>(
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
         continue
       }
-      
+
       if (i === maxRetries - 1) {
         console.error('Max retries exceeded:', error)
         return null
       }
-      
+
       // Wait before retry
       await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)))
     }
   }
-  
+
   return null
 }
 ```
 
 ### 3. Data Caching
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedLeagues(country: string) {
   const cacheKey = `apisports-leagues-${country}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const leagues = await apiSportsClient.getLeagues({ country })
   await setCache(cacheKey, leagues, 3600) // Cache for 1 hour
-  
+
   return leagues
 }
 ```
 
 ### 4. Data Validation
+
 ```typescript
 function validateFixtureData(fixture: any): boolean {
   return (
@@ -752,11 +787,13 @@ const validFixtures = fixtures.response.filter(validateFixtureData)
 
 ## Integration with ApexBets
 
-The RapidAPI (API-Sports) is integrated into the ApexBets system as a fallback data source for multi-sport data. It's used in the following services:
+The RapidAPI (API-Sports) is integrated into the ApexBets system as a fallback
+data source for multi-sport data. It's used in the following services:
 
 - **FootballService** - Primary data source for soccer/football data
 - **MultiSportService** - Fallback for other sports when primary APIs fail
 - **StandingsService** - League standings and rankings
 - **TeamService** - Team information and statistics
 
-The API is configured with automatic retry logic, rate limiting, and circuit breaker patterns to ensure reliable data access even under high load.
+The API is configured with automatic retry logic, rate limiting, and circuit
+breaker patterns to ensure reliable data access even under high load.

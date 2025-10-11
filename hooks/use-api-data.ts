@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useErrorHandler } from '@/components/error/enhanced-error-boundary'
@@ -31,13 +31,7 @@ export function useApiData<T>(
   fetchFn: () => Promise<T>,
   options: UseApiDataOptions<T> = {}
 ): UseApiDataReturn<T> {
-  const {
-    initialData = null,
-    enabled = true,
-    refetchInterval,
-    onError,
-    onSuccess
-  } = options
+  const { initialData = null, enabled = true, refetchInterval, onError, onSuccess } = options
 
   const [data, setData] = useState<T | null>(initialData)
   const [loading, setLoading] = useState(false)
@@ -48,12 +42,12 @@ export function useApiData<T>(
   const onErrorRef = useRef(onError)
   const onSuccessRef = useRef(onSuccess)
   const errorHandlerRef = useRef(errorHandler)
-  
+
   // Update refs when callbacks change
   useEffect(() => {
     onErrorRef.current = onError
   }, [onError])
-  
+
   useEffect(() => {
     onSuccessRef.current = onSuccess
   }, [onSuccess])
@@ -77,11 +71,11 @@ export function useApiData<T>(
         if (prevData === result) {
           return prevData // Same reference, no change
         }
-        
+
         if (prevData === null) {
           return result // No previous data, set new data
         }
-        
+
         // Use shallow comparison for arrays and objects
         if (Array.isArray(prevData) && Array.isArray(result)) {
           if (prevData.length !== result.length) {
@@ -90,9 +84,14 @@ export function useApiData<T>(
           // Quick length check for arrays
           return prevData
         }
-        
+
         // For objects, check if they're structurally similar
-        if (typeof prevData === 'object' && typeof result === 'object' && prevData !== null && result !== null) {
+        if (
+          typeof prevData === 'object' &&
+          typeof result === 'object' &&
+          prevData !== null &&
+          result !== null
+        ) {
           const prevKeys = Object.keys(prevData as object)
           const resultKeys = Object.keys(result as object)
           if (prevKeys.length !== resultKeys.length) {
@@ -142,7 +141,7 @@ export function useApiData<T>(
     loading,
     error,
     refetch: fetchData,
-    mutate
+    mutate,
   }
 }
 

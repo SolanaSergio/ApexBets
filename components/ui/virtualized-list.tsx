@@ -1,10 +1,10 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Button } from "@/components/ui/button"
-import { ChevronUp, ChevronDown } from "lucide-react"
+import { useState, useMemo } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { ChevronUp, ChevronDown } from 'lucide-react'
 
 interface VirtualizedListProps<T> {
   items: T[]
@@ -24,27 +24,24 @@ export function VirtualizedList<T>({
   itemHeight = 80,
   containerHeight = 400,
   overscan = 5,
-  className = "",
+  className = '',
   loading = false,
-  emptyMessage = "No items available",
-  emptyIcon
+  emptyMessage = 'No items available',
+  emptyIcon,
 }: VirtualizedListProps<T>) {
   const [scrollTop, setScrollTop] = useState(0)
   const [containerRef, setContainerRef] = useState<HTMLDivElement | null>(null)
 
   const visibleRange = useMemo(() => {
     const start = Math.floor(scrollTop / itemHeight)
-    const end = Math.min(
-      start + Math.ceil(containerHeight / itemHeight) + overscan,
-      items.length
-    )
+    const end = Math.min(start + Math.ceil(containerHeight / itemHeight) + overscan, items.length)
     return { start: Math.max(0, start - overscan), end }
   }, [scrollTop, itemHeight, containerHeight, overscan, items.length])
 
   const visibleItems = useMemo(() => {
     return items.slice(visibleRange.start, visibleRange.end).map((item, index) => ({
       item,
-      index: visibleRange.start + index
+      index: visibleRange.start + index,
     }))
   }, [items, visibleRange])
 
@@ -103,20 +100,10 @@ export function VirtualizedList<T>({
     <div className={`relative ${className}`}>
       {/* Scroll buttons */}
       <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={scrollToTop}
-          className="h-8 w-8 p-0"
-        >
+        <Button variant="outline" size="sm" onClick={scrollToTop} className="h-8 w-8 p-0">
           <ChevronUp className="h-4 w-4" />
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={scrollToBottom}
-          className="h-8 w-8 p-0"
-        >
+        <Button variant="outline" size="sm" onClick={scrollToBottom} className="h-8 w-8 p-0">
           <ChevronDown className="h-4 w-4" />
         </Button>
       </div>
@@ -135,7 +122,7 @@ export function VirtualizedList<T>({
               position: 'absolute',
               top: 0,
               left: 0,
-              right: 0
+              right: 0,
             }}
           >
             {visibleItems.map(({ item, index }) => (
@@ -153,7 +140,7 @@ export function VirtualizedList<T>({
 // Hook for pagination
 export function usePagination<T>(items: T[], itemsPerPage: number = 10) {
   const [currentPage, setCurrentPage] = useState(1)
-  
+
   const totalPages = Math.ceil(items.length / itemsPerPage)
   const startIndex = (currentPage - 1) * itemsPerPage
   const endIndex = startIndex + itemsPerPage
@@ -183,6 +170,6 @@ export function usePagination<T>(items: T[], itemsPerPage: number = 10) {
     nextPage,
     prevPage,
     hasNext: currentPage < totalPages,
-    hasPrev: currentPage > 1
+    hasPrev: currentPage > 1,
   }
 }

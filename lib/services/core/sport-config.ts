@@ -33,6 +33,13 @@ export interface SportConfig {
 class SportConfigManagerImpl {
   private static instance: SportConfigManagerImpl
   private configs: Map<SupportedSport, SportConfig> = new Map()
+  private fallbackSports: SupportedSport[] = [
+    'basketball',
+    'football',
+    'baseball',
+    'hockey',
+    'soccer',
+  ]
 
   public static getInstance(): SportConfigManagerImpl {
     if (!SportConfigManagerImpl.instance) {
@@ -42,65 +49,29 @@ class SportConfigManagerImpl {
   }
 
   constructor() {
-    this.initializeConfigs()
-  }
-
-  private initializeConfigs(): void {
-    // Load sport configurations dynamically from environment or database
-    this.loadDynamicConfigs().catch(error => {
-      console.warn('Failed to initialize sport configurations:', error)
-    })
-    
-    // Set up fallback sports immediately
-    this.setupFallbackSports()
-  }
-
-  private setupFallbackSports(): void {
-    // NO hardcoded sports - all sports must come from database
-    // This method is kept for compatibility but does nothing
-    // All sports are loaded dynamically from database in loadDynamicConfigs()
-  }
-
-  private async loadDynamicConfigs(): Promise<void> {
-    // Load sports from database instead of hardcoded fallbacks
-    try {
-      const { createClient } = require('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL,
-        process.env.SUPABASE_SERVICE_ROLE_KEY
-      )
-      
-      const { data: sports, error } = await supabase
-        .from('sports')
-        .select('name, display_name, is_active')
-        .eq('is_active', true)
-        .order('name')
-      
-      if (error) {
-        console.warn('Failed to load sports from database:', error)
-        return
-      }
-      
-      const supportedSports = sports?.map((sport: any) => sport.name) || []
-      
-      // Load configuration for each sport dynamically
-      supportedSports.forEach((sport: SupportedSport) => {
-        this.loadSportConfig(sport)
+    // Immediate sync initialization with fallbacks
+    this.initializeFallbackConfigs()
+    // Async enhancement (non-blocking)
+    if (typeof window === 'undefined') {
+      this.loadDynamicConfigs().catch(error => {
+        console.warn('Failed to load dynamic sport configurations:', error)
       })
-      
-    } catch (error) {
-      console.warn('Failed to load sports configuration from database:', error)
-      // Don't use hardcoded fallbacks - let the system handle missing sports gracefully
     }
   }
 
-  private loadSportConfig(sport: SupportedSport): void {
+  private initializeFallbackConfigs(): void {
+    this.fallbackSports.forEach(sport => {
+      this.configs.set(sport, this.createDefaultConfig(sport))
+    })
+  }
+
+  private createDefaultConfig(sport: SupportedSport): SportConfig {
     const sportUpper = sport.toUpperCase()
-    
-    // Load configuration from environment variables
-    const config: SportConfig = {
+
+    return {
       name: sport,
-      displayName: process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
+      displayName:
+        process.env[`${sportUpper}_DISPLAY_NAME`] || sport.charAt(0).toUpperCase() + sport.slice(1),
       icon: process.env[`${sportUpper}_ICON`] || '🏆',
       color: process.env[`${sportUpper}_COLOR`] || '#6B7280',
       isActive: process.env[`${sportUpper}_ACTIVE`] !== 'false',
@@ -108,20 +79,58 @@ class SportConfigManagerImpl {
       playerStatsTable: process.env[`${sportUpper}_STATS_TABLE`] || 'player_stats',
       positions: process.env[`${sportUpper}_POSITIONS`]?.split(',') || [],
       scoringFields: process.env[`${sportUpper}_SCORING_FIELDS`]?.split(',') || ['points'],
-      bettingMarkets: process.env[`${sportUpper}_BETTING_MARKETS`]?.split(',') || ['h2h', 'spread', 'totals'],
+      bettingMarkets: process.env[`${sportUpper}_BETTING_MARKETS`]?.split(',') || [
+        'h2h',
+        'spread',
+        'totals',
+      ],
       seasonConfig: {
         startMonth: parseInt(process.env[`${sportUpper}_START_MONTH`] || '9'),
         endMonth: parseInt(process.env[`${sportUpper}_END_MONTH`] || '5'),
-        currentSeason: process.env[`${sportUpper}_CURRENT_SEASON`] || new Date().getFullYear().toString()
+        currentSeason:
+          process.env[`${sportUpper}_CURRENT_SEASON`] || new Date().getFullYear().toString(),
       },
       rateLimits: {
         requests: parseInt(process.env[`${sportUpper}_RATE_LIMIT`] || '100'),
-        interval: process.env[`${sportUpper}_RATE_INTERVAL`] || '1m'
+        interval: process.env[`${sportUpper}_RATE_INTERVAL`] || '1m',
       },
-      updateFrequency: process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '5m'
+      updateFrequency: process.env[`${sportUpper}_UPDATE_FREQUENCY`] || '5m',
     }
+  }
 
-    this.configs.set(sport, config)
+  private async loadDynamicConfigs(): Promise<void> {
+    // Load additional sports from database (additive to fallback configs)
+    if (typeof window !== 'undefined') {
+      return
+    }
+    try {
+      // Use the production Supabase client instead of creating a new one
+      const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
+
+      const { data: sports, error } = await productionSupabaseClient.supabase
+        .from('sports')
+        .select('name, display_name, is_active')
+        .eq('is_active', true)
+        .order('name')
+
+      if (error) {
+        console.warn('Failed to load sports from database:', error)
+        return
+      }
+
+      const supportedSports = sports?.map((sport: any) => sport.name) || []
+
+      // Load configuration for each sport dynamically (additive)
+      supportedSports.forEach((sport: SupportedSport) => {
+        // Only add if not already in configs (from fallbacks)
+        if (!this.configs.has(sport)) {
+          this.configs.set(sport, this.createDefaultConfig(sport))
+        }
+      })
+    } catch (error) {
+      console.warn('Failed to load sports configuration from database:', error)
+      // Fallback configs are already loaded, so this is non-critical
+    }
   }
 
   getSportConfig(sport: SupportedSport): SportConfig | undefined {

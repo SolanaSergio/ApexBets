@@ -26,50 +26,51 @@ describe('Database Comprehensive Test Suite', () => {
   describe('Database Audit Tests', () => {
     test('should run full database audit', async () => {
       auditReport = await databaseAuditService.runFullAudit()
-      
+
       expect(auditReport).toBeDefined()
       expect(auditReport.totalTests).toBeGreaterThan(0)
       expect(auditReport.timestamp).toBeDefined()
       expect(auditReport.results).toBeInstanceOf(Array)
       expect(auditReport.recommendations).toBeInstanceOf(Array)
-      
-      console.log(`📊 Audit Results: ${auditReport.passedTests} passed, ${auditReport.failedTests} failed`)
+
+      console.log(
+        `📊 Audit Results: ${auditReport.passedTests} passed, ${auditReport.failedTests} failed`
+      )
     })
 
     test('should have no critical data integrity issues', async () => {
-      const integrityTests = auditReport.results.filter(r => 
-        r.testName.includes('Missing') || 
-        r.testName.includes('Foreign Key') ||
-        r.testName.includes('Duplicate')
+      const integrityTests = auditReport.results.filter(
+        r =>
+          r.testName.includes('Missing') ||
+          r.testName.includes('Foreign Key') ||
+          r.testName.includes('Duplicate')
       )
-      
+
       const failedIntegrityTests = integrityTests.filter(r => r.status === 'FAIL')
-      
+
       if (failedIntegrityTests.length > 0) {
         console.warn('⚠️ Critical data integrity issues found:')
         failedIntegrityTests.forEach(test => {
           console.warn(`  - ${test.testName}: ${test.message}`)
         })
       }
-      
+
       expect(failedIntegrityTests.length).toBe(0)
     })
 
     test('should have acceptable performance', async () => {
       const performanceTests = auditReport.results.filter(r => r.testName.includes('Performance'))
-      const slowTests = performanceTests.filter(r => 
-        r.status === 'WARNING' && 
-        r.details?.queryTime && 
-        r.details.queryTime > 10000
+      const slowTests = performanceTests.filter(
+        r => r.status === 'WARNING' && r.details?.queryTime && r.details.queryTime > 10000
       )
-      
+
       if (slowTests.length > 0) {
         console.warn('⚠️ Slow queries detected:')
         slowTests.forEach(test => {
           console.warn(`  - ${test.testName}: ${test.details.queryTime}ms`)
         })
       }
-      
+
       expect(slowTests.length).toBe(0)
     })
   })
@@ -78,11 +79,11 @@ describe('Database Comprehensive Test Suite', () => {
     test('should fetch teams from database', async () => {
       const teamsQuery = 'SELECT * FROM teams WHERE sport = $1 LIMIT 10'
       const teams = await dbService.executeSQL(teamsQuery, ['basketball']).then(r => r.data)
-      
+
       expect(teams).toBeDefined()
       expect(Array.isArray(teams)).toBe(true)
       expect(Array.isArray(teams)).toBe(true)
-      
+
       // Validate team structure
       const team = (teams as any[])[0]
       expect(team.id).toBeDefined()
@@ -104,10 +105,10 @@ describe('Database Comprehensive Test Suite', () => {
         LIMIT 10
       `
       const games = await dbService.executeSQL(gamesQuery, ['basketball']).then(r => r.data)
-      
+
       expect(games).toBeDefined()
       expect(Array.isArray(games)).toBe(true)
-      
+
       if (Array.isArray(games) && games.length > 0) {
         const game = (games as any[])[0]
         expect(game.id).toBeDefined()
@@ -132,10 +133,10 @@ describe('Database Comprehensive Test Suite', () => {
         LIMIT 10
       `
       const odds = await dbService.executeSQL(oddsQuery, ['basketball']).then(r => r.data)
-      
+
       expect(odds).toBeDefined()
       expect(Array.isArray(odds)).toBe(true)
-      
+
       if (Array.isArray(odds) && odds.length > 0) {
         const odd = (odds as any[])[0]
         expect(odd.id).toBeDefined()
@@ -156,10 +157,10 @@ describe('Database Comprehensive Test Suite', () => {
       `
       const result = await dbService.executeSQL(liveGamesQuery).then(r => r.data)
       const liveCount = (result as any[])[0]?.live_count
-      
+
       expect(typeof liveCount).toBe('number')
       expect(liveCount).toBeGreaterThanOrEqual(0)
-      
+
       if (liveCount > 0) {
         console.log(`📺 Found ${liveCount} live games`)
       }
@@ -173,10 +174,10 @@ describe('Database Comprehensive Test Suite', () => {
       `
       const result = await dbService.executeSQL(recentUpdatesQuery).then(r => r.data)
       const recentUpdates = (result as any[])[0]?.recent_updates
-      
+
       expect(typeof recentUpdates).toBe('number')
       expect(recentUpdates).toBeGreaterThanOrEqual(0)
-      
+
       if (recentUpdates > 0) {
         console.log(`🔄 ${recentUpdates} games updated in the last 24 hours`)
       }
@@ -187,16 +188,16 @@ describe('Database Comprehensive Test Suite', () => {
       expect(() => {
         // Data sync service was removed
       }).not.toThrow()
-      
+
       // Test if sync service is running
       expect(false).toBe(true) // Data sync service was removed
-      
+
       // Test sync stats
       const stats = { message: 'Data sync service was removed' }
       expect(stats).toBeDefined()
       expect(typeof (stats as any).totalSyncs).toBe('number')
       expect(typeof (stats as any).failedSyncs).toBe('number')
-      
+
       // Stop sync service
       // Data sync service was removed
       expect(false).toBe(false) // Data sync service was removed
@@ -205,9 +206,7 @@ describe('Database Comprehensive Test Suite', () => {
 
   describe('Error Handling Tests', () => {
     test('should handle invalid queries gracefully', async () => {
-      await expect(
-        dbService.executeSQL('SELECT * FROM non_existent_table')
-      ).rejects.toThrow()
+      await expect(dbService.executeSQL('SELECT * FROM non_existent_table')).rejects.toThrow()
     })
 
     test('should handle malformed parameters', async () => {
@@ -217,7 +216,9 @@ describe('Database Comprehensive Test Suite', () => {
     })
 
     test('should handle empty results', async () => {
-      const result = await dbService.executeSQL('SELECT * FROM teams WHERE sport = $1', ['nonexistent_sport']).then(r => r.data)
+      const result = await dbService
+        .executeSQL('SELECT * FROM teams WHERE sport = $1', ['nonexistent_sport'])
+        .then(r => r.data)
       expect(result).toBeDefined()
       expect(Array.isArray(result)).toBe(true)
       expect(result.length).toBe(0)
@@ -227,7 +228,7 @@ describe('Database Comprehensive Test Suite', () => {
   describe('Performance Tests', () => {
     test('should execute queries within acceptable time limits', async () => {
       const startTime = Date.now()
-      
+
       await dbService.executeSQL(`
         SELECT t.*, 
                COUNT(g.id) as game_count
@@ -238,27 +239,29 @@ describe('Database Comprehensive Test Suite', () => {
         ORDER BY game_count DESC
         LIMIT 20
       `)
-      
+
       const executionTime = Date.now() - startTime
       expect(executionTime).toBeLessThan(5000) // Should complete within 5 seconds
-      
+
       console.log(`⚡ Query executed in ${executionTime}ms`)
     })
 
     test('should handle concurrent queries', async () => {
-      const queries = Array(5).fill(null).map(() => 
-        dbService.executeSQL('SELECT * FROM teams WHERE sport = $1 LIMIT 10', ['basketball'])
-      )
-      
+      const queries = Array(5)
+        .fill(null)
+        .map(() =>
+          dbService.executeSQL('SELECT * FROM teams WHERE sport = $1 LIMIT 10', ['basketball'])
+        )
+
       const startTime = Date.now()
       const results = await Promise.all(queries)
       const executionTime = Date.now() - startTime
-      
+
       expect(results).toHaveLength(5)
       results.forEach(result => {
         expect(Array.isArray(result)).toBe(true)
       })
-      
+
       expect(executionTime).toBeLessThan(10000) // Should complete within 10 seconds
       console.log(`🔄 Concurrent queries executed in ${executionTime}ms`)
     })
@@ -277,7 +280,7 @@ describe('Database Comprehensive Test Suite', () => {
       `
       const result = await dbService.executeSQL(integrityQuery).then(r => r.data)
       const data = (result as any[])[0]
-      
+
       expect(data.broken_home_fk).toBe(0)
       expect(data.broken_away_fk).toBe(0)
     })
@@ -285,7 +288,7 @@ describe('Database Comprehensive Test Suite', () => {
     test('should have consistent data types', async () => {
       const teamsQuery = 'SELECT * FROM teams LIMIT 1'
       const teams = await dbService.executeSQL(teamsQuery).then(r => r.data)
-      
+
       if (Array.isArray(teams) && teams.length > 0) {
         const team = (teams as any[])[0]
         expect(typeof team.id).toBe('string')
@@ -307,7 +310,7 @@ describe('Database Comprehensive Test Suite', () => {
       `
       const result = await dbService.executeSQL(dateQuery).then(r => r.data)
       const data = (result as any[])[0]
-      
+
       expect(data.invalid_dates).toBe(0)
       expect(new Date(data.earliest_game)).toBeInstanceOf(Date)
       expect(new Date(data.latest_game)).toBeInstanceOf(Date)
@@ -317,17 +320,17 @@ describe('Database Comprehensive Test Suite', () => {
   describe('API Integration Tests', () => {
     test('should fetch data from external APIs', async () => {
       const { apiFallbackStrategy } = await import('@/lib/services/api-fallback-strategy')
-      
+
       const result = await apiFallbackStrategy.executeWithFallback({
         sport: 'basketball',
         dataType: 'games',
         params: { date: new Date().toISOString().split('T')[0] },
-        priority: 'low'
+        priority: 'low',
       })
-      
+
       expect(result).toBeDefined()
       expect(result.success).toBeDefined()
-      
+
       if (result.success) {
         expect(result.data).toBeDefined()
         expect(Array.isArray(result.data)).toBe(true)
@@ -340,7 +343,7 @@ describe('Database Comprehensive Test Suite', () => {
 
     test('should handle API rate limiting', async () => {
       // const { intelligentRateLimiter } = await import('@/lib/services/intelligent-rate-limiter')
-      
+
       // Test rate limit check
       const { enhancedRateLimiter } = await import('@/lib/services/enhanced-rate-limiter')
       const status = await enhancedRateLimiter.getRateLimitStatus('thesportsdb')
@@ -355,13 +358,13 @@ describe('Database Comprehensive Test Suite', () => {
     test('should fix identified issues', async () => {
       if (auditReport.failedTests > 0) {
         const fixResult = await databaseAuditService.fixIssues(auditReport)
-        
+
         expect(fixResult).toBeDefined()
         expect(typeof fixResult.fixed).toBe('number')
         expect(Array.isArray(fixResult.errors)).toBe(true)
-        
+
         console.log(`🔧 Fixed ${fixResult.fixed} issues, ${fixResult.errors.length} errors`)
-        
+
         if (fixResult.errors.length > 0) {
           console.warn('⚠️ Fix errors:')
           fixResult.errors.forEach(error => console.warn(`  - ${error}`))
@@ -374,13 +377,13 @@ describe('Database Comprehensive Test Suite', () => {
     test('should re-audit after fixes', async () => {
       if (auditReport.failedTests > 0) {
         const reAuditReport = await databaseAuditService.runFullAudit()
-        
+
         expect(reAuditReport).toBeDefined()
         expect(reAuditReport.totalTests).toBeGreaterThan(0)
-        
+
         const newFailedTests = reAuditReport.results.filter(r => r.status === 'FAIL')
         console.log(`🔍 Re-audit: ${newFailedTests.length} failed tests remaining`)
-        
+
         // Should have fewer or same number of failed tests
         expect(newFailedTests.length).toBeLessThanOrEqual(auditReport.failedTests)
       }

@@ -1,13 +1,14 @@
+'use client'
 
-"use client"
-
-import * as React from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { TeamLogo } from "@/components/ui/sports-image"
-import { Clock, MapPin } from "lucide-react"
-import { format } from "date-fns"
-import { type Game } from "@/lib/api-client-database-first"
+import * as React from 'react'
+import { Card, CardContent, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { TeamLogo } from '@/components/ui/sports-image'
+import { MapPin, ArrowRight, Tv } from 'lucide-react'
+import { format } from 'date-fns'
+import { type Game } from '@/lib/api-client-database-first'
+import { cn } from '@/lib/utils'
 
 interface GameCardProps {
   game: Game
@@ -19,202 +20,77 @@ export function GameCard({ game, variant = 'default' }: GameCardProps) {
   const isCompleted = game.status === 'completed'
   const gameDate = new Date(game.game_date)
 
-  if (variant === 'compact') {
-    return (
-      <Card className="card-modern hover:border-primary transition-colors">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo 
-                teamName={game.away_team?.name || ''} 
-                alt={game.away_team?.abbreviation || 'Away'} 
-                width={24} 
-                height={24}
-                {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div className="text-sm">
-                <div className="font-medium">{game.away_team?.abbreviation}</div>
-                <div className="text-xs text-muted-foreground">{game.away_team?.name}</div>
-              </div>
-            </div>
-            
-            <div className="text-center">
-              <div className="text-lg font-bold">{game.away_score || 0}</div>
-              <div className="text-xs text-muted-foreground">VS</div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="text-center">
-                <div className="text-lg font-bold">{game.home_score || 0}</div>
-                <div className="text-xs text-muted-foreground">VS</div>
-              </div>
-              <TeamLogo 
-                teamName={game.home_team?.name || ''} 
-                alt={game.home_team?.abbreviation || 'Home'} 
-                width={24} 
-                height={24}
-                {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div className="text-sm">
-                <div className="font-medium">{game.home_team?.abbreviation}</div>
-                <div className="text-xs text-muted-foreground">{game.home_team?.name}</div>
-              </div>
-            </div>
-          </div>
-          
-          {isLive && (
-            <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-border">
-              <Badge variant="destructive" className="gap-1">
-                <div className="live-indicator" />
-                LIVE
-              </Badge>
-              <span className="text-xs text-muted-foreground">
-                {format(gameDate, "h:mm a")}
-              </span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    )
-  }
+  const cardClasses = cn(
+    'shadow-md hover:shadow-lg transition-all duration-300 border-l-4',
+    {
+      'border-red-500': isLive,
+      'border-gray-300': isCompleted,
+      'border-blue-500': !isLive && !isCompleted,
+    }
+  )
 
-  if (variant === 'detailed') {
-    return (
-      <Card className={`card-modern ${isLive ? 'card-live' : isCompleted ? 'card-completed' : 'card-upcoming'}`}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <Badge variant={isLive ? 'destructive' : isCompleted ? 'secondary' : 'outline'}>
-              {isLive ? 'LIVE' : isCompleted ? 'FINAL' : 'UPCOMING'}
-            </Badge>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Clock className="h-4 w-4" />
-              {format(gameDate, "MMM d, h:mm a")}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Teams */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo 
-                teamName={game.away_team?.name || ''} 
-                alt={game.away_team?.abbreviation || 'Away'} 
-                width={32} 
-                height={32}
-                {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div>
-                <div className="font-medium">{game.away_team?.name}</div>
-                <div className="text-sm text-muted-foreground">{game.away_team?.abbreviation}</div>
-              </div>
-            </div>
-            <div className="text-2xl font-bold">{game.away_score || 0}</div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo 
-                teamName={game.home_team?.name || ''} 
-                alt={game.home_team?.abbreviation || 'Home'} 
-                width={32} 
-                height={32}
-                {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div>
-                <div className="font-medium">{game.home_team?.name}</div>
-                <div className="text-sm text-muted-foreground">{game.home_team?.abbreviation}</div>
-              </div>
-            </div>
-            <div className="text-2xl font-bold">{game.home_score || 0}</div>
-          </div>
-
-          {/* Game Info */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground pt-3 border-t border-border">
-            {game.venue && (
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4" />
-                {game.venue}
-              </div>
-            )}
-            <div className="text-right">
-              {format(gameDate, "EEEE, MMMM d")}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    )
-  }
-
-  // Default variant
   return (
-    <Card className={`card-modern ${isLive ? 'card-live' : isCompleted ? 'card-completed' : 'card-upcoming'}`}>
-      <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <Badge variant={isLive ? 'destructive' : isCompleted ? 'secondary' : 'outline'}>
-            {isLive ? 'LIVE' : isCompleted ? 'FINAL' : 'UPCOMING'}
-          </Badge>
-          <div className="text-sm text-muted-foreground">
-            {format(gameDate, "h:mm a")}
-          </div>
+    <Card className={cardClasses}>
+      <CardContent className="p-4">
+        <div className="grid grid-cols-3 items-center gap-4">
+          <TeamColumn team={game.away_team} score={game.away_score || null} />
+          <GameInfo game={game} gameDate={gameDate} isLive={isLive} isCompleted={isCompleted} />
+          <TeamColumn team={game.home_team} score={game.home_score || null} alignment="right" />
         </div>
-
-        <div className="space-y-4">
-          {/* Away Team */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo 
-                teamName={game.away_team?.name || ''} 
-                alt={game.away_team?.abbreviation || 'Away'} 
-                width={28} 
-                height={28}
-                {...(game.away_team?.logo_url && { logoUrl: game.away_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div>
-                <div className="font-medium">{game.away_team?.abbreviation}</div>
-                <div className="text-sm text-muted-foreground">{game.away_team?.name}</div>
-              </div>
-            </div>
-            <div className="text-xl font-bold">{game.away_score || 0}</div>
+        {variant === 'detailed' && <CardFooter className="mt-4 pt-4 border-t flex justify-between items-center">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            {game.venue && <p className="flex items-center gap-1.5"><MapPin className="h-4 w-4" /> {game.venue}</p>}
+            {(game as any).broadcast_channel && <p className="flex items-center gap-1.5"><Tv className="h-4 w-4" /> {(game as any).broadcast_channel}</p>}
           </div>
-
-          {/* Home Team */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <TeamLogo 
-                teamName={game.home_team?.name || ''} 
-                alt={game.home_team?.abbreviation || 'Home'} 
-                width={28} 
-                height={28}
-                {...(game.home_team?.logo_url && { logoUrl: game.home_team.logo_url })}
-                sport={game.sport}
-                {...(game.league && { league: game.league })}
-              />
-              <div>
-                <div className="font-medium">{game.home_team?.abbreviation}</div>
-                <div className="text-sm text-muted-foreground">{game.home_team?.name}</div>
-              </div>
-            </div>
-            <div className="text-xl font-bold">{game.home_score || 0}</div>
-          </div>
-        </div>
-
-        {game.venue && (
-          <div className="flex items-center gap-1 text-sm text-muted-foreground mt-4 pt-4 border-t border-border">
-            <MapPin className="h-4 w-4" />
-            {game.venue}
-          </div>
-        )}
+          <Button size="sm" variant="outline" onClick={() => window.location.href = `/games/${game.id}`}>
+            Match Details <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </CardFooter>}
       </CardContent>
     </Card>
+  )
+}
+
+function TeamColumn({ team, score, alignment = 'left' }: { team: any; score: number | null; alignment?: 'left' | 'right' }) {
+  return (
+    <div className={`flex flex-col items-${alignment === 'left' ? 'start' : 'end'} gap-2`}>
+      <div className={`flex items-center gap-3 ${alignment === 'right' ? 'flex-row-reverse' : ''}`}>
+        <TeamLogo
+          teamName={team?.name || ''}
+          alt={team?.abbreviation || 'Team'}
+          width={40}
+          height={40}
+          className="drop-shadow-md"
+          {...(team?.logo_url && { logoUrl: team.logo_url })}
+          sport={team?.sport}
+          {...(team?.league && { league: team.league })}
+        />
+        <div className={`text-${alignment}`}>
+          <p className="font-bold text-lg text-foreground">{team?.name}</p>
+          <p className="text-sm text-muted-foreground">{team?.abbreviation}</p>
+        </div>
+      </div>
+      <p className="font-bold text-3xl text-primary">{score || 0}</p>
+    </div>
+  )
+}
+
+function GameInfo({ gameDate, isLive, isCompleted }: { game: any; gameDate: Date; isLive: boolean; isCompleted: boolean }) {
+  return (
+    <div className="text-center space-y-2">
+      {isLive ? (
+        <Badge variant="destructive" className="animate-pulse text-sm font-bold">LIVE</Badge>
+      ) : (
+        <p className="font-semibold text-lg">
+          {format(gameDate, 'h:mm a')}
+        </p>
+      )}
+      <p className="text-sm text-muted-foreground">
+        {isCompleted ? 'Final' : format(gameDate, 'EEE, MMM d')}
+      </p>
+      {!isLive && !isCompleted && (
+        <Badge variant="outline">Upcoming</Badge>
+      )}
+    </div>
   )
 }

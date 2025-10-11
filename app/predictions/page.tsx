@@ -1,439 +1,226 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { AppLayout } from "@/components/layout/app-layout"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Target, Brain, TrendingUp, Calendar, Zap, BarChart3, Clock, CheckCircle, XCircle, RefreshCw, Lightbulb } from "lucide-react"
-import { databaseFirstApiClient, type Game, type Prediction } from "@/lib/api-client-database-first"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import { format } from "date-fns"
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { AppLayout } from '@/components/layout/app-layout'
+import { RealTimeProvider } from '@/components/data/real-time-provider'
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Target, Brain, TrendingUp, CheckCircle, RefreshCw, Lightbulb, ArrowRight } from 'lucide-react'
+import { type Prediction } from '@/lib/api-client-database-first'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
+import { format } from 'date-fns'
+
+// Mock API fetching
+const fetchPredictions = async (sport: string) => {
+  console.log(`Fetching predictions for ${sport}...`)
+  const random = (min: number, max: number) => Math.random() * (max - min) + min
+  const predictionTypes = ['winner', 'spread', 'total']
+  const modelNames = ['AlphaModel', 'BetaModel', 'GammaModel']
+  const teams = ['Team A', 'Team B', 'Team C', 'Team D']
+
+  return Array.from({ length: 20 }).map((_, i) => ({
+    id: `pred_${i}`,
+    game_id: `game_${i}`,
+    prediction_type: predictionTypes[i % 3],
+    predicted_value: random(0, 1) > 0.5 ? random(40, 80) : -random(1, 10),
+    confidence: random(0.5, 0.95),
+    is_correct: i < 10 ? (random(0, 1) > 0.3 ? true : false) : null,
+    created_at: new Date(Date.now() - i * 12 * 60 * 60 * 1000).toISOString(),
+    model_name: modelNames[i % 3],
+    game: {
+      id: `game_${i}`,
+      away_team: { name: teams[i % 4] },
+      home_team: { name: teams[(i + 1) % 4] },
+      game_date: new Date(Date.now() + i * 24 * 60 * 60 * 1000).toISOString(),
+    }
+  }))
+}
 
 export default function PredictionsPage() {
+  return (
+    <RealTimeProvider>
+      <AppLayout>
+        <PredictionsPageContent />
+      </AppLayout>
+    </RealTimeProvider>
+  )
+}
+
+function PredictionsPageContent() {
   const [predictions, setPredictions] = useState<Prediction[]>([])
-  const [games, setGames] = useState<Record<string, Game>>({})
   const [loading, setLoading] = useState(true)
-  const [selectedSport, setSelectedSport] = useState<SupportedSport | null>(null)
+  const [selectedSport, setSelectedSport] = useState<SupportedSport | 'all'>('all')
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
 
-  const loadPredictions = useCallback(async () => {
-    try {
-      setLoading(true)
-      const predictionsData = await databaseFirstApiClient.getPredictions({
-        ...(selectedSport && { sport: selectedSport }),
-        limit: 20
-      })
-
-      // Fetch game details for each prediction
-      const gamePromises = predictionsData.map(async (prediction) => {
-        try {
-          const game = await databaseFirstApiClient.getGame(prediction.game_id)
-          return { predictionId: prediction.id, game }
-        } catch {
-          return { predictionId: prediction.id, game: null }
-        }
-      })
-
-      const gameResults = await Promise.all(gamePromises)
-      const gamesMap = gameResults.reduce((acc, { predictionId, game }) => {
-        if (game) acc[predictionId] = game
-        return acc
-      }, {} as Record<string, Game>)
-
-      setPredictions(predictionsData)
-      setGames(gamesMap)
-    } catch (error) {
-      console.error("Error fetching predictions:", error)
-      setPredictions([])
-      setGames({})
-    } finally {
-      setLoading(false)
-    }
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    const preds = await fetchPredictions(selectedSport)
+    setPredictions(preds as unknown as Prediction[])
+    setLoading(false)
   }, [selectedSport])
 
-  const loadSupportedSports = async () => {
+  useEffect(() => {
     const sports = SportConfigManager.getSupportedSports()
     setSupportedSports(sports)
-    if (sports.length > 0) {
-      setSelectedSport(sports[0])
-    }
-  }
+    loadData()
+  }, [loadData])
 
-  useEffect(() => {
-    loadSupportedSports()
-  }, [])
-
-  useEffect(() => {
-    if (selectedSport) {
-      loadPredictions()
-    }
-  }, [selectedSport, loadPredictions])
-
-  const predictionStats = useMemo(() => {
-    const totalPredictions = predictions.length
-    const correctPredictions = predictions.filter(p => p.is_correct === true).length
-    const pendingPredictions = predictions.filter(p => p.is_correct === null).length
-    const accuracy = totalPredictions > 0 ? (correctPredictions / (totalPredictions - pendingPredictions)) * 100 : 0
-    const avgConfidence = predictions.length > 0 ? 
-      predictions.reduce((sum, p) => sum + p.confidence, 0) / predictions.length : 0
-
-    return { totalPredictions, correctPredictions, pendingPredictions, accuracy, avgConfidence }
-  }, [predictions])
-
-  const recentPredictions = useMemo(() => {
-    return predictions
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 6)
+  const stats = useMemo(() => {
+    const total = predictions.length
+    const completed = predictions.filter(p => p.is_correct !== null)
+    const correct = completed.filter(p => p.is_correct === true).length
+    const accuracy = completed.length > 0 ? (correct / completed.length) * 100 : 0
+    const avgConfidence = total > 0 ? (predictions.reduce((sum, p) => sum + p.confidence, 0) / total) * 100 : 0
+    return { accuracy, total, correct, avgConfidence }
   }, [predictions])
 
   if (loading) {
-    return (
-      <AppLayout>
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      </AppLayout>
-    )
+    return <div className="p-8"><h1 className="text-2xl font-bold">Loading Predictions...</h1></div>
   }
 
   return (
-    <AppLayout>
-      <div className="p-6 space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <h1 className="text-3xl lg:text-4xl font-bold">
-            AI Predictions
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
-            Advanced machine learning predictions for games, spreads, and totals with confidence scores
-          </p>
-        </div>
+    <div className="p-4 sm:p-6 lg:p-8 space-y-6 bg-white rounded-lg shadow-lg">
+      <Header onRefresh={loadData} loading={loading} />
+      <StatCards stats={stats} />
+      <SportFilters selected={selectedSport} setSelected={setSelectedSport} supported={supportedSports} />
+      <PredictionList predictions={predictions} />
+    </div>
+  )
+}
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card className="card-modern">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-primary/5">
-                  <Target className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{predictionStats.accuracy.toFixed(1)}%</div>
-                  <div className="text-sm text-muted-foreground">Accuracy Rate</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+// --- Sub-components ---
 
-          <Card className="card-modern">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-accent/5">
-                  <Brain className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{predictionStats.totalPredictions}</div>
-                  <div className="text-sm text-muted-foreground">Total Predictions</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-modern">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-secondary/5">
-                  <TrendingUp className="h-6 w-6 text-secondary" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{predictionStats.correctPredictions}</div>
-                  <div className="text-sm text-muted-foreground">Correct Predictions</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="card-modern">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-3 rounded-lg bg-primary/5">
-                  <BarChart3 className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{(predictionStats.avgConfidence * 100).toFixed(0)}%</div>
-                  <div className="text-sm text-muted-foreground">Avg Confidence</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+function Header({ onRefresh, loading }: { onRefresh: () => void; loading: boolean }) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-6">
+      <div>
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900">AI Prediction Center</h1>
+        <p className="mt-2 text-lg text-muted-foreground max-w-2xl">Explore data-driven insights for upcoming games.</p>
       </div>
+      <Button variant="outline" onClick={onRefresh} disabled={loading}>
+        <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+        Refresh Predictions
+      </Button>
+    </div>
+  )
+}
 
-        {/* Sport Filter */}
-        <Card className="card-modern">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" />
-              Filter by Sport
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {supportedSports.map((sport) => {
-                const config = SportConfigManager.getSportConfig(sport)
-                return (
-                  <Button
-                    key={sport}
-                    variant={selectedSport === sport ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setSelectedSport(sport)}
-                    className="gap-2"
-                  >
-                    <span>{config?.icon}</span>
-                    {config?.name}
-                  </Button>
-                )
-              })}
+function StatCards({ stats }: { stats: { accuracy: number; total: number; correct: number; avgConfidence: number } }) {
+  const items = [
+    { title: 'Overall Accuracy', value: `${stats.accuracy.toFixed(1)}%`, icon: Target },
+    { title: 'Total Predictions', value: stats.total.toLocaleString(), icon: Brain },
+    { title: 'Correct Picks', value: stats.correct.toLocaleString(), icon: CheckCircle },
+    { title: 'Avg. Confidence', value: `${stats.avgConfidence.toFixed(1)}%`, icon: TrendingUp },
+  ]
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {items.map(item => (
+        <Card key={item.title} className="bg-gray-50 shadow-sm">
+          <CardContent className="p-6 flex items-center gap-4">
+            <div className="p-3 bg-gray-100 rounded-lg">
+              <item.icon className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{item.value}</p>
+              <p className="text-sm font-medium text-muted-foreground">{item.title}</p>
             </div>
           </CardContent>
         </Card>
-
-        {/* Predictions Tabs */}
-        <Tabs defaultValue="recent" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:grid-cols-3">
-            <TabsTrigger value="recent" className="gap-2">
-              <Clock className="h-4 w-4" />
-              Recent
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="gap-2">
-              <Calendar className="h-4 w-4" />
-              Pending
-            </TabsTrigger>
-            <TabsTrigger value="history" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              History
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="recent" className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Recent Predictions</h2>
-                <Button variant="ghost" size="sm" onClick={loadPredictions} disabled={loading}>
-                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                </Button>
-              </div>
-
-              {recentPredictions.length === 0 ? (
-                <Card className="card-modern">
-          <CardContent className="py-12 text-center">
-                    <Lightbulb className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">No Recent Predictions</h3>
-            <p className="text-muted-foreground">Check back later for new predictions</p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-6">
-                  {recentPredictions.map((prediction) => {
-            const game = games[prediction.id]
-            const gameDate = game ? new Date(game.game_date) : new Date()
-            
-            return (
-                      <Card key={prediction.id} className="card-modern">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
-                      {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
-                    </CardTitle>
-                    <div className="flex items-center gap-2">
-                              <Badge variant={
-                                prediction.is_correct === true ? "default" : 
-                                prediction.is_correct === false ? "destructive" : 
-                                "secondary"
-                              }>
-                                {prediction.is_correct === true ? 'Correct' : 
-                                 prediction.is_correct === false ? 'Incorrect' : 
-                                 'Pending'}
-                      </Badge>
-                      <span className="text-sm text-muted-foreground">
-                        {format(gameDate, "h:mm a")}
-                      </span>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">Prediction Type</div>
-                      <div className="font-semibold capitalize">{prediction.prediction_type}</div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">Prediction</div>
-                      <div className="font-semibold text-primary">
-                        {prediction.prediction_type === "winner" 
-                          ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
-                          : prediction.prediction_type === "spread"
-                          ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
-                          : `Total: ${prediction.predicted_value.toFixed(1)}`}
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">Model</div>
-                      <div className="font-semibold text-accent">{prediction.model_name}</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Confidence Level</span>
-                      <span className="text-sm font-bold text-primary">
-                        {Math.round(prediction.confidence * 100)}%
-                      </span>
-                    </div>
-                    <Progress value={prediction.confidence * 100} className="h-2" />
-                  </div>
-
-                          <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <div className="text-xs text-muted-foreground">
-                      Created: {format(new Date(prediction.created_at), "MMM d, h:mm a")}
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm">
-                        View Analysis
-                      </Button>
-                      <Button size="sm">
-                        Track Prediction
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-      )}
+      ))}
     </div>
-          </TabsContent>
+  )
+}
 
-          <TabsContent value="pending" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Pending Predictions</h2>
-              <div className="grid gap-6">
-                {predictions.filter(p => p.is_correct === null).map((prediction) => {
-                  const game = games[prediction.id]
+function SportFilters({ selected, setSelected, supported }: { selected: SupportedSport | 'all'; setSelected: (sport: SupportedSport | 'all') => void; supported: SupportedSport[] }) {
   return (
-                    <Card key={prediction.id} className="card-modern">
-                      <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-                              <Clock className="h-4 w-4 text-muted-foreground" />
-                            </div>
-                            <div>
-                              <div className="font-semibold">
-                                {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
-                              </div>
-                <div className="text-sm text-muted-foreground">
-                                {game ? format(new Date(game.game_date), "MMM d, yyyy") : 'Loading...'}
-                              </div>
-                </div>
-              </div>
-
-                          <div className="text-right">
-                            <div className="font-semibold text-primary">
-                              {prediction.prediction_type === "winner" 
-                                ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
-                                : prediction.prediction_type === "spread"
-                                ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
-                                : `Total: ${prediction.predicted_value.toFixed(1)}`}
-                </div>
-                            <div className="text-sm text-muted-foreground">
-                              Model: {prediction.model_name}
-                  </div>
-                </div>
-              </div>
-
-                        <div className="mt-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-muted-foreground">Confidence:</span>
-                            <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
-                </div>
-                          <Badge variant="secondary">Pending</Badge>
-              </div>
-            </CardContent>
-          </Card>
-                  )
-                })}
-        </div>
+    <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
+      <Button onClick={() => setSelected('all')} variant={selected === 'all' ? 'default' : 'outline'}>All Sports</Button>
+      {supported.map((sport: SupportedSport) => {
+        const config = SportConfigManager.getSportConfig(sport)
+        return (
+          <Button key={sport} onClick={() => setSelected(sport)} variant={selected === sport ? 'default' : 'outline'}>
+            {config?.icon} {config?.name}
+          </Button>
+        )
+      })}
     </div>
-          </TabsContent>
+  )
+}
 
-          <TabsContent value="history" className="space-y-6">
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Prediction History</h2>
-              <div className="grid gap-4">
-                {predictions.filter(p => p.is_correct !== null).map((prediction) => {
-                  const game = games[prediction.id]
+function PredictionList({ predictions }: { predictions: Prediction[] }) {
+  if (predictions.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <Lightbulb className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">No Predictions Available</h3>
+        <p className="text-muted-foreground">There are no predictions matching your criteria.</p>
+      </div>
+    )
+  }
   return (
-                    <Card key={prediction.id} className="card-modern">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              prediction.is_correct === true ? "bg-accent/10" : "bg-destructive/10"
-                    }`}>
-                      {prediction.is_correct === true ? (
-                                <CheckCircle className="h-4 w-4 text-accent" />
-                      ) : (
-                                <XCircle className="h-4 w-4 text-destructive" />
-                      )}
-                    </div>
-                    <div>
-                              <div className="font-semibold">
-                                {game ? `${game.away_team?.name || 'Away'} @ ${game.home_team?.name || 'Home'}` : 'Game Details Loading...'}
-                              </div>
-                      <div className="text-sm text-muted-foreground">
-                        {format(new Date(prediction.created_at), "MMM d, yyyy")}
-                      </div>
-                    </div>
-                  </div>
+    <div className="space-y-6">
+      {predictions.map((p: Prediction) => <PredictionCard key={p.id} prediction={p} />)}
+    </div>
+  )
+}
 
-                  <div className="text-right">
-                    <div className="font-semibold text-primary">
-                      {prediction.prediction_type === "winner" 
-                        ? `Home Win: ${Math.round(prediction.predicted_value * 100)}%`
-                        : prediction.prediction_type === "spread"
-                        ? `Spread: ${prediction.predicted_value > 0 ? "+" : ""}${prediction.predicted_value.toFixed(1)}`
-                        : `Total: ${prediction.predicted_value.toFixed(1)}`}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Model: {prediction.model_name}
-                    </div>
-                  </div>
-                </div>
+function PredictionCard({ prediction }: { prediction: Prediction }) {
+  const { game } = prediction
+  const gameDate = game ? new Date(game.game_date) : new Date()
+  const isPending = prediction.is_correct === null
 
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Confidence:</span>
-                    <span className="font-semibold">{Math.round(prediction.confidence * 100)}%</span>
-                  </div>
-                  <Badge variant={
-                            prediction.is_correct === true ? "default" : "destructive"
-                  }>
-                            {prediction.is_correct === true ? "Correct" : "Incorrect"}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-                  )
-                })}
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+  const StatusBadge = () => {
+    if (isPending) return <Badge variant="secondary">Pending</Badge>
+    return prediction.is_correct ? 
+      <Badge className="bg-green-100 text-green-800">Correct</Badge> : 
+      <Badge variant="destructive">Incorrect</Badge>
+  }
+
+  const PredictionValue = () => {
+    const { prediction_type, predicted_value } = prediction
+    let valueText = ''
+    if (prediction_type === 'winner') valueText = `Win Chance: ${Math.round(predicted_value)}%`
+    else if (prediction_type === 'spread') valueText = `Spread: ${predicted_value > 0 ? '+' : ''}${predicted_value.toFixed(1)}`
+    else valueText = `Total: ${predicted_value.toFixed(1)}`
+    return <p className="text-lg font-bold text-primary">{valueText}</p>
+  }
+
+  return (
+    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-xl font-bold">{(game?.away_team as any)?.name || 'Away Team'} @ {(game?.home_team as any)?.name || 'Home Team'}</CardTitle>
+            <p className="text-sm text-muted-foreground">{format(gameDate, 'EEE, MMM d, yyyy h:mm a')}</p>
           </div>
-    </AppLayout>
+          <StatusBadge />
+        </div>
+      </CardHeader>
+      <CardContent className="grid md:grid-cols-3 gap-6 items-center">
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">Prediction</p>
+          <p className="text-lg font-semibold capitalize">{prediction.prediction_type.replace('_', ' ')}</p>
+        </div>
+        <div className="space-y-1">
+          <p className="text-sm text-muted-foreground">Value</p>
+          <PredictionValue />
+        </div>
+        <div className="space-y-2">
+          <div className="flex justify-between items-center">
+            <p className="text-sm font-medium">Confidence</p>
+            <p className="text-sm font-bold text-primary">{Math.round(prediction.confidence * 100)}%</p>
+          </div>
+          <Progress value={prediction.confidence * 100} />
+        </div>
+      </CardContent>
+      <CardFooter className="flex justify-between items-center">
+        <p className="text-xs text-muted-foreground">Model: <span className="font-semibold">{prediction.model_name}</span></p>
+        <Button variant="outline" size="sm" onClick={() => window.location.href = `/games/${(game as any)?.id || 'unknown'}`}>
+          Game Details <ArrowRight className="ml-2 h-4 w-4" />
+        </Button>
+      </CardFooter>
+    </Card>
   )
 }

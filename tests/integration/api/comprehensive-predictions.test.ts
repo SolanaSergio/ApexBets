@@ -14,7 +14,7 @@ describe('Comprehensive Predictions API Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
-        data: expect.any(Array)
+        data: expect.any(Array),
       })
       expect(Array.isArray(data.data)).toBe(true)
 
@@ -27,7 +27,7 @@ describe('Comprehensive Predictions API Tests', () => {
           prediction_type: expect.any(String),
           predicted_value: expect.any(Number),
           confidence: expect.any(Number),
-          created_at: expect.any(String)
+          created_at: expect.any(String),
         })
 
         // Verify confidence is between 0 and 1
@@ -48,7 +48,7 @@ describe('Comprehensive Predictions API Tests', () => {
 
       if (data.data.length > 0) {
         const prediction = data.data[0]
-        
+
         // Check if game information is included
         if (prediction.game) {
           expect(prediction.game).toMatchObject({
@@ -56,21 +56,21 @@ describe('Comprehensive Predictions API Tests', () => {
             home_team: expect.any(Object),
             away_team: expect.any(Object),
             game_date: expect.any(String),
-            status: expect.any(String)
+            status: expect.any(String),
           })
 
           // Verify team information structure
           if (prediction.game.home_team) {
             expect(prediction.game.home_team).toMatchObject({
               name: expect.any(String),
-              abbreviation: expect.any(String)
+              abbreviation: expect.any(String),
             })
           }
 
           if (prediction.game.away_team) {
             expect(prediction.game.away_team).toMatchObject({
               name: expect.any(String),
-              abbreviation: expect.any(String)
+              abbreviation: expect.any(String),
             })
           }
         }
@@ -99,7 +99,7 @@ describe('Comprehensive Predictions API Tests', () => {
         const data = await response.json()
 
         expect(response.status).toBe(200)
-        
+
         // Should return either a single prediction or array of predictions
         if (Array.isArray(data)) {
           data.forEach((prediction: any) => {
@@ -113,7 +113,7 @@ describe('Comprehensive Predictions API Tests', () => {
         } else {
           // If no predictions found, just verify the response structure
           expect(data).toMatchObject({
-            data: expect.any(Object)
+            data: expect.any(Object),
           })
         }
       }
@@ -173,19 +173,19 @@ describe('Comprehensive Predictions API Tests', () => {
 
       data.data.forEach((prediction: any) => {
         expect(typeof prediction.predicted_value).toBe('number')
-        
+
         // For winner predictions, value should be between 0 and 1
         if (prediction.prediction_type === 'winner') {
           expect(prediction.predicted_value).toBeGreaterThanOrEqual(0)
           expect(prediction.predicted_value).toBeLessThanOrEqual(1)
         }
-        
+
         // For spread predictions, value should be reasonable range
         if (prediction.prediction_type === 'spread') {
           expect(prediction.predicted_value).toBeGreaterThanOrEqual(-50)
           expect(prediction.predicted_value).toBeLessThanOrEqual(50)
         }
-        
+
         // For total predictions, value should be reasonable range
         if (prediction.prediction_type === 'total') {
           expect(prediction.predicted_value).toBeGreaterThanOrEqual(100)
@@ -204,7 +204,7 @@ describe('Comprehensive Predictions API Tests', () => {
         if (prediction.actual_value !== null && prediction.actual_value !== undefined) {
           expect(typeof prediction.actual_value).toBe('number')
         }
-        
+
         if (prediction.is_correct !== null && prediction.is_correct !== undefined) {
           expect(typeof prediction.is_correct).toBe('boolean')
         }
@@ -226,15 +226,15 @@ describe('Comprehensive Predictions API Tests', () => {
           predicted_winner: 'home',
           confidence: 0.75,
           prediction_type: 'winner',
-          reasoning: 'Based on recent performance and home court advantage'
+          reasoning: 'Based on recent performance and home court advantage',
         }
 
         const response = await fetch(`${baseUrl}/predictions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(predictionData)
+          body: JSON.stringify(predictionData),
         })
 
         const data = await response.json()
@@ -246,7 +246,7 @@ describe('Comprehensive Predictions API Tests', () => {
           game_id: gameId,
           predicted_winner: 'home',
           confidence: 0.75,
-          prediction_type: 'winner'
+          prediction_type: 'winner',
         })
       }
     })
@@ -261,15 +261,15 @@ describe('Comprehensive Predictions API Tests', () => {
 
         const predictionData = {
           game_id: gameId,
-          predicted_winner: 'away'
+          predicted_winner: 'away',
         }
 
         const response = await fetch(`${baseUrl}/predictions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(predictionData)
+          body: JSON.stringify(predictionData),
         })
 
         const data = await response.json()
@@ -279,23 +279,23 @@ describe('Comprehensive Predictions API Tests', () => {
         expect(data.data).toMatchObject({
           id: expect.any(String),
           game_id: gameId,
-          predicted_winner: 'away'
+          predicted_winner: 'away',
         })
       }
     })
 
     it('should reject prediction creation with missing required fields', async () => {
       const predictionData = {
-        confidence: 0.75
+        confidence: 0.75,
         // Missing game_id and predicted_winner
       }
 
       const response = await fetch(`${baseUrl}/predictions`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(predictionData)
+        body: JSON.stringify(predictionData),
       })
 
       const data = await response.json()
@@ -318,15 +318,15 @@ describe('Comprehensive Predictions API Tests', () => {
           confidence: 0.85,
           prediction_type: 'winner',
           reasoning: 'Comprehensive analysis of team performance',
-          status: 'pending'
+          status: 'pending',
         }
 
         const response = await fetch(`${baseUrl}/predictions`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(predictionData)
+          body: JSON.stringify(predictionData),
         })
 
         const data = await response.json()
@@ -340,7 +340,7 @@ describe('Comprehensive Predictions API Tests', () => {
           confidence: 0.85,
           prediction_type: 'winner',
           reasoning: 'Comprehensive analysis of team performance',
-          status: 'pending'
+          status: 'pending',
         })
       }
     })
@@ -382,7 +382,7 @@ describe('Comprehensive Predictions API Tests', () => {
         const createdAt = new Date(prediction.created_at)
         const now = new Date()
         const timeDiff = now.getTime() - createdAt.getTime()
-        
+
         // Predictions should be from within the last 30 days
         expect(timeDiff).toBeLessThan(30 * 24 * 60 * 60 * 1000)
       })
@@ -419,12 +419,12 @@ describe('Comprehensive Predictions API Tests', () => {
     })
 
     it('should handle concurrent requests efficiently', async () => {
-      const requests = Array(5).fill(null).map(() => 
-        fetch(`${baseUrl}/predictions`)
-      )
+      const requests = Array(5)
+        .fill(null)
+        .map(() => fetch(`${baseUrl}/predictions`))
 
       const responses = await Promise.all(requests)
-      
+
       responses.forEach(response => {
         expect(response.status).toBe(200)
       })
@@ -438,7 +438,7 @@ describe('Comprehensive Predictions API Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
-        data: expect.any(Object)
+        data: expect.any(Object),
       })
       expect(typeof data.data).toBe('object')
     })
@@ -455,9 +455,9 @@ describe('Comprehensive Predictions API Tests', () => {
       const response = await fetch(`${baseUrl}/predictions`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: 'invalid json'
+        body: 'invalid json',
       })
 
       expect(response.status).toBe(500)

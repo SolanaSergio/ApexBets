@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { cn } from "@/lib/utils"
-import { imageService } from "@/lib/services/image-service"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { cn } from '@/lib/utils'
+import { imageService } from '@/lib/services/image-service'
 
 interface TeamLogoProps {
   logoUrl?: string | null | undefined
   teamName: string
   abbreviation?: string | undefined
-  size?: "sm" | "md" | "lg" | "xl"
+  size?: 'sm' | 'md' | 'lg' | 'xl'
   className?: string
   fallbackIcon?: React.ReactNode
   sport?: string
@@ -17,28 +17,28 @@ interface TeamLogoProps {
 }
 
 const sizeClasses = {
-  sm: "h-6 w-6",
-  md: "h-8 w-8", 
-  lg: "h-12 w-12",
-  xl: "h-16 w-16"
+  sm: 'h-6 w-6',
+  md: 'h-8 w-8',
+  lg: 'h-12 w-12',
+  xl: 'h-16 w-16',
 }
 
 const sizePixels = {
   sm: 24,
   md: 32,
   lg: 48,
-  xl: 64
+  xl: 64,
 }
 
-export function TeamLogo({ 
-  logoUrl, 
-  teamName, 
-  abbreviation, 
-  size = "md", 
+export function TeamLogo({
+  logoUrl,
+  teamName,
+  abbreviation,
+  size = 'md',
   className,
   fallbackIcon,
   sport,
-  league
+  league,
 }: TeamLogoProps) {
   const [imageUrl, setImageUrl] = useState<string>(logoUrl || '')
   const [imageError, setImageError] = useState(false)
@@ -50,14 +50,14 @@ export function TeamLogo({
       try {
         setImageLoading(true)
         setImageError(false)
-        
+
         const startTime = Date.now()
-        
+
         // If logoUrl is provided, use it directly
         if (logoUrl) {
           setImageUrl(logoUrl)
           setIsFallback(false)
-          
+
           // Track direct logo usage
           try {
             await fetch('/api/monitor/image-event', {
@@ -70,8 +70,8 @@ export function TeamLogo({
                 source: 'database',
                 success: true,
                 url: logoUrl,
-                loadTime: Date.now() - startTime
-              })
+                loadTime: Date.now() - startTime,
+              }),
             })
           } catch (error) {
             console.debug('Failed to track image event:', error)
@@ -82,15 +82,15 @@ export function TeamLogo({
         // Otherwise, use bulletproof image service
         const result = await imageService.getTeamLogoUrl(teamName, league, sport)
         const loadTime = Date.now() - startTime
-        
+
         // Validate result structure
         if (!result || typeof result !== 'object' || !result.url) {
           throw new Error('Invalid result from image service')
         }
-        
+
         setImageUrl(result.url)
         setIsFallback(result.url.startsWith('data:image/svg+xml'))
-        
+
         // Track image service usage (fire-and-forget)
         fetch('/api/monitor/image-event', {
           method: 'POST',
@@ -102,8 +102,8 @@ export function TeamLogo({
             source: result.source,
             success: true,
             url: result.url,
-            loadTime
-          })
+            loadTime,
+          }),
         }).catch(error => {
           console.debug('Failed to track image event:', error)
         })
@@ -112,7 +112,7 @@ export function TeamLogo({
         console.error('Failed to load team logo:', error)
         setImageError(true)
         setIsFallback(true)
-        
+
         // Track failed image load (fire-and-forget)
         fetch('/api/monitor/image-event', {
           method: 'POST',
@@ -124,8 +124,8 @@ export function TeamLogo({
             source: 'svg',
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            loadTime
-          })
+            loadTime,
+          }),
         }).catch(trackError => {
           console.debug('Failed to track image event:', trackError)
         })
@@ -150,9 +150,9 @@ export function TeamLogo({
   // Show fallback if error or no image
   if (imageError || !imageUrl) {
     return (
-      <div 
+      <div
         className={cn(
-          "flex items-center justify-center rounded-full bg-muted text-muted-foreground font-semibold",
+          'flex items-center justify-center rounded-full bg-muted text-muted-foreground font-semibold',
           sizeClasses[size],
           className
         )}
@@ -170,7 +170,7 @@ export function TeamLogo({
   const pixelSize = sizePixels[size]
 
   return (
-    <div className={cn("relative", sizeClasses[size], className)}>
+    <div className={cn('relative', sizeClasses[size], className)}>
       {imageLoading && (
         <div className="absolute inset-0 flex items-center justify-center rounded-full bg-muted animate-pulse">
           <span className="text-xs font-bold text-muted-foreground">
@@ -184,10 +184,10 @@ export function TeamLogo({
         width={pixelSize}
         height={pixelSize}
         className={cn(
-          "rounded-full object-cover transition-opacity duration-200",
+          'rounded-full object-cover transition-opacity duration-200',
           sizeClasses[size],
-          imageLoading ? "opacity-0" : "opacity-100",
-          isFallback && "opacity-90"
+          imageLoading ? 'opacity-0' : 'opacity-100',
+          isFallback && 'opacity-90'
         )}
         onError={handleImageError}
         onLoad={handleImageLoad}

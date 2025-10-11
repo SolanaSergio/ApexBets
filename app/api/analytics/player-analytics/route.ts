@@ -19,24 +19,23 @@ export async function GET(request: NextRequest) {
 
     // Validate sport parameter
     if (!sport) {
-      return NextResponse.json(
-        { error: 'Sport parameter is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Sport parameter is required' }, { status: 400 })
     }
 
     if (!serviceFactory.isSportSupported(sport)) {
       return NextResponse.json(
-        { error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}` },
+        {
+          error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}`,
+        },
         { status: 400 }
       )
     }
 
     const analyticsService = new SportAnalyticsService(sport, league)
-    
+
     // Get player performance data using the sport-specific service
     const playerAnalytics = await analyticsService.getPlayerPerformance()
-    
+
     // Transform data for chart display - sport-agnostic
     const players = playerAnalytics.slice(0, limit).map((player: any, index: number) => ({
       id: player.playerId,
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
       gamesPlayed: player.gamesPlayed || 0,
       minutesPerGame: player.averageStats?.minutes || 0,
       efficiency: player.averageStats?.efficiency || 0,
-      rank: index + 1
+      rank: index + 1,
     }))
 
     return NextResponse.json({
@@ -63,17 +62,16 @@ export async function GET(request: NextRequest) {
         team,
         timeRange,
         count: players.length,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Player analytics API error:', error)
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch player analytics data',
-        players: []
+        players: [],
       },
       { status: 500 }
     )

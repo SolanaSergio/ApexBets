@@ -1,26 +1,33 @@
 # External APIs Documentation
 
-This directory contains comprehensive documentation for all external APIs used in the ApexBets project. Each API is documented with the latest information, authentication methods, endpoints, and usage examples.
+This directory contains comprehensive documentation for all external APIs used
+in the ApexBets project. Each API is documented with the latest information,
+authentication methods, endpoints, and usage examples.
 
 ## 📋 Available APIs
 
 ### 🏀 Basketball APIs
+
 - **[Ball Don't Lie API](ball-dont-lie-api.md)** - NBA, NFL, MLB, NHL data
 - **[NBA Stats API](nba-stats-api.md)** - Official NBA data (free)
 - **[ESPN API](espn-api.md)** - Free sports data
 
 ### ⚽ Multi-Sport APIs
-- **[RapidAPI (API-Sports)](rapidapi-api-sports.md)** - Multi-sport data via RapidAPI marketplace
+
+- **[RapidAPI (API-Sports)](rapidapi-api-sports.md)** - Multi-sport data via
+  RapidAPI marketplace
 - **[TheSportsDB](thesportsdb-api.md)** - Free multi-sport API
 - **[MLB Stats API](mlb-stats-api.md)** - Official MLB data
 - **[NHL API](nhl-api.md)** - Official NHL data
 
 ### 🎯 Betting APIs
+
 - **[The Odds API](the-odds-api.md)** - Betting odds data
 
 ## 🚀 Quick Start
 
 ### 1. Environment Setup
+
 Add the required API keys to your environment variables:
 
 ```bash
@@ -42,6 +49,7 @@ NEXT_PUBLIC_SPORTSDB_API_KEY=123
 ```
 
 ### 2. API Priority Order
+
 The system uses a fallback strategy with the following priority:
 
 1. **Official APIs** (NBA Stats, MLB Stats, NHL) - Free, official data
@@ -52,6 +60,7 @@ The system uses a fallback strategy with the following priority:
 6. **The Odds API** - Betting odds data
 
 ### 3. Rate Limiting
+
 Each API has specific rate limits that are managed by the enhanced rate limiter:
 
 - **Ball Don't Lie**: 100 requests/minute, 1000 requests/hour
@@ -62,31 +71,33 @@ Each API has specific rate limits that are managed by the enhanced rate limiter:
 
 ## 📊 API Usage Statistics
 
-| API | Sports Covered | Rate Limit | Cost | Reliability |
-|-----|----------------|------------|------|-------------|
-| Ball Don't Lie | NBA, NFL, MLB, NHL | 100/min | Free | High |
-| RapidAPI | Multi-sport | 100/min | Paid | High |
-| TheSportsDB | Multi-sport | 100/min | Free | Medium |
-| NBA Stats | NBA | 100/min | Free | High |
-| ESPN | Multi-sport | No limit | Free | Medium |
-| MLB Stats | MLB | 100/min | Free | High |
-| NHL | NHL | 100/min | Free | High |
-| The Odds API | Multi-sport | 500/month | Free | High |
+| API            | Sports Covered     | Rate Limit | Cost | Reliability |
+| -------------- | ------------------ | ---------- | ---- | ----------- |
+| Ball Don't Lie | NBA, NFL, MLB, NHL | 100/min    | Free | High        |
+| RapidAPI       | Multi-sport        | 100/min    | Paid | High        |
+| TheSportsDB    | Multi-sport        | 100/min    | Free | Medium      |
+| NBA Stats      | NBA                | 100/min    | Free | High        |
+| ESPN           | Multi-sport        | No limit   | Free | Medium      |
+| MLB Stats      | MLB                | 100/min    | Free | High        |
+| NHL            | NHL                | 100/min    | Free | High        |
+| The Odds API   | Multi-sport        | 500/month  | Free | High        |
 
 ## 🔧 Integration Examples
 
 ### Basic API Call
+
 ```typescript
 import { ballDontLieClient } from '@/lib/sports-apis'
 
 // Get NBA games
 const games = await ballDontLieClient.getGames({
   season: 2024,
-  per_page: 25
+  per_page: 25,
 })
 ```
 
 ### Error Handling
+
 ```typescript
 try {
   const data = await apiClient.getData()
@@ -117,16 +128,19 @@ Each API documentation includes:
 ## 🚨 Important Notes
 
 ### API Key Management
+
 - API keys are managed by the `ApiKeyRotationService`
 - Multiple keys can be configured for high-volume APIs
 - Keys are automatically rotated when limits are reached
 
 ### Circuit Breaker Pattern
+
 - Each API has circuit breaker protection
 - Automatic fallback to alternative APIs
 - Health monitoring and recovery
 
 ### Data Caching
+
 - All API responses are cached in Redis
 - Cache TTL varies by data type (5-60 minutes)
 - Cache invalidation on data updates
@@ -134,9 +148,11 @@ Each API documentation includes:
 ## 🔄 Updates and Maintenance
 
 This documentation is updated regularly to reflect:
+
 - API changes and new endpoints
 - Rate limit adjustments
 - Authentication method updates
 - Best practice improvements
 
-For the latest information, always refer to the official API documentation linked in each section.
+For the latest information, always refer to the official API documentation
+linked in each section.

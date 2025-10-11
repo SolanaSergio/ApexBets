@@ -15,7 +15,7 @@ export interface WebhookAuthConfig {
 
 /**
  * Middleware function to authenticate webhook requests
- * 
+ *
  * @param request - The Next.js request object
  * @param config - Webhook authentication configuration
  * @returns Promise<NextResponse | null> - Returns error response or null if valid
@@ -39,10 +39,7 @@ export async function authenticateWebhook(
     try {
       payload = JSON.parse(body)
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid JSON payload' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid JSON payload' }, { status: 400 })
     }
 
     // Validate signature if required
@@ -51,10 +48,7 @@ export async function authenticateWebhook(
       const signature = request.headers.get(signatureHeader)
 
       if (!signature) {
-        return NextResponse.json(
-          { error: 'Missing webhook signature' },
-          { status: 401 }
-        )
+        return NextResponse.json({ error: 'Missing webhook signature' }, { status: 401 })
       }
 
       const validationResult = hmacWebhookAuthenticator.validateWebhookRequest(
@@ -67,9 +61,9 @@ export async function authenticateWebhook(
 
       if (!validationResult.isValid) {
         return NextResponse.json(
-          { 
+          {
             error: 'Webhook authentication failed',
-            details: validationResult.errors
+            details: validationResult.errors,
           },
           { status: 401 }
         )
@@ -77,10 +71,7 @@ export async function authenticateWebhook(
     } else {
       // Just validate IP if signature validation is disabled
       if (!hmacWebhookAuthenticator.validateIPAddress(clientIP, config.allowedIPs || [])) {
-        return NextResponse.json(
-          { error: 'IP address not allowed' },
-          { status: 403 }
-        )
+        return NextResponse.json({ error: 'IP address not allowed' }, { status: 403 })
       }
     }
 
@@ -88,16 +79,13 @@ export async function authenticateWebhook(
     return null
   } catch (error) {
     console.error('Webhook authentication error:', error)
-    return NextResponse.json(
-      { error: 'Internal authentication error' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Internal authentication error' }, { status: 500 })
   }
 }
 
 /**
  * Higher-order function to create authenticated webhook handlers
- * 
+ *
  * @param handler - The webhook handler function
  * @param config - Webhook authentication configuration
  * @returns Authenticated webhook handler
@@ -124,7 +112,7 @@ export function withWebhookAuth(
 
 /**
  * Utility function to get webhook configuration from environment
- * 
+ *
  * @returns WebhookAuthConfig from environment variables
  */
 export function getWebhookConfigFromEnv(): WebhookAuthConfig {
@@ -140,6 +128,6 @@ export function getWebhookConfigFromEnv(): WebhookAuthConfig {
     secret,
     allowedIPs,
     requireSignature: process.env.WEBHOOK_REQUIRE_SIGNATURE !== 'false',
-    signatureHeader: process.env.WEBHOOK_SIGNATURE_HEADER as string
+    signatureHeader: process.env.WEBHOOK_SIGNATURE_HEADER as string,
   }
 }

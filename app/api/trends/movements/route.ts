@@ -12,7 +12,10 @@ export async function GET(request: Request) {
   }
 
   try {
-    const movements = await dynamicTrendsService.getMarketMovements(sport, limit ? parseInt(limit) : 10)
+    const movements = await dynamicTrendsService.getMarketMovements(
+      sport,
+      limit ? parseInt(limit) : 10
+    )
     return NextResponse.json(movements)
   } catch (error) {
     console.error(`Error fetching market movements for ${sport}:`, error)

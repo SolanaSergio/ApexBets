@@ -53,8 +53,8 @@ describe('Cache Service Integration Tests', () => {
         data: Array.from({ length: 1000 }, (_, i) => ({
           id: i,
           name: `Item ${i}`,
-          value: Math.random()
-        }))
+          value: Math.random(),
+        })),
       }
 
       cacheManager.set('large-object', largeObject, 60000)
@@ -72,13 +72,13 @@ describe('Cache Service Integration Tests', () => {
       const ttl = 100 // 100ms
 
       cacheManager.set(key, value, ttl)
-      
+
       // Should be available immediately
       expect(cacheManager.get(key)).toBe(value)
-      
+
       // Wait for expiry
       await new Promise(resolve => setTimeout(resolve, 150))
-      
+
       // Should be expired
       expect(cacheManager.get(key)).toBeUndefined()
     })
@@ -89,10 +89,10 @@ describe('Cache Service Integration Tests', () => {
       const ttl = 1000 // 1 second
 
       cacheManager.set(key, value, ttl)
-      
+
       // Wait a short time
       await new Promise(resolve => setTimeout(resolve, 100))
-      
+
       // Should still be available
       expect(cacheManager.get(key)).toBe(value)
     })
@@ -103,7 +103,7 @@ describe('Cache Service Integration Tests', () => {
       const ttl = 0 // No expiry
 
       cacheManager.set(key, value, ttl)
-      
+
       // Should be available
       expect(cacheManager.get(key)).toBe(value)
     })
@@ -112,11 +112,11 @@ describe('Cache Service Integration Tests', () => {
   describe('cache statistics', () => {
     it('should track cache hits and misses', () => {
       const stats = cacheManager.getStats()
-      
+
       expect(stats).toMatchObject({
         hits: expect.any(Number),
         misses: expect.any(Number),
-        totalEntries: expect.any(Number)
+        totalEntries: expect.any(Number),
       })
 
       expect(stats.memory.hits).toBeGreaterThanOrEqual(0)
@@ -129,7 +129,7 @@ describe('Cache Service Integration Tests', () => {
       const value = 'test value'
 
       cacheManager.set(key, value, 60000)
-      
+
       const statsBefore = cacheManager.getStats()
       cacheManager.get(key)
       const statsAfter = cacheManager.getStats()
@@ -147,11 +147,11 @@ describe('Cache Service Integration Tests', () => {
 
     it('should track total entries', () => {
       const statsBefore = cacheManager.getStats()
-      
+
       cacheManager.set('key1', 'value1', 60000)
       cacheManager.set('key2', 'value2', 60000)
       cacheManager.set('key3', 'value3', 60000)
-      
+
       const statsAfter = cacheManager.getStats()
 
       expect(statsAfter.totalEntries).toBe(statsBefore.totalEntries + 3)
@@ -194,7 +194,7 @@ describe('Cache Service Integration Tests', () => {
       expect(sizeInfo).toMatchObject({
         totalEntries: expect.any(Number),
         memoryUsage: expect.any(Number),
-        averageEntrySize: expect.any(Number)
+        averageEntrySize: expect.any(Number),
       })
 
       expect(sizeInfo.totalEntries).toBeGreaterThanOrEqual(0)
@@ -206,7 +206,7 @@ describe('Cache Service Integration Tests', () => {
   describe('edge cases', () => {
     it('should handle empty string keys', () => {
       const value = 'test value'
-      
+
       cacheManager.set('', value, 60000)
       expect(cacheManager.get('')).toBe(value)
     })
@@ -214,7 +214,7 @@ describe('Cache Service Integration Tests', () => {
     it('should handle special characters in keys', () => {
       const key = 'key-with-special-chars!@#$%^&*()'
       const value = 'test value'
-      
+
       cacheManager.set(key, value, 60000)
       expect(cacheManager.get(key)).toBe(value)
     })
@@ -230,14 +230,14 @@ describe('Cache Service Integration Tests', () => {
     it('should handle very long keys', () => {
       const longKey = 'a'.repeat(1000)
       const value = 'test value'
-      
+
       cacheManager.set(longKey, value, 60000)
       expect(cacheManager.get(longKey)).toBe(value)
     })
 
     it('should handle concurrent access', async () => {
       const promises = []
-      
+
       // Set multiple values concurrently
       for (let i = 0; i < 100; i++) {
         promises.push(
@@ -247,9 +247,9 @@ describe('Cache Service Integration Tests', () => {
           })
         )
       }
-      
+
       await Promise.all(promises)
-      
+
       // Verify all values were set
       for (let i = 0; i < 100; i++) {
         expect(cacheManager.get(`concurrent-${i}`)).toBe(`value-${i}`)
@@ -260,20 +260,20 @@ describe('Cache Service Integration Tests', () => {
   describe('performance', () => {
     it('should handle many cache operations efficiently', () => {
       const startTime = Date.now()
-      
+
       // Set many values
       for (let i = 0; i < 1000; i++) {
         cacheManager.set(`perf-${i}`, `value-${i}`, 60000)
       }
-      
+
       // Retrieve many values
       for (let i = 0; i < 1000; i++) {
         cacheManager.get(`perf-${i}`)
       }
-      
+
       const endTime = Date.now()
       const duration = endTime - startTime
-      
+
       // Should complete within reasonable time (1 second)
       expect(duration).toBeLessThan(1000)
     })
@@ -283,10 +283,10 @@ describe('Cache Service Integration Tests', () => {
       for (let i = 0; i < 10000; i++) {
         cacheManager.set(`many-${i}`, `value-${i}`, 60000)
       }
-      
+
       const stats = cacheManager.getStats()
       expect(stats.totalEntries).toBe(10000)
-      
+
       // Should still be able to retrieve values
       expect(cacheManager.get('many-0')).toBe('value-0')
       expect(cacheManager.get('many-9999')).toBe('value-9999')

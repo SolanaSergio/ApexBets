@@ -68,18 +68,18 @@ export class DatabaseCleanupService {
 
       const result: CleanupResult = {
         success: errors.length === 0,
-        message: errors.length === 0 
-          ? `Cleanup completed successfully. Cleaned ${cleanedRecords} records.`
-          : `Cleanup completed with ${errors.length} errors. Cleaned ${cleanedRecords} records.`,
+        message:
+          errors.length === 0
+            ? `Cleanup completed successfully. Cleaned ${cleanedRecords} records.`
+            : `Cleanup completed with ${errors.length} errors. Cleaned ${cleanedRecords} records.`,
         cleanedRecords,
         errors,
-        executionTime
+        executionTime,
       }
 
       structuredLogger.info('Database cleanup completed', result)
 
       return result
-
     } catch (error) {
       const executionTime = Date.now() - startTime
       const errorMessage = `Database cleanup failed: ${error instanceof Error ? error.message : String(error)}`
@@ -91,7 +91,7 @@ export class DatabaseCleanupService {
         message: errorMessage,
         cleanedRecords,
         errors: [errorMessage, ...errors],
-        executionTime
+        executionTime,
       }
     }
   }
@@ -105,18 +105,19 @@ export class DatabaseCleanupService {
         DELETE FROM cache_entries 
         WHERE expires_at < NOW()
       `
-      
+
       const result = await databaseService.executeSQL(query)
-      
+
       if (result.success) {
         cleanedRecords = result.rowCount
         structuredLogger.info('Cleaned expired cache entries', { count: cleanedRecords })
       } else {
         errors.push(`Failed to clean expired cache: ${result.error}`)
       }
-
     } catch (error) {
-      errors.push(`Error cleaning expired cache: ${error instanceof Error ? error.message : String(error)}`)
+      errors.push(
+        `Error cleaning expired cache: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
 
     return { cleanedRecords, errors }
@@ -132,7 +133,7 @@ export class DatabaseCleanupService {
         DELETE FROM odds 
         WHERE game_id NOT IN (SELECT id FROM games)
       `
-      
+
       const oddsResult = await databaseService.executeSQL(oddsQuery)
       if (oddsResult.success) {
         cleanedRecords += oddsResult.rowCount
@@ -145,7 +146,7 @@ export class DatabaseCleanupService {
         DELETE FROM predictions 
         WHERE game_id NOT IN (SELECT id FROM games)
       `
-      
+
       const predictionsResult = await databaseService.executeSQL(predictionsQuery)
       if (predictionsResult.success) {
         cleanedRecords += predictionsResult.rowCount
@@ -158,16 +159,17 @@ export class DatabaseCleanupService {
         DELETE FROM player_stats 
         WHERE player_id NOT IN (SELECT id FROM players)
       `
-      
+
       const playerStatsResult = await databaseService.executeSQL(playerStatsQuery)
       if (playerStatsResult.success) {
         cleanedRecords += playerStatsResult.rowCount
       } else {
         errors.push(`Failed to clean orphaned player stats: ${playerStatsResult.error}`)
       }
-
     } catch (error) {
-      errors.push(`Error cleaning orphaned records: ${error instanceof Error ? error.message : String(error)}`)
+      errors.push(
+        `Error cleaning orphaned records: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
 
     return { cleanedRecords, errors }
@@ -191,16 +193,17 @@ export class DatabaseCleanupService {
           ) t WHERE rn > 1
         )
       `
-      
+
       const gamesResult = await databaseService.executeSQL(gamesQuery)
       if (gamesResult.success) {
         cleanedRecords += gamesResult.rowCount
       } else {
         errors.push(`Failed to clean duplicate games: ${gamesResult.error}`)
       }
-
     } catch (error) {
-      errors.push(`Error cleaning duplicate records: ${error instanceof Error ? error.message : String(error)}`)
+      errors.push(
+        `Error cleaning duplicate records: ${error instanceof Error ? error.message : String(error)}`
+      )
     }
 
     return { cleanedRecords, errors }
@@ -208,17 +211,24 @@ export class DatabaseCleanupService {
 
   private async vacuumTables(): Promise<void> {
     try {
-      const tables = ['games', 'teams', 'players', 'odds', 'predictions', 'standings', 'cache_entries']
-      
+      const tables = [
+        'games',
+        'teams',
+        'players',
+        'odds',
+        'predictions',
+        'standings',
+        'cache_entries',
+      ]
+
       for (const table of tables) {
         await databaseService.vacuumTable(table)
       }
 
       structuredLogger.info('Table vacuum completed')
-
     } catch (error) {
       structuredLogger.error('Table vacuum failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
     }
   }
@@ -248,7 +258,7 @@ export class DatabaseCleanupService {
         .map((table: any) => ({
           table: table.tablename,
           size: table.size,
-          rowCount: table.rowCount || 0
+          rowCount: table.rowCount || 0,
         }))
 
       return {
@@ -256,12 +266,11 @@ export class DatabaseCleanupService {
         duplicateRecords: 0, // Would need more complex queries to calculate
         oldCacheEntries,
         unusedIndexes: [], // Would need to query pg_stat_user_indexes
-        largeTables
+        largeTables,
       }
-
     } catch (error) {
       structuredLogger.error('Failed to get cleanup recommendations', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
 
       return {
@@ -269,7 +278,7 @@ export class DatabaseCleanupService {
         duplicateRecords: 0,
         oldCacheEntries: 0,
         unusedIndexes: [],
-        largeTables: []
+        largeTables: [],
       }
     }
   }

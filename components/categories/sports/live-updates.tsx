@@ -1,20 +1,14 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  Activity, 
-  Zap, 
-  TrendingUp, 
-  DollarSign,
-  RefreshCw,
-} from "lucide-react"
-import { unifiedApiClient, SupportedSport } from "@/lib/services/api/unified-api-client"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-import { SportsImage } from "@/components/ui/sports-image"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Activity, Zap, TrendingUp, DollarSign, RefreshCw } from 'lucide-react'
+import { unifiedApiClient, SupportedSport } from '@/lib/services/api/unified-api-client'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
+import { SportsImage } from '@/components/ui/sports-image'
 
 interface LiveUpdatesProps {
   sport: SupportedSport
@@ -34,11 +28,11 @@ interface ValueBet {
   analysis: string
 }
 
-export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps) {
-  const [activeTab, setActiveTab] = useState("live-scores")
+export default function LiveUpdates({ sport, className = '' }: LiveUpdatesProps) {
+  const [activeTab, setActiveTab] = useState('live-scores')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  
+
   // Data states
   const [liveGames, setLiveGames] = useState<any[]>([])
   const [valueBets, setValueBets] = useState<ValueBet[]>([])
@@ -77,11 +71,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
   const loadLiveData = useCallback(async () => {
     try {
       setLoading(true)
-      await Promise.all([
-        loadLiveGames(),
-        loadValueBets(),
-        loadOddsUpdates()
-      ])
+      await Promise.all([loadLiveGames(), loadValueBets(), loadOddsUpdates()])
       setLastUpdate(new Date())
     } catch (error) {
       console.error('Error loading live data:', error)
@@ -127,12 +117,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
             <Activity className="h-3 w-3" />
             Last updated: {lastUpdate.toLocaleTimeString()}
           </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -167,8 +152,11 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
             <CardContent>
               {liveGames.length > 0 ? (
                 <div className="space-y-4">
-                  {liveGames.map((game) => (
-                    <div key={game.id} className="p-4 rounded-lg border bg-green-50 dark:bg-green-950">
+                  {liveGames.map(game => (
+                    <div
+                      key={game.id}
+                      className="p-4 rounded-lg border bg-green-50 dark:bg-green-950"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <SportsImage
@@ -180,7 +168,8 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                           />
                           <div>
                             <div className="font-bold text-lg">
-                              {game.home_team?.name || 'Home Team'} vs {game.away_team?.name || 'Visiting Team'}
+                              {game.home_team?.name || 'Home Team'} vs{' '}
+                              {game.away_team?.name || 'Visiting Team'}
                             </div>
                             <div className="text-sm text-muted-foreground">
                               {game.venue} • {game.time}
@@ -191,9 +180,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                           <div className="text-2xl font-bold text-green-600">
                             {game.homeScore} - {game.awayScore}
                           </div>
-                          <Badge className="bg-green-500">
-                            LIVE
-                          </Badge>
+                          <Badge className="bg-green-500">LIVE</Badge>
                         </div>
                       </div>
                     </div>
@@ -220,7 +207,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
             <CardContent>
               {valueBets.length > 0 ? (
                 <div className="space-y-4">
-                  {valueBets.map((bet) => (
+                  {valueBets.map(bet => (
                     <div key={bet.gameId} className="p-4 rounded-lg border">
                       <div className="flex items-center justify-between mb-3">
                         <div>
@@ -233,12 +220,16 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                         </div>
                         <div className="text-right">
                           <div className="text-2xl font-bold text-primary">
-                            {bet.odds > 0 ? '+' : ''}{bet.odds}
+                            {bet.odds > 0 ? '+' : ''}
+                            {bet.odds}
                           </div>
-                          <Badge 
+                          <Badge
                             variant={
-                              bet.recommendation === 'strong' ? 'default' :
-                              bet.recommendation === 'moderate' ? 'secondary' : 'outline'
+                              bet.recommendation === 'strong'
+                                ? 'default'
+                                : bet.recommendation === 'moderate'
+                                  ? 'secondary'
+                                  : 'outline'
                             }
                           >
                             {bet.recommendation.toUpperCase()}
@@ -252,9 +243,7 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                             +{Math.round(bet.value * 100)}%
                           </span>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {bet.analysis}
-                        </div>
+                        <div className="text-sm text-muted-foreground">{bet.analysis}</div>
                         <div className="flex items-center gap-2">
                           <span className="text-xs text-muted-foreground">Available at:</span>
                           <div className="flex gap-1">
@@ -291,7 +280,10 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
               {oddsUpdates.length > 0 ? (
                 <div className="space-y-3">
                   {oddsUpdates.map((odds, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div
+                      key={index}
+                      className="flex items-center justify-between p-3 rounded-lg border"
+                    >
                       <div className="flex items-center space-x-3">
                         <SportsImage
                           type="team"
@@ -302,7 +294,8 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                         />
                         <div>
                           <div className="font-medium text-sm">
-                            {odds.home_team?.name || 'Home Team'} vs {odds.away_team?.name || 'Visiting Team'}
+                            {odds.home_team?.name || 'Home Team'} vs{' '}
+                            {odds.away_team?.name || 'Visiting Team'}
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {odds.betType} • {odds.side}
@@ -311,11 +304,10 @@ export default function LiveUpdates({ sport, className = "" }: LiveUpdatesProps)
                       </div>
                       <div className="text-right">
                         <div className="font-bold">
-                          {odds.odds > 0 ? '+' : ''}{odds.odds}
+                          {odds.odds > 0 ? '+' : ''}
+                          {odds.odds}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {odds.bookmaker}
-                        </div>
+                        <div className="text-xs text-muted-foreground">{odds.bookmaker}</div>
                       </div>
                     </div>
                   ))}
@@ -344,7 +336,7 @@ function LiveUpdatesSkeleton() {
         </div>
         <div className="h-10 w-24 bg-muted rounded animate-pulse" />
       </div>
-      
+
       <div className="space-y-4">
         <div className="h-10 w-64 bg-muted rounded animate-pulse" />
         <div className="h-64 bg-muted rounded animate-pulse" />

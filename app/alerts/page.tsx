@@ -1,23 +1,24 @@
-import { Navigation } from "@/components/navigation/navigation"
-import { UserAlerts } from "@/components/alerts/user-alerts"
+import { AppLayout } from '@/components/layout/app-layout'
+import { UserAlerts } from '@/components/alerts/user-alerts'
 
 export default function AlertsPage() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
-      <main className="container mx-auto px-4 py-8">
-        <div className="text-center space-y-4 mb-8">
-          <h1 className="text-4xl font-bold text-balance bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Alert Management
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Configure personalized alerts for games, predictions, and odds changes
-          </p>
-        </div>
-
+    <AppLayout>
+      <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+        <Header />
         <UserAlerts />
-      </main>
+      </div>
+    </AppLayout>
+  )
+}
+
+function Header() {
+  return (
+    <div className="text-center border-b pb-6">
+      <h1 className="text-3xl md:text-4xl font-bold text-gray-900">Alert Management</h1>
+      <p className="mt-2 text-lg text-muted-foreground max-w-2xl mx-auto">
+        Create and manage custom alerts for games, predictions, and market movements.
+      </p>
     </div>
   )
 }

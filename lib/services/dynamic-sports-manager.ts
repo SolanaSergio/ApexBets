@@ -53,11 +53,11 @@ export class DynamicSportsManager {
       await this.loadSportsConfiguration()
       structuredLogger.info('Dynamic sports manager initialized', {
         sportsCount: this.sportsConfig.size,
-        sports: Array.from(this.sportsConfig.keys())
+        sports: Array.from(this.sportsConfig.keys()),
       })
     } catch (error) {
       structuredLogger.error('Failed to initialize dynamic sports manager', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -88,7 +88,8 @@ export class DynamicSportsManager {
 
       // Load leagues for each sport
       for (const sportData of sportsResult.data) {
-        const leaguesResult = await productionSupabaseClient.executeSQL(`
+        const leaguesResult = await productionSupabaseClient.executeSQL(
+          `
           SELECT 
             l.id,
             l.name,
@@ -102,22 +103,25 @@ export class DynamicSportsManager {
           FROM leagues l
           WHERE l.sport = $1 AND l.is_active = true
           ORDER BY l.display_name
-        `, [sportData.name])
+        `,
+          [sportData.name]
+        )
 
-        const leagues: LeagueConfiguration[] = leaguesResult.success && leaguesResult.data 
-          ? leaguesResult.data.map((league: any) => ({
-              id: league.id,
-              name: league.name,
-              displayName: league.display_name,
-              sport: league.sport,
-              isActive: league.is_active,
-              country: league.country,
-              season: league.season,
-              abbreviation: league.abbreviation,
-              level: league.level,
-              apiMapping: {} // Default empty mapping since api_mapping column doesn't exist
-            }))
-          : []
+        const leagues: LeagueConfiguration[] =
+          leaguesResult.success && leaguesResult.data
+            ? leaguesResult.data.map((league: any) => ({
+                id: league.id,
+                name: league.name,
+                displayName: league.display_name,
+                sport: league.sport,
+                isActive: league.is_active,
+                country: league.country,
+                season: league.season,
+                abbreviation: league.abbreviation,
+                level: league.level,
+                apiMapping: {}, // Default empty mapping since api_mapping column doesn't exist
+              }))
+            : []
 
         const sportConfig: SportConfiguration = {
           id: sportData.id,
@@ -132,12 +136,12 @@ export class DynamicSportsManager {
             players: 60,
             standings: 60,
             odds: 2,
-            predictions: 10
+            predictions: 10,
           },
           apiProviders: sportData.api_providers || ['api-sports', 'thesportsdb', 'espn'],
           defaultLeague: sportData.season_config?.defaultLeague || null,
           seasonFormat: sportData.season_config?.seasonFormat || 'year',
-          currentSeason: sportData.current_season
+          currentSeason: sportData.current_season,
         }
 
         this.sportsConfig.set(sportData.name, sportConfig)
@@ -146,7 +150,7 @@ export class DynamicSportsManager {
       this.lastRefresh = Date.now()
     } catch (error) {
       structuredLogger.error('Failed to load sports configuration', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -162,18 +166,18 @@ export class DynamicSportsManager {
       await this.loadSportsConfiguration()
       structuredLogger.info('Sports configuration refreshed', {
         sportsCount: this.sportsConfig.size,
-        lastRefresh: new Date(this.lastRefresh).toISOString()
+        lastRefresh: new Date(this.lastRefresh).toISOString(),
       })
     } catch (error) {
       structuredLogger.error('Failed to refresh sports configuration', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
     }
   }
 
   getSupportedSports(): string[] {
-    return Array.from(this.sportsConfig.keys()).filter(sport => 
-      this.sportsConfig.get(sport)?.isActive
+    return Array.from(this.sportsConfig.keys()).filter(
+      sport => this.sportsConfig.get(sport)?.isActive
     )
   }
 
@@ -239,21 +243,24 @@ export class DynamicSportsManager {
   async addSport(sportConfig: Omit<SportConfiguration, 'id'>): Promise<void> {
     try {
       // Add sport to database
-      const result = await productionSupabaseClient.executeSQL(`
+      const result = await productionSupabaseClient.executeSQL(
+        `
         INSERT INTO sports (name, display_name, is_active, data_types, refresh_intervals, api_providers, default_league, season_format, current_season)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING id
-      `, [
-        sportConfig.name,
-        sportConfig.displayName,
-        sportConfig.isActive,
-        JSON.stringify(sportConfig.dataTypes),
-        JSON.stringify(sportConfig.refreshIntervals),
-        JSON.stringify(sportConfig.apiProviders),
-        sportConfig.defaultLeague,
-        sportConfig.seasonFormat,
-        sportConfig.currentSeason
-      ])
+      `,
+        [
+          sportConfig.name,
+          sportConfig.displayName,
+          sportConfig.isActive,
+          JSON.stringify(sportConfig.dataTypes),
+          JSON.stringify(sportConfig.refreshIntervals),
+          JSON.stringify(sportConfig.apiProviders),
+          sportConfig.defaultLeague,
+          sportConfig.seasonFormat,
+          sportConfig.currentSeason,
+        ]
+      )
 
       if (!result.success || !result.data || result.data.length === 0) {
         throw new Error('Failed to add sport to database')
@@ -263,18 +270,21 @@ export class DynamicSportsManager {
 
       // Add leagues
       for (const league of sportConfig.leagues) {
-        await productionSupabaseClient.executeSQL(`
+        await productionSupabaseClient.executeSQL(
+          `
           INSERT INTO leagues (name, display_name, sport, is_active, country, season, api_mapping)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
-        `, [
-          league.name,
-          league.displayName,
-          sportConfig.name,
-          league.isActive,
-          league.country,
-          league.season,
-          JSON.stringify(league.apiMapping)
-        ])
+        `,
+          [
+            league.name,
+            league.displayName,
+            sportConfig.name,
+            league.isActive,
+            league.country,
+            league.season,
+            JSON.stringify(league.apiMapping),
+          ]
+        )
       }
 
       // Refresh configuration
@@ -283,12 +293,12 @@ export class DynamicSportsManager {
       structuredLogger.info('Sport added successfully', {
         sport: sportConfig.name,
         sportId,
-        leaguesCount: sportConfig.leagues.length
+        leaguesCount: sportConfig.leagues.length,
       })
     } catch (error) {
       structuredLogger.error('Failed to add sport', {
         sport: sportConfig.name,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -303,34 +313,37 @@ export class DynamicSportsManager {
 
       const updatedConfig = { ...config, ...updates }
 
-      await productionSupabaseClient.executeSQL(`
+      await productionSupabaseClient.executeSQL(
+        `
         UPDATE sports 
         SET display_name = $1, is_active = $2, data_types = $3, refresh_intervals = $4, 
             api_providers = $5, default_league = $6, season_format = $7, current_season = $8
         WHERE name = $9
-      `, [
-        updatedConfig.displayName,
-        updatedConfig.isActive,
-        JSON.stringify(updatedConfig.dataTypes),
-        JSON.stringify(updatedConfig.refreshIntervals),
-        JSON.stringify(updatedConfig.apiProviders),
-        updatedConfig.defaultLeague,
-        updatedConfig.seasonFormat,
-        updatedConfig.currentSeason,
-        sport
-      ])
+      `,
+        [
+          updatedConfig.displayName,
+          updatedConfig.isActive,
+          JSON.stringify(updatedConfig.dataTypes),
+          JSON.stringify(updatedConfig.refreshIntervals),
+          JSON.stringify(updatedConfig.apiProviders),
+          updatedConfig.defaultLeague,
+          updatedConfig.seasonFormat,
+          updatedConfig.currentSeason,
+          sport,
+        ]
+      )
 
       // Refresh configuration
       await this.refreshConfiguration()
 
       structuredLogger.info('Sport updated successfully', {
         sport,
-        updates: Object.keys(updates)
+        updates: Object.keys(updates),
       })
     } catch (error) {
       structuredLogger.error('Failed to update sport', {
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -339,13 +352,19 @@ export class DynamicSportsManager {
   async removeSport(sport: string): Promise<void> {
     try {
       // Deactivate sport instead of deleting
-      await productionSupabaseClient.executeSQL(`
+      await productionSupabaseClient.executeSQL(
+        `
         UPDATE sports SET is_active = false WHERE name = $1
-      `, [sport])
+      `,
+        [sport]
+      )
 
-      await productionSupabaseClient.executeSQL(`
+      await productionSupabaseClient.executeSQL(
+        `
         UPDATE leagues SET is_active = false WHERE sport = $1
-      `, [sport])
+      `,
+        [sport]
+      )
 
       // Refresh configuration
       await this.refreshConfiguration()
@@ -354,7 +373,7 @@ export class DynamicSportsManager {
     } catch (error) {
       structuredLogger.error('Failed to remove sport', {
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -366,7 +385,7 @@ export class DynamicSportsManager {
       activeSports: 0,
       totalLeagues: 0,
       lastRefresh: new Date(this.lastRefresh).toISOString(),
-      sports: {} as Record<string, any>
+      sports: {} as Record<string, any>,
     }
 
     for (const [sport, config] of this.sportsConfig.entries()) {
@@ -379,7 +398,7 @@ export class DynamicSportsManager {
         isActive: config.isActive,
         leaguesCount: config.leagues.length,
         dataTypes: config.dataTypes,
-        apiProviders: config.apiProviders
+        apiProviders: config.apiProviders,
       }
     }
 

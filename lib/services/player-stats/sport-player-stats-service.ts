@@ -53,7 +53,7 @@ export class SportPlayerStatsService extends BaseService {
       cacheTTL: 15 * 60 * 1000, // 15 minutes
       rateLimitService: 'player-stats',
       retryAttempts: 2,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super(config)
     this.sport = sport
@@ -74,12 +74,12 @@ export class SportPlayerStatsService extends BaseService {
    */
   async getPlayerStats(params: PlayerStatsFilter = {}): Promise<PlayerStats[]> {
     const key = this.getCacheKey('player-stats', this.sport, this.league, JSON.stringify(params))
-    
+
     return this.getCachedOrFetch(key, async () => {
       try {
         // Get player stats directly from database
         const playerStats = await this.getPlayerStatsFromDatabase(params)
-        
+
         // Apply filters and sorting
         return this.applyFiltersAndSorting(playerStats, params)
       } catch (error) {
@@ -93,8 +93,14 @@ export class SportPlayerStatsService extends BaseService {
    * Get statistics for a specific player
    */
   async getPlayerStatsById(playerId: string, season?: string): Promise<PlayerStats | null> {
-    const key = this.getCacheKey('player-stats-by-id', this.sport, this.league, playerId, season || 'current')
-    
+    const key = this.getCacheKey(
+      'player-stats-by-id',
+      this.sport,
+      this.league,
+      playerId,
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         return await this.fetchPlayerStats(playerId, season)
@@ -109,16 +115,22 @@ export class SportPlayerStatsService extends BaseService {
    * Get player rankings for specific statistics
    */
   async getPlayerRankings(stat: string, params: PlayerStatsFilter = {}): Promise<PlayerStats[]> {
-    const key = this.getCacheKey('player-rankings', this.sport, this.league, stat, JSON.stringify(params))
-    
+    const key = this.getCacheKey(
+      'player-rankings',
+      this.sport,
+      this.league,
+      stat,
+      JSON.stringify(params)
+    )
+
     return this.getCachedOrFetch(key, async () => {
       const allStats = await this.getPlayerStats(params)
-      
+
       return allStats
         .filter(player => player.stats[stat] !== undefined)
         .sort((a, b) => {
-          const aValue = typeof a.stats[stat] === 'number' ? a.stats[stat] as number : 0
-          const bValue = typeof b.stats[stat] === 'number' ? b.stats[stat] as number : 0
+          const aValue = typeof a.stats[stat] === 'number' ? (a.stats[stat] as number) : 0
+          const bValue = typeof b.stats[stat] === 'number' ? (b.stats[stat] as number) : 0
           return params.sortOrder === 'asc' ? aValue - bValue : bValue - aValue
         })
         .slice(0, params.limit || 20)
@@ -129,12 +141,18 @@ export class SportPlayerStatsService extends BaseService {
    * Compare multiple players
    */
   async comparePlayers(playerIds: string[], season?: string): Promise<PlayerComparison | null> {
-    const key = this.getCacheKey('player-comparison', this.sport, this.league, playerIds.join(','), season || 'current')
-    
+    const key = this.getCacheKey(
+      'player-comparison',
+      this.sport,
+      this.league,
+      playerIds.join(','),
+      season || 'current'
+    )
+
     return this.getCachedOrFetch(key, async () => {
       try {
         const players: PlayerStats[] = []
-        
+
         for (const playerId of playerIds) {
           const stats = await this.getPlayerStatsById(playerId, season)
           if (stats) {
@@ -152,7 +170,7 @@ export class SportPlayerStatsService extends BaseService {
 
         return {
           players,
-          comparison
+          comparison,
         }
       } catch (error) {
         console.error('Error comparing players:', error)
@@ -164,7 +182,10 @@ export class SportPlayerStatsService extends BaseService {
   /**
    * Get team statistics summary
    */
-  async getTeamStats(teamId: string, season?: string): Promise<{
+  async getTeamStats(
+    teamId: string,
+    season?: string
+  ): Promise<{
     teamId: string
     teamName: string
     players: PlayerStats[]
@@ -173,13 +194,13 @@ export class SportPlayerStatsService extends BaseService {
     leagueRankings: Record<string, Record<string, number>>
   } | null> {
     const key = this.getCacheKey('team-stats', this.sport, this.league, teamId, season || 'current')
-    
+
     return this.getCachedOrFetch(key, async () => {
       try {
         const playerStats = await this.getPlayerStats({
           teamId,
           ...(season && { season }),
-          limit: 100
+          limit: 100,
         })
 
         if (playerStats.length === 0) {
@@ -196,7 +217,7 @@ export class SportPlayerStatsService extends BaseService {
           players: playerStats,
           teamTotals,
           teamAverages,
-          leagueRankings
+          leagueRankings,
         }
       } catch (error) {
         console.error('Error fetching team stats:', error)
@@ -212,7 +233,7 @@ export class SportPlayerStatsService extends BaseService {
     try {
       const { createClient } = await import('../../supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -220,7 +241,8 @@ export class SportPlayerStatsService extends BaseService {
       // Get player stats with player profile information
       let query = supabase
         .from('player_stats')
-        .select(`
+        .select(
+          `
           *,
           player_profiles!inner(
             id,
@@ -229,7 +251,8 @@ export class SportPlayerStatsService extends BaseService {
             team_id,
             team_name
           )
-        `)
+        `
+        )
         .eq('sport', this.sport)
 
       if (params.teamId) {
@@ -257,7 +280,7 @@ export class SportPlayerStatsService extends BaseService {
       for (const stat of data || []) {
         const playerProfile = stat.player_profiles
         const playerName = playerProfile.name
-        
+
         if (!playerStatsMap.has(playerName)) {
           playerStatsMap.set(playerName, {
             playerId: stat.player_id,
@@ -266,19 +289,19 @@ export class SportPlayerStatsService extends BaseService {
             position: playerProfile.position || '',
             sport: this.sport,
             league: this.league,
-            season: params.season || await this.getCurrentSeason(),
+            season: params.season || (await this.getCurrentSeason()),
             gamesPlayed: 0,
             stats: {},
             averages: {},
             totals: {},
             rankings: {},
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
           })
         }
 
         const player = playerStatsMap.get(playerName)!
         player.gamesPlayed++
-        
+
         // Add stats from stats_data JSONB column
         if (stat.stats_data && typeof stat.stats_data === 'object') {
           for (const [key, value] of Object.entries(stat.stats_data)) {
@@ -308,40 +331,13 @@ export class SportPlayerStatsService extends BaseService {
   }
 
   /**
-   * Get the appropriate stats table name for the sport
-   */
-  private async getStatsTableName(): Promise<string> {
-    try {
-      // Get table name from database configuration
-      const { createClient } = await import('@/lib/supabase/client')
-      const supabase = createClient()
-      
-      const response = await supabase
-        ?.from('sports')
-        .select('name, player_stats_table')
-        .eq('name', this.sport)
-        .eq('is_active', true)
-        .single()
-      
-      if (response && !response.error && response.data?.player_stats_table) {
-        return response.data.player_stats_table
-      }
-    } catch (error) {
-      console.warn(`Failed to get player stats table for ${this.sport}:`, error)
-    }
-    
-    // Fallback to generic table name
-    return 'player_stats'
-  }
-
-  /**
    * Fetch player statistics from the appropriate data source
    */
   private async fetchPlayerStats(playerId: string, season?: string): Promise<PlayerStats | null> {
     try {
       const service = await serviceFactory.getService(this.sport, this.league)
       const player = await service.getPlayerById(playerId)
-      
+
       if (!player) {
         return null
       }
@@ -358,13 +354,13 @@ export class SportPlayerStatsService extends BaseService {
         position: player.position || '',
         sport: this.sport,
         league: this.league,
-        season: season || await this.getCurrentSeason(),
+        season: season || (await this.getCurrentSeason()),
         gamesPlayed: stats.gamesPlayed || 0,
         stats: stats.rawStats || {},
         averages,
         totals,
         rankings: {}, // Will be calculated separately
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error(`Error fetching stats for player ${playerId}:`, error)
@@ -377,7 +373,7 @@ export class SportPlayerStatsService extends BaseService {
    */
   private async getSportSpecificStats(playerId: string, season?: string): Promise<any> {
     const sportConfig = await SportConfigManager.getSportConfig(this.sport)
-    
+
     switch (sportConfig?.dataSource) {
       case 'balldontlie':
         return await this.getBalldontlieStats(playerId, season)
@@ -394,18 +390,18 @@ export class SportPlayerStatsService extends BaseService {
   private async getBalldontlieStats(playerId: string, season?: string): Promise<any> {
     try {
       const { ballDontLieClient } = await import('../../sports-apis')
-      
+
       if (!ballDontLieClient.isConfigured) {
         return this.getGenericStats(playerId, season)
       }
 
-      const currentSeason = season || await this.getCurrentSeason()
+      const currentSeason = season || (await this.getCurrentSeason())
       const seasonNumber = parseInt(currentSeason)
-      
+
       const stats = await ballDontLieClient.getStats({
         player_ids: [parseInt(playerId)],
         seasons: [seasonNumber],
-        per_page: 100
+        per_page: 100,
       })
 
       if (!stats.data || stats.data.length === 0) {
@@ -436,8 +432,8 @@ export class SportPlayerStatsService extends BaseService {
           minutes: rawStats.min,
           personal_fouls: rawStats.pf,
           offensive_rebounds: rawStats.oreb,
-          defensive_rebounds: rawStats.dreb
-        }
+          defensive_rebounds: rawStats.dreb,
+        },
       }
     } catch (error) {
       console.error('Error fetching basketball stats:', error)
@@ -450,8 +446,8 @@ export class SportPlayerStatsService extends BaseService {
    */
   private async getSportsDBStats(playerId: string, season?: string): Promise<any> {
     try {
-      const { } = await import('../../sports-apis')
-      
+      const {} = await import('../../sports-apis')
+
       // SportsDB doesn't have detailed player stats, return generic stats
       return this.getGenericStats(playerId, season)
     } catch (error) {
@@ -518,8 +514,8 @@ export class SportPlayerStatsService extends BaseService {
     // Apply sorting
     if (params.sortBy) {
       filtered.sort((a, b) => {
-        const aValue = a.stats[params.sortBy!] as number || 0
-        const bValue = b.stats[params.sortBy!] as number || 0
+        const aValue = (a.stats[params.sortBy!] as number) || 0
+        const bValue = (b.stats[params.sortBy!] as number) || 0
         return params.sortOrder === 'asc' ? aValue - bValue : bValue - aValue
       })
     }
@@ -550,17 +546,17 @@ export class SportPlayerStatsService extends BaseService {
       const numericValues: number[] = []
 
       players.forEach(player => {
-        const value = player.stats[stat] as number || 0
+        const value = (player.stats[stat] as number) || 0
         values[player.name] = value
         numericValues.push(value)
       })
 
       const maxValue = Math.max(...numericValues)
-      const leader = players.find(p => (p.stats[stat] as number || 0) === maxValue)?.name || ''
+      const leader = players.find(p => ((p.stats[stat] as number) || 0) === maxValue)?.name || ''
 
       const difference: Record<string, number> = {}
       players.forEach(player => {
-        const value = player.stats[stat] as number || 0
+        const value = (player.stats[stat] as number) || 0
         difference[player.name] = value - maxValue
       })
 
@@ -568,7 +564,7 @@ export class SportPlayerStatsService extends BaseService {
         stat,
         values,
         leader,
-        difference
+        difference,
       }
     })
   }
@@ -606,15 +602,16 @@ export class SportPlayerStatsService extends BaseService {
   /**
    * Calculate league rankings
    */
-  private async calculateLeagueRankings(teamTotals: Record<string, number>): Promise<Record<string, Record<string, number>>> {
+  private async calculateLeagueRankings(
+    teamTotals: Record<string, number>
+  ): Promise<Record<string, Record<string, number>>> {
     // Calculate real rankings based on team totals
     const rankings: Record<string, Record<string, number>> = {}
-    
+
     // Sort teams by each stat and assign rankings
     Object.keys(teamTotals).forEach(stat => {
-      const sortedTeams = Object.entries(teamTotals)
-        .sort(([,a], [,b]) => b - a) // Sort descending
-      
+      const sortedTeams = Object.entries(teamTotals).sort(([, a], [, b]) => b - a) // Sort descending
+
       sortedTeams.forEach(([teamId, _value], index) => {
         if (!rankings[teamId]) {
           rankings[teamId] = {}

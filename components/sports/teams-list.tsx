@@ -1,29 +1,22 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue
-} from "@/components/ui/select"
-import { 
-  RefreshCw, 
-  Search, 
-  Star, 
-  Users, 
-  Trophy, 
-  MapPin 
-} from "lucide-react"
-import { databaseFirstApiClient, type Team } from "@/lib/api-client-database-first"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import { TeamLogo } from "@/components/ui/team-logo"
-import { normalizeTeamData, deduplicateTeams } from "@/lib/utils/data-utils"
+  SelectValue,
+} from '@/components/ui/select'
+import { RefreshCw, Search, Star, Users, Trophy, MapPin } from 'lucide-react'
+import { databaseFirstApiClient, type Team } from '@/lib/api-client-database-first'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
+import { TeamLogo } from '@/components/ui/team-logo'
+import { normalizeTeamData, deduplicateTeams } from '@/lib/utils/data-utils'
 
 type TeamData = Team
 
@@ -32,13 +25,13 @@ interface TeamsListProps {
   className?: string
 }
 
-export function TeamsList({ sport, className = "" }: TeamsListProps) {
+export function TeamsList({ sport, className = '' }: TeamsListProps) {
   const [teams, setTeams] = useState<TeamData[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [leagueFilter, setLeagueFilter] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<"name" | "league" | "city">("name")
+  const [searchTerm, setSearchTerm] = useState('')
+  const [leagueFilter, setLeagueFilter] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<'name' | 'league' | 'city'>('name')
 
   const loadTeams = useCallback(async () => {
     try {
@@ -55,7 +48,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
     } finally {
       setLoading(false)
     }
-  }, [sport]);
+  }, [sport])
 
   useEffect(() => {
     loadTeams()
@@ -73,25 +66,26 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(team =>
-        team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (team.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (team.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        team.league.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        team =>
+          team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (team.city || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (team.abbreviation || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          team.league.toLowerCase().includes(searchTerm.toLowerCase())
       )
     }
 
     // League filter
-    if (leagueFilter !== "all") {
+    if (leagueFilter !== 'all') {
       filtered = filtered.filter(team => team.league === leagueFilter)
     }
 
     // Sort
     filtered.sort((a, b) => {
       switch (sortBy) {
-        case "league":
+        case 'league':
           return a.league.localeCompare(b.league) || a.name.localeCompare(b.name)
-        case "city":
+        case 'city':
           return (a.city || '').localeCompare(b.city || '') || a.name.localeCompare(b.name)
         default:
           return a.name.localeCompare(b.name)
@@ -126,12 +120,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
               Professional and professional teams across all leagues
             </CardDescription>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={refreshing}
-          >
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
             <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
@@ -145,7 +134,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
               <Input
                 placeholder="Search teams..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -155,7 +144,7 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Leagues</SelectItem>
-                {uniqueLeagues.map((league) => (
+                {uniqueLeagues.map(league => (
                   <SelectItem key={league} value={league}>
                     {league}
                   </SelectItem>
@@ -179,7 +168,8 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
       <CardContent>
         <div className="flex items-center justify-between mb-4">
           <div className="text-sm text-muted-foreground">
-            Showing {filteredAndSortedTeams.length} {filteredAndSortedTeams.length === 1 ? 'team' : 'teams'}
+            Showing {filteredAndSortedTeams.length}{' '}
+            {filteredAndSortedTeams.length === 1 ? 'team' : 'teams'}
           </div>
           {filteredAndSortedTeams.length > teams.length * 0.5 && (
             <Badge variant="outline">
@@ -193,13 +183,11 @@ export function TeamsList({ sport, className = "" }: TeamsListProps) {
           <div className="text-center py-12">
             <Users className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             <p className="text-lg font-medium text-muted-foreground">No teams found</p>
-            <p className="text-sm text-muted-foreground">
-              Try adjusting your search or filters
-            </p>
+            <p className="text-sm text-muted-foreground">Try adjusting your search or filters</p>
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredAndSortedTeams.slice(0, 50).map((team) => (
+            {filteredAndSortedTeams.slice(0, 50).map(team => (
               <TeamCard key={team.id} team={team} sport={sport} />
             ))}
           </div>
@@ -283,7 +271,7 @@ function TeamCard({ team, sport }: TeamCardProps) {
                 <Users className="h-3 w-3 text-muted-foreground" />
                 <span className="text-muted-foreground">Active Roster</span>
               </div>
-               <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-xs">
                 {team.abbreviation || 'N/A'}
               </Badge>
             </div>

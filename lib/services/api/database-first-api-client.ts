@@ -148,17 +148,14 @@ export class DatabaseFirstApiClient {
     return `${method}:${JSON.stringify(params)}`
   }
 
-  private async deduplicateRequest<T>(
-    cacheKey: string,
-    requestFn: () => Promise<T>
-  ): Promise<T> {
+  private async deduplicateRequest<T>(cacheKey: string, requestFn: () => Promise<T>): Promise<T> {
     if (this.requestCache.has(cacheKey)) {
       return this.requestCache.get(cacheKey)!
     }
 
     const promise = requestFn()
     this.requestCache.set(cacheKey, promise)
-    
+
     try {
       const result = await promise
       return result
@@ -168,28 +165,23 @@ export class DatabaseFirstApiClient {
   }
 
   // Games
-  async getGames(params: {
-    sport?: string
-    status?: string
-    dateFrom?: string
-    dateTo?: string
-    limit?: number
-    league?: string
-  } = {}): Promise<DatabaseApiResponse<GameData[]>> {
+  async getGames(
+    params: {
+      sport?: string
+      status?: string
+      dateFrom?: string
+      dateTo?: string
+      limit?: number
+      league?: string
+    } = {}
+  ): Promise<DatabaseApiResponse<GameData[]>> {
     const cacheKey = this.getCacheKey('getGames', params)
-    
+
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const {
-          sport = 'all',
-          status,
-          dateFrom,
-          dateTo,
-          limit = 100,
-          league
-        } = params
+        const { sport = 'all', status, dateFrom, dateTo, limit = 100, league } = params
 
-      let query = `
+        let query = `
         SELECT 
           g.id,
           g.home_team_id,
@@ -213,107 +205,103 @@ export class DatabaseFirstApiClient {
         WHERE 1=1
       `
 
-      const queryParams: any[] = []
-      let paramIndex = 1
+        const queryParams: any[] = []
+        let paramIndex = 1
 
-      if (sport !== 'all') {
-        query += ` AND g.sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
-      }
+        if (sport !== 'all') {
+          query += ` AND g.sport = $${paramIndex}`
+          queryParams.push(sport)
+          paramIndex++
+        }
 
-      if (status) {
-        query += ` AND g.status = $${paramIndex}`
-        queryParams.push(status)
-        paramIndex++
-      }
+        if (status) {
+          query += ` AND g.status = $${paramIndex}`
+          queryParams.push(status)
+          paramIndex++
+        }
 
-      if (dateFrom) {
-        query += ` AND g.game_date >= $${paramIndex}`
-        queryParams.push(dateFrom)
-        paramIndex++
-      }
+        if (dateFrom) {
+          query += ` AND g.game_date >= $${paramIndex}`
+          queryParams.push(dateFrom)
+          paramIndex++
+        }
 
-      if (dateTo) {
-        query += ` AND g.game_date <= $${paramIndex}`
-        queryParams.push(dateTo)
-        paramIndex++
-      }
+        if (dateTo) {
+          query += ` AND g.game_date <= $${paramIndex}`
+          queryParams.push(dateTo)
+          paramIndex++
+        }
 
-      if (league) {
-        query += ` AND g.league = $${paramIndex}`
-        queryParams.push(league)
-        paramIndex++
-      }
+        if (league) {
+          query += ` AND g.league = $${paramIndex}`
+          queryParams.push(league)
+          paramIndex++
+        }
 
-      query += ` ORDER BY g.game_date DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
+        query += ` ORDER BY g.game_date DESC LIMIT $${paramIndex}`
+        queryParams.push(limit)
 
-      const result = await databaseService.executeSQL(query, queryParams)
-      const games = result.data || []
+        const result = await databaseService.executeSQL(query, queryParams)
+        const games = result.data || []
 
-      structuredLogger.info('Games fetched from database', {
-        sport,
-        status,
-        count: games.length,
-        source: 'database'
-      })
-
-      return {
-        success: true,
-        data: games,
-        meta: {
-          source: 'database',
+        structuredLogger.info('Games fetched from database', {
+          sport,
+          status,
           count: games.length,
-          ...(sport !== 'all' && { sport }),
-          ...(status && { status }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
+          source: 'database',
+        })
+
+        return {
+          success: true,
+          data: games,
+          meta: {
+            source: 'database',
+            count: games.length,
+            ...(sport !== 'all' && { sport }),
+            ...(status && { status }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Failed to fetch games from database', {
+          error: error instanceof Error ? error.message : String(error),
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            ...(params.status && { status: params.status }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : String(error),
         }
       }
-
-    } catch (error) {
-      structuredLogger.error('Failed to fetch games from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          ...(params.status && { status: params.status }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
-        },
-        error: error instanceof Error ? error.message : String(error)
-      }
-    }
     })
   }
 
   // Teams
-  async getTeams(params: {
-    sport?: string
-    league?: string
-    limit?: number
-    isActive?: boolean
-  } = {}): Promise<DatabaseApiResponse<TeamData[]>> {
+  async getTeams(
+    params: {
+      sport?: string
+      league?: string
+      limit?: number
+      isActive?: boolean
+    } = {}
+  ): Promise<DatabaseApiResponse<TeamData[]>> {
     const cacheKey = this.getCacheKey('getTeams', params)
-    
+
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const {
-          sport = 'all',
-          league,
-          limit = 100,
-          isActive = true
-        } = params
+        const { sport = 'all', league, limit = 100, isActive = true } = params
 
-      let query = `
+        let query = `
         SELECT 
           id,
           name,
@@ -336,95 +324,90 @@ export class DatabaseFirstApiClient {
         FROM teams 
         WHERE 1=1
       `
-      const queryParams: any[] = []
-      let paramIndex = 1
+        const queryParams: any[] = []
+        let paramIndex = 1
 
-      if (sport !== 'all') {
-        query += ` AND sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
-      }
+        if (sport !== 'all') {
+          query += ` AND sport = $${paramIndex}`
+          queryParams.push(sport)
+          paramIndex++
+        }
 
-      if (league) {
-        query += ` AND league = $${paramIndex}`
-        queryParams.push(league)
-        paramIndex++
-      }
+        if (league) {
+          query += ` AND league = $${paramIndex}`
+          queryParams.push(league)
+          paramIndex++
+        }
 
-      if (isActive !== undefined) {
-        query += ` AND is_active = $${paramIndex}`
-        queryParams.push(isActive)
-        paramIndex++
-      }
+        if (isActive !== undefined) {
+          query += ` AND is_active = $${paramIndex}`
+          queryParams.push(isActive)
+          paramIndex++
+        }
 
-      query += ` ORDER BY name LIMIT $${paramIndex}`
-      queryParams.push(limit)
+        query += ` ORDER BY name LIMIT $${paramIndex}`
+        queryParams.push(limit)
 
-      const result = await databaseService.executeSQL(query, queryParams)
-      const teams = result.data || []
+        const result = await databaseService.executeSQL(query, queryParams)
+        const teams = result.data || []
 
-      structuredLogger.info('Teams fetched from database', {
-        sport,
-        league,
-        count: teams.length,
-        source: 'database'
-      })
-
-      return {
-        success: true,
-        data: teams,
-        meta: {
-          source: 'database',
+        structuredLogger.info('Teams fetched from database', {
+          sport,
+          league,
           count: teams.length,
-          ...(sport !== 'all' && { sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
+          source: 'database',
+        })
+
+        return {
+          success: true,
+          data: teams,
+          meta: {
+            source: 'database',
+            count: teams.length,
+            ...(sport !== 'all' && { sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Failed to fetch teams from database', {
+          error: error instanceof Error ? error.message : String(error),
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : String(error),
         }
       }
-
-    } catch (error) {
-      structuredLogger.error('Failed to fetch teams from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
-        },
-        error: error instanceof Error ? error.message : String(error)
-      }
-    }
     })
   }
 
   // Odds
-  async getOdds(params: {
-    sport?: string
-    gameId?: string
-    source?: string
-    limit?: number
-    liveOnly?: boolean
-  } = {}): Promise<DatabaseApiResponse<OddsData[]>> {
+  async getOdds(
+    params: {
+      sport?: string
+      gameId?: string
+      source?: string
+      limit?: number
+      liveOnly?: boolean
+    } = {}
+  ): Promise<DatabaseApiResponse<OddsData[]>> {
     const cacheKey = this.getCacheKey('getOdds', params)
-    
+
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const {
-          sport = 'all',
-          gameId,
-          source,
-          limit = 100,
-          liveOnly = false
-        } = params
+        const { sport = 'all', gameId, source, limit = 100, liveOnly = false } = params
 
-      let query = `
+        let query = `
         SELECT 
           id,
           game_id,
@@ -443,100 +426,95 @@ export class DatabaseFirstApiClient {
         FROM betting_odds 
         WHERE 1=1
       `
-      const queryParams: any[] = []
-      let paramIndex = 1
+        const queryParams: any[] = []
+        let paramIndex = 1
 
-      if (sport !== 'all') {
-        query += ` AND sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
-      }
+        if (sport !== 'all') {
+          query += ` AND sport = $${paramIndex}`
+          queryParams.push(sport)
+          paramIndex++
+        }
 
-      if (gameId) {
-        query += ` AND game_id = $${paramIndex}`
-        queryParams.push(gameId)
-        paramIndex++
-      }
+        if (gameId) {
+          query += ` AND game_id = $${paramIndex}`
+          queryParams.push(gameId)
+          paramIndex++
+        }
 
-      if (source) {
-        query += ` AND source = $${paramIndex}`
-        queryParams.push(source)
-        paramIndex++
-      }
+        if (source) {
+          query += ` AND source = $${paramIndex}`
+          queryParams.push(source)
+          paramIndex++
+        }
 
-      if (liveOnly) {
-        query += ` AND live_odds = true`
-      }
+        if (liveOnly) {
+          query += ` AND live_odds = true`
+        }
 
-      query += ` ORDER BY timestamp DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
+        query += ` ORDER BY timestamp DESC LIMIT $${paramIndex}`
+        queryParams.push(limit)
 
-      const result = await databaseService.executeSQL(query, queryParams)
-      const odds = result.data || []
+        const result = await databaseService.executeSQL(query, queryParams)
+        const odds = result.data || []
 
-      structuredLogger.info('Odds fetched from database', {
-        sport,
-        gameId,
-        source,
-        count: odds.length,
-        dataSource: 'database'
-      })
-
-      return {
-        success: true,
-        data: odds,
-        meta: {
-          source: 'database',
+        structuredLogger.info('Odds fetched from database', {
+          sport,
+          gameId,
+          source,
           count: odds.length,
-          ...(sport !== 'all' && { sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
+          dataSource: 'database',
+        })
+
+        return {
+          success: true,
+          data: odds,
+          meta: {
+            source: 'database',
+            count: odds.length,
+            ...(sport !== 'all' && { sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Failed to fetch odds from database', {
+          error: error instanceof Error ? error.message : String(error),
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : String(error),
         }
       }
-
-    } catch (error) {
-      structuredLogger.error('Failed to fetch odds from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
-        },
-        error: error instanceof Error ? error.message : String(error)
-      }
-    }
     })
   }
 
   // Predictions
-  async getPredictions(params: {
-    sport?: string
-    gameId?: string
-    modelName?: string
-    predictionType?: string
-    limit?: number
-  } = {}): Promise<DatabaseApiResponse<PredictionData[]>> {
+  async getPredictions(
+    params: {
+      sport?: string
+      gameId?: string
+      modelName?: string
+      predictionType?: string
+      limit?: number
+    } = {}
+  ): Promise<DatabaseApiResponse<PredictionData[]>> {
     const cacheKey = this.getCacheKey('getPredictions', params)
-    
+
     return this.deduplicateRequest(cacheKey, async () => {
       try {
-        const {
-          sport = 'all',
-          gameId,
-          modelName,
-          predictionType,
-          limit = 50
-        } = params
+        const { sport = 'all', gameId, modelName, predictionType, limit = 50 } = params
 
-      let query = `
+        let query = `
         SELECT 
           id,
           game_id,
@@ -556,100 +534,96 @@ export class DatabaseFirstApiClient {
         FROM predictions 
         WHERE 1=1
       `
-      const queryParams: any[] = []
-      let paramIndex = 1
+        const queryParams: any[] = []
+        let paramIndex = 1
 
-      if (sport !== 'all') {
-        query += ` AND sport = $${paramIndex}`
-        queryParams.push(sport)
-        paramIndex++
-      }
+        if (sport !== 'all') {
+          query += ` AND sport = $${paramIndex}`
+          queryParams.push(sport)
+          paramIndex++
+        }
 
-      if (gameId) {
-        query += ` AND game_id = $${paramIndex}`
-        queryParams.push(gameId)
-        paramIndex++
-      }
+        if (gameId) {
+          query += ` AND game_id = $${paramIndex}`
+          queryParams.push(gameId)
+          paramIndex++
+        }
 
-      if (modelName) {
-        query += ` AND model_name = $${paramIndex}`
-        queryParams.push(modelName)
-        paramIndex++
-      }
+        if (modelName) {
+          query += ` AND model_name = $${paramIndex}`
+          queryParams.push(modelName)
+          paramIndex++
+        }
 
-      if (predictionType) {
-        query += ` AND prediction_type = $${paramIndex}`
-        queryParams.push(predictionType)
-        paramIndex++
-      }
+        if (predictionType) {
+          query += ` AND prediction_type = $${paramIndex}`
+          queryParams.push(predictionType)
+          paramIndex++
+        }
 
-      query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`
-      queryParams.push(limit)
+        query += ` ORDER BY created_at DESC LIMIT $${paramIndex}`
+        queryParams.push(limit)
 
-      const result = await databaseService.executeSQL(query, queryParams)
-      const predictions = result.data || []
+        const result = await databaseService.executeSQL(query, queryParams)
+        const predictions = result.data || []
 
-      structuredLogger.info('Predictions fetched from database', {
-        sport,
-        gameId,
-        modelName,
-        predictionType,
-        count: predictions.length,
-        source: 'database'
-      })
-
-      return {
-        success: true,
-        data: predictions,
-        meta: {
-          source: 'database',
+        structuredLogger.info('Predictions fetched from database', {
+          sport,
+          gameId,
+          modelName,
+          predictionType,
           count: predictions.length,
-          ...(sport !== 'all' && { sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
+          source: 'database',
+        })
+
+        return {
+          success: true,
+          data: predictions,
+          meta: {
+            source: 'database',
+            count: predictions.length,
+            ...(sport !== 'all' && { sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+        }
+      } catch (error) {
+        structuredLogger.error('Failed to fetch predictions from database', {
+          error: error instanceof Error ? error.message : String(error),
+          params,
+        })
+
+        return {
+          success: false,
+          data: [],
+          meta: {
+            source: 'database',
+            count: 0,
+            ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
+            refreshed: false,
+            timestamp: new Date().toISOString(),
+          },
+          error: error instanceof Error ? error.message : String(error),
         }
       }
-
-    } catch (error) {
-      structuredLogger.error('Failed to fetch predictions from database', {
-        error: error instanceof Error ? error.message : String(error),
-        params
-      })
-
-      return {
-        success: false,
-        data: [],
-        meta: {
-          source: 'database',
-          count: 0,
-          ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
-          refreshed: false,
-          timestamp: new Date().toISOString()
-        },
-        error: error instanceof Error ? error.message : String(error)
-      }
-    }
     })
   }
 
   // Standings
-  async getStandings(params: {
-    sport?: string
-    league?: string
-    season?: string
-    limit?: number
-  } = {}): Promise<DatabaseApiResponse<StandingData[]>> {
+  async getStandings(
+    params: {
+      sport?: string
+      league?: string
+      season?: string
+      limit?: number
+    } = {}
+  ): Promise<DatabaseApiResponse<StandingData[]>> {
     try {
-      const {
-        sport = 'all',
-        league,
-        season,
-        limit = 50
-      } = params
+      const { sport = 'all', league, season, limit = 50 } = params
 
       // Use the production Supabase client's dedicated getStandings method
       const { productionSupabaseClient } = await import('../../supabase/production-client')
-      
+
       const standings = await productionSupabaseClient.getStandings(
         sport !== 'all' ? sport : undefined,
         league,
@@ -682,7 +656,7 @@ export class DatabaseFirstApiClient {
         points_against: standing.points_against || 0,
         point_differential: standing.point_differential || 0,
         last_updated: standing.last_updated,
-        created_at: standing.created_at
+        created_at: standing.created_at,
       }))
 
       // Apply limit
@@ -693,7 +667,7 @@ export class DatabaseFirstApiClient {
         league,
         season,
         count: limitedStandings.length,
-        source: 'database'
+        source: 'database',
       })
 
       return {
@@ -704,14 +678,13 @@ export class DatabaseFirstApiClient {
           count: limitedStandings.length,
           ...(sport !== 'all' && { sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }
-
     } catch (error) {
       structuredLogger.error('Failed to fetch standings from database', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       })
 
       return {
@@ -722,19 +695,21 @@ export class DatabaseFirstApiClient {
           count: 0,
           ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
 
   // Analytics
-  async getAnalyticsStats(params: {
-    sport?: string
-    dateFrom?: string
-    dateTo?: string
-  } = {}): Promise<DatabaseApiResponse<any>> {
+  async getAnalyticsStats(
+    params: {
+      sport?: string
+      dateFrom?: string
+      dateTo?: string
+    } = {}
+  ): Promise<DatabaseApiResponse<any>> {
     try {
       const { sport = 'all', dateFrom, dateTo } = params
 
@@ -749,7 +724,7 @@ export class DatabaseFirstApiClient {
         WHERE 1=1
         ${sport !== 'all' ? 'AND sport = $1' : ''}
         ${dateFrom ? `AND game_date >= $${sport !== 'all' ? '2' : '1'}` : ''}
-        ${dateTo ? `AND game_date <= $${sport !== 'all' ? (dateFrom ? '3' : '2') : (dateFrom ? '2' : '1')}` : ''}
+        ${dateTo ? `AND game_date <= $${sport !== 'all' ? (dateFrom ? '3' : '2') : dateFrom ? '2' : '1'}` : ''}
       `
 
       const queryParams: any[] = []
@@ -771,7 +746,10 @@ export class DatabaseFirstApiClient {
         ${sport !== 'all' ? 'AND sport = $1' : ''}
       `
 
-      const predictionsResult = await databaseService.executeSQL(predictionsQuery, sport !== 'all' ? [sport] : [])
+      const predictionsResult = await databaseService.executeSQL(
+        predictionsQuery,
+        sport !== 'all' ? [sport] : []
+      )
       const predictionsStats = predictionsResult.data[0] || {}
 
       // Get teams count
@@ -782,7 +760,10 @@ export class DatabaseFirstApiClient {
         ${sport !== 'all' ? 'AND sport = $1' : ''}
       `
 
-      const teamsResult = await databaseService.executeSQL(teamsQuery, sport !== 'all' ? [sport] : [])
+      const teamsResult = await databaseService.executeSQL(
+        teamsQuery,
+        sport !== 'all' ? [sport] : []
+      )
       const teamsStats = teamsResult.data[0] || {}
 
       const analytics = {
@@ -792,18 +773,20 @@ export class DatabaseFirstApiClient {
         scheduled_games: parseInt(gamesStats.scheduled_games) || 0,
         total_predictions: parseInt(predictionsStats.total_predictions) || 0,
         correct_predictions: parseInt(predictionsStats.correct_predictions) || 0,
-        accuracy_rate: predictionsStats.total_predictions > 0 
-          ? (parseInt(predictionsStats.correct_predictions) / parseInt(predictionsStats.total_predictions)) 
-          : 0,
+        accuracy_rate:
+          predictionsStats.total_predictions > 0
+            ? parseInt(predictionsStats.correct_predictions) /
+              parseInt(predictionsStats.total_predictions)
+            : 0,
         avg_confidence: parseFloat(predictionsStats.avg_confidence) || 0,
         total_teams: parseInt(teamsStats.total_teams) || 0,
-        recent_predictions: parseInt(predictionsStats.total_predictions) || 0
+        recent_predictions: parseInt(predictionsStats.total_predictions) || 0,
       }
 
       structuredLogger.info('Analytics fetched from database', {
         sport,
         analytics,
-        source: 'database'
+        source: 'database',
       })
 
       return {
@@ -814,14 +797,13 @@ export class DatabaseFirstApiClient {
           count: 1,
           ...(sport !== 'all' && { sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }
-
     } catch (error) {
       structuredLogger.error('Failed to fetch analytics from database', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       })
 
       return {
@@ -834,31 +816,33 @@ export class DatabaseFirstApiClient {
           recent_predictions: 0,
           recent_performance: {
             accuracy_by_type: {},
-            daily_stats: []
-          }
+            daily_stats: [],
+          },
         },
         meta: {
           source: 'database',
           count: 0,
           ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
 
   // Value Betting Opportunities
-  async getValueBets(params: {
-    sport?: string
-    league?: string
-    betType?: string
-    recommendation?: string
-    minValue?: number
-    limit?: number
-    activeOnly?: boolean
-  } = {}): Promise<DatabaseApiResponse<any[]>> {
+  async getValueBets(
+    params: {
+      sport?: string
+      league?: string
+      betType?: string
+      recommendation?: string
+      minValue?: number
+      limit?: number
+      activeOnly?: boolean
+    } = {}
+  ): Promise<DatabaseApiResponse<any[]>> {
     try {
       const {
         sport = 'all',
@@ -867,7 +851,7 @@ export class DatabaseFirstApiClient {
         recommendation,
         minValue,
         limit = 50,
-        activeOnly = true
+        activeOnly = true,
       } = params
 
       let query = `SELECT * FROM value_betting_opportunities WHERE 1=1`
@@ -922,7 +906,7 @@ export class DatabaseFirstApiClient {
         minValue,
         limit,
         activeOnly,
-        count: valueBets.length
+        count: valueBets.length,
       })
 
       return {
@@ -938,14 +922,13 @@ export class DatabaseFirstApiClient {
           ...(minValue !== undefined && { minValue }),
           activeOnly,
           refreshed: false,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }
-
     } catch (error) {
       structuredLogger.error('Failed to fetch value bets from database', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       })
 
       return {
@@ -956,24 +939,26 @@ export class DatabaseFirstApiClient {
           count: 0,
           ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
 
   // Sports News
-  async getSportsNews(params: {
-    sport?: string | undefined
-    league?: string | undefined
-    teamId?: string | undefined
-    playerId?: string | undefined
-    newsType?: string | undefined
-    source?: string | undefined
-    limit?: number | undefined
-    hours?: number | undefined
-  } = {}): Promise<DatabaseApiResponse<any[]>> {
+  async getSportsNews(
+    params: {
+      sport?: string | undefined
+      league?: string | undefined
+      teamId?: string | undefined
+      playerId?: string | undefined
+      newsType?: string | undefined
+      source?: string | undefined
+      limit?: number | undefined
+      hours?: number | undefined
+    } = {}
+  ): Promise<DatabaseApiResponse<any[]>> {
     try {
       const {
         sport = 'all',
@@ -983,7 +968,7 @@ export class DatabaseFirstApiClient {
         newsType,
         source,
         limit = 20,
-        hours = 24
+        hours = 24,
       } = params
 
       let query = `SELECT * FROM sports_news WHERE 1=1`
@@ -1046,7 +1031,7 @@ export class DatabaseFirstApiClient {
         source,
         limit,
         hours,
-        count: news.length
+        count: news.length,
       })
 
       return {
@@ -1064,14 +1049,13 @@ export class DatabaseFirstApiClient {
           limit,
           hours,
           refreshed: false,
-          timestamp: new Date().toISOString()
-        }
+          timestamp: new Date().toISOString(),
+        },
       }
-
     } catch (error) {
       structuredLogger.error('Failed to fetch sports news from database', {
         error: error instanceof Error ? error.message : String(error),
-        params
+        params,
       })
 
       return {
@@ -1082,9 +1066,9 @@ export class DatabaseFirstApiClient {
           count: 0,
           ...(params.sport && params.sport !== 'all' && { sport: params.sport }),
           refreshed: false,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         },
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }

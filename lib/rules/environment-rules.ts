@@ -24,24 +24,24 @@ export class EnvironmentRules {
     this.validateApiKeys()
     this.validateUrls()
     this.validateFeatureFlags()
-    
+
     if (this.validationErrors.length > 0) {
       throw new Error(`Environment validation failed: ${this.validationErrors.join(', ')}`)
     }
-    
+
     this.isInitialized = true
   }
 
   private validateRequiredVariables(): void {
     const required = [
       'NEXT_PUBLIC_SUPABASE_URL',
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY', 
-      'SUPABASE_SERVICE_ROLE_KEY'
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
     ]
 
     for (const varName of required) {
       const value = process.env[varName]
-      
+
       if (!value) {
         this.validationErrors.push(`Missing required variable: ${varName}`)
         continue
@@ -58,12 +58,12 @@ export class EnvironmentRules {
 
   private validateWebhookSecret(): void {
     const webhookSecret = process.env.WEBHOOK_SECRET
-    
+
     if (webhookSecret) {
       if (this.containsPlaceholder(webhookSecret)) {
         this.validationErrors.push('Placeholder detected in WEBHOOK_SECRET')
       }
-      
+
       if (webhookSecret.length < 32) {
         this.validationErrors.push('WEBHOOK_SECRET must be at least 32 characters long')
       }
@@ -74,16 +74,16 @@ export class EnvironmentRules {
     const apiKeys = [
       { name: 'NEXT_PUBLIC_RAPIDAPI_KEY', minLength: 10 },
       { name: 'NEXT_PUBLIC_ODDS_API_KEY', minLength: 10 },
-      { name: 'NEXT_PUBLIC_BALLDONTLIE_API_KEY', minLength: 10 }
+      { name: 'NEXT_PUBLIC_BALLDONTLIE_API_KEY', minLength: 10 },
     ]
 
     for (const { name, minLength } of apiKeys) {
       const value = process.env[name]
-      
+
       if (value && this.containsPlaceholder(value)) {
         this.validationErrors.push(`Placeholder detected in ${name}`)
       }
-      
+
       if (value && value.length < minLength) {
         this.validationErrors.push(`Invalid ${name}: too short`)
       }
@@ -92,7 +92,7 @@ export class EnvironmentRules {
 
   private validateUrls(): void {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    
+
     if (supabaseUrl && !this.isValidSupabaseUrl(supabaseUrl)) {
       this.validationErrors.push('Invalid Supabase URL format')
     }
@@ -101,13 +101,13 @@ export class EnvironmentRules {
   private validateFeatureFlags(): void {
     const flags = [
       'NEXT_PUBLIC_ENABLE_LIVE_UPDATES',
-      'NEXT_PUBLIC_ENABLE_VALUE_BETTING', 
-      'NEXT_PUBLIC_ENABLE_ML_PREDICTIONS'
+      'NEXT_PUBLIC_ENABLE_VALUE_BETTING',
+      'NEXT_PUBLIC_ENABLE_ML_PREDICTIONS',
     ]
 
     for (const flag of flags) {
       const value = process.env[flag]
-      
+
       if (value && !['true', 'false'].includes(value.toLowerCase())) {
         this.validationErrors.push(`Invalid boolean value for ${flag}`)
       }
@@ -121,12 +121,10 @@ export class EnvironmentRules {
       'example',
       'replace_with',
       'enter_your',
-      'add_your'
+      'add_your',
     ]
-    
-    return placeholders.some(placeholder => 
-      value.toLowerCase().includes(placeholder.toLowerCase())
-    )
+
+    return placeholders.some(placeholder => value.toLowerCase().includes(placeholder.toLowerCase()))
   }
 
   private isValidSupabaseUrl(url: string): boolean {
@@ -156,7 +154,7 @@ export class EnvironmentRules {
       appVersion: process.env.NEXT_PUBLIC_APP_VERSION!,
       enableLiveUpdates: process.env.NEXT_PUBLIC_ENABLE_LIVE_UPDATES === 'true',
       enableValueBetting: process.env.NEXT_PUBLIC_ENABLE_VALUE_BETTING === 'true',
-      enableMlPredictions: process.env.NEXT_PUBLIC_ENABLE_ML_PREDICTIONS === 'true'
+      enableMlPredictions: process.env.NEXT_PUBLIC_ENABLE_ML_PREDICTIONS === 'true',
     }
   }
 

@@ -1,16 +1,19 @@
 # Analytics APIs
 
-This section covers analytics and data analysis endpoints that provide insights into sports data.
+This section covers analytics and data analysis endpoints that provide insights
+into sports data.
 
 ## Analytics Overview
 
 **Endpoint:** `GET /api/analytics`
 
-**Description:** Comprehensive system analytics including data counts, freshness, and performance metrics.
+**Description:** Comprehensive system analytics including data counts,
+freshness, and performance metrics.
 
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -67,6 +70,7 @@ This section covers analytics and data analysis endpoints that provide insights 
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics"
 ```
@@ -80,9 +84,11 @@ curl -X GET "https://your-domain.com/api/analytics"
 **Description:** Detailed analytics for a specific sport.
 
 **Parameters:**
+
 - `sport` (string, required) - Sport name in URL path
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -131,6 +137,7 @@ curl -X GET "https://your-domain.com/api/analytics"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/basketball"
 ```
@@ -144,12 +151,14 @@ curl -X GET "https://your-domain.com/api/analytics/basketball"
 **Description:** Team performance analytics and metrics.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `season` (string, optional) - Season (default: current)
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -183,9 +192,9 @@ curl -X GET "https://your-domain.com/api/analytics/basketball"
       "trends": {
         "recent_form": ["W", "W", "L", "W", "W"],
         "home_performance": 0.75,
-        "away_performance": 0.50,
-        "vs_top_teams": 0.60,
-        "vs_bottom_teams": 0.80
+        "away_performance": 0.5,
+        "vs_top_teams": 0.6,
+        "vs_bottom_teams": 0.8
       },
       "last_updated": "2024-01-01T00:00:00.000Z"
     }
@@ -201,6 +210,7 @@ curl -X GET "https://your-domain.com/api/analytics/basketball"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/team-performance?sport=basketball&league=NBA"
 ```
@@ -214,6 +224,7 @@ curl -X GET "https://your-domain.com/api/analytics/team-performance?sport=basket
 **Description:** Player performance analytics and advanced metrics.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `position` (string, optional) - Player position
@@ -222,6 +233,7 @@ curl -X GET "https://your-domain.com/api/analytics/team-performance?sport=basket
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -287,6 +299,7 @@ curl -X GET "https://your-domain.com/api/analytics/team-performance?sport=basket
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/player-analytics?sport=basketball&position=SF&minGames=20"
 ```
@@ -300,13 +313,16 @@ curl -X GET "https://your-domain.com/api/analytics/player-analytics?sport=basket
 **Description:** Data trend analysis and pattern recognition.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
-- `trendType` (string, optional) - Type of trend: "performance", "odds", "predictions"
+- `trendType` (string, optional) - Type of trend: "performance", "odds",
+  "predictions"
 - `period` (string, optional) - Time period: "7d", "30d", "90d" (default: "30d")
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -355,6 +371,7 @@ curl -X GET "https://your-domain.com/api/analytics/player-analytics?sport=basket
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/trend-analysis?sport=basketball&trendType=performance&period=30d"
 ```
@@ -368,6 +385,7 @@ curl -X GET "https://your-domain.com/api/analytics/trend-analysis?sport=basketba
 **Description:** Top performing teams and players across various metrics.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `category` (string, optional) - Category: "teams", "players", "games"
@@ -376,6 +394,7 @@ curl -X GET "https://your-domain.com/api/analytics/trend-analysis?sport=basketba
 - `limit` (number, optional) - Maximum results (default: 10)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -415,6 +434,7 @@ curl -X GET "https://your-domain.com/api/analytics/trend-analysis?sport=basketba
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/top-performers?sport=basketball&category=players&metric=points&limit=20"
 ```
@@ -428,6 +448,7 @@ curl -X GET "https://your-domain.com/api/analytics/top-performers?sport=basketba
 **Description:** Analysis of prediction model accuracy and performance.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `model` (string, optional) - Prediction model name
@@ -435,6 +456,7 @@ curl -X GET "https://your-domain.com/api/analytics/top-performers?sport=basketba
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -487,6 +509,7 @@ curl -X GET "https://your-domain.com/api/analytics/top-performers?sport=basketba
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/analytics/prediction-accuracy?sport=basketball&period=30d"
 ```

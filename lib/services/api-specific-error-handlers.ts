@@ -35,7 +35,10 @@ class ApiSpecificErrorHandler {
   private failureCounts: Map<string, number> = new Map()
   private lastFailureTimes: Map<string, number> = new Map()
   private circuitBreakerStates: Map<string, 'closed' | 'open' | 'half-open'> = new Map()
-  private requestCounts: Map<string, { minute: number, day: number, month: number, lastReset: number }> = new Map()
+  private requestCounts: Map<
+    string,
+    { minute: number; day: number; month: number; lastReset: number }
+  > = new Map()
 
   constructor() {
     this.initializeConfigs()
@@ -50,13 +53,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 2, // Conservative due to low limits
         baseDelay: 5000, // 5 seconds
         maxDelay: 60000, // 1 minute
-        backoffMultiplier: 3
+        backoffMultiplier: 3,
       },
       circuitBreaker: {
         failureThreshold: 2,
-        timeoutMs: 300000 // 5 minutes
+        timeoutMs: 300000, // 5 minutes
       },
-      fallbackApis: []
+      fallbackApis: [],
     })
 
     // API-Football - Strict rate limits
@@ -67,13 +70,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 2,
         baseDelay: 6000, // 6 seconds (conservative)
         maxDelay: 120000, // 2 minutes
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 3,
-        timeoutMs: 600000 // 10 minutes
+        timeoutMs: 600000, // 10 minutes
       },
-      fallbackApis: ['espn', 'sportsdb']
+      fallbackApis: ['espn', 'sportsdb'],
     })
 
     // BallDontLie - Moderate rate limits
@@ -84,13 +87,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 3,
         baseDelay: 1000, // 1 second
         maxDelay: 30000, // 30 seconds
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 5,
-        timeoutMs: 120000 // 2 minutes
+        timeoutMs: 120000, // 2 minutes
       },
-      fallbackApis: ['nba-stats', 'espn']
+      fallbackApis: ['nba-stats', 'espn'],
     })
 
     // ESPN - Unlimited but unofficial
@@ -101,13 +104,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 4,
         baseDelay: 500, // Fast retry
         maxDelay: 15000, // 15 seconds
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 10, // More tolerant
-        timeoutMs: 60000 // 1 minute
+        timeoutMs: 60000, // 1 minute
       },
-      fallbackApis: ['sportsdb']
+      fallbackApis: ['sportsdb'],
     })
 
     // MLB Stats - Unlimited official
@@ -118,13 +121,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 3,
         baseDelay: 1000,
         maxDelay: 20000,
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 5,
-        timeoutMs: 120000
+        timeoutMs: 120000,
       },
-      fallbackApis: ['espn', 'sportsdb']
+      fallbackApis: ['espn', 'sportsdb'],
     })
 
     // NHL API - Unlimited official
@@ -135,13 +138,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 3,
         baseDelay: 1000,
         maxDelay: 20000,
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 5,
-        timeoutMs: 120000
+        timeoutMs: 120000,
       },
-      fallbackApis: ['espn', 'sportsdb']
+      fallbackApis: ['espn', 'sportsdb'],
     })
 
     // NBA Stats - Unofficial, needs careful handling
@@ -152,13 +155,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 2,
         baseDelay: 2000, // 2 seconds
         maxDelay: 60000, // 1 minute
-        backoffMultiplier: 3
+        backoffMultiplier: 3,
       },
       circuitBreaker: {
         failureThreshold: 3,
-        timeoutMs: 300000 // 5 minutes
+        timeoutMs: 300000, // 5 minutes
       },
-      fallbackApis: ['balldontlie', 'espn']
+      fallbackApis: ['balldontlie', 'espn'],
     })
 
     // SportsDB - Free tier with rate limits
@@ -169,13 +172,13 @@ class ApiSpecificErrorHandler {
         maxRetries: 2,
         baseDelay: 2000, // 2 seconds
         maxDelay: 60000, // 1 minute
-        backoffMultiplier: 2
+        backoffMultiplier: 2,
       },
       circuitBreaker: {
         failureThreshold: 3,
-        timeoutMs: 180000 // 3 minutes
+        timeoutMs: 180000, // 3 minutes
       },
-      fallbackApis: ['espn']
+      fallbackApis: ['espn'],
     })
 
     // Initialize circuit breaker states
@@ -186,7 +189,7 @@ class ApiSpecificErrorHandler {
         minute: 0,
         day: 0,
         month: 0,
-        lastReset: Date.now()
+        lastReset: Date.now(),
       })
     }
   }
@@ -197,7 +200,7 @@ class ApiSpecificErrorHandler {
       return {
         shouldRetry: false,
         shouldCircuitBreak: false,
-        error: `Unknown API: ${apiName}`
+        error: `Unknown API: ${apiName}`,
       }
     }
 
@@ -208,7 +211,7 @@ class ApiSpecificErrorHandler {
         shouldRetry: false,
         shouldCircuitBreak: true,
         fallbackApi: config.fallbackApis?.[0],
-        error: `${config.name}: Circuit breaker is open`
+        error: `${config.name}: Circuit breaker is open`,
       }
     }
 
@@ -236,42 +239,42 @@ class ApiSpecificErrorHandler {
   private handleRateLimitError(apiName: string, config: ApiConfig): ApiErrorResult {
     // Use base delay for rate limit errors since we removed rate limit configs
     const retryAfter = config.retryStrategy.baseDelay * 5 // Default to 5x base delay
-    
+
     logger.logBusinessEvent('api_rate_limit_hit', {
       api: apiName,
-      retryAfterMs: retryAfter
+      retryAfterMs: retryAfter,
     })
 
     return {
       shouldRetry: true,
       retryAfterMs: retryAfter,
       shouldCircuitBreak: false,
-      error: `${config.name}: Rate limit exceeded, retry after ${retryAfter}ms`
+      error: `${config.name}: Rate limit exceeded, retry after ${retryAfter}ms`,
     }
   }
 
   private handleAuthError(apiName: string, config: ApiConfig): ApiErrorResult {
     this.recordFailure(apiName)
-    
+
     return {
       shouldRetry: false,
       shouldCircuitBreak: true,
       fallbackApi: config.fallbackApis?.[0],
-      error: `${config.name}: Authentication failed`
+      error: `${config.name}: Authentication failed`,
     }
   }
 
   private handleServerError(apiName: string, config: ApiConfig): ApiErrorResult {
     this.recordFailure(apiName)
     const failures = this.failureCounts.get(apiName) || 0
-    
+
     if (failures >= config.circuitBreaker.failureThreshold) {
       this.openCircuitBreaker(apiName)
       return {
         shouldRetry: false,
         shouldCircuitBreak: true,
         fallbackApi: config.fallbackApis?.[0],
-        error: `${config.name}: Circuit breaker opened due to server errors`
+        error: `${config.name}: Circuit breaker opened due to server errors`,
       }
     }
 
@@ -279,37 +282,38 @@ class ApiSpecificErrorHandler {
       shouldRetry: true,
       retryAfterMs: this.calculateRetryDelay(config, failures),
       shouldCircuitBreak: false,
-      error: `${config.name}: Server error, retrying`
+      error: `${config.name}: Server error, retrying`,
     }
   }
 
   private handleNetworkError(apiName: string, config: ApiConfig): ApiErrorResult {
     this.recordFailure(apiName)
     const failures = this.failureCounts.get(apiName) || 0
-    
+
     return {
       shouldRetry: failures < config.retryStrategy.maxRetries,
       retryAfterMs: this.calculateRetryDelay(config, failures),
       shouldCircuitBreak: failures >= config.circuitBreaker.failureThreshold,
       fallbackApi: config.fallbackApis?.[0],
-      error: `${config.name}: Network error`
+      error: `${config.name}: Network error`,
     }
   }
 
   private handleGenericError(apiName: string, config: ApiConfig, error: Error): ApiErrorResult {
     this.recordFailure(apiName)
     const failures = this.failureCounts.get(apiName) || 0
-    
+
     return {
       shouldRetry: failures < config.retryStrategy.maxRetries,
       retryAfterMs: this.calculateRetryDelay(config, failures),
       shouldCircuitBreak: false,
-      error: `${config.name}: ${error.message}`
+      error: `${config.name}: ${error.message}`,
     }
   }
 
   private calculateRetryDelay(config: ApiConfig, attempt: number): number {
-    const delay = config.retryStrategy.baseDelay * Math.pow(config.retryStrategy.backoffMultiplier, attempt)
+    const delay =
+      config.retryStrategy.baseDelay * Math.pow(config.retryStrategy.backoffMultiplier, attempt)
     return Math.min(delay, config.retryStrategy.maxDelay)
   }
 
@@ -322,7 +326,7 @@ class ApiSpecificErrorHandler {
   private openCircuitBreaker(apiName: string): void {
     this.circuitBreakerStates.set(apiName, 'open')
     const config = this.configs.get(apiName)
-    
+
     if (config) {
       setTimeout(() => {
         this.circuitBreakerStates.set(apiName, 'half-open')
@@ -340,12 +344,12 @@ class ApiSpecificErrorHandler {
     const failures = this.failureCounts.get(apiName) || 0
     const circuitState = this.circuitBreakerStates.get(apiName)
     const requestCount = this.requestCounts.get(apiName)
-    
+
     return {
       name: config?.name || apiName,
       failures,
       circuitState,
-      requestCount
+      requestCount,
       // Note: Rate limits are now managed by EnhancedRateLimiter
     }
   }

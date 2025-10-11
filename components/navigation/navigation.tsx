@@ -1,18 +1,30 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Badge } from "@/components/ui/badge"
-import { BarChart3, Calendar, Home, Menu, Settings, Target, TrendingUp, Users, Bell, X, User } from "lucide-react"
-import { NotificationSystem } from "@/components/notifications/notification-system"
-import { UserProfileDropdown } from "@/components/auth/user-profile"
-import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { useAuth } from "@/lib/auth/auth-context"
-import { useIsMobile } from "@/hooks/use-mobile"
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { Badge } from '@/components/ui/badge'
+import {
+  BarChart3,
+  Calendar,
+  Home,
+  Menu,
+  Settings,
+  Target,
+  TrendingUp,
+  Users,
+  Bell,
+  X,
+  User,
+} from 'lucide-react'
+import { NotificationSystem } from '@/components/notifications/notification-system'
+import { UserMenu } from '@/components/auth/user-menu'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { useAuth } from '@/lib/auth/auth-context'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 type NavItem = {
   title: string
@@ -24,58 +36,58 @@ type NavItem = {
 
 const navigationItems: NavItem[] = [
   {
-    title: "Home",
-    href: "/",
+    title: 'Home',
+    href: '/',
     icon: Home,
-    description: "Sports analytics homepage",
+    description: 'Sports analytics homepage',
   },
   {
-    title: "Games",
-    href: "/games",
+    title: 'Games',
+    href: '/games',
     icon: Calendar,
-    description: "Live and upcoming games",
+    description: 'Live and upcoming games',
   },
   {
-    title: "Players",
-    href: "/players",
+    title: 'Players',
+    href: '/players',
     icon: User,
-    description: "Player statistics and analysis",
+    description: 'Player statistics and analysis',
   },
   {
-    title: "Teams",
-    href: "/teams",
+    title: 'Teams',
+    href: '/teams',
     icon: Users,
-    description: "Team statistics and rosters",
+    description: 'Team statistics and rosters',
   },
   {
-    title: "Predictions",
-    href: "/predictions",
+    title: 'Predictions',
+    href: '/predictions',
     icon: Target,
-    description: "AI-powered predictions",
+    description: 'AI-powered predictions',
   },
   {
-    title: "Analytics",
-    href: "/analytics",
+    title: 'Analytics',
+    href: '/analytics',
     icon: BarChart3,
-    description: "Advanced analytics",
+    description: 'Advanced analytics',
   },
   {
-    title: "Trends",
-    href: "/trends",
+    title: 'Trends',
+    href: '/trends',
     icon: TrendingUp,
-    description: "Market trends and patterns",
+    description: 'Market trends and patterns',
   },
   {
-    title: "Alerts",
-    href: "/alerts",
+    title: 'Alerts',
+    href: '/alerts',
     icon: Bell,
-    description: "Custom notifications",
+    description: 'Custom notifications',
   },
   {
-    title: "Settings",
-    href: "/settings",
+    title: 'Settings',
+    href: '/settings',
     icon: Settings,
-    description: "App configuration",
+    description: 'App configuration',
   },
 ]
 
@@ -109,9 +121,7 @@ export function Navigation() {
               <Target className="h-5 w-5" />
             </div>
             <div className="flex flex-col">
-              <span className="text-lg font-bold text-foreground">
-                Project Apex
-              </span>
+              <span className="text-lg font-bold text-foreground">Project Apex</span>
               <span className="text-xs text-muted-foreground font-medium -mt-1">
                 Sports Analytics
               </span>
@@ -142,9 +152,9 @@ export function Navigation() {
                         <p className="text-sm text-muted-foreground">Sports Analytics Platform</p>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setIsOpen(false)}
                       className="h-8 w-8 p-0"
                     >
@@ -154,33 +164,39 @@ export function Navigation() {
 
                   {/* Mobile Navigation */}
                   <nav className="flex-1 py-6 space-y-2">
-                    {navigationItems.map((item) => {
+                    {navigationItems.map(item => {
                       const Icon = item.icon
                       const isActive = pathname === item.href
 
                       return (
                         <Link key={item.href} href={item.href} onClick={() => setIsOpen(false)}>
-                          <div className={cn(
-                            "flex items-center justify-between p-3 rounded-lg transition-all duration-200",
-                            isActive 
-                              ? "bg-primary text-primary-foreground shadow-md" 
-                              : "hover:bg-muted hover:text-foreground"
-                          )}>
+                          <div
+                            className={cn(
+                              'flex items-center justify-between p-3 rounded-lg transition-all duration-200',
+                              isActive
+                                ? 'bg-primary text-primary-foreground shadow-md'
+                                : 'hover:bg-muted hover:text-foreground'
+                            )}
+                          >
                             <div className="flex items-center space-x-3">
                               <Icon className="h-5 w-5" />
                               <div>
                                 <div className="font-medium">{item.title}</div>
-                                <div className={cn(
-                                  "text-xs",
-                                  isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-                                )}>
+                                <div
+                                  className={cn(
+                                    'text-xs',
+                                    isActive
+                                      ? 'text-primary-foreground/70'
+                                      : 'text-muted-foreground'
+                                  )}
+                                >
                                   {item.description}
                                 </div>
                               </div>
                             </div>
                             {item.badge && (
-                              <Badge 
-                                variant={item.badge === "Live" ? "destructive" : "secondary"} 
+                              <Badge
+                                variant={item.badge === 'Live' ? 'destructive' : 'secondary'}
                                 className="text-xs"
                               >
                                 {item.badge}
@@ -203,20 +219,18 @@ export function Navigation() {
                           <p className="text-sm font-medium truncate">
                             {user.user_metadata?.full_name || user.email}
                           </p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {user.email}
-                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                         </div>
-                        <UserProfileDropdown />
+                        <UserMenu />
                       </div>
                     ) : (
                       <Button asChild variant="outline" className="w-full">
-                        <Link href="/login" onClick={() => setIsOpen(false)}>Sign In</Link>
+                        <Link href="/login" onClick={() => setIsOpen(false)}>
+                          Sign In
+                        </Link>
                       </Button>
                     )}
-                    <p className="text-xs text-muted-foreground text-center">
-                      Version 1.0.0
-                    </p>
+                    <p className="text-xs text-muted-foreground text-center">Version 1.0.0</p>
                   </div>
                 </div>
               </SheetContent>

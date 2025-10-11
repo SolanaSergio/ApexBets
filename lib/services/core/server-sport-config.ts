@@ -4,7 +4,7 @@
  */
 
 // Production-ready approach - no direct Supabase client imports
-import { SportConfig } from "./sport-config"
+import { SportConfig } from './sport-config'
 
 export class ServerSportConfigManager {
   private static configs: Record<string, SportConfig> = {}
@@ -19,7 +19,7 @@ export class ServerSportConfigManager {
     try {
       // Production approach - use database service
       const { databaseService } = await import('../database-service')
-      
+
       const result = await databaseService.executeSQL(`
         SELECT 
           name,
@@ -64,14 +64,14 @@ export class ServerSportConfigManager {
             bettingMarkets: Array.isArray(sport.betting_markets) ? sport.betting_markets : [],
             seasonConfig: sport.season_config || { startMonth: 1, endMonth: 12, currentSeason: '' },
             rateLimits: sport.rate_limits || { requests: 30, interval: '1m' },
-            updateFrequency: String(sport.update_frequency ?? '30m')
+            updateFrequency: String(sport.update_frequency ?? '30m'),
           }
         }
       } else {
         // Fallback to empty config if no database data
         this.configs = {}
       }
-      
+
       this.initialized = true
     } catch (error) {
       console.error('Failed to initialize server sport configurations:', error)

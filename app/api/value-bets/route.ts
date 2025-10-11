@@ -14,13 +14,13 @@ const CACHE_TTL = 60 * 5 // 5 minutes
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league") ?? undefined
-    const betType = searchParams.get("betType") ?? undefined
-    const recommendation = searchParams.get("recommendation") ?? undefined
-    const minValue = searchParams.get("minValue")
-    const limit = Number.parseInt(searchParams.get("limit") || "50")
-    const activeOnly = searchParams.get("activeOnly") !== "false"
+    const sport = searchParams.get('sport') || 'all'
+    const league = searchParams.get('league') ?? undefined
+    const betType = searchParams.get('betType') ?? undefined
+    const recommendation = searchParams.get('recommendation') ?? undefined
+    const minValue = searchParams.get('minValue')
+    const limit = Number.parseInt(searchParams.get('limit') || '50')
+    const activeOnly = searchParams.get('activeOnly') !== 'false'
 
     const cacheKey = `value-bets-${sport}-${league}-${betType}-${recommendation}-${minValue}-${limit}-${activeOnly}`
     const cached = await databaseCacheService.get(cacheKey)
@@ -57,14 +57,17 @@ export async function GET(request: NextRequest) {
         betType,
         recommendation,
         minValue,
-        limit
+        limit,
       })
-      
-      return NextResponse.json({
-        success: false,
-        error: 'Failed to fetch value betting opportunities',
-        details: result.error
-      }, { status: 500 })
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch value betting opportunities',
+          details: result.error,
+        },
+        { status: 500 }
+      )
     }
 
     structuredLogger.info('Value bets API success', {
@@ -74,7 +77,7 @@ export async function GET(request: NextRequest) {
       recommendation,
       minValue,
       limit,
-      count: result.data?.length || 0
+      count: result.data?.length || 0,
     })
 
     const response = {
@@ -90,24 +93,26 @@ export async function GET(request: NextRequest) {
         minValue,
         activeOnly,
         refreshed: false,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     }
 
     await databaseCacheService.set(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
-
   } catch (error) {
     structuredLogger.error('Value bets API unexpected error', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
+      stack: error instanceof Error ? error.stack : undefined,
     })
 
-    return NextResponse.json({
-      success: false,
-      error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

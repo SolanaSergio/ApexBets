@@ -7,10 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportTeamStatsService } from '@/lib/services/team-stats/sport-team-stats-service'
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { teamId: string } }
-) {
+export async function GET(request: NextRequest, { params }: { params: { teamId: string } }) {
   try {
     const { searchParams } = new URL(request.url)
     const sport = searchParams.get('sport') as SupportedSport
@@ -20,22 +17,21 @@ export async function GET(
 
     // Validate sport parameter
     if (!sport) {
-      return NextResponse.json(
-        { error: 'Sport parameter is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Sport parameter is required' }, { status: 400 })
     }
 
     if (!serviceFactory.isSportSupported(sport)) {
       return NextResponse.json(
-        { error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}` },
+        {
+          error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}`,
+        },
         { status: 400 }
       )
     }
 
     const teamStatsService = new SportTeamStatsService(sport, league)
     const { teamId } = params
-    
+
     let data: any = null
 
     switch (type) {
@@ -54,10 +50,10 @@ export async function GET(
 
     if (!data) {
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: 'Team not found or no statistics available',
-          data: null
+          data: null,
         },
         { status: 404 }
       )
@@ -72,21 +68,20 @@ export async function GET(
         season: season || 'current',
         teamId: teamId,
         type,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Team stats API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch team statistics',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )

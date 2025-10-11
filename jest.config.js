@@ -18,13 +18,13 @@ const customJestConfig = {
     '<rootDir>/tests/**/*.test.ts',
     '<rootDir>/tests/**/*.test.tsx',
     '<rootDir>/tests/**/*.test.js',
-    '<rootDir>/tests/**/*.test.jsx'
+    '<rootDir>/tests/**/*.test.jsx',
   ],
   testPathIgnorePatterns: [
     '<rootDir>/.next/',
     '<rootDir>/node_modules/',
     '<rootDir>/dist/',
-    '<rootDir>/build/'
+    '<rootDir>/build/',
   ],
   collectCoverageFrom: [
     'app/api/**/*.{js,ts}',
@@ -34,21 +34,21 @@ const customJestConfig = {
     '!**/node_modules/**',
     '!**/.next/**',
     '!**/coverage/**',
-    '!**/tests/**'
+    '!**/tests/**',
   ],
   coverageThreshold: {
     global: {
       branches: 70,
       functions: 70,
       lines: 70,
-      statements: 70
-    }
+      statements: 70,
+    },
   },
   testTimeout: 60000, // 60 seconds for API tests
   verbose: true,
   forceExit: true,
   detectOpenHandles: true,
-  detectLeaks: true
+  detectLeaks: true,
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

@@ -52,7 +52,8 @@ export class WebhookDeduplicator {
         .gte('created_at', new Date(Date.now() - this.DB_TTL).toISOString())
         .single()
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      if (error && error.code !== 'PGRST116') {
+        // PGRST116 = no rows returned
         console.error(`[${requestId}] Error checking webhook deduplication:`, error)
         return false
       }
@@ -65,7 +66,7 @@ export class WebhookDeduplicator {
           requestId,
           timestamp: new Date(data.created_at),
           eventType: 'unknown',
-          processed: true
+          processed: true,
         })
         return true
       }
@@ -90,7 +91,7 @@ export class WebhookDeduplicator {
       requestId,
       timestamp: new Date(),
       eventType,
-      processed: false
+      processed: false,
     })
 
     // Add to database
@@ -101,15 +102,13 @@ export class WebhookDeduplicator {
         return
       }
 
-      await supabase
-        .from('webhook_processing_log')
-        .insert({
-          hash,
-          request_id: requestId,
-          event_type: eventType,
-          processed: false,
-          created_at: new Date().toISOString()
-        })
+      await supabase.from('webhook_processing_log').insert({
+        hash,
+        request_id: requestId,
+        event_type: eventType,
+        processed: false,
+        created_at: new Date().toISOString(),
+      })
     } catch (error) {
       console.error(`[${requestId}] Error marking webhook as processing:`, error)
     }
@@ -121,7 +120,11 @@ export class WebhookDeduplicator {
    * @param requestId - The request ID
    * @param processingTimeMs - Time taken to process in milliseconds
    */
-  static async markProcessed(hash: string, requestId: string, processingTimeMs?: number): Promise<void> {
+  static async markProcessed(
+    hash: string,
+    requestId: string,
+    processingTimeMs?: number
+  ): Promise<void> {
     // Update memory cache
     const memoryEntry = this.memoryCache.get(hash)
     if (memoryEntry) {
@@ -141,7 +144,7 @@ export class WebhookDeduplicator {
         .update({
           processed: true,
           processing_time_ms: processingTimeMs,
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
         })
         .eq('hash', hash)
         .eq('request_id', requestId)
@@ -170,7 +173,7 @@ export class WebhookDeduplicator {
         .update({
           processed: false,
           error_message: error,
-          completed_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
         })
         .eq('hash', hash)
         .eq('request_id', requestId)
@@ -211,18 +214,21 @@ export class WebhookDeduplicator {
     newestEntry: Date | null
   } {
     const entries = Array.from(this.memoryCache.values())
-    
+
     return {
       memoryCacheSize: entries.length,
-      oldestEntry: entries.length > 0 ? 
-        new Date(Math.min(...entries.map(e => e.timestamp.getTime()))) : null,
-      newestEntry: entries.length > 0 ? 
-        new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null,
+      oldestEntry:
+        entries.length > 0 ? new Date(Math.min(...entries.map(e => e.timestamp.getTime()))) : null,
+      newestEntry:
+        entries.length > 0 ? new Date(Math.max(...entries.map(e => e.timestamp.getTime()))) : null,
     }
   }
 }
 
 // Cleanup memory cache every 5 minutes
-setInterval(() => {
-  WebhookDeduplicator.cleanupMemoryCache()
-}, 5 * 60 * 1000)
+setInterval(
+  () => {
+    WebhookDeduplicator.cleanupMemoryCache()
+  },
+  5 * 60 * 1000
+)

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
 
 // Explicitly set runtime to suppress warnings
 export const runtime = 'nodejs'
@@ -7,14 +7,15 @@ export const runtime = 'nodejs'
 export async function GET() {
   try {
     const supabase = await createClient()
-    
+
     if (!supabase) {
-      return NextResponse.json({ error: "Database connection failed" }, { status: 500 })
+      return NextResponse.json({ error: 'Database connection failed' }, { status: 500 })
     }
 
     const { data: sports, error } = await supabase
-      .from("sports")
-      .select(`
+      .from('sports')
+      .select(
+        `
         id,
         name,
         display_name,
@@ -31,13 +32,14 @@ export async function GET() {
         current_season,
         created_at,
         updated_at
-      `)
-      .eq("is_active", true)
-      .order("name")
+      `
+      )
+      .eq('is_active', true)
+      .order('name')
 
     if (error) {
-      console.error("Error fetching sports:", error)
-      return NextResponse.json({ error: "Failed to fetch sports" }, { status: 500 })
+      console.error('Error fetching sports:', error)
+      return NextResponse.json({ error: 'Failed to fetch sports' }, { status: 500 })
     }
 
     return NextResponse.json({
@@ -46,11 +48,11 @@ export async function GET() {
       meta: {
         fromCache: false,
         responseTime: 0,
-        source: "supabase"
-      }
+        source: 'supabase',
+      },
     })
   } catch (error) {
-    console.error("API Error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('API Error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

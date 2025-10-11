@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export function DashboardSkeleton() {
   return (
@@ -69,7 +69,10 @@ export function DashboardSkeleton() {
             </CardHeader>
             <CardContent className="space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+                <div
+                  key={i}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-xl"
+                >
                   <div className="flex items-center gap-3">
                     <Skeleton className="w-6 h-6 rounded" />
                     <Skeleton className="h-3 w-20" />

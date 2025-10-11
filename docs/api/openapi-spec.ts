@@ -7,70 +7,71 @@ const openApiSpec = {
   openapi: '3.0.3',
   info: {
     title: 'ApexBets Sports Analytics API',
-    description: 'Advanced sports betting analytics platform with ML predictions and value betting detection',
+    description:
+      'Advanced sports betting analytics platform with ML predictions and value betting detection',
     version: '1.0.0',
     contact: {
       name: 'ApexBets Team',
       email: 'support@apexbets.com',
-      url: 'https://apexbets.com'
+      url: 'https://apexbets.com',
     },
     license: {
       name: 'MIT',
-      url: 'https://opensource.org/licenses/MIT'
-    }
+      url: 'https://opensource.org/licenses/MIT',
+    },
   },
   servers: [
     {
       url: 'https://apexbets.com/api',
-      description: 'Production server'
+      description: 'Production server',
     },
     {
       url: 'http://localhost:3000/api',
-      description: 'Development server'
-    }
+      description: 'Development server',
+    },
   ],
   security: [
     {
-      bearerAuth: []
-    }
+      bearerAuth: [],
+    },
   ],
   tags: [
     {
       name: 'Health',
-      description: 'Health check and system status endpoints'
+      description: 'Health check and system status endpoints',
     },
     {
       name: 'Sports',
-      description: 'Sport configuration and metadata'
+      description: 'Sport configuration and metadata',
     },
     {
       name: 'Database-First',
-      description: 'Database-only endpoints (no external API calls)'
+      description: 'Database-only endpoints (no external API calls)',
     },
     {
       name: 'Hybrid',
-      description: 'Database-first with external API fallback'
+      description: 'Database-first with external API fallback',
     },
     {
       name: 'Analytics',
-      description: 'Analytics and performance metrics'
+      description: 'Analytics and performance metrics',
     },
     {
       name: 'Predictions',
-      description: 'ML predictions and forecasting'
+      description: 'ML predictions and forecasting',
     },
     {
       name: 'Value Betting',
-      description: 'Value betting opportunities and analysis'
+      description: 'Value betting opportunities and analysis',
     },
     {
       name: 'Live Data',
-      description: 'Real-time updates and live scores'
+      description: 'Real-time updates and live scores',
     },
     {
       name: 'Admin',
-      description: 'Administrative and monitoring endpoints'
-    }
+      description: 'Administrative and monitoring endpoints',
+    },
   ],
   paths: {
     '/health': {
@@ -84,49 +85,50 @@ const openApiSpec = {
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/HealthResponse'
+                  $ref: '#/components/schemas/HealthResponse',
                 },
                 example: {
                   success: true,
                   status: 'healthy',
                   timestamp: '2024-01-01T12:00:00Z',
                   uptime: 3600,
-                  version: '1.0.0'
-                }
-              }
-            }
+                  version: '1.0.0',
+                },
+              },
+            },
           },
           '500': {
             description: 'API is unhealthy',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/health/status': {
       get: {
         tags: ['Health'],
         summary: 'Detailed Health Status',
-        description: 'Returns detailed health information including database and external API status',
+        description:
+          'Returns detailed health information including database and external API status',
         responses: {
           '200': {
             description: 'Detailed health status',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/DetailedHealthResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/DetailedHealthResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/sports': {
       get: {
@@ -139,9 +141,9 @@ const openApiSpec = {
             in: 'query',
             description: 'Filter by active status',
             schema: {
-              type: 'boolean'
-            }
-          }
+              type: 'boolean',
+            },
+          },
         ],
         responses: {
           '200': {
@@ -155,19 +157,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Sport'
-                      }
+                        $ref: '#/components/schemas/Sport',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/teams': {
       get: {
@@ -182,16 +184,16 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'limit',
@@ -201,8 +203,8 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 1000,
-              default: 50
-            }
+              default: 50,
+            },
           },
           {
             name: 'offset',
@@ -211,9 +213,9 @@ const openApiSpec = {
             schema: {
               type: 'integer',
               minimum: 0,
-              default: 0
-            }
-          }
+              default: 0,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -227,29 +229,29 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Team'
-                      }
+                        $ref: '#/components/schemas/Team',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
           },
           '400': {
             description: 'Invalid parameters',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/games': {
       get: {
@@ -264,8 +266,8 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'status',
@@ -273,8 +275,8 @@ const openApiSpec = {
             description: 'Game status filter',
             schema: {
               type: 'string',
-              enum: ['scheduled', 'live', 'completed', 'postponed', 'cancelled']
-            }
+              enum: ['scheduled', 'live', 'completed', 'postponed', 'cancelled'],
+            },
           },
           {
             name: 'date',
@@ -282,8 +284,8 @@ const openApiSpec = {
             description: 'Date filter (YYYY-MM-DD)',
             schema: {
               type: 'string',
-              format: 'date'
-            }
+              format: 'date',
+            },
           },
           {
             name: 'limit',
@@ -293,9 +295,9 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 1000,
-              default: 50
-            }
-          }
+              default: 50,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -309,24 +311,24 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Game'
-                      }
+                        $ref: '#/components/schemas/Game',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/games/today': {
       get: {
         tags: ['Database-First'],
-        summary: 'Get Today\'s Games',
+        summary: "Get Today's Games",
         description: 'Returns all games scheduled for today',
         parameters: [
           {
@@ -335,13 +337,13 @@ const openApiSpec = {
             description: 'Sport to filter by',
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
-          }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
+          },
         ],
         responses: {
           '200': {
-            description: 'Today\'s games',
+            description: "Today's games",
             content: {
               'application/json': {
                 schema: {
@@ -351,19 +353,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Game'
-                      }
+                        $ref: '#/components/schemas/Game',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/odds': {
       get: {
@@ -378,8 +380,8 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'betType',
@@ -387,8 +389,8 @@ const openApiSpec = {
             description: 'Type of bet',
             schema: {
               type: 'string',
-              enum: ['h2h', 'spread', 'totals']
-            }
+              enum: ['h2h', 'spread', 'totals'],
+            },
           },
           {
             name: 'limit',
@@ -398,9 +400,9 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 1000,
-              default: 50
-            }
-          }
+              default: 50,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -414,19 +416,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/GameOdds'
-                      }
+                        $ref: '#/components/schemas/GameOdds',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/standings': {
       get: {
@@ -441,25 +443,25 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'season',
             in: 'query',
             description: 'Season to filter by',
             schema: {
-              type: 'string'
-            }
-          }
+              type: 'string',
+            },
+          },
         ],
         responses: {
           '200': {
@@ -473,19 +475,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Standing'
-                      }
+                        $ref: '#/components/schemas/Standing',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/database-first/predictions': {
       get: {
@@ -500,8 +502,8 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'predictionType',
@@ -509,8 +511,8 @@ const openApiSpec = {
             description: 'Type of prediction',
             schema: {
               type: 'string',
-              enum: ['winner', 'spread', 'total']
-            }
+              enum: ['winner', 'spread', 'total'],
+            },
           },
           {
             name: 'limit',
@@ -520,9 +522,9 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 1000,
-              default: 50
-            }
-          }
+              default: 50,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -536,19 +538,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Prediction'
-                      }
+                        $ref: '#/components/schemas/Prediction',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/analytics': {
       get: {
@@ -562,8 +564,8 @@ const openApiSpec = {
             description: 'Sport to filter by',
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'timeRange',
@@ -572,9 +574,9 @@ const openApiSpec = {
             schema: {
               type: 'string',
               enum: ['7d', '30d', '90d', '1y'],
-              default: '30d'
-            }
-          }
+              default: '30d',
+            },
+          },
         ],
         responses: {
           '200': {
@@ -586,18 +588,18 @@ const openApiSpec = {
                   properties: {
                     success: { type: 'boolean' },
                     data: {
-                      $ref: '#/components/schemas/AnalyticsData'
+                      $ref: '#/components/schemas/AnalyticsData',
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/analytics/team-performance': {
       get: {
@@ -611,8 +613,8 @@ const openApiSpec = {
             description: 'Team name or ID',
             required: true,
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'sport',
@@ -621,16 +623,16 @@ const openApiSpec = {
             required: true,
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'timeRange',
@@ -640,9 +642,9 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 365,
-              default: 30
-            }
-          }
+              default: 30,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -654,37 +656,37 @@ const openApiSpec = {
                   properties: {
                     success: { type: 'boolean' },
                     team: {
-                      $ref: '#/components/schemas/Team'
+                      $ref: '#/components/schemas/Team',
                     },
                     performance: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/PerformanceMetric'
-                      }
+                        $ref: '#/components/schemas/PerformanceMetric',
+                      },
                     },
                     stats: {
-                      $ref: '#/components/schemas/TeamStats'
+                      $ref: '#/components/schemas/TeamStats',
                     },
                     timeRange: {
-                      type: 'integer'
-                    }
-                  }
-                }
-              }
-            }
+                      type: 'integer',
+                    },
+                  },
+                },
+              },
+            },
           },
           '404': {
             description: 'Team not found',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/analytics/trends': {
       get: {
@@ -699,25 +701,25 @@ const openApiSpec = {
             schema: {
               type: 'string',
               enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
-              default: 'all'
-            }
+              default: 'all',
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'season',
             in: 'query',
             description: 'Season to analyze',
             schema: {
-              type: 'string'
-            }
-          }
+              type: 'string',
+            },
+          },
         ],
         responses: {
           '200': {
@@ -732,28 +734,28 @@ const openApiSpec = {
                     league: { type: 'string' },
                     season: { type: 'string' },
                     trends: {
-                      $ref: '#/components/schemas/TrendData'
+                      $ref: '#/components/schemas/TrendData',
                     },
                     meta: {
-                      $ref: '#/components/schemas/TrendMeta'
-                    }
-                  }
-                }
-              }
-            }
+                      $ref: '#/components/schemas/TrendMeta',
+                    },
+                  },
+                },
+              },
+            },
           },
           '500': {
             description: 'Failed to fetch trend data',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/predictions/generate': {
       post: {
@@ -770,24 +772,24 @@ const openApiSpec = {
                   sport: {
                     type: 'string',
                     enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
-                    description: 'Sport to generate predictions for'
+                    description: 'Sport to generate predictions for',
                   },
                   league: {
                     type: 'string',
-                    description: 'League to filter by'
+                    description: 'League to filter by',
                   },
                   days: {
                     type: 'integer',
                     minimum: 1,
                     maximum: 30,
                     default: 7,
-                    description: 'Number of days ahead to predict'
-                  }
+                    description: 'Number of days ahead to predict',
+                  },
                 },
-                required: ['sport']
-              }
-            }
-          }
+                required: ['sport'],
+              },
+            },
+          },
         },
         responses: {
           '200': {
@@ -801,8 +803,8 @@ const openApiSpec = {
                     predictions: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Prediction'
-                      }
+                        $ref: '#/components/schemas/Prediction',
+                      },
                     },
                     meta: {
                       type: 'object',
@@ -810,26 +812,26 @@ const openApiSpec = {
                         sport: { type: 'string' },
                         league: { type: 'string' },
                         days: { type: 'integer' },
-                        generatedAt: { type: 'string', format: 'date-time' }
-                      }
-                    }
-                  }
-                }
-              }
-            }
+                        generatedAt: { type: 'string', format: 'date-time' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
           '400': {
             description: 'Invalid request parameters',
             content: {
               'application/json': {
                 schema: {
-                  $ref: '#/components/schemas/ErrorResponse'
-                }
-              }
-            }
-          }
-        }
-      }
+                  $ref: '#/components/schemas/ErrorResponse',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/predictions/upcoming': {
       get: {
@@ -843,16 +845,16 @@ const openApiSpec = {
             description: 'Sport to filter by',
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'limit',
@@ -862,9 +864,9 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 100,
-              default: 20
-            }
-          }
+              default: 20,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -878,19 +880,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/Prediction'
-                      }
+                        $ref: '#/components/schemas/Prediction',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/value-bets': {
       get: {
@@ -905,16 +907,16 @@ const openApiSpec = {
             schema: {
               type: 'string',
               enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
-              default: 'all'
-            }
+              default: 'all',
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
+              type: 'string',
+            },
           },
           {
             name: 'betType',
@@ -922,8 +924,8 @@ const openApiSpec = {
             description: 'Type of bet',
             schema: {
               type: 'string',
-              enum: ['h2h', 'spread', 'totals']
-            }
+              enum: ['h2h', 'spread', 'totals'],
+            },
           },
           {
             name: 'recommendation',
@@ -931,8 +933,8 @@ const openApiSpec = {
             description: 'Recommendation level',
             schema: {
               type: 'string',
-              enum: ['high', 'medium', 'low']
-            }
+              enum: ['high', 'medium', 'low'],
+            },
           },
           {
             name: 'minValue',
@@ -941,8 +943,8 @@ const openApiSpec = {
             schema: {
               type: 'number',
               minimum: 0,
-              maximum: 1
-            }
+              maximum: 1,
+            },
           },
           {
             name: 'limit',
@@ -952,8 +954,8 @@ const openApiSpec = {
               type: 'integer',
               minimum: 1,
               maximum: 100,
-              default: 50
-            }
+              default: 50,
+            },
           },
           {
             name: 'activeOnly',
@@ -961,9 +963,9 @@ const openApiSpec = {
             description: 'Only return active opportunities',
             schema: {
               type: 'boolean',
-              default: true
-            }
-          }
+              default: true,
+            },
+          },
         ],
         responses: {
           '200': {
@@ -977,19 +979,19 @@ const openApiSpec = {
                     data: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/ValueBet'
-                      }
+                        $ref: '#/components/schemas/ValueBet',
+                      },
                     },
                     meta: {
-                      $ref: '#/components/schemas/ValueBetMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ValueBetMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/live-updates': {
       get: {
@@ -1003,17 +1005,17 @@ const openApiSpec = {
             description: 'Sport to filter by',
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
           },
           {
             name: 'league',
             in: 'query',
             description: 'League to filter by',
             schema: {
-              type: 'string'
-            }
-          }
+              type: 'string',
+            },
+          },
         ],
         responses: {
           '200': {
@@ -1027,34 +1029,34 @@ const openApiSpec = {
                     live: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/LiveGame'
-                      }
+                        $ref: '#/components/schemas/LiveGame',
+                      },
                     },
                     recent: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/RecentGame'
-                      }
+                        $ref: '#/components/schemas/RecentGame',
+                      },
                     },
                     upcoming: {
                       type: 'array',
                       items: {
-                        $ref: '#/components/schemas/UpcomingGame'
-                      }
+                        $ref: '#/components/schemas/UpcomingGame',
+                      },
                     },
                     summary: {
-                      $ref: '#/components/schemas/LiveSummary'
+                      $ref: '#/components/schemas/LiveSummary',
                     },
                     meta: {
-                      $ref: '#/components/schemas/ResponseMeta'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ResponseMeta',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/live-stream': {
       get: {
@@ -1068,9 +1070,9 @@ const openApiSpec = {
             description: 'Sport to filter by',
             schema: {
               type: 'string',
-              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball']
-            }
-          }
+              enum: ['basketball', 'football', 'soccer', 'hockey', 'baseball'],
+            },
+          },
         ],
         responses: {
           '200': {
@@ -1079,13 +1081,13 @@ const openApiSpec = {
               'text/event-stream': {
                 schema: {
                   type: 'string',
-                  description: 'Server-Sent Events stream'
-                }
-              }
-            }
-          }
-        }
-      }
+                  description: 'Server-Sent Events stream',
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/admin/api-status': {
       get: {
@@ -1094,8 +1096,8 @@ const openApiSpec = {
         description: 'Returns comprehensive API health and status information',
         security: [
           {
-            bearerAuth: []
-          }
+            bearerAuth: [],
+          },
         ],
         responses: {
           '200': {
@@ -1107,15 +1109,15 @@ const openApiSpec = {
                   properties: {
                     success: { type: 'boolean' },
                     data: {
-                      $ref: '#/components/schemas/ApiStatus'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
+                      $ref: '#/components/schemas/ApiStatus',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     },
     '/admin/database-audit': {
       get: {
@@ -1124,8 +1126,8 @@ const openApiSpec = {
         description: 'Performs comprehensive database audit and health check',
         security: [
           {
-            bearerAuth: []
-          }
+            bearerAuth: [],
+          },
         ],
         responses: {
           '200': {
@@ -1137,24 +1139,24 @@ const openApiSpec = {
                   properties: {
                     success: { type: 'boolean' },
                     data: {
-                      $ref: '#/components/schemas/DatabaseAudit'
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    }
+                      $ref: '#/components/schemas/DatabaseAudit',
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     securitySchemes: {
       bearerAuth: {
         type: 'http',
         scheme: 'bearer',
-        bearerFormat: 'JWT'
-      }
+        bearerFormat: 'JWT',
+      },
     },
     schemas: {
       HealthResponse: {
@@ -1164,9 +1166,9 @@ const openApiSpec = {
           status: { type: 'string', enum: ['healthy', 'unhealthy'] },
           timestamp: { type: 'string', format: 'date-time' },
           uptime: { type: 'number' },
-          version: { type: 'string' }
+          version: { type: 'string' },
         },
-        required: ['success', 'status', 'timestamp']
+        required: ['success', 'status', 'timestamp'],
       },
       DetailedHealthResponse: {
         type: 'object',
@@ -1179,19 +1181,19 @@ const openApiSpec = {
               database: { type: 'object' },
               externalApis: { type: 'object' },
               cache: { type: 'object' },
-              memory: { type: 'object' }
-            }
-          }
-        }
+              memory: { type: 'object' },
+            },
+          },
+        },
       },
       ErrorResponse: {
         type: 'object',
         properties: {
           success: { type: 'boolean', example: false },
           error: { type: 'string' },
-          timestamp: { type: 'string', format: 'date-time' }
+          timestamp: { type: 'string', format: 'date-time' },
         },
-        required: ['success', 'error']
+        required: ['success', 'error'],
       },
       ResponseMeta: {
         type: 'object',
@@ -1199,8 +1201,8 @@ const openApiSpec = {
           timestamp: { type: 'string', format: 'date-time' },
           count: { type: 'integer' },
           source: { type: 'string', enum: ['database', 'external', 'cache'] },
-          refreshed: { type: 'boolean' }
-        }
+          refreshed: { type: 'boolean' },
+        },
       },
       Sport: {
         type: 'object',
@@ -1214,32 +1216,32 @@ const openApiSpec = {
           dataSource: { type: 'string' },
           positions: {
             type: 'array',
-            items: { type: 'string' }
+            items: { type: 'string' },
           },
           scoringFields: {
             type: 'array',
-            items: { type: 'string' }
+            items: { type: 'string' },
           },
           bettingMarkets: {
             type: 'array',
-            items: { type: 'string' }
+            items: { type: 'string' },
           },
           seasonConfig: {
             type: 'object',
             properties: {
               startMonth: { type: 'integer' },
               endMonth: { type: 'integer' },
-              currentSeason: { type: 'string' }
-            }
+              currentSeason: { type: 'string' },
+            },
           },
           rateLimits: {
             type: 'object',
             properties: {
               requests: { type: 'integer' },
-              interval: { type: 'string' }
-            }
-          }
-        }
+              interval: { type: 'string' },
+            },
+          },
+        },
       },
       Team: {
         type: 'object',
@@ -1257,8 +1259,8 @@ const openApiSpec = {
           venue: { type: 'string' },
           capacity: { type: 'integer' },
           created_at: { type: 'string', format: 'date-time' },
-          updated_at: { type: 'string', format: 'date-time' }
-        }
+          updated_at: { type: 'string', format: 'date-time' },
+        },
       },
       Game: {
         type: 'object',
@@ -1277,7 +1279,10 @@ const openApiSpec = {
           away_team_score: { type: 'integer' },
           game_date: { type: 'string', format: 'date-time' },
           game_time_local: { type: 'string', format: 'time' },
-          status: { type: 'string', enum: ['scheduled', 'live', 'completed', 'postponed', 'cancelled'] },
+          status: {
+            type: 'string',
+            enum: ['scheduled', 'live', 'completed', 'postponed', 'cancelled'],
+          },
           game_type: { type: 'string' },
           venue: { type: 'string' },
           attendance: { type: 'integer' },
@@ -1286,8 +1291,8 @@ const openApiSpec = {
           broadcast_info: { type: 'string' },
           betting_odds: { type: 'object' },
           last_updated: { type: 'string', format: 'date-time' },
-          created_at: { type: 'string', format: 'date-time' }
-        }
+          created_at: { type: 'string', format: 'date-time' },
+        },
       },
       GameOdds: {
         type: 'object',
@@ -1306,8 +1311,8 @@ const openApiSpec = {
           under_odds: { type: 'number' },
           bookmaker: { type: 'string' },
           last_updated: { type: 'string', format: 'date-time' },
-          expires_at: { type: 'string', format: 'date-time' }
-        }
+          expires_at: { type: 'string', format: 'date-time' },
+        },
       },
       Standing: {
         type: 'object',
@@ -1330,8 +1335,8 @@ const openApiSpec = {
           points_against: { type: 'integer' },
           point_differential: { type: 'integer' },
           streak: { type: 'string' },
-          last_updated: { type: 'string', format: 'date-time' }
-        }
+          last_updated: { type: 'string', format: 'date-time' },
+        },
       },
       Prediction: {
         type: 'object',
@@ -1346,8 +1351,8 @@ const openApiSpec = {
           model_version: { type: 'string' },
           feature_importance: { type: 'object' },
           created_at: { type: 'string', format: 'date-time' },
-          expires_at: { type: 'string', format: 'date-time' }
-        }
+          expires_at: { type: 'string', format: 'date-time' },
+        },
       },
       AnalyticsData: {
         type: 'object',
@@ -1358,8 +1363,8 @@ const openApiSpec = {
           predictionAccuracy: { type: 'number' },
           averageOdds: { type: 'number' },
           valueBetCount: { type: 'integer' },
-          lastUpdated: { type: 'string', format: 'date-time' }
-        }
+          lastUpdated: { type: 'string', format: 'date-time' },
+        },
       },
       PerformanceMetric: {
         type: 'object',
@@ -1370,8 +1375,8 @@ const openApiSpec = {
           won: { type: 'boolean' },
           points: { type: 'integer' },
           opponentPoints: { type: 'integer' },
-          margin: { type: 'integer' }
-        }
+          margin: { type: 'integer' },
+        },
       },
       TeamStats: {
         type: 'object',
@@ -1381,8 +1386,8 @@ const openApiSpec = {
           winPercentage: { type: 'number' },
           avgPoints: { type: 'number' },
           avgOpponentPoints: { type: 'number' },
-          pointDifferential: { type: 'number' }
-        }
+          pointDifferential: { type: 'number' },
+        },
       },
       TrendData: {
         type: 'object',
@@ -1392,8 +1397,8 @@ const openApiSpec = {
           trend_direction: { type: 'string', enum: ['up', 'down', 'stable'] },
           confidence: { type: 'number', minimum: 0, maximum: 100 },
           data_points: { type: 'object' },
-          last_updated: { type: 'string', format: 'date-time' }
-        }
+          last_updated: { type: 'string', format: 'date-time' },
+        },
       },
       TrendMeta: {
         type: 'object',
@@ -1409,8 +1414,8 @@ const openApiSpec = {
           data_quality: { type: 'number' },
           timeout_used: { type: 'boolean' },
           fromCache: { type: 'boolean' },
-          timestamp: { type: 'string', format: 'date-time' }
-        }
+          timestamp: { type: 'string', format: 'date-time' },
+        },
       },
       ValueBet: {
         type: 'object',
@@ -1429,8 +1434,8 @@ const openApiSpec = {
           confidence_score: { type: 'number' },
           recommendation: { type: 'string', enum: ['high', 'medium', 'low'] },
           expires_at: { type: 'string', format: 'date-time' },
-          created_at: { type: 'string', format: 'date-time' }
-        }
+          created_at: { type: 'string', format: 'date-time' },
+        },
       },
       ValueBetMeta: {
         type: 'object',
@@ -1444,8 +1449,8 @@ const openApiSpec = {
           minValue: { type: 'number' },
           activeOnly: { type: 'boolean' },
           refreshed: { type: 'boolean' },
-          timestamp: { type: 'string', format: 'date-time' }
-        }
+          timestamp: { type: 'string', format: 'date-time' },
+        },
       },
       LiveGame: {
         type: 'object',
@@ -1458,8 +1463,8 @@ const openApiSpec = {
           status: { type: 'string', enum: ['live'] },
           quarter: { type: 'string' },
           time_remaining: { type: 'string' },
-          last_updated: { type: 'string', format: 'date-time' }
-        }
+          last_updated: { type: 'string', format: 'date-time' },
+        },
       },
       RecentGame: {
         type: 'object',
@@ -1471,8 +1476,8 @@ const openApiSpec = {
           away_score: { type: 'integer' },
           status: { type: 'string', enum: ['completed'] },
           final_score: { type: 'string' },
-          completed_at: { type: 'string', format: 'date-time' }
-        }
+          completed_at: { type: 'string', format: 'date-time' },
+        },
       },
       UpcomingGame: {
         type: 'object',
@@ -1482,8 +1487,8 @@ const openApiSpec = {
           away_team_name: { type: 'string' },
           status: { type: 'string', enum: ['scheduled'] },
           game_date: { type: 'string', format: 'date-time' },
-          venue: { type: 'string' }
-        }
+          venue: { type: 'string' },
+        },
       },
       LiveSummary: {
         type: 'object',
@@ -1491,8 +1496,8 @@ const openApiSpec = {
           totalLive: { type: 'integer' },
           totalRecent: { type: 'integer' },
           totalUpcoming: { type: 'integer' },
-          lastUpdated: { type: 'string', format: 'date-time' }
-        }
+          lastUpdated: { type: 'string', format: 'date-time' },
+        },
       },
       ApiStatus: {
         type: 'object',
@@ -1505,8 +1510,8 @@ const openApiSpec = {
           externalApis: { type: 'object' },
           cache: { type: 'object' },
           rateLimits: { type: 'object' },
-          lastChecked: { type: 'string', format: 'date-time' }
-        }
+          lastChecked: { type: 'string', format: 'date-time' },
+        },
       },
       DatabaseAudit: {
         type: 'object',
@@ -1519,11 +1524,11 @@ const openApiSpec = {
           schemaIntegrity: { type: 'boolean' },
           dataIntegrity: { type: 'boolean' },
           performanceMetrics: { type: 'object' },
-          lastAudit: { type: 'string', format: 'date-time' }
-        }
-      }
-    }
-  }
+          lastAudit: { type: 'string', format: 'date-time' },
+        },
+      },
+    },
+  },
 }
 
 export default openApiSpec

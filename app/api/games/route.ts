@@ -14,12 +14,18 @@ const CACHE_TTL = 60 // 1 minute
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const status = searchParams.get("status") as "scheduled" | "live" | "completed" | "postponed" | "cancelled" | undefined
-    const dateFrom = searchParams.get("date_from")
-    const dateTo = searchParams.get("date_to")
-    const limit = Number.parseInt(searchParams.get("limit") || "100")
-    const league = searchParams.get("league")
+    const sport = searchParams.get('sport') || 'all'
+    const status = searchParams.get('status') as
+      | 'scheduled'
+      | 'live'
+      | 'completed'
+      | 'postponed'
+      | 'cancelled'
+      | undefined
+    const dateFrom = searchParams.get('date_from')
+    const dateTo = searchParams.get('date_to')
+    const limit = Number.parseInt(searchParams.get('limit') || '100')
+    const league = searchParams.get('league')
 
     const cacheKey = `games-${sport}-${status}-${dateFrom}-${dateTo}-${limit}-${league}`
     const cached = await databaseCacheService.get(cacheKey)
@@ -28,18 +34,22 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
-    
+
     if (!supabase) {
-      return NextResponse.json({ 
-        success: false,
-        error: "Database connection failed" 
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database connection failed',
+        },
+        { status: 500 }
+      )
     }
 
     // Build query with proper filtering
     let query = supabase
       .from('games')
-      .select(`
+      .select(
+        `
         *,
         home_team:teams!games_home_team_id_fkey(
           id, name, abbreviation, logo_url, city, league
@@ -47,11 +57,12 @@ export async function GET(request: NextRequest) {
         away_team:teams!games_away_team_id_fkey(
           id, name, abbreviation, logo_url, city, league
         )
-      `)
+      `
+      )
       .order('game_date', { ascending: false })
 
     // Apply filters
-    if (sport !== "all") {
+    if (sport !== 'all') {
       query = query.eq('sport', sport)
     }
 
@@ -81,12 +92,15 @@ export async function GET(request: NextRequest) {
       structuredLogger.error('Games API database error', {
         error: error.message,
         sport,
-        status
+        status,
       })
-      return NextResponse.json({ 
-        success: false,
-        error: "Failed to fetch games from database" 
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch games from database',
+        },
+        { status: 500 }
+      )
     }
 
     // Process and format games data
@@ -99,7 +113,7 @@ export async function GET(request: NextRequest) {
       home_team_logo: game.home_team?.logo_url || null,
       away_team_logo: game.away_team?.logo_url || null,
       home_team_city: game.home_team?.city || '',
-      away_team_city: game.away_team?.city || ''
+      away_team_city: game.away_team?.city || '',
     }))
 
     // Calculate summary statistics
@@ -112,7 +126,7 @@ export async function GET(request: NextRequest) {
         const gameDate = new Date(g.game_date)
         const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
         return gameDate >= weekAgo
-      }).length
+      }).length,
     }
 
     structuredLogger.info('Games API request processed', {
@@ -121,7 +135,7 @@ export async function GET(request: NextRequest) {
       league,
       count: processedGames.length,
       summary,
-      source: 'database'
+      source: 'database',
     })
 
     const result = {
@@ -134,24 +148,23 @@ export async function GET(request: NextRequest) {
         league,
         count: processedGames.length,
         summary,
-        source: 'database'
-      }
+        source: 'database',
+      },
     }
 
     await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
-
   } catch (error) {
     structuredLogger.error('Games API error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     })
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

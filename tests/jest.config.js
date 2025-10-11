@@ -29,10 +29,7 @@ const customJestConfig = {
       statements: 70,
     },
   },
-  testMatch: [
-    '**/__tests__/**/*.(js|jsx|ts|tsx)',
-    '**/*.(test|spec).(js|jsx|ts|tsx)',
-  ],
+  testMatch: ['**/__tests__/**/*.(js|jsx|ts|tsx)', '**/*.(test|spec).(js|jsx|ts|tsx)'],
   testTimeout: 30000, // 30 seconds timeout for integration tests
   projects: [
     {

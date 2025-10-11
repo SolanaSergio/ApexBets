@@ -7,6 +7,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { databaseService } from '@/lib/services/database-service'
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
@@ -15,10 +18,10 @@ export async function GET(request: NextRequest) {
 
     // Get basic health check
     const healthCheck = await databaseService.healthCheck()
-    
+
     // Get connection status
     const isConnected = await databaseService.getConnectionStatus()
-    
+
     // Get all tables if requested
     let tables: string[] = []
     if (includeTables) {
@@ -35,17 +38,17 @@ export async function GET(request: NextRequest) {
     const supabaseStatus = {
       connected: productionSupabaseClient.isConnected(),
       url: process.env.NEXT_PUBLIC_SUPABASE_URL ? 'configured' : 'missing',
-      key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'configured' : 'missing'
+      key: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'configured' : 'missing',
     }
 
     // Get cache status
-    let cacheStatus = 'disconnected';
+    let cacheStatus = 'disconnected'
     try {
-        const { databaseCacheService } = await import('@/lib/services/database-cache-service');
-        await databaseCacheService.set('status-check', 'ok', 10);
-        cacheStatus = 'connected';
+      const { databaseCacheService } = await import('@/lib/services/database-cache-service')
+      await databaseCacheService.set('status-check', 'ok', 10)
+      cacheStatus = 'connected'
     } catch (error) {
-        // ignore
+      // ignore
     }
 
     return NextResponse.json({
@@ -55,30 +58,29 @@ export async function GET(request: NextRequest) {
         connection: {
           database: isConnected,
           supabase: supabaseStatus,
-          cache: cacheStatus
+          cache: cacheStatus,
         },
         tables: includeTables ? tables : undefined,
         stats: includeStats ? stats : undefined,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       },
       meta: {
         includeStats,
         includeTables,
-        responseTime: healthCheck.details?.responseTime || 0
-      }
+        responseTime: healthCheck.details?.responseTime || 0,
+      },
     })
-
   } catch (error) {
     console.error('Database status API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to get database status',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )

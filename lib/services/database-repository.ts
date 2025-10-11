@@ -39,8 +39,8 @@ export class DatabaseRepository {
    * Generic find method for any table
    */
   async find<T>(
-    table: string, 
-    filters: FilterOptions = {}, 
+    table: string,
+    filters: FilterOptions = {},
     pagination: PaginationOptions = {}
   ): Promise<RepositoryResult<T>> {
     try {
@@ -83,34 +83,33 @@ export class DatabaseRepository {
           table,
           error: result.error,
           filters,
-          pagination
+          pagination,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository find error', {
         table,
         error: error instanceof Error ? error.message : String(error),
         filters,
-        pagination
+        pagination,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -154,18 +153,17 @@ export class DatabaseRepository {
         structuredLogger.error('Repository count failed', {
           table,
           error: result.error,
-          filters
+          filters,
         })
         return 0
       }
 
       return parseInt(result.data?.[0]?.count) || 0
-
     } catch (error) {
       structuredLogger.error('Repository count error', {
         table,
         error: error instanceof Error ? error.message : String(error),
-        filters
+        filters,
       })
       return 0
     }
@@ -192,33 +190,32 @@ export class DatabaseRepository {
         structuredLogger.error('Repository insert failed', {
           table,
           error: result.error,
-          data
+          data,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository insert error', {
         table,
         error: error instanceof Error ? error.message : String(error),
-        data
+        data,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -232,8 +229,8 @@ export class DatabaseRepository {
     }
 
     try {
-      const columns = Object.keys(dataArray[0]).filter(key => 
-        dataArray[0][key as keyof T] !== undefined
+      const columns = Object.keys(dataArray[0]).filter(
+        key => dataArray[0][key as keyof T] !== undefined
       )
 
       const values: any[] = []
@@ -262,33 +259,32 @@ export class DatabaseRepository {
         structuredLogger.error('Repository insertMany failed', {
           table,
           error: result.error,
-          count: dataArray.length
+          count: dataArray.length,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository insertMany error', {
         table,
         error: error instanceof Error ? error.message : String(error),
-        count: dataArray.length
+        count: dataArray.length,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -297,14 +293,16 @@ export class DatabaseRepository {
    * Update records
    */
   async update<T>(
-    table: string, 
-    data: Partial<T>, 
+    table: string,
+    data: Partial<T>,
     filters: FilterOptions
   ): Promise<RepositoryResult<T>> {
     try {
       const updateColumns = Object.keys(data).filter(key => data[key as keyof T] !== undefined)
       const updateValues = updateColumns.map(key => data[key as keyof T])
-      const updatePlaceholders = updateColumns.map((_, index) => `${updateColumns[index]} = $${index + 1}`)
+      const updatePlaceholders = updateColumns.map(
+        (_, index) => `${updateColumns[index]} = $${index + 1}`
+      )
 
       let query = `UPDATE ${table} SET ${updatePlaceholders.join(', ')} WHERE 1=1`
       const params = [...updateValues]
@@ -328,34 +326,33 @@ export class DatabaseRepository {
           table,
           error: result.error,
           data,
-          filters
+          filters,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository update error', {
         table,
         error: error instanceof Error ? error.message : String(error),
         data,
-        filters
+        filters,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -364,8 +361,8 @@ export class DatabaseRepository {
    * Upsert (insert or update) records
    */
   async upsert<T>(
-    table: string, 
-    data: Partial<T>[], 
+    table: string,
+    data: Partial<T>[],
     conflictColumns: string[]
   ): Promise<RepositoryResult<T>> {
     if (data.length === 0) {
@@ -373,9 +370,7 @@ export class DatabaseRepository {
     }
 
     try {
-      const columns = Object.keys(data[0]).filter(key => 
-        data[0][key as keyof T] !== undefined
-      )
+      const columns = Object.keys(data[0]).filter(key => data[0][key as keyof T] !== undefined)
 
       const values: any[] = []
       const placeholders: string[] = []
@@ -409,34 +404,33 @@ export class DatabaseRepository {
           table,
           error: result.error,
           count: data.length,
-          conflictColumns
+          conflictColumns,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository upsert error', {
         table,
         error: error instanceof Error ? error.message : String(error),
         count: data.length,
-        conflictColumns
+        conflictColumns,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -467,33 +461,32 @@ export class DatabaseRepository {
         structuredLogger.error('Repository delete failed', {
           table,
           error: result.error,
-          filters
+          filters,
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository delete error', {
         table,
         error: error instanceof Error ? error.message : String(error),
-        filters
+        filters,
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -508,32 +501,31 @@ export class DatabaseRepository {
       if (!result.success) {
         structuredLogger.error('Repository executeQuery failed', {
           error: result.error,
-          query: query.substring(0, 100)
+          query: query.substring(0, 100),
         })
         return {
           success: false,
           data: [],
           count: 0,
-          ...(result.error ? { error: result.error } : {})
+          ...(result.error ? { error: result.error } : {}),
         }
       }
 
       return {
         success: true,
         data: result.data || [],
-        count: result.data?.length || 0
+        count: result.data?.length || 0,
       }
-
     } catch (error) {
       structuredLogger.error('Repository executeQuery error', {
         error: error instanceof Error ? error.message : String(error),
-        query: query.substring(0, 100)
+        query: query.substring(0, 100),
       })
       return {
         success: false,
         data: [],
         count: 0,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       }
     }
   }
@@ -557,13 +549,13 @@ export class DatabaseRepository {
    * Get games by sport and date range
    */
   async getGamesBySport(
-    sport: string, 
-    dateFrom?: string, 
-    dateTo?: string, 
+    sport: string,
+    dateFrom?: string,
+    dateTo?: string,
     status?: string
   ): Promise<RepositoryResult<any>> {
     const filters: FilterOptions = { sport }
-    
+
     if (dateFrom) {
       filters.game_date = { gte: dateFrom }
     }

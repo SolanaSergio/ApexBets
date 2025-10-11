@@ -48,7 +48,7 @@ export class ImageMonitoringService {
   trackImageLoad(event: Omit<ImageLoadEvent, 'timestamp'>): void {
     const fullEvent: ImageLoadEvent = {
       ...event,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     }
 
     this.events.push(fullEvent)
@@ -66,23 +66,22 @@ export class ImageMonitoringService {
         sport: event.sport,
         source: event.source,
         error: event.error,
-        url: event.url
+        url: event.url,
       })
     }
 
     // Log high SVG fallback usage
     if (event.source === 'svg') {
-      const recentSvgCount = this.events
-        .filter(e => e.source === 'svg' && 
-          new Date(e.timestamp).getTime() > Date.now() - 60000) // Last minute
-        .length
+      const recentSvgCount = this.events.filter(
+        e => e.source === 'svg' && new Date(e.timestamp).getTime() > Date.now() - 60000
+      ).length // Last minute
 
       if (recentSvgCount > 10) {
         structuredLogger.warn('High SVG fallback usage detected', {
           recentSvgCount,
           entityType: event.entityType,
           entityName: event.entityName,
-          sport: event.sport
+          sport: event.sport,
         })
       }
     }
@@ -93,14 +92,14 @@ export class ImageMonitoringService {
    */
   getStats(): ImageStats {
     const now = Date.now()
-    const last24Hours = this.events.filter(e => 
-      new Date(e.timestamp).getTime() > now - 24 * 60 * 60 * 1000
+    const last24Hours = this.events.filter(
+      e => new Date(e.timestamp).getTime() > now - 24 * 60 * 60 * 1000
     )
 
     const bySource = {
       database: { loads: 0, success: 0, failure: 0 },
       'espn-cdn': { loads: 0, success: 0, failure: 0 },
-      svg: { loads: 0, success: 0, failure: 0 }
+      svg: { loads: 0, success: 0, failure: 0 },
     }
 
     const bySport: Record<string, { loads: number; success: number; failure: number }> = {}
@@ -148,7 +147,7 @@ export class ImageMonitoringService {
       bySource,
       bySport,
       recentFailures: recentFailures.slice(-20), // Last 20 failures
-      averageLoadTime: loadTimeCount > 0 ? Math.round(totalLoadTime / loadTimeCount) : 0
+      averageLoadTime: loadTimeCount > 0 ? Math.round(totalLoadTime / loadTimeCount) : 0,
     }
   }
 
@@ -167,12 +166,10 @@ export class ImageMonitoringService {
     }>
   } {
     const stats = this.getStats()
-    const databaseHitRate = stats.totalLoads > 0 
-      ? (stats.bySource.database.loads / stats.totalLoads) * 100 
-      : 0
-    const svgFallbackRate = stats.totalLoads > 0 
-      ? (stats.bySource.svg.loads / stats.totalLoads) * 100 
-      : 0
+    const databaseHitRate =
+      stats.totalLoads > 0 ? (stats.bySource.database.loads / stats.totalLoads) * 100 : 0
+    const svgFallbackRate =
+      stats.totalLoads > 0 ? (stats.bySource.svg.loads / stats.totalLoads) * 100 : 0
 
     const needsAttention: Array<{
       type: 'high_svg_usage' | 'low_success_rate' | 'slow_load_times'
@@ -185,7 +182,7 @@ export class ImageMonitoringService {
       needsAttention.push({
         type: 'high_svg_usage',
         message: `High SVG fallback rate: ${svgFallbackRate.toFixed(1)}%`,
-        severity: svgFallbackRate > 50 ? 'critical' : 'warning'
+        severity: svgFallbackRate > 50 ? 'critical' : 'warning',
       })
     }
 
@@ -193,7 +190,7 @@ export class ImageMonitoringService {
       needsAttention.push({
         type: 'low_success_rate',
         message: `Low success rate: ${stats.successRate.toFixed(1)}%`,
-        severity: stats.successRate < 70 ? 'critical' : 'warning'
+        severity: stats.successRate < 70 ? 'critical' : 'warning',
       })
     }
 
@@ -201,7 +198,7 @@ export class ImageMonitoringService {
       needsAttention.push({
         type: 'slow_load_times',
         message: `Slow load times: ${stats.averageLoadTime}ms average`,
-        severity: stats.averageLoadTime > 5000 ? 'critical' : 'warning'
+        severity: stats.averageLoadTime > 5000 ? 'critical' : 'warning',
       })
     }
 
@@ -220,7 +217,7 @@ export class ImageMonitoringService {
       databaseHitRate: Math.round(databaseHitRate * 100) / 100,
       svgFallbackRate: Math.round(svgFallbackRate * 100) / 100,
       averageLoadTime: stats.averageLoadTime,
-      needsAttention
+      needsAttention,
     }
   }
 
@@ -235,9 +232,8 @@ export class ImageMonitoringService {
    * Get events for a specific entity
    */
   getEntityEvents(entityName: string, entityType?: 'team' | 'player'): ImageLoadEvent[] {
-    return this.events.filter(e => 
-      e.entityName === entityName && 
-      (!entityType || e.entityType === entityType)
+    return this.events.filter(
+      e => e.entityName === entityName && (!entityType || e.entityType === entityType)
     )
   }
 }

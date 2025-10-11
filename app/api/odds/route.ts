@@ -14,11 +14,11 @@ const CACHE_TTL = 60 // 1 minute
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const gameId = searchParams.get("gameId")
-    const source = searchParams.get("source")
-    const limit = Number.parseInt(searchParams.get("limit") || "100")
-    const liveOnly = searchParams.get("liveOnly") === "true"
+    const sport = searchParams.get('sport') || 'all'
+    const gameId = searchParams.get('gameId')
+    const source = searchParams.get('source')
+    const limit = Number.parseInt(searchParams.get('limit') || '100')
+    const liveOnly = searchParams.get('liveOnly') === 'true'
 
     const cacheKey = `odds-${sport}-${gameId}-${source}-${limit}-${liveOnly}`
     const cached = await databaseCacheService.get(cacheKey)
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       ...(gameId && { gameId }),
       ...(source && { source }),
       limit,
-      liveOnly
+      liveOnly,
     })
 
     structuredLogger.info('Odds API request processed', {
@@ -40,23 +40,22 @@ export async function GET(request: NextRequest) {
       gameId,
       source,
       count: result.data.length,
-      dataSource: result.meta.source
+      dataSource: result.meta.source,
     })
 
     await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
-
   } catch (error) {
     structuredLogger.error('Odds API error', {
-      error: error instanceof Error ? error.message : String(error)
+      error: error instanceof Error ? error.message : String(error),
     })
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch odds',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

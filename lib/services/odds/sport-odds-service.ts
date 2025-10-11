@@ -37,7 +37,9 @@ export class SportOddsService extends BaseService {
   constructor(sport: SupportedSport, league?: string) {
     // Handle "all" sport - this should not be called for "all"
     if (sport === 'all') {
-      throw new Error('Cannot create SportOddsService for "all" sport. Use individual sport services.')
+      throw new Error(
+        'Cannot create SportOddsService for "all" sport. Use individual sport services.'
+      )
     }
 
     const config: ServiceConfig = {
@@ -45,7 +47,7 @@ export class SportOddsService extends BaseService {
       cacheTTL: 5 * 60 * 1000, // 5 minutes
       rateLimitService: 'odds',
       retryAttempts: 2,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super(config)
     this.sport = sport
@@ -64,29 +66,34 @@ export class SportOddsService extends BaseService {
   /**
    * Get odds for games
    */
-  async getOdds(params: {
-    gameId?: string
-    date?: string
-    markets?: string[]
-    limit?: number
-  } = {}): Promise<OddsData[]> {
+  async getOdds(
+    params: {
+      gameId?: string
+      date?: string
+      markets?: string[]
+      limit?: number
+    } = {}
+  ): Promise<OddsData[]> {
     const key = this.getCacheKey('odds', this.sport, this.league, JSON.stringify(params))
 
-    return this.getCachedOrFetch(key, async () => {
-      // DB-first: fetch games from database instead of external providers
-      const { createClient } = await import('@/lib/supabase/server')
-      const supabase = await createClient()
+    return this.getCachedOrFetch(
+      key,
+      async () => {
+        // DB-first: fetch games from database instead of external providers
+        const { createClient } = await import('@/lib/supabase/server')
+        const supabase = await createClient()
 
-      if (!supabase) {
-        console.warn('Supabase client unavailable; returning empty odds')
-        return []
-      }
+        if (!supabase) {
+          console.warn('Supabase client unavailable; returning empty odds')
+          return []
+        }
 
-      let games: any[] = []
-      if (params.gameId) {
-        const { data: gameRes } = await supabase
-          .from('games')
-          .select(`
+        let games: any[] = []
+        if (params.gameId) {
+          const { data: gameRes } = await supabase
+            .from('games')
+            .select(
+              `
             id,
             sport,
             league,
@@ -94,15 +101,17 @@ export class SportOddsService extends BaseService {
             away_team:teams!games_away_team_id_fkey(name, abbreviation),
             status,
             game_date
-          `)
-          .eq('id', params.gameId)
-          .eq('sport', this.sport)
-          .limit(1)
-        games = gameRes && gameRes.length > 0 ? [gameRes[0]] : []
-      } else {
-        let query = supabase
-          .from('games')
-          .select(`
+          `
+            )
+            .eq('id', params.gameId)
+            .eq('sport', this.sport)
+            .limit(1)
+          games = gameRes && gameRes.length > 0 ? [gameRes[0]] : []
+        } else {
+          let query = supabase
+            .from('games')
+            .select(
+              `
             id,
             sport,
             league_name,
@@ -110,34 +119,38 @@ export class SportOddsService extends BaseService {
             away_team:teams!games_away_team_id_fkey(name, abbreviation),
             status,
             game_date
-          `)
-          .eq('sport', this.sport)
-          .eq('status', 'scheduled')
-          .order('game_date', { ascending: true })
-          .limit(params.limit || 10)
+          `
+            )
+            .eq('sport', this.sport)
+            .eq('status', 'scheduled')
+            .order('game_date', { ascending: true })
+            .limit(params.limit || 10)
 
-        if (this.league) {
-          query = query.eq('league_name', this.league)
+          if (this.league) {
+            query = query.eq('league_name', this.league)
+          }
+
+          if (params.date) {
+            query = query.gte('game_date', new Date(params.date).toISOString().split('T')[0])
+          }
+
+          const { data: gamesData } = await query
+          games = gamesData || []
         }
 
-        if (params.date) {
-          query = query.gte('game_date', new Date(params.date).toISOString().split('T')[0])
+        const odds: OddsData[] = []
+        for (const game of games) {
+          const gameOdds = await this.fetchOddsForGame(game)
+          if (gameOdds) {
+            odds.push(gameOdds)
+          }
         }
 
-        const { data: gamesData } = await query
-        games = gamesData || []
-      }
-
-      const odds: OddsData[] = []
-      for (const game of games) {
-        const gameOdds = await this.fetchOddsForGame(game)
-        if (gameOdds) {
-          odds.push(gameOdds)
-        }
-      }
-
-      return odds
-    }, undefined, { dbOnly: true })
+        return odds
+      },
+      undefined,
+      { dbOnly: true }
+    )
   }
 
   /**
@@ -148,7 +161,7 @@ export class SportOddsService extends BaseService {
       // Fetch real odds data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -167,33 +180,39 @@ export class SportOddsService extends BaseService {
       }
 
       const oddsData = odds[0]
-      
+
       return {
         gameId: game.id,
         homeTeam: (game.home_team?.name || game.homeTeam) ?? null,
         awayTeam: (game.away_team?.name || game.awayTeam) ?? null,
         markets: {
-          moneyline: oddsData.moneyline ? {
-            home: Number(oddsData.moneyline.home) || 0,
-            away: Number(oddsData.moneyline.away) || 0
-          } : undefined,
-          spread: oddsData.spread ? {
-            home: Number(oddsData.spread.home) || 0,
-            away: Number(oddsData.spread.away) || 0,
-            line: Number(oddsData.spread.line) || 0
-          } : undefined,
-          total: oddsData.total ? {
-            over: Number(oddsData.total.over) || 0,
-            under: Number(oddsData.total.under) || 0,
-            line: Number(oddsData.total.line) || 0
-          } : undefined
+          moneyline: oddsData.moneyline
+            ? {
+                home: Number(oddsData.moneyline.home) || 0,
+                away: Number(oddsData.moneyline.away) || 0,
+              }
+            : undefined,
+          spread: oddsData.spread
+            ? {
+                home: Number(oddsData.spread.home) || 0,
+                away: Number(oddsData.spread.away) || 0,
+                line: Number(oddsData.spread.line) || 0,
+              }
+            : undefined,
+          total: oddsData.total
+            ? {
+                over: Number(oddsData.total.over) || 0,
+                under: Number(oddsData.total.under) || 0,
+                line: Number(oddsData.total.line) || 0,
+              }
+            : undefined,
         } as {
           moneyline?: { home: number; away: number }
           spread?: { home: number; away: number; line: number }
           total?: { over: number; under: number; line: number }
         },
         bookmaker: oddsData.bookmaker ?? null,
-        lastUpdated: oddsData.timestamp || new Date().toISOString()
+        lastUpdated: oddsData.timestamp || new Date().toISOString(),
       }
     } catch (error) {
       console.error(`Error fetching odds for game ${game.id}:`, error)
@@ -206,11 +225,11 @@ export class SportOddsService extends BaseService {
    */
   async getLiveOdds(): Promise<OddsData[]> {
     const key = this.getCacheKey('live-odds', this.sport, this.league)
-    
+
     return this.getCachedOrFetch(key, async () => {
       const service = await serviceFactory.getService(this.sport, this.league)
       const liveGames = await service.getLiveGames()
-      
+
       const odds: OddsData[] = []
       for (const game of liveGames) {
         const gameOdds = await this.fetchOddsForGame(game)
@@ -218,7 +237,7 @@ export class SportOddsService extends BaseService {
           odds.push(gameOdds)
         }
       }
-      
+
       return odds
     })
   }
@@ -228,7 +247,7 @@ export class SportOddsService extends BaseService {
    */
   async getOddsHistory(gameId: string): Promise<OddsData[]> {
     const key = this.getCacheKey('odds-history', gameId)
-    
+
     return this.getCachedOrFetch(key, async () => {
       // This would fetch historical odds data
       return []
@@ -240,18 +259,18 @@ export class SportOddsService extends BaseService {
    */
   async getBettingMarkets(): Promise<any[]> {
     const key = this.getCacheKey('betting-markets', this.sport, this.league)
-    
+
     return this.getCachedOrFetch(key, async () => {
       // Return sport-specific betting markets
       const baseMarkets = [
         { id: 'moneyline', name: 'Moneyline', description: 'Win/Lose betting' },
         { id: 'spread', name: 'Point Spread', description: 'Point spread betting' },
-        { id: 'total', name: 'Over/Under', description: 'Total points/goals betting' }
+        { id: 'total', name: 'Over/Under', description: 'Total points/goals betting' },
       ]
 
       // Add sport-specific markets
       const sportMarkets = await this.getSportSpecificMarkets()
-      
+
       return [...baseMarkets, ...sportMarkets]
     })
   }
@@ -259,12 +278,19 @@ export class SportOddsService extends BaseService {
   /**
    * Get value betting analysis
    */
-  async getValueBettingAnalysis(params: { minValue?: number; limit?: number } = {}): Promise<any[]> {
-    const key = this.getCacheKey('value-betting-analysis', this.sport, this.league, JSON.stringify(params))
-    
+  async getValueBettingAnalysis(
+    params: { minValue?: number; limit?: number } = {}
+  ): Promise<any[]> {
+    const key = this.getCacheKey(
+      'value-betting-analysis',
+      this.sport,
+      this.league,
+      JSON.stringify(params)
+    )
+
     return this.getCachedOrFetch(key, async () => {
       const odds = await this.getOdds({ limit: params.limit || 10 })
-      
+
       return odds
         .filter(odd => this.calculateValue(odd) >= (params.minValue || 0.1))
         .map(odd => ({
@@ -274,7 +300,7 @@ export class SportOddsService extends BaseService {
           value: this.calculateValue(odd),
           recommendation: this.getRecommendation(odd),
           expectedReturn: this.calculateExpectedReturn(odd),
-          lastUpdated: odd.lastUpdated
+          lastUpdated: odd.lastUpdated,
         }))
     })
   }
@@ -284,16 +310,16 @@ export class SportOddsService extends BaseService {
    */
   async getOddsComparison(gameId: string): Promise<any> {
     const key = this.getCacheKey('odds-comparison', gameId)
-    
+
     return this.getCachedOrFetch(key, async () => {
       const odds = await this.getOdds({ gameId })
-      
+
       if (odds.length === 0) {
         return null
       }
 
       const gameOdds = odds[0]
-      
+
       return {
         gameId,
         sport: this.sport,
@@ -302,7 +328,7 @@ export class SportOddsService extends BaseService {
         awayTeam: gameOdds.awayTeam,
         bestOdds: this.findBestOdds(gameOdds),
         comparison: this.buildComparisonData(gameOdds),
-        lastUpdated: gameOdds.lastUpdated
+        lastUpdated: gameOdds.lastUpdated,
       }
     })
   }
@@ -327,13 +353,13 @@ export class SportOddsService extends BaseService {
     // Simplified value calculation
     const homeOdds = odds.markets.moneyline?.home || 0
     const awayOdds = odds.markets.moneyline?.away || 0
-    
+
     if (homeOdds === 0 || awayOdds === 0) return 0
-    
+
     const homeImpliedProb = 1 / homeOdds
     const awayImpliedProb = 1 / awayOdds
     const totalImpliedProb = homeImpliedProb + awayImpliedProb
-    
+
     // Value is inverse of total implied probability
     return Math.max(0, 1 - totalImpliedProb)
   }
@@ -343,7 +369,7 @@ export class SportOddsService extends BaseService {
    */
   private getRecommendation(odds: OddsData): string {
     const value = this.calculateValue(odds)
-    
+
     if (value > 0.2) return 'Strong Value'
     if (value > 0.1) return 'Good Value'
     if (value > 0.05) return 'Moderate Value'
@@ -365,18 +391,18 @@ export class SportOddsService extends BaseService {
     return {
       moneyline: {
         home: odds.markets.moneyline?.home || 0,
-        away: odds.markets.moneyline?.away || 0
+        away: odds.markets.moneyline?.away || 0,
       },
       spread: {
         home: odds.markets.spread?.home || 0,
         away: odds.markets.spread?.away || 0,
-        line: odds.markets.spread?.line || 0
+        line: odds.markets.spread?.line || 0,
       },
       total: {
         over: odds.markets.total?.over || 0,
         under: odds.markets.total?.under || 0,
-        line: odds.markets.total?.line || 0
-      }
+        line: odds.markets.total?.line || 0,
+      },
     }
   }
 
@@ -388,7 +414,7 @@ export class SportOddsService extends BaseService {
       bookmaker: odds.bookmaker,
       lastUpdated: odds.lastUpdated,
       markets: Object.keys(odds.markets).length,
-      value: this.calculateValue(odds)
+      value: this.calculateValue(odds),
     }
   }
 

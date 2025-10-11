@@ -2,7 +2,10 @@
 
 ## Overview
 
-The ApexBets API provides comprehensive access to sports data, analytics, predictions, and value betting opportunities. Built with Next.js 15 and TypeScript, it offers a robust, type-safe interface for sports analytics applications.
+The ApexBets API provides comprehensive access to sports data, analytics,
+predictions, and value betting opportunities. Built with Next.js 15 and
+TypeScript, it offers a robust, type-safe interface for sports analytics
+applications.
 
 ## Base URL
 
@@ -62,9 +65,11 @@ Rate limits vary by endpoint and data source:
 ### Health & Status
 
 #### GET /health
+
 Returns the current health status of the API.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -76,9 +81,11 @@ Returns the current health status of the API.
 ```
 
 #### GET /health/status
+
 Returns detailed health information including database and external API status.
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -104,12 +111,15 @@ Returns detailed health information including database and external API status.
 ### Sports Configuration
 
 #### GET /sports
+
 Returns list of all supported sports with their configurations.
 
 **Query Parameters:**
+
 - `active` (boolean): Filter by active status
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -145,18 +155,22 @@ Returns list of all supported sports with their configurations.
 
 ### Database-First Endpoints
 
-These endpoints return data exclusively from the database without making external API calls, ensuring fast response times.
+These endpoints return data exclusively from the database without making
+external API calls, ensuring fast response times.
 
 #### GET /database-first/teams
+
 Returns teams data from database.
 
 **Query Parameters:**
+
 - `sport` (string, required): Sport to filter by
 - `league` (string): League to filter by
 - `limit` (integer): Maximum number of results (1-1000, default: 50)
 - `offset` (integer): Number of results to skip (default: 0)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -188,15 +202,19 @@ Returns teams data from database.
 ```
 
 #### GET /database-first/games
+
 Returns games data from database.
 
 **Query Parameters:**
+
 - `sport` (string, required): Sport to filter by
-- `status` (string): Game status filter (scheduled, live, completed, postponed, cancelled)
+- `status` (string): Game status filter (scheduled, live, completed, postponed,
+  cancelled)
 - `date` (string): Date filter (YYYY-MM-DD)
 - `limit` (integer): Maximum number of results (1-1000, default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -241,12 +259,15 @@ Returns games data from database.
 ```
 
 #### GET /database-first/games/today
+
 Returns all games scheduled for today.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -270,14 +291,17 @@ Returns all games scheduled for today.
 ```
 
 #### GET /database-first/odds
+
 Returns betting odds from database.
 
 **Query Parameters:**
+
 - `sport` (string, required): Sport to filter by
 - `betType` (string): Type of bet (h2h, spread, totals)
 - `limit` (integer): Maximum number of results (1-1000, default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -310,14 +334,17 @@ Returns betting odds from database.
 ```
 
 #### GET /database-first/standings
+
 Returns league standings from database.
 
 **Query Parameters:**
+
 - `sport` (string, required): Sport to filter by
 - `league` (string): League to filter by
 - `season` (string): Season to filter by
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -354,14 +381,17 @@ Returns league standings from database.
 ```
 
 #### GET /database-first/predictions
+
 Returns ML predictions from database.
 
 **Query Parameters:**
+
 - `sport` (string, required): Sport to filter by
 - `predictionType` (string): Type of prediction (winner, spread, total)
 - `limit` (integer): Maximum number of results (1-1000, default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -398,13 +428,17 @@ Returns ML predictions from database.
 ### Analytics Endpoints
 
 #### GET /analytics
+
 Returns general analytics and metrics.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by
-- `timeRange` (string): Time range for analytics (7d, 30d, 90d, 1y, default: 30d)
+- `timeRange` (string): Time range for analytics (7d, 30d, 90d, 1y, default:
+  30d)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -426,15 +460,18 @@ Returns general analytics and metrics.
 ```
 
 #### GET /analytics/team-performance
+
 Returns team performance metrics and statistics.
 
 **Query Parameters:**
+
 - `team` (string, required): Team name or ID
 - `sport` (string, required): Sport to filter by
 - `league` (string): League to filter by
 - `timeRange` (integer): Time range for analysis (1-365, default: 30)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -469,14 +506,17 @@ Returns team performance metrics and statistics.
 ```
 
 #### GET /analytics/trends
+
 Returns trend analysis with timeout handling and caching.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to analyze (default: all)
 - `league` (string): League to filter by
 - `season` (string): Season to analyze
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -534,9 +574,11 @@ Returns trend analysis with timeout handling and caching.
 ### Predictions & ML
 
 #### POST /predictions/generate
+
 Generates new ML predictions for upcoming games.
 
 **Request Body:**
+
 ```json
 {
   "sport": "basketball",
@@ -546,6 +588,7 @@ Generates new ML predictions for upcoming games.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -580,14 +623,17 @@ Generates new ML predictions for upcoming games.
 ```
 
 #### GET /predictions/upcoming
+
 Returns predictions for upcoming games.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by
 - `league` (string): League to filter by
 - `limit` (integer): Maximum number of results (1-100, default: 20)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -624,9 +670,11 @@ Returns predictions for upcoming games.
 ### Value Betting
 
 #### GET /value-bets
+
 Returns value betting opportunities from database with ML analysis.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by (default: all)
 - `league` (string): League to filter by
 - `betType` (string): Type of bet (h2h, spread, totals)
@@ -636,6 +684,7 @@ Returns value betting opportunities from database with ML analysis.
 - `activeOnly` (boolean): Only return active opportunities (default: true)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -676,13 +725,16 @@ Returns value betting opportunities from database with ML analysis.
 ### Live Data
 
 #### GET /live-updates
+
 Returns live updates with polling-based approach.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by
 - `league` (string): League to filter by
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -736,9 +788,11 @@ Returns live updates with polling-based approach.
 ```
 
 #### GET /live-stream
+
 Server-Sent Events stream for real-time updates.
 
 **Query Parameters:**
+
 - `sport` (string): Sport to filter by
 
 **Response:** Server-Sent Events stream
@@ -754,11 +808,13 @@ data: {"type": "game_completed", "data": {...}}
 ### Admin & Monitoring
 
 #### GET /admin/api-status
+
 Returns comprehensive API health and status information.
 
 **Authentication:** Required
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -807,11 +863,13 @@ Returns comprehensive API health and status information.
 ```
 
 #### GET /admin/database-audit
+
 Performs comprehensive database audit and health check.
 
 **Authentication:** Required
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -836,19 +894,20 @@ Performs comprehensive database audit and health check.
 
 ## Error Codes
 
-| Code | Description |
-|------|-------------|
-| 400 | Bad Request - Invalid parameters |
-| 401 | Unauthorized - Authentication required |
-| 403 | Forbidden - Insufficient permissions |
-| 404 | Not Found - Resource not found |
-| 429 | Too Many Requests - Rate limit exceeded |
-| 500 | Internal Server Error - Server error |
-| 503 | Service Unavailable - External API unavailable |
+| Code | Description                                    |
+| ---- | ---------------------------------------------- |
+| 400  | Bad Request - Invalid parameters               |
+| 401  | Unauthorized - Authentication required         |
+| 403  | Forbidden - Insufficient permissions           |
+| 404  | Not Found - Resource not found                 |
+| 429  | Too Many Requests - Rate limit exceeded        |
+| 500  | Internal Server Error - Server error           |
+| 503  | Service Unavailable - External API unavailable |
 
 ## SDKs and Libraries
 
 ### JavaScript/TypeScript
+
 ```bash
 npm install @apexbets/api-client
 ```
@@ -858,13 +917,14 @@ import { ApexBetsClient } from '@apexbets/api-client'
 
 const client = new ApexBetsClient({
   baseUrl: 'https://apexbets.com/api',
-  apiKey: 'your-api-key'
+  apiKey: 'your-api-key',
 })
 
 const teams = await client.teams.get({ sport: 'basketball' })
 ```
 
 ### Python
+
 ```bash
 pip install apexbets-api
 ```
@@ -890,6 +950,7 @@ teams = client.teams.get(sport='basketball')
 ## Changelog
 
 ### v1.0.0 (2024-01-01)
+
 - Initial release
 - 40+ API endpoints
 - Real-time data streaming

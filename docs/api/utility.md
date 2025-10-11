@@ -1,6 +1,7 @@
 # Utility APIs
 
-This section covers utility endpoints for images, cache management, and other supporting services.
+This section covers utility endpoints for images, cache management, and other
+supporting services.
 
 ## Images
 
@@ -11,14 +12,18 @@ This section covers utility endpoints for images, cache management, and other su
 **Description:** Retrieve team logos and images.
 
 **Parameters:**
+
 - `league` (string, required) - League name in URL path
 - `teamName` (string, required) - Team name in URL path
-- `size` (string, optional) - Image size: "small", "medium", "large" (default: "medium")
-- `format` (string, optional) - Image format: "png", "jpg", "webp" (default: "png")
+- `size` (string, optional) - Image size: "small", "medium", "large" (default:
+  "medium")
+- `format` (string, optional) - Image format: "png", "jpg", "webp" (default:
+  "png")
 
 **Response:** Returns image file directly
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/images/team/NBA/Lakers?size=large&format=png"
 ```
@@ -30,14 +35,18 @@ curl -X GET "https://your-domain.com/api/images/team/NBA/Lakers?size=large&forma
 **Description:** Retrieve player photos and images.
 
 **Parameters:**
+
 - `league` (string, required) - League name in URL path
 - `playerId` (string, required) - Player ID in URL path
-- `size` (string, optional) - Image size: "small", "medium", "large" (default: "medium")
-- `format` (string, optional) - Image format: "png", "jpg", "webp" (default: "jpg")
+- `size` (string, optional) - Image size: "small", "medium", "large" (default:
+  "medium")
+- `format` (string, optional) - Image format: "png", "jpg", "webp" (default:
+  "jpg")
 
 **Response:** Returns image file directly
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/images/player/NBA/123?size=medium&format=jpg"
 ```
@@ -53,9 +62,11 @@ curl -X GET "https://your-domain.com/api/images/player/NBA/123?size=medium&forma
 **Description:** Get cache statistics and status information.
 
 **Parameters:**
+
 - `type` (string, optional) - Cache type: "all", "redis", "memory"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -86,7 +97,7 @@ curl -X GET "https://your-domain.com/api/images/player/NBA/123?size=medium&forma
     "summary": {
       "total_memory_used": "384MB",
       "total_keys": 20000,
-      "overall_hit_ratio": 0.90,
+      "overall_hit_ratio": 0.9,
       "last_updated": "2024-01-01T00:00:00.000Z"
     }
   },
@@ -98,6 +109,7 @@ curl -X GET "https://your-domain.com/api/images/player/NBA/123?size=medium&forma
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/cache?type=all"
 ```
@@ -109,11 +121,13 @@ curl -X GET "https://your-domain.com/api/cache?type=all"
 **Description:** Clear specific cache entries or all cache.
 
 **Parameters:**
+
 - `type` (string, optional) - Cache type: "all", "redis", "memory", "api"
 - `pattern` (string, optional) - Cache key pattern to clear
 - `endpoint` (string, optional) - Specific API endpoint cache to clear
 
 **Request Body:**
+
 ```json
 {
   "type": "redis",
@@ -122,6 +136,7 @@ curl -X GET "https://your-domain.com/api/cache?type=all"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -137,6 +152,7 @@ curl -X GET "https://your-domain.com/api/cache?type=all"
 ```
 
 **Example:**
+
 ```bash
 curl -X POST "https://your-domain.com/api/cache/clear" \
   -H "Content-Type: application/json" \
@@ -151,9 +167,11 @@ curl -X POST "https://your-domain.com/api/cache/clear" \
 
 **Endpoint:** `GET /api/database-first/games`
 
-**Description:** Games data served directly from database with optimized queries.
+**Description:** Games data served directly from database with optimized
+queries.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `status` (string, optional) - Game status
@@ -162,6 +180,7 @@ curl -X POST "https://your-domain.com/api/cache/clear" \
 - `limit` (number, optional) - Maximum results (default: 100)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -191,6 +210,7 @@ curl -X POST "https://your-domain.com/api/cache/clear" \
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database-first/games?sport=basketball&status=scheduled"
 ```
@@ -202,12 +222,14 @@ curl -X GET "https://your-domain.com/api/database-first/games?sport=basketball&s
 **Description:** Teams data served directly from database.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `isActive` (boolean, optional) - Filter active teams (default: true)
 - `limit` (number, optional) - Maximum results (default: 100)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -234,6 +256,7 @@ curl -X GET "https://your-domain.com/api/database-first/games?sport=basketball&s
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database-first/teams?sport=basketball&league=NBA"
 ```
@@ -245,12 +268,14 @@ curl -X GET "https://your-domain.com/api/database-first/teams?sport=basketball&l
 **Description:** Standings data served directly from database.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `season` (string, optional) - Season (default: current)
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -281,6 +306,7 @@ curl -X GET "https://your-domain.com/api/database-first/teams?sport=basketball&l
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/database-first/standings?sport=basketball&league=NBA"
 ```
@@ -296,10 +322,12 @@ curl -X GET "https://your-domain.com/api/database-first/standings?sport=basketba
 **Description:** Debug database schema and table information.
 
 **Parameters:**
+
 - `table` (string, optional) - Specific table name
 - `detail` (string, optional) - Detail level: "basic", "full"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -327,6 +355,7 @@ curl -X GET "https://your-domain.com/api/database-first/standings?sport=basketba
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/debug/schema?table=games&detail=full"
 ```
@@ -340,6 +369,7 @@ curl -X GET "https://your-domain.com/api/debug/schema?table=games&detail=full"
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -375,6 +405,7 @@ curl -X GET "https://your-domain.com/api/debug/schema?table=games&detail=full"
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/debug/service-registry"
 ```
@@ -388,6 +419,7 @@ curl -X GET "https://your-domain.com/api/debug/service-registry"
 **Description:** Optimize and resize images on demand.
 
 **Parameters:**
+
 - `url` (string, required) - Image URL to optimize
 - `width` (number, optional) - Target width
 - `height` (number, optional) - Target height
@@ -397,6 +429,7 @@ curl -X GET "https://your-domain.com/api/debug/service-registry"
 **Response:** Returns optimized image file directly
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/image-optimizer?url=https://example.com/image.jpg&width=300&height=300&quality=90&format=webp"
 ```
@@ -412,6 +445,7 @@ curl -X GET "https://your-domain.com/api/image-optimizer?url=https://example.com
 **Parameters:** None
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -453,6 +487,7 @@ curl -X GET "https://your-domain.com/api/image-optimizer?url=https://example.com
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/startup"
 ```
@@ -466,12 +501,14 @@ curl -X GET "https://your-domain.com/api/startup"
 **Description:** Populate database with initial or test data.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport to populate
 - `league` (string, optional) - League to populate
 - `dataType` (string, optional) - Data type: "teams", "games", "players", "all"
 - `season` (string, optional) - Season to populate
 
 **Request Body:**
+
 ```json
 {
   "sport": "basketball",
@@ -482,6 +519,7 @@ curl -X GET "https://your-domain.com/api/startup"
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -499,6 +537,7 @@ curl -X GET "https://your-domain.com/api/startup"
 ```
 
 **Example:**
+
 ```bash
 curl -X POST "https://your-domain.com/api/populate-data" \
   -H "Content-Type: application/json" \

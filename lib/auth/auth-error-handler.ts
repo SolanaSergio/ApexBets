@@ -29,8 +29,9 @@ export class AuthErrorHandler {
    */
   handleAuthError(error: AuthError | Error): AuthErrorResult {
     const errorMessage = error.message.toLowerCase()
-    const isRefreshTokenError = errorMessage.includes('refresh_token_not_found') || 
-                                 errorMessage.includes('invalid refresh token')
+    const isRefreshTokenError =
+      errorMessage.includes('refresh_token_not_found') ||
+      errorMessage.includes('invalid refresh token')
 
     // Handle refresh token errors
     if (isRefreshTokenError) {
@@ -41,19 +42,21 @@ export class AuthErrorHandler {
         shouldRedirect: true,
         redirectPath: '/login',
         error: 'Session expired. Please sign in again.',
-        isRefreshTokenError: true
+        isRefreshTokenError: true,
       }
     }
 
     // Handle invalid credentials
-    if (errorMessage.includes('invalid login credentials') || 
-        errorMessage.includes('invalid email or password')) {
+    if (
+      errorMessage.includes('invalid login credentials') ||
+      errorMessage.includes('invalid email or password')
+    ) {
       return {
         shouldRetry: false,
         shouldClearSession: false,
         shouldRedirect: false,
         error: 'Invalid email or password.',
-        isRefreshTokenError: false
+        isRefreshTokenError: false,
       }
     }
 
@@ -64,32 +67,33 @@ export class AuthErrorHandler {
         shouldClearSession: false,
         shouldRedirect: false,
         error: 'Please check your email and confirm your account.',
-        isRefreshTokenError: false
+        isRefreshTokenError: false,
       }
     }
 
     // Handle rate limiting
-    if (errorMessage.includes('too many requests') || 
-        errorMessage.includes('rate limit')) {
+    if (errorMessage.includes('too many requests') || errorMessage.includes('rate limit')) {
       return {
         shouldRetry: true,
         shouldClearSession: false,
         shouldRedirect: false,
         error: 'Too many requests. Please try again later.',
-        isRefreshTokenError: false
+        isRefreshTokenError: false,
       }
     }
 
     // Handle network errors
-    if (errorMessage.includes('network') || 
-        errorMessage.includes('fetch') || 
-        errorMessage.includes('connection')) {
+    if (
+      errorMessage.includes('network') ||
+      errorMessage.includes('fetch') ||
+      errorMessage.includes('connection')
+    ) {
       return {
         shouldRetry: true,
         shouldClearSession: false,
         shouldRedirect: false,
         error: 'Network error. Please check your connection.',
-        isRefreshTokenError: false
+        isRefreshTokenError: false,
       }
     }
 
@@ -99,7 +103,7 @@ export class AuthErrorHandler {
       shouldClearSession: false,
       shouldRedirect: false,
       error: error.message || 'An authentication error occurred.',
-      isRefreshTokenError: false
+      isRefreshTokenError: false,
     }
   }
 
@@ -120,9 +124,11 @@ export class AuthErrorHandler {
    */
   isRefreshTokenError(error: Error): boolean {
     const errorMessage = error.message.toLowerCase()
-    return errorMessage.includes('refresh_token_not_found') || 
-           errorMessage.includes('invalid refresh token') ||
-           errorMessage.includes('refresh token not found')
+    return (
+      errorMessage.includes('refresh_token_not_found') ||
+      errorMessage.includes('invalid refresh token') ||
+      errorMessage.includes('refresh token not found')
+    )
   }
 
   /**

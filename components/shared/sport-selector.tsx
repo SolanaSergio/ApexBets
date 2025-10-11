@@ -1,22 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSeparator
-} from "@/components/ui/dropdown-menu"
-import { 
-  ChevronDown,
-  Activity,
-  CheckCircle,
-  AlertCircle
-} from "lucide-react"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu'
+import { ChevronDown, Activity, CheckCircle, AlertCircle } from 'lucide-react'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
 
 interface SportSelectorProps {
   selectedSport: SupportedSport | null
@@ -25,11 +20,11 @@ interface SportSelectorProps {
   variant?: 'default' | 'compact' | 'responsive'
 }
 
-export function SportSelector({ 
-  selectedSport, 
-  onSportChange, 
-  className = "",
-  variant = 'default'
+export function SportSelector({
+  selectedSport,
+  onSportChange,
+  className = '',
+  variant = 'default',
 }: SportSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
@@ -75,7 +70,7 @@ export function SportSelector({
   if (variant === 'compact') {
     return (
       <div className={`flex space-x-2 overflow-x-auto pb-2 ${className}`}>
-        {supportedSports.map((sport) => {
+        {supportedSports.map(sport => {
           const config = SportConfigManager.getSportConfig(sport)
           const isSelected = sport === selectedSport
           const isHealthy = isServiceHealthy
@@ -83,7 +78,7 @@ export function SportSelector({
           return (
             <Button
               key={sport}
-              variant={isSelected ? "default" : "outline"}
+              variant={isSelected ? 'default' : 'outline'}
               size="sm"
               onClick={() => onSportChange(sport)}
               className={`flex-shrink-0 min-w-fit px-3 py-2 ${isSelected ? 'shadow-md' : ''} ${
@@ -107,7 +102,7 @@ export function SportSelector({
       <div className={className}>
         {/* Mobile: Horizontal scrollable buttons */}
         <div className="flex space-x-2 overflow-x-auto pb-2 lg:hidden">
-          {supportedSports.map((sport) => {
+          {supportedSports.map(sport => {
             const config = SportConfigManager.getSportConfig(sport)
             const isSelected = sport === selectedSport
             const isHealthy = isServiceHealthy
@@ -115,7 +110,7 @@ export function SportSelector({
             return (
               <Button
                 key={sport}
-                variant={isSelected ? "default" : "outline"}
+                variant={isSelected ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => onSportChange(sport)}
                 className={`flex-shrink-0 min-w-fit px-3 py-2 ${isSelected ? 'shadow-md' : ''} ${
@@ -146,7 +141,7 @@ export function SportSelector({
                   </span>
                   <div className="text-left">
                     <div className="font-medium flex items-center gap-2">
-                      {currentSportConfig?.name || "Select Sport"}
+                      {currentSportConfig?.name || 'Select Sport'}
                       {isServiceHealthy ? (
                         <CheckCircle className="h-3 w-3 text-green-500" />
                       ) : (
@@ -154,7 +149,7 @@ export function SportSelector({
                       )}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {(currentSportConfig?.leagues?.length || 0)} leagues available
+                      {currentSportConfig?.leagues?.length || 0} leagues available
                     </div>
                   </div>
                 </div>
@@ -164,7 +159,7 @@ export function SportSelector({
 
             <DropdownMenuContent className="w-80 p-2" align="start">
               <div className="space-y-1">
-                {supportedSports.map((sport) => {
+                {supportedSports.map(sport => {
                   const config = SportConfigManager.getSportConfig(sport)
                   const isSelected = sport === selectedSport
                   const isHealthy = isServiceHealthy
@@ -179,7 +174,9 @@ export function SportSelector({
                       className="p-3 rounded-lg cursor-pointer hover:bg-muted/50"
                     >
                       <div className="flex items-center space-x-3 w-full">
-                        <div className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}>
+                        <div
+                          className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}
+                        >
                           <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -197,13 +194,13 @@ export function SportSelector({
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {(config?.leagues || []).join(", ")}
+                            {(config?.leagues || []).join(', ')}
                           </div>
                         </div>
                         <div className="flex items-center space-x-1">
                           <Activity className="h-3 w-3 text-yellow-500" />
                           <span className="text-xs text-muted-foreground">
-                            {(config?.leagues?.length || 0)}
+                            {config?.leagues?.length || 0}
                           </span>
                         </div>
                       </div>
@@ -231,8 +228,8 @@ export function SportSelector({
     <div className={`relative ${className}`}>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             className="w-full justify-between h-12 px-4"
             aria-label="Select sport"
           >
@@ -242,7 +239,7 @@ export function SportSelector({
               </span>
               <div className="text-left">
                 <div className="font-medium flex items-center gap-2">
-                  {currentSportConfig?.name || "Select Sport"}
+                  {currentSportConfig?.name || 'Select Sport'}
                   {isServiceHealthy ? (
                     <CheckCircle className="h-3 w-3 text-green-500" />
                   ) : (
@@ -250,21 +247,21 @@ export function SportSelector({
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {(currentSportConfig?.leagues?.length || 0)} leagues available
+                  {currentSportConfig?.leagues?.length || 0} leagues available
                 </div>
               </div>
             </div>
             <ChevronDown className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        
+
         <DropdownMenuContent className="w-80 p-2" align="start">
           <div className="space-y-1">
-            {supportedSports.map((sport) => {
+            {supportedSports.map(sport => {
               const config = SportConfigManager.getSportConfig(sport)
               const isSelected = sport === selectedSport
               const isHealthy = isServiceHealthy
-              
+
               return (
                 <DropdownMenuItem
                   key={sport}
@@ -275,7 +272,9 @@ export function SportSelector({
                   className="p-3 rounded-lg cursor-pointer hover:bg-muted/50"
                 >
                   <div className="flex items-center space-x-3 w-full">
-                    <div className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}>
+                    <div
+                      className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}
+                    >
                       <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -293,13 +292,13 @@ export function SportSelector({
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {(config?.leagues || []).join(", ")}
+                        {(config?.leagues || []).join(', ')}
                       </div>
                     </div>
                     <div className="flex items-center space-x-1">
                       <Activity className="h-3 w-3 text-yellow-500" />
                       <span className="text-xs text-muted-foreground">
-                        {(config?.leagues?.length || 0)}
+                        {config?.leagues?.length || 0}
                       </span>
                     </div>
                   </div>
@@ -307,9 +306,9 @@ export function SportSelector({
               )
             })}
           </div>
-          
+
           <DropdownMenuSeparator className="my-2" />
-          
+
           <div className="p-2">
             <div className="text-xs text-muted-foreground text-center">
               <Activity className="h-3 w-3 inline mr-1" />

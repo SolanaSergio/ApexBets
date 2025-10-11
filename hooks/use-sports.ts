@@ -40,18 +40,18 @@ export function useSports(): UseSportsReturn {
     try {
       setLoading(true)
       setError(null)
-      
+
       const response = await fetch('/api/sports')
-      
+
       if (!response.ok) {
         throw new Error(`Failed to fetch sports: ${response.status} ${response.statusText}`)
       }
-      
+
       const result = await response.json()
-      
+
       // Handle both response formats: with success field and without
       let sportsData: Sport[] = []
-      
+
       if (result.success && Array.isArray(result.data)) {
         // Format: { success: true, data: [...] }
         sportsData = result.data
@@ -61,7 +61,7 @@ export function useSports(): UseSportsReturn {
       } else {
         throw new Error('Invalid sports data format')
       }
-      
+
       // Filter only active sports
       const activeSports = sportsData.filter((sport: Sport) => sport.is_active)
       setSports(activeSports)
@@ -69,7 +69,7 @@ export function useSports(): UseSportsReturn {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load sports'
       console.error('Error loading sports:', errorMessage)
       setError(errorMessage)
-      
+
       // Fallback to empty array on error
       setSports([])
     } finally {
@@ -89,7 +89,7 @@ export function useSports(): UseSportsReturn {
     sports,
     loading,
     error,
-    refreshSports
+    refreshSports,
   }
 }
 

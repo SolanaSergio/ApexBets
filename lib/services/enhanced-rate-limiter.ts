@@ -46,7 +46,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 5, // Official: 5/min (Free tier) - Source: balldontlie.io
         requestsPerDay: 7200, // 5 * 60 * 24 hours
         burstLimit: 1, // No burst allowed on free tier
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 15s for live games, 5min for standings
       },
       {
@@ -54,7 +54,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 100, // Official: 100/min (Free tier) - Source: RapidAPI docs
         requestsPerDay: 100, // Conservative: ~3/day to preserve monthly quota
         burstLimit: 10, // Reasonable burst protection
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 1min for live games, 10min for standings
       },
       {
@@ -62,7 +62,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 30, // Official: 30/min (Patreon tier) - Source: thesportsdb.com
         requestsPerDay: 10000, // Official: 10,000 requests per day
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5min for general data
       },
       {
@@ -70,7 +70,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 10, // Conservative limit
         requestsPerDay: 16, // 500/month ÷ 30 days = ~16/day
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 2 hours (conservative to preserve monthly quota)
       },
       {
@@ -78,7 +78,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 20, // Conservative limit (unofficial API)
         requestsPerDay: 10000, // Reasonable daily limit
         burstLimit: 5, // Reduced burst limit
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5s for live games, 5min for stats
       },
       {
@@ -86,7 +86,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 60, // Official MLB Stats API (unlimited)
         requestsPerDay: Number.MAX_SAFE_INTEGER,
         burstLimit: 20,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 2s for live games, 3min for stats
       },
       {
@@ -94,7 +94,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 60, // Official NHL API (unlimited)
         requestsPerDay: Number.MAX_SAFE_INTEGER,
         burstLimit: 20,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 2s for live games, 3min for stats
       },
       {
@@ -102,7 +102,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 60, // ESPN API (unofficial, unlimited)
         requestsPerDay: Number.MAX_SAFE_INTEGER,
         burstLimit: 15,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 2s for live games, 3min for stats
       },
       {
@@ -110,7 +110,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 100, // RapidAPI general limit
         requestsPerDay: 10000,
         burstLimit: 10,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Varies by specific API
       },
       {
@@ -118,7 +118,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 1000, // Internal optimized service
         requestsPerDay: Number.MAX_SAFE_INTEGER,
         burstLimit: 100,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: As needed for internal operations
       },
       {
@@ -126,7 +126,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 30, // Internal service limit
         requestsPerDay: 1000,
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5min for player statistics
       },
       {
@@ -134,7 +134,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 30, // Internal service limit
         requestsPerDay: 1000,
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5min for team statistics
       },
       {
@@ -142,7 +142,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 20, // Internal ML service limit
         requestsPerDay: 500,
         burstLimit: 3,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 10min for predictions
       },
       {
@@ -150,7 +150,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 60, // Internal analytics service
         requestsPerDay: 2000,
         burstLimit: 10,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 3min for analytics
       },
       {
@@ -158,7 +158,7 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 30, // Internal tennis service
         requestsPerDay: 1000,
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5min for tennis data
       },
       {
@@ -166,9 +166,9 @@ export class EnhancedRateLimiter {
         requestsPerMinute: 30, // Internal golf service
         requestsPerDay: 1000,
         burstLimit: 5,
-        windowSizeMs: 60000
+        windowSizeMs: 60000,
         // Update frequency: Every 5min for golf data
-      }
+      },
     ]
 
     configs.forEach(config => {
@@ -187,16 +187,13 @@ export class EnhancedRateLimiter {
     // This allows dynamic configuration without requiring environment variables
   }
 
-  async checkRateLimit(
-    provider: string,
-    endpoint: string = 'default'
-  ): Promise<RateLimitResult> {
+  async checkRateLimit(provider: string, endpoint: string = 'default'): Promise<RateLimitResult> {
     const config = this.configs.get(provider)
     if (!config) {
       return {
         allowed: true,
         remaining: Number.MAX_SAFE_INTEGER,
-        resetTime: Date.now() + 60000
+        resetTime: Date.now() + 60000,
       }
     }
 
@@ -223,7 +220,7 @@ export class EnhancedRateLimiter {
       return {
         allowed: true,
         remaining: Math.max(0, config.requestsPerMinute - (dbResult.remaining || 0)),
-        resetTime: windowStart + config.windowSizeMs
+        resetTime: windowStart + config.windowSizeMs,
       }
     } catch (error) {
       console.error('Rate limit check failed:', error)
@@ -239,7 +236,9 @@ export class EnhancedRateLimiter {
   ): Promise<RateLimitResult> {
     try {
       const now = new Date()
-      const windowStart = new Date(Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs)
+      const windowStart = new Date(
+        Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs
+      )
       const today = now.toISOString().split('T')[0]
 
       // Check minute-based rate limit
@@ -252,14 +251,19 @@ export class EnhancedRateLimiter {
       `
 
       const minuteResult = await productionSupabaseClient.executeSQL(minuteQuery)
-      const currentMinuteRequests = minuteResult.success && minuteResult.data && minuteResult.data[0] ? minuteResult.data[0].requests_count || 0 : 0
+      const currentMinuteRequests =
+        minuteResult.success && minuteResult.data && minuteResult.data[0]
+          ? minuteResult.data[0].requests_count || 0
+          : 0
 
       if (currentMinuteRequests >= config.requestsPerMinute) {
         return {
           allowed: false,
           remaining: 0,
           resetTime: windowStart.getTime() + config.windowSizeMs,
-          retryAfter: Math.ceil((windowStart.getTime() + config.windowSizeMs - now.getTime()) / 1000)
+          retryAfter: Math.ceil(
+            (windowStart.getTime() + config.windowSizeMs - now.getTime()) / 1000
+          ),
         }
       }
 
@@ -274,7 +278,10 @@ export class EnhancedRateLimiter {
       `
 
       const dailyResult = await productionSupabaseClient.executeSQL(dailyQuery)
-      const currentDailyRequests = dailyResult.success && dailyResult.data && dailyResult.data[0] ? dailyResult.data[0].daily_requests || 0 : 0
+      const currentDailyRequests =
+        dailyResult.success && dailyResult.data && dailyResult.data[0]
+          ? dailyResult.data[0].daily_requests || 0
+          : 0
 
       if (currentDailyRequests >= config.requestsPerDay) {
         const tomorrow = new Date(now)
@@ -285,14 +292,14 @@ export class EnhancedRateLimiter {
           allowed: false,
           remaining: 0,
           resetTime: tomorrow.getTime(),
-          retryAfter: Math.ceil((tomorrow.getTime() - now.getTime()) / 1000)
+          retryAfter: Math.ceil((tomorrow.getTime() - now.getTime()) / 1000),
         }
       }
 
       return {
         allowed: true,
         remaining: Math.max(0, config.requestsPerMinute - currentMinuteRequests),
-        resetTime: windowStart.getTime() + config.windowSizeMs
+        resetTime: windowStart.getTime() + config.windowSizeMs,
       }
     } catch (error) {
       console.error('Database rate limit check failed:', error)
@@ -300,7 +307,7 @@ export class EnhancedRateLimiter {
       return {
         allowed: true,
         remaining: config.requestsPerMinute,
-        resetTime: Date.now() + config.windowSizeMs
+        resetTime: Date.now() + config.windowSizeMs,
       }
     }
   }
@@ -317,7 +324,7 @@ export class EnhancedRateLimiter {
       return {
         allowed: true,
         remaining: config.requestsPerMinute - 1,
-        resetTime: windowStart + config.windowSizeMs
+        resetTime: windowStart + config.windowSizeMs,
       }
     }
 
@@ -326,7 +333,7 @@ export class EnhancedRateLimiter {
         allowed: false,
         remaining: 0,
         resetTime: windowStart + config.windowSizeMs,
-        retryAfter: Math.ceil((windowStart + config.windowSizeMs - now) / 1000)
+        retryAfter: Math.ceil((windowStart + config.windowSizeMs - now) / 1000),
       }
     }
 
@@ -334,7 +341,7 @@ export class EnhancedRateLimiter {
     return {
       allowed: true,
       remaining: config.requestsPerMinute - entry.count,
-      resetTime: windowStart + config.windowSizeMs
+      resetTime: windowStart + config.windowSizeMs,
     }
   }
 
@@ -345,7 +352,9 @@ export class EnhancedRateLimiter {
   ): Promise<void> {
     try {
       const now = new Date()
-      const windowStart = new Date(Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs)
+      const windowStart = new Date(
+        Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs
+      )
       const today = now.toISOString().split('T')[0]
 
       // Update minute-based counter
@@ -391,7 +400,9 @@ export class EnhancedRateLimiter {
 
     try {
       const now = new Date()
-      const windowStart = new Date(Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs)
+      const windowStart = new Date(
+        Math.floor(now.getTime() / config.windowSizeMs) * config.windowSizeMs
+      )
 
       const query = `
         SELECT 
@@ -403,7 +414,10 @@ export class EnhancedRateLimiter {
       `
 
       const result = await productionSupabaseClient.executeSQL(query)
-      const data = result.success && result.data && result.data[0] ? result.data[0] : { minute_requests: 0, daily_requests: 0 }
+      const data =
+        result.success && result.data && result.data[0]
+          ? result.data[0]
+          : { minute_requests: 0, daily_requests: 0 }
 
       return {
         provider,
@@ -411,7 +425,7 @@ export class EnhancedRateLimiter {
         currentDailyRequests: parseInt(data.daily_requests) || 0,
         minuteLimit: config.requestsPerMinute,
         dailyLimit: config.requestsPerDay,
-        resetTime: windowStart.getTime() + config.windowSizeMs
+        resetTime: windowStart.getTime() + config.windowSizeMs,
       }
     } catch (error) {
       console.error('Failed to get rate limit status:', error)
@@ -421,7 +435,7 @@ export class EnhancedRateLimiter {
         currentDailyRequests: 0,
         minuteLimit: config.requestsPerMinute,
         dailyLimit: config.requestsPerDay,
-        resetTime: Date.now() + config.windowSizeMs
+        resetTime: Date.now() + config.windowSizeMs,
       }
     }
   }
@@ -465,5 +479,5 @@ export const intelligentRateLimiter = {
   },
   getRecommendedDelay(_provider: string) {
     return 0
-  }
+  },
 }

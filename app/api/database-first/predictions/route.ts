@@ -5,27 +5,94 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
+import { productionSupabaseClient } from '@/lib/supabase/production-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 
+// Explicitly set runtime to suppress warnings
+export const runtime = 'nodejs'
+
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID()
+
   try {
+    structuredLogger.info('Predictions API request received', {
+      service: 'predictions-api',
+      requestId,
+      step: 'request-start',
+    })
+
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const gameId = searchParams.get("gameId")
-    const modelName = searchParams.get("modelName")
-    const predictionType = searchParams.get("predictionType")
-    const limitRaw = Number.parseInt(searchParams.get("limit") || "50")
+    const sport = searchParams.get('sport') || 'all'
+    const gameId = searchParams.get('gameId')
+    const modelName = searchParams.get('modelName')
+    const predictionType = searchParams.get('predictionType')
+    const limitRaw = Number.parseInt(searchParams.get('limit') || '50')
     const limit = Math.max(1, Math.min(1000, Number.isFinite(limitRaw) ? limitRaw : 50))
 
-    // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getPredictions({
+    structuredLogger.info('Predictions API parameters parsed', {
+      service: 'predictions-api',
+      requestId,
       sport,
-      ...(gameId && { gameId }),
-      ...(modelName && { modelName }),
-      ...(predictionType && { predictionType }),
-      limit
+      gameId,
+      modelName,
+      predictionType,
+      limit,
     })
+
+    // Check if Supabase client is available
+    if (!productionSupabaseClient.isConnected()) {
+      structuredLogger.error('Supabase client not available', {
+        service: 'predictions-api',
+        requestId,
+        step: 'client-check',
+      })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database service unavailable',
+          details: 'Supabase client not initialized',
+          requestId,
+        },
+        { status: 503 }
+      )
+    }
+
+    structuredLogger.info('Calling productionSupabaseClient.getPredictions', {
+      service: 'predictions-api',
+      requestId,
+      gameId,
+      predictionType,
+      modelName,
+      limit,
+    })
+
+    // Use production Supabase client directly - no external API calls
+    const predictions = await productionSupabaseClient.getPredictions(
+      gameId || undefined,
+      predictionType || undefined,
+      modelName || undefined,
+      limit
+    )
+
+    // Filter by sport if specified
+    const filteredPredictions =
+      sport === 'all' ? predictions : predictions.filter((p: any) => p.sport === sport)
+
+    const result = {
+      success: true,
+      data: filteredPredictions,
+      meta: {
+        source: 'database',
+        count: filteredPredictions.length,
+        sport,
+        gameId: gameId || 'all',
+        modelName: modelName || 'all',
+        predictionType: predictionType || 'all',
+        limit,
+        refreshed: true,
+        timestamp: new Date().toISOString(),
+      },
+    }
 
     structuredLogger.info('Predictions API request processed', {
       sport,
@@ -33,21 +100,25 @@ export async function GET(request: NextRequest) {
       modelName,
       predictionType,
       count: result.data.length,
-      source: result.meta.source
+      source: result.meta.source,
     })
 
     return NextResponse.json(result)
-
   } catch (error) {
     structuredLogger.error('Database-first predictions API error', {
-      error: error instanceof Error ? error.message : String(error)
+      service: 'predictions-api',
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      step: 'error-handling',
     })
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch predictions',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
+        requestId,
       },
       { status: 500 }
     )

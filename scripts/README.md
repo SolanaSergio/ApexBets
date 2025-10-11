@@ -44,11 +44,13 @@ scripts/
 ## Quick Start
 
 1. **Start the data manager:**
+
    ```bash
    node start-data-manager.js
    ```
 
 2. **Set up environment:**
+
    ```bash
    node setup/setup-environment.js
    ```
@@ -61,7 +63,9 @@ scripts/
 ## Main Components
 
 ### ApexDataManager
+
 The main data management system that:
+
 - Automatically populates real data from multiple APIs
 - Removes all mock data and placeholders
 - Validates and cleans up data
@@ -69,15 +73,18 @@ The main data management system that:
 - Supports all major sports (basketball, football, baseball, hockey, soccer)
 
 ### Data Services
+
 - **apex-data-manager.js**: Main comprehensive data management
 - **live-data-service.js**: Express.js API for frontend components
 - **auto-update-service.js**: Legacy auto-update system
 
 ### Database
+
 - **sql-scripts/**: All database schema and migration files
 - **database/**: Python utilities for data cleaning and setup
 
 ### ML Services
+
 - **ml-services/**: Machine learning models and prediction generation
 - **scrapers/**: Web scraping utilities for additional data sources
 
@@ -101,6 +108,7 @@ The main data management system that:
 ## Monitoring
 
 The data manager provides real-time monitoring:
+
 - Data update status
 - Error tracking
 - Mock data detection

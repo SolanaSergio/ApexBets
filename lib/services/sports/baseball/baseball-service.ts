@@ -3,8 +3,19 @@
  * MLB-specific implementation with SportsDB integration
  */
 
-import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
-import { sportsDBClient, oddsApiClient, apiSportsClient, mlbStatsClient, espnClient } from '../../../sports-apis'
+import {
+  SportSpecificService,
+  GameData,
+  TeamData,
+  PlayerData,
+} from '../../core/sport-specific-service'
+import {
+  sportsDBClient,
+  oddsApiClient,
+  apiSportsClient,
+  mlbStatsClient,
+  espnClient,
+} from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
 
 export class BaseballService extends SportSpecificService {
@@ -14,16 +25,18 @@ export class BaseballService extends SportSpecificService {
       cacheTTL: 5 * 60 * 1000, // 5 minutes
       rateLimitService: 'sportsdb',
       retryAttempts: 3,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super('baseball', league, config)
   }
 
-  async getGames(params: {
-    date?: string
-    status?: 'scheduled' | 'live' | 'finished'
-    teamId?: string
-  } = {}): Promise<GameData[]> {
+  async getGames(
+    params: {
+      date?: string
+      status?: 'scheduled' | 'live' | 'finished'
+      teamId?: string
+    } = {}
+  ): Promise<GameData[]> {
     const key = this.getCacheKey('games', JSON.stringify(params))
     const ttl = params.status === 'live' ? 30 * 1000 : this.config.cacheTTL
 
@@ -49,7 +62,10 @@ export class BaseballService extends SportSpecificService {
           return this.removeDuplicateGames(games)
         }
       } catch (error) {
-        console.warn('MLB Stats API failed, trying fallback APIs:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          'MLB Stats API failed, trying fallback APIs:',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Second: Try TheSportsDB (free, unlimited)
@@ -61,7 +77,10 @@ export class BaseballService extends SportSpecificService {
             return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('SportsDB failed, trying ESPN:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB failed, trying ESPN:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -73,7 +92,10 @@ export class BaseballService extends SportSpecificService {
           return this.removeDuplicateGames(games)
         }
       } catch (error) {
-        console.warn('ESPN failed, trying RapidAPI as last resort:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          'ESPN failed, trying RapidAPI as last resort:',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Last resort: Try RapidAPI (cost-based, limited free tier)
@@ -98,27 +120,30 @@ export class BaseballService extends SportSpecificService {
 
   private async fetchGamesFromRapidAPI(date: string): Promise<GameData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Get MLB league ID (1 is MLB in RapidAPI)
       const fixtures = await apiSportsClient.getFixtures({
         league: 1, // MLB
         season: new Date().getFullYear(),
-        date: date
+        date: date,
       })
       if (fixtures?.response && Array.isArray(fixtures.response)) {
         return fixtures.response.map((fixture: any) => this.mapRapidAPIGameData(fixture))
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI baseball error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI baseball error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchGamesFromSportsDB(date: string): Promise<GameData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       const events = await sportsDBClient.getEventsByDate(date, 'baseball')
       if (events && Array.isArray(events)) {
@@ -137,9 +162,7 @@ export class BaseballService extends SportSpecificService {
       if (games && Array.isArray(games)) {
         // Filter games for the requested date
         const requestedDate = date.split('T')[0]
-        const filteredGames = games.filter(game => 
-          game.gameDate?.split('T')[0] === requestedDate
-        )
+        const filteredGames = games.filter(game => game.gameDate?.split('T')[0] === requestedDate)
         return filteredGames.map(game => this.mapMLBStatsGameData(game))
       }
     } catch (error) {
@@ -185,53 +208,61 @@ export class BaseballService extends SportSpecificService {
       homeScore: fixture.goals?.home || null,
       awayScore: fixture.goals?.away || null,
       venue: fixture.fixture?.venue?.name || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-
   private extractAbbreviationFromName(teamName: string): string {
     // Extract abbreviation from team name by taking first letters
-    const words = teamName.split(' ').filter(word => 
-      !['of', 'the', 'and', 'at'].includes(word.toLowerCase())
-    )
-    
+    const words = teamName
+      .split(' ')
+      .filter(word => !['of', 'the', 'and', 'at'].includes(word.toLowerCase()))
+
     if (words.length >= 2) {
       // For multi-word teams, take first letter of each major word
-      return words.slice(-2).map(word => word[0]).join('').toUpperCase()
+      return words
+        .slice(-2)
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
     } else if (words.length === 1) {
       // For single word teams, take first 3 letters
       return words[0].substring(0, 3).toUpperCase()
     }
-    
+
     return teamName.substring(0, 3).toUpperCase()
   }
 
-  private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
-    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> = {
-      'NS': 'scheduled',
-      'LIVE': 'live',
-      'FT': 'finished',
-      'HT': 'live',
-      '1H': 'live',
-      '2H': 'live',
-      '3H': 'live',
-      '4H': 'live',
-      '5H': 'live',
-      '6H': 'live',
-      '7H': 'live',
-      '8H': 'live',
-      '9H': 'live',
-      'PST': 'postponed',
-      'CANC': 'cancelled'
-    }
+  private mapRapidAPIStatus(
+    status: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> =
+      {
+        NS: 'scheduled',
+        LIVE: 'live',
+        FT: 'finished',
+        HT: 'live',
+        '1H': 'live',
+        '2H': 'live',
+        '3H': 'live',
+        '4H': 'live',
+        '5H': 'live',
+        '6H': 'live',
+        '7H': 'live',
+        '8H': 'live',
+        '9H': 'live',
+        PST: 'postponed',
+        CANC: 'cancelled',
+      }
     return statusMap[status] || 'scheduled'
   }
 
-  async getTeams(params: {
-    league?: string
-    search?: string
-  } = {}): Promise<TeamData[]> {
+  async getTeams(
+    params: {
+      league?: string
+      search?: string
+    } = {}
+  ): Promise<TeamData[]> {
     const key = this.getCacheKey('teams', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -252,7 +283,10 @@ export class BaseballService extends SportSpecificService {
             return this.removeDuplicateTeams(teams)
           }
         } catch (error) {
-          console.warn('SportsDB teams failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB teams failed, trying RapidAPI:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -264,7 +298,10 @@ export class BaseballService extends SportSpecificService {
             teams.push(...rapidAPITeams)
           }
         } catch (error) {
-          console.warn('RapidAPI teams failed:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'RapidAPI teams failed:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
           this.recordRapidAPIError()
         }
       }
@@ -278,12 +315,12 @@ export class BaseballService extends SportSpecificService {
 
   private async fetchTeamsFromRapidAPI(): Promise<TeamData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Get MLB teams from RapidAPI - try multiple league IDs if needed
       const currentYear = new Date().getFullYear()
       const leagueIds = [1, 2, 3] // Try multiple MLB league IDs
-      
+
       for (const leagueId of leagueIds) {
         try {
           const teams = await apiSportsClient.getTeams(leagueId, currentYear)
@@ -297,14 +334,17 @@ export class BaseballService extends SportSpecificService {
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI baseball teams error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI baseball teams error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchTeamsFromSportsDB(search?: string): Promise<TeamData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       const teams = await sportsDBClient.searchTeams(search || 'baseball')
       if (teams && Array.isArray(teams)) {
@@ -337,7 +377,7 @@ export class BaseballService extends SportSpecificService {
       city: await this.extractCityFromName(team.team?.name),
       abbreviation: this.extractAbbreviationFromName(team.team?.name || ''),
       logo: team.team?.logo || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -367,24 +407,26 @@ export class BaseballService extends SportSpecificService {
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       )
-      
+
       const { data: teams } = await supabase
         .from('teams')
         .select('name')
         .eq('sport', 'baseball')
         .eq('is_active', true)
-      
+
       if (teams && teams.length > 0) {
         // Extract suffixes from real team names
-        return teams.map(team => {
-          const parts = team.name.split(' ')
-          return parts[parts.length - 1] // Last word is typically the suffix
-        }).filter((suffix, index, arr) => arr.indexOf(suffix) === index) // Remove duplicates
+        return teams
+          .map((team: any) => {
+            const parts = team.name.split(' ')
+            return parts[parts.length - 1] // Last word is typically the suffix
+          })
+          .filter((suffix: any, index: number, arr: any[]) => arr.indexOf(suffix) === index) // Remove duplicates
       }
     } catch (error) {
       console.warn('Failed to get team suffixes from database:', error)
     }
-    
+
     // Fallback: return empty array (no hardcoded names)
     return []
   }
@@ -395,7 +437,7 @@ export class BaseballService extends SportSpecificService {
     if (parts.length > 1) {
       // Get team suffixes dynamically from database or API
       const suffixes = await this.getTeamSuffixes()
-      
+
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {
           return parts.slice(0, i).join(' ')
@@ -405,10 +447,12 @@ export class BaseballService extends SportSpecificService {
     return teamName
   }
 
-  async getPlayers(params: {
-    teamId?: string
-    search?: string
-  } = {}): Promise<PlayerData[]> {
+  async getPlayers(
+    params: {
+      teamId?: string
+      search?: string
+    } = {}
+  ): Promise<PlayerData[]> {
     const key = this.getCacheKey('players', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -419,15 +463,19 @@ export class BaseballService extends SportSpecificService {
     try {
       // Fetch from database using production client
       const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
-      const players = await productionSupabaseClient.getPlayers('baseball', params.teamId, params.limit || 100)
-      
+      const players = await productionSupabaseClient.getPlayers(
+        'baseball',
+        params.teamId,
+        params.limit || 100
+      )
+
       return players.map((player: any) => ({
         id: player.id,
         name: player.name,
         position: player.position,
         team_id: player.team_id,
         sport: 'baseball',
-        ...player
+        ...player,
       }))
     } catch (error) {
       console.error('Error fetching baseball players:', error)
@@ -461,23 +509,30 @@ export class BaseballService extends SportSpecificService {
           const findStat = (keys: string[]): number | undefined => {
             const stats: any[] = Array.isArray(entry?.stats) ? entry.stats : []
             for (const s of stats) {
-              const name = String(s?.name || s?.abbreviation || s?.shortDisplayName || '').toLowerCase()
+              const name = String(
+                s?.name || s?.abbreviation || s?.shortDisplayName || ''
+              ).toLowerCase()
               if (keys.some(k => name === k.toLowerCase())) {
                 const val = s?.value ?? s?.displayValue
-                const num = typeof val === 'string' ? parseFloat(val) : (typeof val === 'number' ? val : undefined)
+                const num =
+                  typeof val === 'string'
+                    ? parseFloat(val)
+                    : typeof val === 'number'
+                      ? val
+                      : undefined
                 if (!Number.isNaN(num as number)) return num as number
               }
             }
             return undefined
           }
 
-          const wins = findStat(['wins','w']) || 0
-          const losses = findStat(['losses','l']) || 0
-          const ties = findStat(['ties','t']) || 0
-          const winPct = findStat(['pct','win_percentage','winpercent','winpct']) || 0
-          const gamesBehind = findStat(['gb','games_behind']) || 0
-          const runsFor = findStat(['pf','points_for','runs_for','rf']) || 0
-          const runsAgainst = findStat(['pa','points_against','runs_against','ra']) || 0
+          const wins = findStat(['wins', 'w']) || 0
+          const losses = findStat(['losses', 'l']) || 0
+          const ties = findStat(['ties', 't']) || 0
+          const winPct = findStat(['pct', 'win_percentage', 'winpercent', 'winpct']) || 0
+          const gamesBehind = findStat(['gb', 'games_behind']) || 0
+          const runsFor = findStat(['pf', 'points_for', 'runs_for', 'rf']) || 0
+          const runsAgainst = findStat(['pa', 'points_against', 'runs_against', 'ra']) || 0
 
           return {
             sport: 'baseball',
@@ -491,7 +546,7 @@ export class BaseballService extends SportSpecificService {
             gamesBehind,
             pointsFor: runsFor,
             pointsAgainst: runsAgainst,
-            lastUpdated: new Date().toISOString()
+            lastUpdated: new Date().toISOString(),
           }
         })
 
@@ -526,13 +581,13 @@ export class BaseballService extends SportSpecificService {
         console.warn('Odds API client not configured, returning empty odds')
         return []
       }
-      
+
       const odds = await oddsApiClient.getOdds({
         sport: 'baseball_mlb',
         regions: 'us',
         markets: 'h2h,spreads,totals',
         oddsFormat: 'american',
-        dateFormat: 'iso'
+        dateFormat: 'iso',
       })
       return odds
     } catch (error) {
@@ -582,12 +637,16 @@ export class BaseballService extends SportSpecificService {
       awayTeam: rawData.strAwayTeam,
       date: rawData.dateEvent,
       time: rawData.strTime,
-      status: rawData.strStatus === 'FT' ? 'finished' : 
-              rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
+      status:
+        rawData.strStatus === 'FT'
+          ? 'finished'
+          : rawData.strStatus === 'LIVE'
+            ? 'live'
+            : 'scheduled',
       homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
       awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
       venue: rawData.strVenue || 'TBD',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -600,7 +659,7 @@ export class BaseballService extends SportSpecificService {
       abbreviation: rawData.strTeamShort,
       city: rawData.strTeam.split(' ').slice(0, -1).join(' '),
       logo: rawData.strTeamBadge,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -613,7 +672,7 @@ export class BaseballService extends SportSpecificService {
       team: rawData.strTeam || rawData.team,
       position: rawData.strPosition || rawData.position,
       stats: rawData.stats || {},
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -630,19 +689,21 @@ export class BaseballService extends SportSpecificService {
       homeScore: game.teams?.home?.score || null,
       awayScore: game.teams?.away?.score || null,
       venue: game.venue?.name || 'TBD',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-  private mapMLBStatsStatus(detailedState: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+  private mapMLBStatsStatus(
+    detailedState: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
     if (!detailedState) return 'scheduled'
-    
+
     const status = detailedState.toLowerCase()
     if (status.includes('final') || status.includes('completed')) return 'finished'
     if (status.includes('in progress') || status.includes('live')) return 'live'
     if (status.includes('postponed') || status.includes('delayed')) return 'postponed'
     if (status.includes('cancelled')) return 'cancelled'
-    
+
     return 'scheduled'
   }
 
@@ -650,7 +711,7 @@ export class BaseballService extends SportSpecificService {
   private mapESPNGameData(game: any): GameData {
     const homeTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'home')
     const awayTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'away')
-    
+
     return {
       id: game.id?.toString() || '',
       sport: this.sport,
@@ -662,19 +723,21 @@ export class BaseballService extends SportSpecificService {
       homeScore: parseInt(homeTeam?.score) || null,
       awayScore: parseInt(awayTeam?.score) || null,
       venue: game.competitions?.[0]?.venue?.fullName || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-  private mapESPNStatus(statusName: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+  private mapESPNStatus(
+    statusName: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
     if (!statusName) return 'scheduled'
-    
+
     const status = statusName.toLowerCase()
     if (status.includes('final')) return 'finished'
     if (status.includes('in progress') || status.includes('live')) return 'live'
     if (status.includes('postponed')) return 'postponed'
     if (status.includes('cancelled')) return 'cancelled'
-    
+
     return 'scheduled'
   }
 }

@@ -1,130 +1,151 @@
-"use client"
+'use client'
 
-import { useState, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { 
-  Target, 
-  Calendar,
-  RefreshCw,
-  User,
-  Trophy,
-  Zap
-} from "lucide-react"
-import { usePlayerStats } from "@/components/data/real-time-provider";
-import type { SupportedSport } from "@/lib/services/core/sport-config";
-import type { Player } from "@/lib/api-client-database-first";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image";
-import { BallDontLiePlayer } from "@/lib/sports-apis";
-import { UnifiedPlayerData } from "@/lib/services/api/unified-api-client";
+import { useState, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Target, Calendar, RefreshCw, User, Trophy, Zap } from 'lucide-react'
+import { usePlayerStats } from '@/components/data/real-time-provider'
+import type { SupportedSport } from '@/lib/services/core/sport-config'
+import type { Player } from '@/lib/api-client-database-first'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TeamLogo, PlayerPhoto } from '@/components/ui/sports-image'
+import { BallDontLiePlayer } from '@/lib/sports-apis'
+import { UnifiedPlayerData } from '@/lib/services/api/unified-api-client'
 
-type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData;
+type PlayerUnion = Player | BallDontLiePlayer | UnifiedPlayerData
 
 // Helper functions to safely access properties across different player types
 function getPlayerName(player: PlayerUnion | null): string | null {
-  if (!player) return null;
+  if (!player) return null
   if ('name' in player) {
-    return player.name;
+    return player.name
   }
   if ('first_name' in player && 'last_name' in player) {
-    return `${player.first_name} ${player.last_name}`;
+    return `${player.first_name} ${player.last_name}`
   }
-  return null;
+  return null
 }
 
 function getPlayerTeamName(player: PlayerUnion | null): string | undefined {
-  if (!player) return undefined;
+  if (!player) return undefined
   if ('teamName' in player) {
-    return player.teamName;
+    return player.teamName
   }
   if ('team' in player && typeof player.team === 'object' && player.team !== null) {
-    return (player.team as any).name || (player.team as any).full_name;
+    return (player.team as any).name || (player.team as any).full_name
   }
-  return undefined;
+  return undefined
 }
 
 function getPlayerId(player: PlayerUnion | null): string {
-  if (!player) return '';
+  if (!player) return ''
   if ('id' in player) {
-    return String(player.id);
+    return String(player.id)
   }
-  return '';
+  return ''
 }
 
 function getPlayerHeight(player: PlayerUnion | null): string | undefined {
-  if (!player) return undefined;
+  if (!player) return undefined
   if ('height' in player) {
-    return typeof player.height === 'number' ? String(player.height) : player.height;
+    return typeof player.height === 'number' ? String(player.height) : player.height
   }
   if ('height_feet' in player && 'height_inches' in player) {
-    const feet = player.height_feet;
-    const inches = player.height_inches;
+    const feet = player.height_feet
+    const inches = player.height_inches
     if (feet !== null && inches !== null) {
-      return `${feet}'${inches}"`;
+      return `${feet}'${inches}"`
     }
   }
-  return undefined;
+  return undefined
 }
 
 interface PlayerStatsProps {
-  selectedPlayer?: PlayerUnion | null;
-  sport?: SupportedSport;
+  selectedPlayer?: PlayerUnion | null
+  sport?: SupportedSport
 }
 
 export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
-  const { stats, loading } = usePlayerStats(getPlayerId(selectedPlayer ?? null));
-  const [selectedSeason, setSelectedSeason] = useState<number>(new Date().getFullYear());
-  const [selectedPeriod, setSelectedPeriod] = useState<string>("season");
+  const { stats, loading } = usePlayerStats(getPlayerId(selectedPlayer ?? null))
+  const [selectedSeason, setSelectedSeason] = useState<number>(new Date().getFullYear())
+  const [selectedPeriod, setSelectedPeriod] = useState<string>('season')
 
   const seasons = useMemo(() => {
-    if (!stats) return [];
-    const allSeasons = stats.map(stat => stat.season);
-    return [...new Set(allSeasons)].sort((a, b) => b - a);
-  }, [stats]);
+    if (!stats) return []
+    const allSeasons = stats.map(stat => stat.season)
+    return [...new Set(allSeasons)].sort((a, b) => b - a)
+  }, [stats])
 
   const filteredStats = useMemo(() => {
-    if (!stats) return [];
-    let periodStats = stats.filter(stat => stat.season === selectedSeason);
-    if (selectedPeriod === "last5") {
-      periodStats = periodStats.slice(-5);
+    if (!stats) return []
+    let periodStats = stats.filter(stat => stat.season === selectedSeason)
+    if (selectedPeriod === 'last5') {
+      periodStats = periodStats.slice(-5)
     }
-    if (selectedPeriod === "last10") {
-      periodStats = periodStats.slice(-10);
+    if (selectedPeriod === 'last10') {
+      periodStats = periodStats.slice(-10)
     }
-    if (selectedPeriod === "last20") {
-      periodStats = periodStats.slice(-20);
+    if (selectedPeriod === 'last20') {
+      periodStats = periodStats.slice(-20)
     }
-    return periodStats;
-  }, [stats, selectedSeason, selectedPeriod]);
+    return periodStats
+  }, [stats, selectedSeason, selectedPeriod])
 
   const calculateAverages = () => {
     if (filteredStats.length === 0) return null
 
-    const totals = filteredStats.reduce((acc, stat) => ({
-      pts: acc.pts + stat.pts,
-      reb: acc.reb + stat.reb,
-      ast: acc.ast + stat.ast,
-      stl: acc.stl + stat.stl,
-      blk: acc.blk + stat.blk,
-      fgm: acc.fgm + stat.fgm,
-      fga: acc.fga + stat.fga,
-      fg3m: acc.fg3m + stat.fg3a,
-      fg3a: acc.fg3a + stat.fg3a,
-      ftm: acc.ftm + stat.ftm,
-      fta: acc.fta + stat.fta,
-      turnover: acc.turnover + stat.turnover,
-      pf: acc.pf + stat.pf,
-      games: acc.games + 1
-    }), {
-      pts: 0, reb: 0, ast: 0, stl: 0, blk: 0,
-      fgm: 0, fga: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
-      turnover: 0, pf: 0, games: 0
-    })
+    const totals = filteredStats.reduce(
+      (acc, stat) => ({
+        pts: acc.pts + stat.pts,
+        reb: acc.reb + stat.reb,
+        ast: acc.ast + stat.ast,
+        stl: acc.stl + stat.stl,
+        blk: acc.blk + stat.blk,
+        fgm: acc.fgm + stat.fgm,
+        fga: acc.fga + stat.fga,
+        fg3m: acc.fg3m + stat.fg3a,
+        fg3a: acc.fg3a + stat.fg3a,
+        ftm: acc.ftm + stat.ftm,
+        fta: acc.fta + stat.fta,
+        turnover: acc.turnover + stat.turnover,
+        pf: acc.pf + stat.pf,
+        games: acc.games + 1,
+      }),
+      {
+        pts: 0,
+        reb: 0,
+        ast: 0,
+        stl: 0,
+        blk: 0,
+        fgm: 0,
+        fga: 0,
+        fg3m: 0,
+        fg3a: 0,
+        ftm: 0,
+        fta: 0,
+        turnover: 0,
+        pf: 0,
+        games: 0,
+      }
+    )
 
     return {
       pts: (totals.pts / totals.games).toFixed(1),
@@ -135,7 +156,7 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
       fg_pct: totals.fga > 0 ? ((totals.fgm / totals.fga) * 100).toFixed(1) : 0,
       fg3_pct: totals.fg3a > 0 ? ((totals.fg3m / totals.fg3a) * 100).toFixed(1) : 0,
       ft_pct: totals.fta > 0 ? ((totals.ftm / totals.fta) * 100).toFixed(1) : 0,
-      games: totals.games
+      games: totals.games,
     }
   }
 
@@ -145,7 +166,7 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
       pts: stat.pts,
       reb: stat.reb,
       ast: stat.ast,
-      fg_pct: stat.fg_pct * 100
+      fg_pct: stat.fg_pct * 100,
     }))
   }
 
@@ -159,7 +180,9 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
           <div className="text-center text-muted-foreground">
             <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-semibold mb-2">Select a Player</h3>
-            <p className="text-sm">Choose a player from the search above to view their statistics</p>
+            <p className="text-sm">
+              Choose a player from the search above to view their statistics
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -173,7 +196,7 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <PlayerPhoto 
+              <PlayerPhoto
                 playerId={getPlayerId(selectedPlayer)}
                 alt={getPlayerName(selectedPlayer) || 'Player'}
                 width={64}
@@ -181,17 +204,15 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
                 className="h-16 w-16 rounded-full"
               />
               <div>
-                <h2 className="text-2xl font-bold">
-                  {getPlayerName(selectedPlayer)}
-                </h2>
+                <h2 className="text-2xl font-bold">{getPlayerName(selectedPlayer)}</h2>
                 <div className="flex items-center gap-2 text-muted-foreground">
                   {selectedPlayer.position && (
                     <Badge variant="secondary">{selectedPlayer.position}</Badge>
                   )}
                   {getPlayerTeamName(selectedPlayer) && (
                     <span className="flex items-center gap-1">
-                      <TeamLogo 
-                        teamName={getPlayerTeamName(selectedPlayer)!} 
+                      <TeamLogo
+                        teamName={getPlayerTeamName(selectedPlayer)!}
                         alt={getPlayerTeamName(selectedPlayer)!}
                         width={16}
                         height={16}
@@ -209,9 +230,7 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
             <div className="text-right">
               <div className="text-sm text-muted-foreground">Season Averages</div>
               {averages && (
-                <div className="text-2xl font-bold text-primary">
-                  {averages.pts} PTS
-                </div>
+                <div className="text-2xl font-bold text-primary">{averages.pts} PTS</div>
               )}
             </div>
           </div>
@@ -222,13 +241,18 @@ export default function PlayerStats({ selectedPlayer }: PlayerStatsProps) {
       <Card>
         <CardContent className="pt-6">
           <div className="flex gap-4 items-center flex-wrap">
-            <Select value={selectedSeason.toString()} onValueChange={(value) => setSelectedSeason(Number(value))}>
+            <Select
+              value={selectedSeason.toString()}
+              onValueChange={value => setSelectedSeason(Number(value))}
+            >
               <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {seasons.map(season => (
-                  <SelectItem key={season} value={season.toString()}>{season}</SelectItem>
+                  <SelectItem key={season} value={season.toString()}>
+                    {season}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

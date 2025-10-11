@@ -49,11 +49,11 @@ export class SportsDBClient {
 
   private async request<T>(endpoint: string): Promise<T> {
     // Rate limiting is now handled by the centralized Enhanced Rate Limiter
-    
+
     try {
       // TheSportsDB uses the API key in the URL path, not as a header
       const url = `${this.baseUrl}/${this.apiKey}${endpoint}`
-      
+
       // Validate URL before making request
       if (!this.isValidUrl(url)) {
         throw new Error(`Invalid SportsDB API URL: ${url}`)
@@ -61,19 +61,19 @@ export class SportsDBClient {
 
       // Making SportsDB API request
       console.log(`SportsDB API request: ${url}`)
-      
+
       const response = await fetch(url, {
         method: 'GET',
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ApexBets/1.0.0'
+          Accept: 'application/json',
+          'User-Agent': 'ApexBets/1.0.0',
         },
         // Add timeout to prevent hanging requests
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       })
-      
+
       console.log(`SportsDB API response status: ${response.status}`)
-      
+
       if (!response.ok) {
         if (response.status === 429) {
           console.warn('SportsDB: Rate limit hit - this should be handled by Enhanced Rate Limiter')
@@ -103,12 +103,12 @@ export class SportsDBClient {
       } catch (e) {
         throw new Error('Invalid JSON response from SportsDB API')
       }
-      
+
       // Validate response data
       if (!data || typeof data !== 'object') {
         throw new Error('Invalid response format from SportsDB API')
       }
-      
+
       return data
     } catch (error) {
       if (error instanceof Error) {
@@ -118,7 +118,9 @@ export class SportsDBClient {
         }
         if (error.message.includes('fetch failed') || error.message.includes('Failed to fetch')) {
           console.error('SportsDB API network error:', error.message)
-          throw new Error('Network error connecting to SportsDB API. Please check your internet connection.')
+          throw new Error(
+            'Network error connecting to SportsDB API. Please check your internet connection.'
+          )
         }
         console.error('SportsDB API request failed:', error.message)
         throw error
@@ -139,10 +141,8 @@ export class SportsDBClient {
 
   // Events/Games
   async getEventsByDate(date: string, sport?: string): Promise<SportsDBEvent[]> {
-    const endpoint = sport 
-      ? `/eventsday.php?d=${date}&s=${sport}`
-      : `/eventsday.php?d=${date}`
-    
+    const endpoint = sport ? `/eventsday.php?d=${date}&s=${sport}` : `/eventsday.php?d=${date}`
+
     const data = await this.request<{ events: SportsDBEvent[] }>(endpoint)
     return data.events || []
   }
@@ -160,7 +160,9 @@ export class SportsDBClient {
 
   // Teams
   async getTeamsByLeague(leagueId: string): Promise<SportsDBTeam[]> {
-    const data = await this.request<{ teams: SportsDBTeam[] }>(`/lookup_all_teams.php?id=${leagueId}`)
+    const data = await this.request<{ teams: SportsDBTeam[] }>(
+      `/lookup_all_teams.php?id=${leagueId}`
+    )
     return data.teams || []
   }
 
@@ -171,7 +173,9 @@ export class SportsDBClient {
 
   // Players
   async getPlayersByTeam(teamId: string): Promise<SportsDBPlayer[]> {
-    const data = await this.request<{ player: SportsDBPlayer[] }>(`/lookup_all_players.php?id=${teamId}`)
+    const data = await this.request<{ player: SportsDBPlayer[] }>(
+      `/lookup_all_players.php?id=${teamId}`
+    )
     return data.player || []
   }
 
@@ -183,12 +187,16 @@ export class SportsDBClient {
 
   // Search
   async searchTeams(query: string): Promise<SportsDBTeam[]> {
-    const data = await this.request<{ teams: SportsDBTeam[] }>(`/searchteams.php?t=${encodeURIComponent(query)}`)
+    const data = await this.request<{ teams: SportsDBTeam[] }>(
+      `/searchteams.php?t=${encodeURIComponent(query)}`
+    )
     return data.teams || []
   }
 
   async searchEvents(query: string): Promise<SportsDBEvent[]> {
-    const data = await this.request<{ event: SportsDBEvent[] }>(`/searchevents.php?e=${encodeURIComponent(query)}`)
+    const data = await this.request<{ event: SportsDBEvent[] }>(
+      `/searchevents.php?e=${encodeURIComponent(query)}`
+    )
     return data.event || []
   }
 
@@ -202,7 +210,9 @@ export class SportsDBClient {
     if (league) {
       // Try to find league ID first
       const leagues = await this.getLeaguesBySport('Soccer') // Default fallback
-      const targetLeague = leagues.find(l => l.strLeague?.toLowerCase().includes(league.toLowerCase()))
+      const targetLeague = leagues.find(l =>
+        l.strLeague?.toLowerCase().includes(league.toLowerCase())
+      )
       if (targetLeague) {
         return this.getTeamsByLeague(targetLeague.idLeague)
       }
@@ -268,12 +278,12 @@ const validateApiKey = (apiKey: string): boolean => {
 // Create client with validation
 const createSportsDBClient = (): SportsDBClient => {
   const apiKey = getSportsDBApiKey()
-  
+
   if (!validateApiKey(apiKey)) {
     console.warn(`Invalid SportsDB API key format: ${apiKey}. Using free tier key.`)
     return new SportsDBClient('123')
   }
-  
+
   return new SportsDBClient(apiKey)
 }
 

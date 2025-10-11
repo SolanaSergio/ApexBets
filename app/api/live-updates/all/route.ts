@@ -1,56 +1,64 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { normalizeGameData, normalizeTeamData } from "@/lib/utils/data-utils"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { normalizeGameData, normalizeTeamData } from '@/lib/utils/data-utils'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
-const CACHE_TTL = 30; // 30 seconds
+const CACHE_TTL = 30 // 30 seconds
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const useRealData = searchParams.get("real") === "true"
+    const useRealData = searchParams.get('real') === 'true'
     // const includeInactive = searchParams.get("include_inactive") === "true"
 
-    const cacheKey = `live-updates-all-${useRealData}`;
-    const cached = await databaseCacheService.get(cacheKey);
+    const cacheKey = `live-updates-all-${useRealData}`
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
-        return NextResponse.json(cached);
+      return NextResponse.json(cached)
     }
 
     const supabase = await createClient()
-    
+
     if (!supabase) {
-      return NextResponse.json({ 
-        success: false,
-        error: "Database connection failed",
-        sports: {},
-        summary: {
-          totalSports: 0,
-          totalLiveGames: 0,
-          lastUpdated: new Date().toISOString()
-        }
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database connection failed',
+          sports: {},
+          summary: {
+            totalSports: 0,
+            totalLiveGames: 0,
+            lastUpdated: new Date().toISOString(),
+          },
+        },
+        { status: 500 }
+      )
     }
 
     // Get all active sports from database
     const { data: activeSports, error: sportsError } = await supabase
       .from('sports')
-      .select('name, display_name, icon_url, color_primary, color_secondary, is_active, refresh_intervals')
+      .select(
+        'name, display_name, icon_url, color_primary, color_secondary, is_active, refresh_intervals'
+      )
       .eq('is_active', true)
       .order('name')
 
     if (sportsError) {
       console.error('Error fetching sports:', sportsError)
-      return NextResponse.json({ 
-        success: false,
-        error: "Failed to fetch sports data",
-        sports: {},
-        summary: {
-          totalSports: 0,
-          totalLiveGames: 0,
-          lastUpdated: new Date().toISOString()
-        }
-      }, { status: 500 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Failed to fetch sports data',
+          sports: {},
+          summary: {
+            totalSports: 0,
+            totalLiveGames: 0,
+            lastUpdated: new Date().toISOString(),
+          },
+        },
+        { status: 500 }
+      )
     }
 
     if (!activeSports || activeSports.length === 0) {
@@ -60,8 +68,8 @@ export async function GET(request: NextRequest) {
         summary: {
           totalSports: 0,
           totalLiveGames: 0,
-          lastUpdated: new Date().toISOString()
-        }
+          lastUpdated: new Date().toISOString(),
+        },
       })
     }
 
@@ -69,39 +77,43 @@ export async function GET(request: NextRequest) {
     let totalLiveGames = 0
 
     // Process each sport dynamically
-    await Promise.all(activeSports.map(async (sport) => {
-      try {
-        const sportData = await getSportLiveData(supabase, sport.name, useRealData)
-        sportsData[sport.name] = {
-          ...sportData,
-          sportInfo: {
-            name: sport.name,
-            displayName: sport.display_name,
-            icon: sport.icon_url,
-            color: sport.color_primary,
-            colorSecondary: sport.color_secondary,
-            updateFrequency: sport.refresh_intervals
+    await Promise.all(
+      activeSports.map(async sport => {
+        try {
+          const sportData = await getSportLiveData(supabase, sport.name, useRealData)
+          sportsData[sport.name] = {
+            ...sportData,
+            sportInfo: {
+              name: sport.name,
+              displayName: sport.display_name,
+              icon: sport.icon_url,
+              color: sport.color_primary,
+              colorSecondary: sport.color_secondary,
+              updateFrequency: sport.refresh_intervals,
+            },
+          }
+          totalLiveGames += Array.isArray((sportData as any).live)
+            ? (sportData as any).live.length
+            : 0
+        } catch (error) {
+          console.error(`Error processing ${sport.name}:`, error)
+          sportsData[sport.name] = {
+            live: [],
+            recent: [],
+            upcoming: [],
+            error: error instanceof Error ? error.message : String(error),
+            sportInfo: {
+              name: sport.name,
+              displayName: sport.display_name,
+              icon: sport.icon_url,
+              color: sport.color_primary,
+              colorSecondary: sport.color_secondary,
+              updateFrequency: sport.refresh_intervals,
+            },
           }
         }
-        totalLiveGames += Array.isArray((sportData as any).live) ? (sportData as any).live.length : 0
-      } catch (error) {
-        console.error(`Error processing ${sport.name}:`, error)
-        sportsData[sport.name] = {
-          live: [],
-          recent: [],
-          upcoming: [],
-          error: error instanceof Error ? error.message : String(error),
-          sportInfo: {
-            name: sport.name,
-            displayName: sport.display_name,
-            icon: sport.icon_url,
-            color: sport.color_primary,
-            colorSecondary: sport.color_secondary,
-            updateFrequency: sport.refresh_intervals
-          }
-        }
-      }
-    }));
+      })
+    )
 
     const result = {
       success: true,
@@ -110,26 +122,28 @@ export async function GET(request: NextRequest) {
         totalSports: activeSports.length,
         totalLiveGames,
         lastUpdated: new Date().toISOString(),
-        dataSource: useRealData ? "live_apis" : "database"
-      }
+        dataSource: useRealData ? 'live_apis' : 'database',
+      },
     }
 
-    await databaseCacheService.set(cacheKey, result, CACHE_TTL);
+    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
-
   } catch (error) {
-    console.error("All sports live updates API error:", error)
-    return NextResponse.json({ 
-      success: false,
-      error: "Internal server error",
-      sports: {},
-      summary: {
-        totalSports: 0,
-        totalLiveGames: 0,
-        lastUpdated: new Date().toISOString()
-      }
-    }, { status: 500 })
+    console.error('All sports live updates API error:', error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        sports: {},
+        summary: {
+          totalSports: 0,
+          totalLiveGames: 0,
+          lastUpdated: new Date().toISOString(),
+        },
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -140,7 +154,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   // Get live games from database
   const { data: liveGames, error: liveGamesError } = await supabase
     .from('games')
-    .select(`
+    .select(
+      `
       id,
       external_id,
       sport,
@@ -167,7 +182,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
       created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-    `)
+    `
+    )
     .eq('sport', sport)
     .in('status', ['live', 'in_progress', 'in progress'])
     .order('game_date', { ascending: true })
@@ -180,7 +196,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
   const { data: recentGames } = await supabase
     .from('games')
-    .select(`
+    .select(
+      `
       id,
       external_id,
       sport,
@@ -207,7 +224,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
       created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-    `)
+    `
+    )
     .eq('sport', sport)
     .in('status', ['finished', 'completed', 'final'])
     .gte('game_date', oneDayAgo)
@@ -219,7 +237,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
   const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
   const { data: upcomingGames } = await supabase
     .from('games')
-    .select(`
+    .select(
+      `
       id,
       external_id,
       sport,
@@ -246,7 +265,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
       created_at,
       home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
       away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-    `)
+    `
+    )
     .eq('sport', sport)
     .in('status', ['scheduled', 'not_started', 'upcoming'])
     .gte('game_date', now)
@@ -271,8 +291,8 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
       totalLive: Array.isArray(normalizedLiveGames) ? normalizedLiveGames.length : 0,
       totalRecent: normalizedRecentGames.length,
       totalUpcoming: normalizedUpcomingGames.length,
-      lastUpdated: new Date().toISOString()
-    }
+      lastUpdated: new Date().toISOString(),
+    },
   }
 }
 
@@ -281,21 +301,21 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
  */
 function normalizeGames(games: any[], sport: string): any[] {
   return games.map(game => {
-    const homeTeam = game.home_team_data || { 
-      name: game.home_team || 'Home Team', 
-      logo_url: null, 
-      abbreviation: null 
+    const homeTeam = game.home_team_data || {
+      name: game.home_team || 'Home Team',
+      logo_url: null,
+      abbreviation: null,
     }
-    const awayTeam = game.away_team_data || { 
-      name: game.away_team || 'Away Team', 
-      logo_url: null, 
-      abbreviation: null 
+    const awayTeam = game.away_team_data || {
+      name: game.away_team || 'Away Team',
+      logo_url: null,
+      abbreviation: null,
     }
-    
+
     // Normalize team data with sport context
     const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league)
     const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league)
-    
+
     const gameData = {
       id: game.id,
       home_team_id: game.home_team_id,
@@ -315,9 +335,9 @@ function normalizeGames(games: any[], sport: string): any[] {
       home_team: normalizedHomeTeam,
       away_team: normalizedAwayTeam,
       created_at: game.created_at,
-      updated_at: game.updated_at
+      updated_at: game.updated_at,
     }
-    
+
     // Normalize and return the game data with sport-specific normalization
     return normalizeGameData(gameData, sport, game.league)
   })

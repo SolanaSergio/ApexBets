@@ -21,7 +21,7 @@ interface ApiResponse<T = any> {
 }
 
 class OptimizedApiClient {
-  private cache = new Map<string, { data: any, timestamp: number, ttl: number }>()
+  private cache = new Map<string, { data: any; timestamp: number; ttl: number }>()
   // Rate limiting is now handled by the centralized Enhanced Rate Limiter
   private requestQueue = new Map<string, Promise<any>>()
 
@@ -42,7 +42,7 @@ class OptimizedApiClient {
           data: cached.data,
           cached: true,
           timestamp: cached.timestamp,
-          source: 'cache'
+          source: 'cache',
         }
       }
     }
@@ -54,7 +54,7 @@ class OptimizedApiClient {
         data: result,
         cached: false,
         timestamp: Date.now(),
-        source: 'queue'
+        source: 'queue',
       }
     }
 
@@ -64,13 +64,13 @@ class OptimizedApiClient {
 
     try {
       const data = await requestPromise
-      
+
       // Cache the result
       if (cacheKey) {
         this.cache.set(key, {
           data,
           timestamp: Date.now(),
-          ttl
+          ttl,
         })
       }
 
@@ -78,7 +78,7 @@ class OptimizedApiClient {
         data,
         cached: false,
         timestamp: Date.now(),
-        source: 'api'
+        source: 'api',
       }
     } finally {
       this.requestQueue.delete(key)
@@ -86,16 +86,16 @@ class OptimizedApiClient {
   }
 
   private async executeRequest<T>(url: string, options: RequestInit, retries: number): Promise<T> {
-      // Rate limiting is now handled by the centralized Enhanced Rate Limiter
+    // Rate limiting is now handled by the centralized Enhanced Rate Limiter
 
     try {
       const response = await fetch(url, {
         ...options,
         headers: {
           'User-Agent': 'ApexBets/1.0',
-          'Accept': 'application/json',
-          ...options.headers
-        }
+          Accept: 'application/json',
+          ...options.headers,
+        },
       })
 
       if (!response.ok) {
@@ -132,9 +132,7 @@ class OptimizedApiClient {
 
   // Batch multiple requests efficiently
   async batchRequest<T = any>(requests: ApiRequest[]): Promise<ApiResponse<T>[]> {
-    const results = await Promise.allSettled(
-      requests.map(req => this.request<T>(req))
-    )
+    const results = await Promise.allSettled(requests.map(req => this.request<T>(req)))
 
     return results.map((result, index) => {
       if (result.status === 'fulfilled') {
@@ -145,7 +143,7 @@ class OptimizedApiClient {
           data: null as T,
           cached: false,
           timestamp: Date.now(),
-          source: 'error'
+          source: 'error',
         }
       }
     })

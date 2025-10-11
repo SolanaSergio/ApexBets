@@ -1,8 +1,8 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { DynamicSportsWidget } from "@/components/sports/dynamic-sports-widget"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { useState, useEffect } from 'react'
+import { DynamicSportsWidget } from '@/components/sports/dynamic-sports-widget'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
 
 export function DynamicSportsWidgetGrid() {
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
@@ -56,7 +56,7 @@ export function DynamicSportsWidgetGrid() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 lg:gap-10">
-      {supportedSports.map((sport) => (
+      {supportedSports.map(sport => (
         <div key={sport} className="glass-card p-6 sm:p-8 rounded-lg card-hover">
           <DynamicSportsWidget sport={sport} />
         </div>

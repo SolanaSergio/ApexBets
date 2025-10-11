@@ -2,7 +2,8 @@
 
 ## Overview
 
-The NHL API provides comprehensive hockey data including games, teams, players, and statistics. It's the official API for National Hockey League data.
+The NHL API provides comprehensive hockey data including games, teams, players,
+and statistics. It's the official API for National Hockey League data.
 
 **Base URL:** `https://statsapi.web.nhl.com/api/v1`  
 **Documentation:** https://gitlab.com/dword4/nhlapi  
@@ -12,9 +13,11 @@ The NHL API provides comprehensive hockey data including games, teams, players, 
 ## Authentication
 
 ### No Authentication Required
+
 The NHL API doesn't require authentication or API keys.
 
 ### Usage in Code
+
 ```typescript
 import { nhlClient } from '@/lib/sports-apis'
 
@@ -27,19 +30,23 @@ const games = await nhlClient.getGames()
 ### Games
 
 #### Get Games
+
 **Endpoint:** `GET /schedule`
 
 **Parameters:**
+
 - `date` (string, optional) - Date in YYYY-MM-DD format
 - `teamId` (number, optional) - Team ID
 - `season` (string, optional) - Season year
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.web.nhl.com/api/v1/schedule?date=2024-01-15"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "NHL and the NHL Shield are registered trademarks of the National Hockey League.",
@@ -114,18 +121,22 @@ curl -X GET "https://statsapi.web.nhl.com/api/v1/schedule?date=2024-01-15"
 ### Teams
 
 #### Get Teams
+
 **Endpoint:** `GET /teams`
 
 **Parameters:**
+
 - `season` (string, optional) - Season year
 - `expand` (string, optional) - Expand options
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.web.nhl.com/api/v1/teams"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "NHL and the NHL Shield are registered trademarks of the National Hockey League.",
@@ -175,18 +186,22 @@ curl -X GET "https://statsapi.web.nhl.com/api/v1/teams"
 ### Standings
 
 #### Get Standings
+
 **Endpoint:** `GET /standings`
 
 **Parameters:**
+
 - `season` (string, optional) - Season year
 - `date` (string, optional) - Date in YYYY-MM-DD format
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.web.nhl.com/api/v1/standings?season=20232024"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "NHL and the NHL Shield are registered trademarks of the National Hockey League.",
@@ -260,6 +275,7 @@ curl -X GET "https://statsapi.web.nhl.com/api/v1/standings?season=20232024"
 ## Rate Limits
 
 ### Recommended Limits
+
 - **Per Minute:** 100 requests (conservative)
 - **Per Hour:** 1000 requests
 - **Per Day:** 10000 requests
@@ -268,17 +284,18 @@ curl -X GET "https://statsapi.web.nhl.com/api/v1/standings?season=20232024"
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 200 | Success | Request successful |
-| 400 | Bad Request | Check request parameters |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Reduce request frequency |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                 |
+| ----------- | --------------------- | ------------------------ |
+| 200         | Success               | Request successful       |
+| 400         | Bad Request           | Check request parameters |
+| 404         | Not Found             | Verify endpoint URL      |
+| 429         | Too Many Requests     | Reduce request frequency |
+| 500         | Internal Server Error | Retry request            |
 
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { nhlClient } from '@/lib/sports-apis'
 
@@ -286,17 +303,19 @@ import { nhlClient } from '@/lib/sports-apis'
 async function getNHLGames(date?: string) {
   try {
     const games = await nhlClient.getGames(date)
-    
-    return games.dates[0]?.games.map(game => ({
-      id: game.gamePk,
-      homeTeam: game.teams.home.team,
-      awayTeam: game.teams.away.team,
-      homeScore: game.teams.home.score,
-      awayScore: game.teams.away.score,
-      date: game.gameDate,
-      status: game.status.detailedState,
-      venue: game.venue?.name
-    })) || []
+
+    return (
+      games.dates[0]?.games.map(game => ({
+        id: game.gamePk,
+        homeTeam: game.teams.home.team,
+        awayTeam: game.teams.away.team,
+        homeScore: game.teams.home.score,
+        awayScore: game.teams.away.score,
+        date: game.gameDate,
+        status: game.status.detailedState,
+        venue: game.venue?.name,
+      })) || []
+    )
   } catch (error) {
     console.error('Failed to fetch NHL games:', error)
     throw error
@@ -307,7 +326,7 @@ async function getNHLGames(date?: string) {
 async function getNHLTeams() {
   try {
     const teams = await nhlClient.getTeams()
-    
+
     return teams.teams.map(team => ({
       id: team.id,
       name: team.name,
@@ -317,7 +336,7 @@ async function getNHLTeams() {
       conference: team.conference?.name,
       venue: team.venue?.name,
       firstYear: team.firstYearOfPlay,
-      active: team.active
+      active: team.active,
     }))
   } catch (error) {
     console.error('Failed to fetch NHL teams:', error)
@@ -327,26 +346,27 @@ async function getNHLTeams() {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchNHLData(endpoint, params = {}) {
   const baseUrl = 'https://statsapi.web.nhl.com/api/v1'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'ApexBets/1.0.0'
-      }
+        Accept: 'application/json',
+        'User-Agent': 'ApexBets/1.0.0',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('NHL API request failed:', error)
@@ -356,23 +376,27 @@ async function fetchNHLData(endpoint, params = {}) {
 
 // Usage
 const games = await fetchNHLData('/schedule', {
-  date: '2024-01-15'
+  date: '2024-01-15',
 })
 ```
 
 ## Best Practices
 
 ### 1. Headers and User-Agent
+
 Always include proper headers:
+
 ```typescript
 const headers = {
-  'Accept': 'application/json',
-  'User-Agent': 'ApexBets/1.0.0'
+  Accept: 'application/json',
+  'User-Agent': 'ApexBets/1.0.0',
 }
 ```
 
 ### 2. Data Validation
+
 Validate responses:
+
 ```typescript
 function validateNHLGame(game: any): boolean {
   return (
@@ -386,6 +410,7 @@ function validateNHLGame(game: any): boolean {
 ```
 
 ### 3. Error Handling with Retry
+
 ```typescript
 async function safeNHLCall<T>(
   apiCall: () => Promise<T>,
@@ -400,46 +425,50 @@ async function safeNHLCall<T>(
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
-      
+
       if (i === maxRetries - 1) {
         console.error('Max retries exceeded:', error)
         return null
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
   }
-  
+
   return null
 }
 ```
 
 ### 4. Caching Strategy
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedNHLData(endpoint: string, params: any) {
   const cacheKey = `nhl-${endpoint}-${JSON.stringify(params)}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const data = await nhlClient.request(endpoint, params)
   await setCache(cacheKey, data, 300) // Cache for 5 minutes
-  
+
   return data
 }
 ```
 
 ## Integration with ApexBets
 
-The NHL API is integrated into the ApexBets system as the primary data source for NHL data. It's used in the following services:
+The NHL API is integrated into the ApexBets system as the primary data source
+for NHL data. It's used in the following services:
 
 - **HockeyService** - Primary data source for NHL games and statistics
 - **PlayerStatsService** - Player statistics and performance data
 - **TeamService** - Team information and standings
 - **GameService** - Game schedules and results
 
-The API is configured with conservative rate limiting, proper headers, and robust error handling to ensure reliable data access while respecting the NHL's servers.
+The API is configured with conservative rate limiting, proper headers, and
+robust error handling to ensure reliable data access while respecting the NHL's
+servers.

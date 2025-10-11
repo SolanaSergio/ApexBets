@@ -48,29 +48,30 @@ export class ApiKeyRotationService {
   private loadKeyConfigurations(): void {
     // API-Sports keys - support multiple keys separated by commas
     const apiSportsKeys = this.parseApiKeys(
-      process.env.RAPIDAPI_KEY ||
-      process.env.NEXT_PUBLIC_RAPIDAPI_KEY ||
-      ''
+      process.env.RAPIDAPI_KEY || process.env.NEXT_PUBLIC_RAPIDAPI_KEY || ''
     )
     if (apiSportsKeys.length > 0 && !apiSportsKeys.includes('your_rapidapi_key_here')) {
-      this.keyConfigs.set('api-sports', apiSportsKeys.map((key, index) => ({
-        provider: 'api-sports',
-        primaryKey: key,
-        backupKeys: [],
-        maxRequestsPerHour: 100, // RapidAPI free tier limit
-        maxRequestsPerDay: 500,  // Conservative daily limit
-        currentUsage: {
-          hourly: 0,
-          daily: 0,
-          lastReset: {
-            hour: Date.now(),
-            day: Date.now()
-          }
-        },
-        status: 'active' as const,
-        lastValidated: Date.now(),
-        priority: index
-      })))
+      this.keyConfigs.set(
+        'api-sports',
+        apiSportsKeys.map((key, index) => ({
+          provider: 'api-sports',
+          primaryKey: key,
+          backupKeys: [],
+          maxRequestsPerHour: 100, // RapidAPI free tier limit
+          maxRequestsPerDay: 500, // Conservative daily limit
+          currentUsage: {
+            hourly: 0,
+            daily: 0,
+            lastReset: {
+              hour: Date.now(),
+              day: Date.now(),
+            },
+          },
+          status: 'active' as const,
+          lastValidated: Date.now(),
+          priority: index,
+        }))
+      )
       this.currentKeyIndex.set('api-sports', 0)
 
       console.log(`API-Sports: Loaded ${apiSportsKeys.length} API key(s) for rotation`)
@@ -78,29 +79,30 @@ export class ApiKeyRotationService {
 
     // Odds API keys - support multiple keys for better rate limit management
     const oddsApiKeys = this.parseApiKeys(
-      process.env.ODDS_API_KEY ||
-      process.env.NEXT_PUBLIC_ODDS_API_KEY ||
-      ''
+      process.env.ODDS_API_KEY || process.env.NEXT_PUBLIC_ODDS_API_KEY || ''
     )
     if (oddsApiKeys.length > 0 && !oddsApiKeys.includes('your_odds_api_key_here')) {
-      this.keyConfigs.set('odds-api', oddsApiKeys.map((key, index) => ({
-        provider: 'odds-api',
-        primaryKey: key,
-        backupKeys: [],
-        maxRequestsPerHour: 500,  // The Odds API free tier
-        maxRequestsPerDay: 1000,  // Conservative daily limit
-        currentUsage: {
-          hourly: 0,
-          daily: 0,
-          lastReset: {
-            hour: Date.now(),
-            day: Date.now()
-          }
-        },
-        status: 'active' as const,
-        lastValidated: Date.now(),
-        priority: index
-      })))
+      this.keyConfigs.set(
+        'odds-api',
+        oddsApiKeys.map((key, index) => ({
+          provider: 'odds-api',
+          primaryKey: key,
+          backupKeys: [],
+          maxRequestsPerHour: 500, // The Odds API free tier
+          maxRequestsPerDay: 1000, // Conservative daily limit
+          currentUsage: {
+            hourly: 0,
+            daily: 0,
+            lastReset: {
+              hour: Date.now(),
+              day: Date.now(),
+            },
+          },
+          status: 'active' as const,
+          lastValidated: Date.now(),
+          priority: index,
+        }))
+      )
       this.currentKeyIndex.set('odds-api', 0)
 
       console.log(`Odds API: Loaded ${oddsApiKeys.length} API key(s) for rotation`)
@@ -108,57 +110,59 @@ export class ApiKeyRotationService {
 
     // SportsDB API keys
     const sportsDbKeys = this.parseApiKeys(
-      process.env.SPORTSDB_API_KEY ||
-      process.env.NEXT_PUBLIC_SPORTSDB_API_KEY ||
-      '123'
+      process.env.SPORTSDB_API_KEY || process.env.NEXT_PUBLIC_SPORTSDB_API_KEY || '123'
     )
     if (sportsDbKeys.length > 0) {
-      this.keyConfigs.set('sportsdb', sportsDbKeys.map((key, index) => ({
-        provider: 'sportsdb',
-        primaryKey: key,
-        backupKeys: [],
-        maxRequestsPerHour: 60,
-        maxRequestsPerDay: 1000,
-        currentUsage: {
-          hourly: 0,
-          daily: 0,
-          lastReset: {
-            hour: Date.now(),
-            day: Date.now()
-          }
-        },
-        status: 'active' as const,
-        lastValidated: Date.now(),
-        priority: index
-      })))
+      this.keyConfigs.set(
+        'sportsdb',
+        sportsDbKeys.map((key, index) => ({
+          provider: 'sportsdb',
+          primaryKey: key,
+          backupKeys: [],
+          maxRequestsPerHour: 60,
+          maxRequestsPerDay: 1000,
+          currentUsage: {
+            hourly: 0,
+            daily: 0,
+            lastReset: {
+              hour: Date.now(),
+              day: Date.now(),
+            },
+          },
+          status: 'active' as const,
+          lastValidated: Date.now(),
+          priority: index,
+        }))
+      )
       this.currentKeyIndex.set('sportsdb', 0)
     }
 
     // BallDontLie API keys
     const ballDontLieKeys = this.parseApiKeys(
-      process.env.BALLDONTLIE_API_KEY ||
-      process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY ||
-      ''
+      process.env.BALLDONTLIE_API_KEY || process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY || ''
     )
     if (ballDontLieKeys.length > 0 && !ballDontLieKeys.includes('your_balldontlie_api_key_here')) {
-      this.keyConfigs.set('balldontlie', ballDontLieKeys.map((key, index) => ({
-        provider: 'balldontlie',
-        primaryKey: key,
-        backupKeys: [],
-        maxRequestsPerHour: 5,   // 5 requests per minute = very strict rate limit
-        maxRequestsPerDay: 100,  // Conservative daily limit due to strict rate limiting
-        currentUsage: {
-          hourly: 0,
-          daily: 0,
-          lastReset: {
-            hour: Date.now(),
-            day: Date.now()
-          }
-        },
-        status: 'active' as const,
-        lastValidated: Date.now(),
-        priority: index
-      })))
+      this.keyConfigs.set(
+        'balldontlie',
+        ballDontLieKeys.map((key, index) => ({
+          provider: 'balldontlie',
+          primaryKey: key,
+          backupKeys: [],
+          maxRequestsPerHour: 5, // 5 requests per minute = very strict rate limit
+          maxRequestsPerDay: 100, // Conservative daily limit due to strict rate limiting
+          currentUsage: {
+            hourly: 0,
+            daily: 0,
+            lastReset: {
+              hour: Date.now(),
+              day: Date.now(),
+            },
+          },
+          status: 'active' as const,
+          lastValidated: Date.now(),
+          priority: index,
+        }))
+      )
       this.currentKeyIndex.set('balldontlie', 0)
     }
 
@@ -166,7 +170,7 @@ export class ApiKeyRotationService {
     if (process.env.NODE_ENV === 'development') {
       logger.logBusinessEvent('api_key_rotation:key_configs_loaded', {
         providers: Array.from(this.keyConfigs.keys()),
-        totalKeys: Array.from(this.keyConfigs.values()).reduce((sum, keys) => sum + keys.length, 0)
+        totalKeys: Array.from(this.keyConfigs.values()).reduce((sum, keys) => sum + keys.length, 0),
       })
     }
   }
@@ -188,7 +192,7 @@ export class ApiKeyRotationService {
 
     const currentIndex = this.currentKeyIndex.get(provider) || 0
     const config = configs[currentIndex]
-    
+
     // Check if current key is still valid
     if (config.status === 'active') {
       this.updateKeyUsage(provider, config)
@@ -234,8 +238,10 @@ export class ApiKeyRotationService {
     const hourlyThreshold = Math.floor(config.maxRequestsPerHour * 0.9)
     const dailyThreshold = Math.floor(config.maxRequestsPerDay * 0.9)
 
-    if (config.currentUsage.hourly >= hourlyThreshold ||
-        config.currentUsage.daily >= dailyThreshold) {
+    if (
+      config.currentUsage.hourly >= hourlyThreshold ||
+      config.currentUsage.daily >= dailyThreshold
+    ) {
       config.status = 'rate_limited'
 
       // Only rotate if there are multiple keys
@@ -247,7 +253,10 @@ export class ApiKeyRotationService {
   }
 
   // Rotate to the next available API key
-  rotateToNextKey(provider: string, reason: 'rate_limit' | 'invalid' | 'manual' | 'scheduled'): string | null {
+  rotateToNextKey(
+    provider: string,
+    reason: 'rate_limit' | 'invalid' | 'manual' | 'scheduled'
+  ): string | null {
     const configs = this.keyConfigs.get(provider)
     if (!configs || configs.length === 0) {
       return null
@@ -270,7 +279,7 @@ export class ApiKeyRotationService {
         logger.logBusinessEvent('api_key_rotation:single_key_reset', {
           provider,
           reason,
-          key: this.maskKey(currentKey)
+          key: this.maskKey(currentKey),
         })
 
         return currentKey
@@ -280,7 +289,7 @@ export class ApiKeyRotationService {
       logger.logBusinessEvent('api_key_rotation:single_key_unavailable', {
         provider,
         reason,
-        key: this.maskKey(currentKey)
+        key: this.maskKey(currentKey),
       })
 
       return null
@@ -293,10 +302,11 @@ export class ApiKeyRotationService {
     while (attempts < configs.length) {
       const nextConfig = configs[nextIndex]
 
-      if (nextConfig.status === 'active' &&
-          nextConfig.currentUsage.hourly < nextConfig.maxRequestsPerHour &&
-          nextConfig.currentUsage.daily < nextConfig.maxRequestsPerDay) {
-
+      if (
+        nextConfig.status === 'active' &&
+        nextConfig.currentUsage.hourly < nextConfig.maxRequestsPerHour &&
+        nextConfig.currentUsage.daily < nextConfig.maxRequestsPerDay
+      ) {
         // Update current key index
         this.currentKeyIndex.set(provider, nextIndex)
 
@@ -307,14 +317,14 @@ export class ApiKeyRotationService {
           fromKey: this.maskKey(currentKey),
           toKey: this.maskKey(nextConfig.primaryKey),
           reason,
-          success: true
+          success: true,
         })
 
         logger.logBusinessEvent('api_key_rotation:key_rotated', {
           provider,
           reason,
           fromKey: this.maskKey(currentKey),
-          toKey: this.maskKey(nextConfig.primaryKey)
+          toKey: this.maskKey(nextConfig.primaryKey),
         })
 
         return nextConfig.primaryKey
@@ -331,13 +341,13 @@ export class ApiKeyRotationService {
       fromKey: this.maskKey(currentKey),
       toKey: 'none',
       reason,
-      success: false
+      success: false,
     })
 
     logger.logBusinessEvent('api_key_rotation:no_keys_available', {
       provider,
       reason,
-      totalKeys: configs.length
+      totalKeys: configs.length,
     })
 
     return null
@@ -355,7 +365,7 @@ export class ApiKeyRotationService {
       // Test endpoints for different providers
       const testEndpoints = {
         'api-sports': 'https://api-football-v1.p.rapidapi.com/v3/status',
-        'odds-api': 'https://api.the-odds-api.com/v4/sports/'
+        'odds-api': 'https://api.the-odds-api.com/v4/sports/',
       }
 
       const endpoint = testEndpoints[provider as keyof typeof testEndpoints]
@@ -364,7 +374,7 @@ export class ApiKeyRotationService {
       }
 
       const headers: Record<string, string> = {}
-      
+
       if (provider === 'api-sports') {
         headers['X-RapidAPI-Key'] = apiKey
         headers['X-RapidAPI-Host'] = 'api-football-v1.p.rapidapi.com'
@@ -372,13 +382,16 @@ export class ApiKeyRotationService {
         // Odds API uses query parameter for API key
       }
 
-      const response = await fetch(endpoint + (provider === 'odds-api' ? `?apiKey=${apiKey}` : ''), {
-        method: 'GET',
-        headers
-      })
+      const response = await fetch(
+        endpoint + (provider === 'odds-api' ? `?apiKey=${apiKey}` : ''),
+        {
+          method: 'GET',
+          headers,
+        }
+      )
 
       const isValid = response.ok
-      
+
       // Update key status
       const configs = this.keyConfigs.get(provider)
       if (configs) {
@@ -393,7 +406,7 @@ export class ApiKeyRotationService {
         provider,
         key: this.maskKey(apiKey),
         valid: isValid,
-        statusCode: response.status
+        statusCode: response.status,
       })
 
       return isValid
@@ -401,7 +414,7 @@ export class ApiKeyRotationService {
       logger.logBusinessEvent('api_key_rotation:key_validation_error', {
         provider,
         key: this.maskKey(apiKey),
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       })
       return false
     }
@@ -410,7 +423,7 @@ export class ApiKeyRotationService {
   // Periodic validation of all keys
   private startPeriodicValidation(): void {
     const validationInterval = 60 * 60 * 1000 // 1 hour
-    
+
     setInterval(async () => {
       for (const [provider, configs] of this.keyConfigs.entries()) {
         for (const config of configs) {
@@ -437,8 +450,8 @@ export class ApiKeyRotationService {
           masked: this.maskKey(config.primaryKey),
           status: config.status,
           usage: config.currentUsage,
-          lastValidated: new Date(config.lastValidated).toISOString()
-        }))
+          lastValidated: new Date(config.lastValidated).toISOString(),
+        })),
       }
     }
 
@@ -448,7 +461,7 @@ export class ApiKeyRotationService {
       stats[providerName] = {
         totalKeys: configs.length,
         activeKeys: configs.filter(c => c.status === 'active').length,
-        currentKeyIndex: this.currentKeyIndex.get(providerName) || 0
+        currentKeyIndex: this.currentKeyIndex.get(providerName) || 0,
       }
     }
     return stats
@@ -470,7 +483,7 @@ export class ApiKeyRotationService {
   // Log rotation event
   private logRotationEvent(event: KeyRotationEvent): void {
     this.rotationHistory.push(event)
-    
+
     // Maintain history size limit
     if (this.rotationHistory.length > this.maxHistorySize) {
       this.rotationHistory = this.rotationHistory.slice(-this.maxHistorySize)
@@ -481,7 +494,7 @@ export class ApiKeyRotationService {
   addApiKey(provider: string, apiKey: string, priority?: number): boolean {
     try {
       const configs = this.keyConfigs.get(provider) || []
-      
+
       // Check if key already exists
       if (configs.some(config => config.primaryKey === apiKey)) {
         return false
@@ -498,12 +511,12 @@ export class ApiKeyRotationService {
           daily: 0,
           lastReset: {
             hour: Date.now(),
-            day: Date.now()
-          }
+            day: Date.now(),
+          },
         },
         status: 'active',
         lastValidated: Date.now(),
-        priority: priority || configs.length
+        priority: priority || configs.length,
       }
 
       configs.push(newConfig)
@@ -512,14 +525,14 @@ export class ApiKeyRotationService {
       logger.logBusinessEvent('api_key_rotation:key_added', {
         provider,
         key: this.maskKey(apiKey),
-        totalKeys: configs.length
+        totalKeys: configs.length,
       })
 
       return true
     } catch (error) {
       logger.logBusinessEvent('api_key_rotation:key_add_error', {
         provider,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       })
       return false
     }
@@ -530,7 +543,7 @@ export class ApiKeyRotationService {
     try {
       const configs = this.keyConfigs.get(provider) || []
       const index = configs.findIndex(config => config.primaryKey === apiKey)
-      
+
       if (index === -1) {
         return false
       }
@@ -547,14 +560,14 @@ export class ApiKeyRotationService {
       logger.logBusinessEvent('api_key_rotation:key_removed', {
         provider,
         key: this.maskKey(apiKey),
-        remainingKeys: configs.length
+        remainingKeys: configs.length,
       })
 
       return true
     } catch (error) {
       logger.logBusinessEvent('api_key_rotation:key_remove_error', {
         provider,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       })
       return false
     }
@@ -564,7 +577,7 @@ export class ApiKeyRotationService {
   resetKeyUsage(provider: string, apiKey?: string): boolean {
     try {
       const configs = this.keyConfigs.get(provider) || []
-      
+
       if (apiKey) {
         // Reset specific key
         const config = configs.find(c => c.primaryKey === apiKey)
@@ -593,14 +606,14 @@ export class ApiKeyRotationService {
       logger.logBusinessEvent('api_key_rotation:usage_reset', {
         provider,
         key: apiKey ? this.maskKey(apiKey) : 'all',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
 
       return true
     } catch (error) {
       logger.logBusinessEvent('api_key_rotation:usage_reset_error', {
         provider,
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: error instanceof Error ? error.message : 'Unknown error',
       })
       return false
     }

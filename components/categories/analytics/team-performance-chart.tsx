@@ -1,9 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, Target, Trophy } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TrendingUp, Target, Trophy } from 'lucide-react'
 
 interface TeamPerformanceChartProps {
   team: string
@@ -12,39 +20,45 @@ interface TeamPerformanceChartProps {
   league: string
 }
 
-export default function TeamPerformanceChart({ team, timeRange, sport, league }: TeamPerformanceChartProps) {
+export default function TeamPerformanceChart({
+  team,
+  timeRange,
+  sport,
+  league,
+}: TeamPerformanceChartProps) {
   const [performanceData, setPerformanceData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchPerformanceData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch real performance data from API
       const params = new URLSearchParams({
         sport: sport,
-        timeRange: timeRange
+        timeRange: timeRange,
       })
       if (league) params.set('league', league)
       if (team && team !== 'all') params.set('team', team)
-      
+
       const response = await fetch(`/api/analytics/team-performance?${params}`)
       const data = await response.json()
-      
+
       if (data.error) {
         console.error('Team performance API error:', data.error)
         setPerformanceData([])
         return
       }
-      
+
       // Transform the data for the chart
-      const chartData = data.performance?.map((game: any) => ({
-        date: game.date,
-        winRate: game.won ? 100 : 0,
-        points: game.points || 0,
-        accuracy: game.accuracy || 0
-      })) || []
-      
+      const chartData =
+        data.performance?.map((game: any) => ({
+          date: game.date,
+          winRate: game.won ? 100 : 0,
+          points: game.points || 0,
+          accuracy: game.accuracy || 0,
+        })) || []
+
       setPerformanceData(chartData)
     } catch (error) {
       console.error('Error fetching performance data:', error)
@@ -90,9 +104,27 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="winRate" stroke="#8884d8" strokeWidth={2} name="Win Rate" />
-                <Line type="monotone" dataKey="points" stroke="#82ca9d" strokeWidth={2} name="Points" />
-                <Line type="monotone" dataKey="accuracy" stroke="#ffc658" strokeWidth={2} name="Prediction Accuracy" />
+                <Line
+                  type="monotone"
+                  dataKey="winRate"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  name="Win Rate"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="points"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                  name="Points"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="accuracy"
+                  stroke="#ffc658"
+                  strokeWidth={2}
+                  name="Prediction Accuracy"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -106,10 +138,9 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Win Rate</p>
                 <p className="text-2xl font-bold">
-                  {performanceData.length > 0 ? 
-                    (performanceData[performanceData.length - 1]?.winRate || 0).toFixed(1) + '%' : 
-                    '0%'
-                  }
+                  {performanceData.length > 0
+                    ? (performanceData[performanceData.length - 1]?.winRate || 0).toFixed(1) + '%'
+                    : '0%'}
                 </p>
               </div>
               <Trophy className="h-8 w-8 text-muted-foreground" />
@@ -123,10 +154,9 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Points</p>
                 <p className="text-2xl font-bold">
-                  {performanceData.length > 0 ? 
-                    (performanceData[performanceData.length - 1]?.points || 0).toFixed(1) : 
-                    '0'
-                  }
+                  {performanceData.length > 0
+                    ? (performanceData[performanceData.length - 1]?.points || 0).toFixed(1)
+                    : '0'}
                 </p>
               </div>
               <Target className="h-8 w-8 text-muted-foreground" />
@@ -140,10 +170,9 @@ export default function TeamPerformanceChart({ team, timeRange, sport, league }:
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Prediction Accuracy</p>
                 <p className="text-2xl font-bold">
-                  {performanceData.length > 0 ? 
-                    (performanceData[performanceData.length - 1]?.accuracy || 0).toFixed(1) + '%' : 
-                    '0%'
-                  }
+                  {performanceData.length > 0
+                    ? (performanceData[performanceData.length - 1]?.accuracy || 0).toFixed(1) + '%'
+                    : '0%'}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />

@@ -17,10 +17,13 @@ export function initializeRules(): void {
   try {
     // Enforce environment rules first
     environmentRules.enforceEnvironmentRules()
-    
+
     console.log('✅ All rules initialized successfully')
   } catch (error) {
-    console.error('❌ Rules initialization failed:', error instanceof Error ? error.message : String(error))
+    console.error(
+      '❌ Rules initialization failed:',
+      error instanceof Error ? error.message : String(error)
+    )
     process.exit(1)
   }
 }
@@ -31,6 +34,6 @@ export function initializeRules(): void {
 export function getRulesStatus() {
   return {
     environment: environmentRules.isConfigured(),
-    environmentErrors: environmentRules.getValidationErrors()
+    environmentErrors: environmentRules.getValidationErrors(),
   }
 }

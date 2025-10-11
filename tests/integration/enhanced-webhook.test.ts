@@ -28,8 +28,8 @@ describe('Enhanced Webhook Processing', () => {
           status: 'live',
           home_score: 85,
           away_score: 78,
-          venue: 'Madison Square Garden'
-        }
+          venue: 'Madison Square Garden',
+        },
       }
 
       const result = WebhookValidator.validate(payload)
@@ -48,8 +48,8 @@ describe('Enhanced Webhook Processing', () => {
           home_score: 87,
           away_score: 80,
           quarter: '3rd Quarter',
-          time_remaining: '5:23'
-        }
+          time_remaining: '5:23',
+        },
       }
 
       const result = WebhookValidator.validate(payload)
@@ -67,8 +67,8 @@ describe('Enhanced Webhook Processing', () => {
           odds_type: 'moneyline',
           home_odds: -150,
           away_odds: 130,
-          bookmaker: 'DraftKings'
-        }
+          bookmaker: 'DraftKings',
+        },
       }
 
       const result = WebhookValidator.validate(payload)
@@ -94,9 +94,9 @@ describe('Enhanced Webhook Processing', () => {
             losses: 15,
             win_percentage: 0.625,
             conference: 'Eastern',
-            division: 'Atlantic'
-          }
-        }
+            division: 'Atlantic',
+          },
+        },
       }
 
       const result = WebhookValidator.validate(payload)
@@ -117,8 +117,8 @@ describe('Enhanced Webhook Processing', () => {
               game_id: 'game-123',
               status: 'live',
               home_score: 85,
-              away_score: 78
-            }
+              away_score: 78,
+            },
           },
           {
             type: 'score_update',
@@ -128,11 +128,11 @@ describe('Enhanced Webhook Processing', () => {
               game_id: 'game-123',
               home_score: 87,
               away_score: 80,
-              quarter: '3rd Quarter'
-            }
-          }
+              quarter: '3rd Quarter',
+            },
+          },
         ],
-        batch_id: 'batch-456'
+        batch_id: 'batch-456',
       }
 
       const result = WebhookValidator.validate(payload)
@@ -148,8 +148,8 @@ describe('Enhanced Webhook Processing', () => {
         // Missing league
         data: {
           // Missing game_id
-          status: 'live'
-        }
+          status: 'live',
+        },
       }
 
       const result = WebhookValidator.validate(payload)
@@ -162,7 +162,7 @@ describe('Enhanced Webhook Processing', () => {
         type: 'invalid_type',
         sport: 'basketball',
         league: 'NBA',
-        data: {}
+        data: {},
       }
 
       const result = WebhookValidator.validate(payload)
@@ -186,7 +186,7 @@ describe('Enhanced Webhook Processing', () => {
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const }
+        data: { sync_type: 'games' as const },
       }
 
       const payload2 = {
@@ -194,7 +194,7 @@ describe('Enhanced Webhook Processing', () => {
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const }
+        data: { sync_type: 'games' as const },
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)
@@ -210,7 +210,7 @@ describe('Enhanced Webhook Processing', () => {
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const }
+        data: { sync_type: 'games' as const },
       }
 
       const payload2 = {
@@ -218,7 +218,7 @@ describe('Enhanced Webhook Processing', () => {
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'teams' as const }
+        data: { sync_type: 'teams' as const },
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)
@@ -229,13 +229,13 @@ describe('Enhanced Webhook Processing', () => {
 
     test('should detect duplicates in memory cache', async () => {
       const hash = 'test-hash-123'
-      
+
       // Mark as processing
       await WebhookDeduplicator.markProcessing(hash, mockRequestId, 'game_update')
-      
+
       // Mark as processed
       await WebhookDeduplicator.markProcessed(hash, mockRequestId, 100)
-      
+
       // Check for duplicate
       const isDuplicate = await WebhookDeduplicator.isDuplicate(hash, 'new-request-id')
       expect(isDuplicate).toBe(true)
@@ -243,7 +243,7 @@ describe('Enhanced Webhook Processing', () => {
 
     test('should not detect duplicates for new hashes', async () => {
       const hash = 'new-unique-hash-456'
-      
+
       const isDuplicate = await WebhookDeduplicator.isDuplicate(hash, mockRequestId)
       expect(isDuplicate).toBe(false)
     })
@@ -258,11 +258,11 @@ describe('Enhanced Webhook Processing', () => {
 
   describe('HMAC Signature Validation', () => {
     const testSecret = 'test-webhook-secret-key'
-    
+
     test('should validate correct HMAC signature', () => {
       const payload = { test: 'data' }
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
-      
+
       const isValid = hmacWebhookAuthenticator.validateSignature(payload, signature, testSecret)
       expect(isValid).toBe(true)
     })
@@ -270,22 +270,26 @@ describe('Enhanced Webhook Processing', () => {
     test('should reject invalid HMAC signature', () => {
       const payload = { test: 'data' }
       const invalidSignature = 'sha256=invalid-signature'
-      
-      const isValid = hmacWebhookAuthenticator.validateSignature(payload, invalidSignature, testSecret)
+
+      const isValid = hmacWebhookAuthenticator.validateSignature(
+        payload,
+        invalidSignature,
+        testSecret
+      )
       expect(isValid).toBe(false)
     })
 
     test('should reject signature with wrong secret', () => {
       const payload = { test: 'data' }
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
-      
+
       const isValid = hmacWebhookAuthenticator.validateSignature(payload, signature, 'wrong-secret')
       expect(isValid).toBe(false)
     })
 
     test('should validate IP addresses correctly', () => {
       const allowedIPs = ['192.168.1.100', '10.0.0.1']
-      
+
       expect(hmacWebhookAuthenticator.validateIPAddress('192.168.1.100', allowedIPs)).toBe(true)
       expect(hmacWebhookAuthenticator.validateIPAddress('10.0.0.1', allowedIPs)).toBe(true)
       expect(hmacWebhookAuthenticator.validateIPAddress('192.168.1.200', allowedIPs)).toBe(false)
@@ -302,7 +306,7 @@ describe('Enhanced Webhook Processing', () => {
         'team_update',
         'player_update',
         'full_sync',
-        'batch'
+        'batch',
       ]
 
       validTypes.forEach(type => {
@@ -311,13 +315,7 @@ describe('Enhanced Webhook Processing', () => {
     })
 
     test('should reject unsupported event types', () => {
-      const invalidTypes = [
-        'invalid_type',
-        'unknown_event',
-        '',
-        null,
-        undefined
-      ]
+      const invalidTypes = ['invalid_type', 'unknown_event', '', null, undefined]
 
       invalidTypes.forEach(type => {
         expect(WebhookValidator.isValidEventType(type as any)).toBe(false)
@@ -328,11 +326,11 @@ describe('Enhanced Webhook Processing', () => {
   describe('Error Handling', () => {
     test('should handle malformed JSON gracefully', () => {
       const malformedJson = '{ invalid json }'
-      
+
       expect(() => {
         JSON.parse(malformedJson)
       }).toThrow()
-      
+
       // Webhook validator should handle this gracefully
       const result = WebhookValidator.validate(malformedJson)
       expect(result.isValid).toBe(false)
@@ -352,22 +350,20 @@ describe('Enhanced Webhook Processing', () => {
 
 describe('Webhook Processing Performance', () => {
   test('should process webhooks within acceptable time limits', async () => {
-
     const startTime = Date.now()
-    
+
     // Note: This would require mocking the database in a real test
     // const result = await WebhookProcessor.processWebhook(payload, context)
-    
+
     const processingTime = Date.now() - startTime
-    
+
     // Processing should complete within 1 second for simple operations
     expect(processingTime).toBeLessThan(1000)
   })
 
   test('should handle concurrent webhook processing', async () => {
-
     const startTime = Date.now()
-    
+
     // Process all webhooks concurrently
     const promises = Array.from({ length: 10 }, () => {
       // Note: This would require mocking the database in a real test

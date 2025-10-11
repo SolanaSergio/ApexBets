@@ -94,12 +94,10 @@ export class SchemaAuditService {
       // Get all tables in public schema
       const tables = await this.getTableList()
       const tableSchemas = await this.analyzeTables(tables)
-      
+
       // Identify missing tables
       const requiredTables = await this.getRequiredTables()
-      const missingTables = requiredTables.filter(table => 
-        !tables.includes(table)
-      )
+      const missingTables = requiredTables.filter(table => !tables.includes(table))
 
       // Analyze constraints and indexes
       const missingConstraints = await this.analyzeConstraints(tableSchemas)
@@ -107,8 +105,8 @@ export class SchemaAuditService {
 
       // Generate recommendations and migration plan
       const recommendations = this.generateRecommendations(
-        missingTables, 
-        missingConstraints, 
+        missingTables,
+        missingConstraints,
         missingIndexes
       )
       const migrationPlan = this.generateMigrationPlan(
@@ -125,21 +123,20 @@ export class SchemaAuditService {
         missingConstraints,
         missingIndexes,
         recommendations,
-        migrationPlan
+        migrationPlan,
       }
 
       structuredLogger.info('Schema audit completed', {
         tablesFound: tables.length,
         missingTables: missingTables.length,
         missingConstraints: missingConstraints.length,
-        missingIndexes: missingIndexes.length
+        missingIndexes: missingIndexes.length,
       })
 
       return report
-
     } catch (error) {
       structuredLogger.error('Schema audit failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       throw error
     }
@@ -156,7 +153,7 @@ export class SchemaAuditService {
       AND table_type = 'BASE TABLE'
       ORDER BY table_name
     `
-    
+
     const result = await databaseService.executeSQL(query)
     if (!result.success) {
       throw new Error(`Failed to get table list: ${result.error}`)
@@ -184,12 +181,12 @@ export class SchemaAuditService {
           constraints,
           indexes,
           rowCount: stats.rowCount,
-          size: stats.size
+          size: stats.size,
         })
       } catch (error) {
         structuredLogger.warn('Failed to analyze table', {
           table: tableName,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         })
       }
     }
@@ -246,7 +243,7 @@ export class SchemaAuditService {
       defaultValue: row.column_default,
       maxLength: row.character_maximum_length,
       isPrimaryKey: row.is_primary_key,
-      isUnique: row.is_unique
+      isUnique: row.is_unique,
     }))
   }
 
@@ -282,7 +279,7 @@ export class SchemaAuditService {
       type: row.constraint_type,
       columns: row.columns || [],
       referencedTable: row.referenced_table,
-      referencedColumns: row.referenced_columns || []
+      referencedColumns: row.referenced_columns || [],
     }))
   }
 
@@ -315,7 +312,7 @@ export class SchemaAuditService {
       name: row.indexname,
       columns: row.columns || [],
       unique: row.unique,
-      type: 'btree' // Default type
+      type: 'btree', // Default type
     }))
   }
 
@@ -339,7 +336,7 @@ export class SchemaAuditService {
     const row = result.data[0]
     return {
       rowCount: parseInt(row.row_count) || 0,
-      size: row.size || '0 bytes'
+      size: row.size || '0 bytes',
     }
   }
 
@@ -350,7 +347,7 @@ export class SchemaAuditService {
     // Core tables required for any sports application
     const coreTables = [
       'sports',
-      'leagues', 
+      'leagues',
       'teams',
       'players',
       'games',
@@ -358,7 +355,7 @@ export class SchemaAuditService {
       'team_stats',
       'odds',
       'predictions',
-      'league_standings'
+      'league_standings',
     ]
 
     // Operational tables
@@ -367,7 +364,7 @@ export class SchemaAuditService {
       'rate_limit_tracking',
       'cache_entries',
       'webhook_logs',
-      'processing_locks'
+      'processing_locks',
     ]
 
     return [...coreTables, ...operationalTables]
@@ -385,66 +382,66 @@ export class SchemaAuditService {
 
       // Teams should have unique constraint on (name, league) or external_id
       if (schema.name === 'teams') {
-        const hasNameLeagueUnique = uniqueConstraints.some(c => 
-          c.columns.includes('name') && c.columns.includes('league')
+        const hasNameLeagueUnique = uniqueConstraints.some(
+          c => c.columns.includes('name') && c.columns.includes('league')
         )
-        const hasExternalIdUnique = schema.columns.some(c => 
-          c.name === 'external_id' && c.isUnique
-        )
+        const hasExternalIdUnique = schema.columns.some(c => c.name === 'external_id' && c.isUnique)
 
         if (!hasNameLeagueUnique && !hasExternalIdUnique) {
           issues.push({
             table: 'teams',
             type: 'missing_unique',
             description: 'Teams table missing unique constraint on (name, league) or external_id',
-            suggestedConstraint: 'ALTER TABLE teams ADD CONSTRAINT teams_name_league_unique UNIQUE (name, league)'
+            suggestedConstraint:
+              'ALTER TABLE teams ADD CONSTRAINT teams_name_league_unique UNIQUE (name, league)',
           })
         }
       }
 
       // Games should have unique constraint on external_id or (home_team_id, away_team_id, game_date)
       if (schema.name === 'games') {
-        const hasExternalIdUnique = schema.columns.some(c => 
-          c.name === 'external_id' && c.isUnique
-        )
-        const hasGameUnique = uniqueConstraints.some(c => 
-          c.columns.includes('home_team_id') && 
-          c.columns.includes('away_team_id') && 
-          c.columns.includes('game_date')
+        const hasExternalIdUnique = schema.columns.some(c => c.name === 'external_id' && c.isUnique)
+        const hasGameUnique = uniqueConstraints.some(
+          c =>
+            c.columns.includes('home_team_id') &&
+            c.columns.includes('away_team_id') &&
+            c.columns.includes('game_date')
         )
 
         if (!hasExternalIdUnique && !hasGameUnique) {
           issues.push({
             table: 'games',
             type: 'missing_unique',
-            description: 'Games table missing unique constraint on external_id or (home_team_id, away_team_id, game_date)',
-            suggestedConstraint: 'ALTER TABLE games ADD CONSTRAINT games_external_id_unique UNIQUE (external_id)'
+            description:
+              'Games table missing unique constraint on external_id or (home_team_id, away_team_id, game_date)',
+            suggestedConstraint:
+              'ALTER TABLE games ADD CONSTRAINT games_external_id_unique UNIQUE (external_id)',
           })
         }
       }
 
       // Players should have unique constraint on external_id
       if (schema.name === 'players') {
-        const hasExternalIdUnique = schema.columns.some(c => 
-          c.name === 'external_id' && c.isUnique
-        )
+        const hasExternalIdUnique = schema.columns.some(c => c.name === 'external_id' && c.isUnique)
 
         if (!hasExternalIdUnique) {
           issues.push({
             table: 'players',
             type: 'missing_unique',
             description: 'Players table missing unique constraint on external_id',
-            suggestedConstraint: 'ALTER TABLE players ADD CONSTRAINT players_external_id_unique UNIQUE (external_id)'
+            suggestedConstraint:
+              'ALTER TABLE players ADD CONSTRAINT players_external_id_unique UNIQUE (external_id)',
           })
         }
       }
 
       // Odds should have unique constraint on (game_id, market, bookmaker)
       if (schema.name === 'odds') {
-        const hasOddsUnique = uniqueConstraints.some(c => 
-          c.columns.includes('game_id') && 
-          c.columns.includes('market') && 
-          c.columns.includes('bookmaker')
+        const hasOddsUnique = uniqueConstraints.some(
+          c =>
+            c.columns.includes('game_id') &&
+            c.columns.includes('market') &&
+            c.columns.includes('bookmaker')
         )
 
         if (!hasOddsUnique) {
@@ -452,7 +449,8 @@ export class SchemaAuditService {
             table: 'odds',
             type: 'missing_unique',
             description: 'Odds table missing unique constraint on (game_id, market, bookmaker)',
-            suggestedConstraint: 'ALTER TABLE odds ADD CONSTRAINT odds_game_market_bookmaker_unique UNIQUE (game_id, market, bookmaker)'
+            suggestedConstraint:
+              'ALTER TABLE odds ADD CONSTRAINT odds_game_market_bookmaker_unique UNIQUE (game_id, market, bookmaker)',
           })
         }
       }
@@ -469,20 +467,23 @@ export class SchemaAuditService {
 
     for (const schema of schemas) {
       const existingIndexes = schema.indexes.map(i => i.columns.join(','))
-      
+
       // Games table indexes
       if (schema.name === 'games') {
         const requiredIndexes = [
           { columns: ['sport'], description: 'Index on sport for filtering' },
           { columns: ['league'], description: 'Index on league for filtering' },
-          { columns: ['game_date', 'status'], description: 'Composite index for date/status queries' },
+          {
+            columns: ['game_date', 'status'],
+            description: 'Composite index for date/status queries',
+          },
           { columns: ['home_team_id'], description: 'Index on home_team_id for joins' },
           { columns: ['away_team_id'], description: 'Index on away_team_id for joins' },
-          { columns: ['external_id'], description: 'Index on external_id for lookups' }
+          { columns: ['external_id'], description: 'Index on external_id for lookups' },
         ]
 
         for (const reqIndex of requiredIndexes) {
-          const indexExists = existingIndexes.some(existing => 
+          const indexExists = existingIndexes.some(existing =>
             reqIndex.columns.every(col => existing.includes(col))
           )
 
@@ -491,7 +492,7 @@ export class SchemaAuditService {
               table: 'games',
               columns: reqIndex.columns,
               description: reqIndex.description,
-              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`
+              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`,
             })
           }
         }
@@ -503,11 +504,11 @@ export class SchemaAuditService {
           { columns: ['sport'], description: 'Index on sport for filtering' },
           { columns: ['league'], description: 'Index on league for filtering' },
           { columns: ['sport', 'league'], description: 'Composite index for sport/league queries' },
-          { columns: ['external_id'], description: 'Index on external_id for lookups' }
+          { columns: ['external_id'], description: 'Index on external_id for lookups' },
         ]
 
         for (const reqIndex of requiredIndexes) {
-          const indexExists = existingIndexes.some(existing => 
+          const indexExists = existingIndexes.some(existing =>
             reqIndex.columns.every(col => existing.includes(col))
           )
 
@@ -516,7 +517,7 @@ export class SchemaAuditService {
               table: 'teams',
               columns: reqIndex.columns,
               description: reqIndex.description,
-              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`
+              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`,
             })
           }
         }
@@ -527,11 +528,11 @@ export class SchemaAuditService {
         const requiredIndexes = [
           { columns: ['sport'], description: 'Index on sport for filtering' },
           { columns: ['team_id'], description: 'Index on team_id for joins' },
-          { columns: ['external_id'], description: 'Index on external_id for lookups' }
+          { columns: ['external_id'], description: 'Index on external_id for lookups' },
         ]
 
         for (const reqIndex of requiredIndexes) {
-          const indexExists = existingIndexes.some(existing => 
+          const indexExists = existingIndexes.some(existing =>
             reqIndex.columns.every(col => existing.includes(col))
           )
 
@@ -540,7 +541,7 @@ export class SchemaAuditService {
               table: 'players',
               columns: reqIndex.columns,
               description: reqIndex.description,
-              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`
+              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`,
             })
           }
         }
@@ -552,11 +553,11 @@ export class SchemaAuditService {
           { columns: ['game_id'], description: 'Index on game_id for joins' },
           { columns: ['market'], description: 'Index on market for filtering' },
           { columns: ['bookmaker'], description: 'Index on bookmaker for filtering' },
-          { columns: ['updated_at'], description: 'Index on updated_at for time-based queries' }
+          { columns: ['updated_at'], description: 'Index on updated_at for time-based queries' },
         ]
 
         for (const reqIndex of requiredIndexes) {
-          const indexExists = existingIndexes.some(existing => 
+          const indexExists = existingIndexes.some(existing =>
             reqIndex.columns.every(col => existing.includes(col))
           )
 
@@ -565,7 +566,7 @@ export class SchemaAuditService {
               table: 'odds',
               columns: reqIndex.columns,
               description: reqIndex.description,
-              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`
+              suggestedIndex: `CREATE INDEX IF NOT EXISTS idx_${schema.name}_${reqIndex.columns.join('_')} ON ${schema.name}(${reqIndex.columns.join(', ')})`,
             })
           }
         }
@@ -586,19 +587,29 @@ export class SchemaAuditService {
     const recommendations: string[] = []
 
     if (missingTables.length > 0) {
-      recommendations.push(`Create ${missingTables.length} missing tables: ${missingTables.join(', ')}`)
+      recommendations.push(
+        `Create ${missingTables.length} missing tables: ${missingTables.join(', ')}`
+      )
     }
 
     if (missingConstraints.length > 0) {
-      recommendations.push(`Add ${missingConstraints.length} missing constraints for data integrity`)
+      recommendations.push(
+        `Add ${missingConstraints.length} missing constraints for data integrity`
+      )
     }
 
     if (missingIndexes.length > 0) {
       recommendations.push(`Create ${missingIndexes.length} missing indexes for query performance`)
     }
 
-    if (missingTables.length === 0 && missingConstraints.length === 0 && missingIndexes.length === 0) {
-      recommendations.push('Schema is properly configured with all required tables, constraints, and indexes')
+    if (
+      missingTables.length === 0 &&
+      missingConstraints.length === 0 &&
+      missingIndexes.length === 0
+    ) {
+      recommendations.push(
+        'Schema is properly configured with all required tables, constraints, and indexes'
+      )
     }
 
     return recommendations
@@ -622,7 +633,7 @@ export class SchemaAuditService {
         table,
         sql: tableSql,
         priority: 'critical',
-        description: `Create missing table: ${table}`
+        description: `Create missing table: ${table}`,
       })
     }
 
@@ -633,7 +644,7 @@ export class SchemaAuditService {
         table: constraint.table,
         sql: constraint.suggestedConstraint,
         priority: 'high',
-        description: constraint.description
+        description: constraint.description,
       })
     }
 
@@ -644,7 +655,7 @@ export class SchemaAuditService {
         table: index.table,
         sql: index.suggestedIndex,
         priority: 'medium',
-        description: index.description
+        description: index.description,
       })
     }
 
@@ -856,7 +867,7 @@ export class SchemaAuditService {
           locked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           expires_at TIMESTAMP WITH TIME ZONE
         )
-      `
+      `,
     }
 
     return tableDefinitions[tableName] || `-- Table definition for ${tableName} not found`
@@ -865,22 +876,22 @@ export class SchemaAuditService {
   /**
    * Apply migration plan
    */
-  async applyMigrationPlan(steps: MigrationStep[]): Promise<{ success: boolean; applied: number; errors: string[] }> {
+  async applyMigrationPlan(
+    steps: MigrationStep[]
+  ): Promise<{ success: boolean; applied: number; errors: string[] }> {
     const errors: string[] = []
     let applied = 0
 
     // Sort by priority
     const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
-    const sortedSteps = steps.sort((a, b) => 
-      priorityOrder[a.priority] - priorityOrder[b.priority]
-    )
+    const sortedSteps = steps.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority])
 
     for (const step of sortedSteps) {
       try {
         structuredLogger.info('Applying migration step', {
           type: step.type,
           table: step.table,
-          priority: step.priority
+          priority: step.priority,
         })
 
         const result = await databaseService.executeSQL(step.sql)
@@ -888,20 +899,22 @@ export class SchemaAuditService {
           applied++
           structuredLogger.info('Migration step applied successfully', {
             type: step.type,
-            table: step.table
+            table: step.table,
           })
         } else {
           errors.push(`Failed to apply ${step.type} for ${step.table}: ${result.error}`)
         }
       } catch (error) {
-        errors.push(`Error applying ${step.type} for ${step.table}: ${error instanceof Error ? error.message : String(error)}`)
+        errors.push(
+          `Error applying ${step.type} for ${step.table}: ${error instanceof Error ? error.message : String(error)}`
+        )
       }
     }
 
     return {
       success: errors.length === 0,
       applied,
-      errors
+      errors,
     }
   }
 }

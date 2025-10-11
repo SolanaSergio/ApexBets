@@ -1,9 +1,17 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, BarChart3 } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
+import { TrendingUp, BarChart3 } from 'lucide-react'
 
 interface TrendAnalysisProps {
   team: string
@@ -19,16 +27,18 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
   const fetchTrendData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Use database-first API for consistent error handling and caching
-      const response = await fetch(`/api/analytics/trend-analysis?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`)
-      
+      const response = await fetch(
+        `/api/analytics/trend-analysis?sport=${sport}&league=${league}&team=${team}&timeRange=${timeRange}`
+      )
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
       }
-      
+
       const data = await response.json()
-      
+
       if (data.success) {
         setTrendData(data.trends || [])
       } else {
@@ -79,9 +89,27 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip />
-                <Line type="monotone" dataKey="volume" stroke="#8884d8" strokeWidth={2} name="Volume" />
-                <Line type="monotone" dataKey="value" stroke="#82ca9d" strokeWidth={2} name="Value" />
-                <Line type="monotone" dataKey="accuracy" stroke="#ffc658" strokeWidth={2} name="Accuracy" />
+                <Line
+                  type="monotone"
+                  dataKey="volume"
+                  stroke="#8884d8"
+                  strokeWidth={2}
+                  name="Volume"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#82ca9d"
+                  strokeWidth={2}
+                  name="Value"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="accuracy"
+                  stroke="#ffc658"
+                  strokeWidth={2}
+                  name="Accuracy"
+                />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -109,10 +137,11 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Value</p>
                 <p className="text-2xl font-bold">
-                  {trendData.length > 0 ? 
-                    (trendData.reduce((acc, curr) => acc + curr.value, 0) / trendData.length).toFixed(1) + '%' : 
-                    '0%'
-                  }
+                  {trendData.length > 0
+                    ? (
+                        trendData.reduce((acc, curr) => acc + curr.value, 0) / trendData.length
+                      ).toFixed(1) + '%'
+                    : '0%'}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
@@ -126,10 +155,11 @@ export default function TrendAnalysis({ team, timeRange, sport, league }: TrendA
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Trend Direction</p>
                 <p className="text-2xl font-bold">
-                  {trendData.length > 1 ? 
-                    (trendData[trendData.length - 1]?.value > trendData[0]?.value ? '↗' : '↘') : 
-                    '→'
-                  }
+                  {trendData.length > 1
+                    ? trendData[trendData.length - 1]?.value > trendData[0]?.value
+                      ? '↗'
+                      : '↘'
+                    : '→'}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />

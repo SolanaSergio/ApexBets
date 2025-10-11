@@ -64,7 +64,10 @@ export class ServiceRegistry {
       }
 
       this.initialized = true
-      console.log('Service registry initialized synchronously with sports:', Array.from(this.serviceMap.keys()))
+      console.log(
+        'Service registry initialized synchronously with sports:',
+        Array.from(this.serviceMap.keys())
+      )
     } catch (error) {
       console.error('Failed to initialize service registry synchronously:', error)
       // Don't throw, just log the error
@@ -89,7 +92,10 @@ export class ServiceRegistry {
         this.serviceMap.set(sport, serviceClass)
       })
     } catch (error) {
-      console.warn('Failed to load supported sports:', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'Failed to load supported sports:',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
   }
 
@@ -99,23 +105,23 @@ export class ServiceRegistry {
   private static getServiceClassForSport(sport: string): any {
     // Dynamic service mapping based on sport name from database configuration
     const sportLower = sport.toLowerCase()
-    
+
     // Try to dynamically import sport-specific services based on database configuration
     try {
       // Check if sport has a dedicated service by attempting dynamic import
       const sportServiceMap: Record<string, any> = {
-        'basketball': BasketballService,
-        'soccer': SoccerService,
-        'football': FootballService,
-        'baseball': BaseballService,
-        'hockey': HockeyService
+        basketball: BasketballService,
+        soccer: SoccerService,
+        football: FootballService,
+        baseball: BaseballService,
+        hockey: HockeyService,
       }
-      
+
       // Use exact match first, then fallback to contains check
       if (sportServiceMap[sportLower]) {
         return sportServiceMap[sportLower]
       }
-      
+
       // Check for partial matches (for variations like 'american football')
       for (const [serviceSport, serviceClass] of Object.entries(sportServiceMap)) {
         if (sportLower.includes(serviceSport) || serviceSport.includes(sportLower)) {
@@ -125,7 +131,7 @@ export class ServiceRegistry {
     } catch (error) {
       console.warn(`Failed to load specific service for sport: ${sport}`, error)
     }
-    
+
     // Fallback to generic service for unknown sports
     return GenericSportService
   }
@@ -171,7 +177,7 @@ export class ServiceRegistry {
   /**
    * Get or create a service for any sport (including unknown ones)
    */
-  static getOrCreateServiceClass(sport: string): (new (league: string) => any) {
+  static getOrCreateServiceClass(sport: string): new (league: string) => any {
     if (!this.initialized) {
       this.initializeSync()
     }

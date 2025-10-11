@@ -57,10 +57,10 @@ export class APICostTracker {
   private metrics: Map<string, APIMetrics> = new Map()
   private alerts: BudgetAlert[] = []
   private budgetThresholds = {
-    daily: 10.0,    // $10 daily limit
+    daily: 10.0, // $10 daily limit
     monthly: 100.0, // $100 monthly limit
-    warning: 0.8,   // 80% threshold for warnings
-    critical: 0.95  // 95% threshold for critical alerts
+    warning: 0.8, // 80% threshold for warnings
+    critical: 0.95, // 95% threshold for critical alerts
   }
 
   constructor() {
@@ -74,44 +74,44 @@ export class APICostTracker {
         name: 'api-sports',
         costPerRequest: 0.01,
         freeRequests: 100,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'odds-api',
         costPerRequest: 0.02,
         freeRequests: 500,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'thesportsdb',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'espn',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'balldontlie',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'nba-stats',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        isActive: true
+        isActive: true,
       },
       {
         name: 'mlb-stats',
         costPerRequest: 0,
         freeRequests: Number.MAX_SAFE_INTEGER,
-        isActive: true
-      }
+        isActive: true,
+      },
     ]
 
     providers.forEach(provider => {
@@ -128,7 +128,7 @@ export class APICostTracker {
           lastRequestTime: '',
           dailyUsage: 0,
           monthlyUsage: 0,
-          remainingFreeRequests: provider.freeRequests
+          remainingFreeRequests: provider.freeRequests,
         })
       }
     })
@@ -170,7 +170,7 @@ export class APICostTracker {
       cached,
       cost,
       requestSize,
-      responseSize
+      responseSize,
     }
 
     this.usage.push(usage)
@@ -198,23 +198,20 @@ export class APICostTracker {
     metrics.lastRequestTime = usage.timestamp
 
     // Update average response time
-    const totalResponseTime = metrics.averageResponseTime * (metrics.totalRequests - 1) + usage.responseTime
+    const totalResponseTime =
+      metrics.averageResponseTime * (metrics.totalRequests - 1) + usage.responseTime
     metrics.averageResponseTime = totalResponseTime / metrics.totalRequests
 
     // Update daily/monthly usage
     const today = new Date().toISOString().split('T')[0]
     const currentMonth = new Date().toISOString().substring(0, 7)
-    
-    const todaysUsage = this.usage.filter(u => 
-      u.provider === provider && 
-      u.timestamp.startsWith(today) &&
-      !u.cached
+
+    const todaysUsage = this.usage.filter(
+      u => u.provider === provider && u.timestamp.startsWith(today) && !u.cached
     ).length
 
-    const monthlyUsage = this.usage.filter(u => 
-      u.provider === provider && 
-      u.timestamp.startsWith(currentMonth) &&
-      !u.cached
+    const monthlyUsage = this.usage.filter(
+      u => u.provider === provider && u.timestamp.startsWith(currentMonth) && !u.cached
     ).length
 
     metrics.dailyUsage = todaysUsage
@@ -245,29 +242,53 @@ export class APICostTracker {
 
     // Check daily budget
     if (dailyCost >= this.budgetThresholds.daily * this.budgetThresholds.critical) {
-      this.createAlert(provider, 'BUDGET_THRESHOLD', 'CRITICAL', 
-        `Daily budget exceeded: $${dailyCost.toFixed(2)} / $${this.budgetThresholds.daily}`)
+      this.createAlert(
+        provider,
+        'BUDGET_THRESHOLD',
+        'CRITICAL',
+        `Daily budget exceeded: $${dailyCost.toFixed(2)} / $${this.budgetThresholds.daily}`
+      )
     } else if (dailyCost >= this.budgetThresholds.daily * this.budgetThresholds.warning) {
-      this.createAlert(provider, 'BUDGET_THRESHOLD', 'HIGH',
-        `Daily budget warning: $${dailyCost.toFixed(2)} / $${this.budgetThresholds.daily}`)
+      this.createAlert(
+        provider,
+        'BUDGET_THRESHOLD',
+        'HIGH',
+        `Daily budget warning: $${dailyCost.toFixed(2)} / $${this.budgetThresholds.daily}`
+      )
     }
 
     // Check monthly budget
     if (monthlyCost >= this.budgetThresholds.monthly * this.budgetThresholds.critical) {
-      this.createAlert(provider, 'BUDGET_THRESHOLD', 'CRITICAL',
-        `Monthly budget exceeded: $${monthlyCost.toFixed(2)} / $${this.budgetThresholds.monthly}`)
+      this.createAlert(
+        provider,
+        'BUDGET_THRESHOLD',
+        'CRITICAL',
+        `Monthly budget exceeded: $${monthlyCost.toFixed(2)} / $${this.budgetThresholds.monthly}`
+      )
     } else if (monthlyCost >= this.budgetThresholds.monthly * this.budgetThresholds.warning) {
-      this.createAlert(provider, 'BUDGET_THRESHOLD', 'HIGH',
-        `Monthly budget warning: $${monthlyCost.toFixed(2)} / $${this.budgetThresholds.monthly}`)
+      this.createAlert(
+        provider,
+        'BUDGET_THRESHOLD',
+        'HIGH',
+        `Monthly budget warning: $${monthlyCost.toFixed(2)} / $${this.budgetThresholds.monthly}`
+      )
     }
 
     // Check free tier exhaustion
     if (metrics.remainingFreeRequests <= 0) {
-      this.createAlert(provider, 'FREE_TIER_EXHAUSTED', 'CRITICAL',
-        `Free tier exhausted for ${provider}. All requests will be charged.`)
+      this.createAlert(
+        provider,
+        'FREE_TIER_EXHAUSTED',
+        'CRITICAL',
+        `Free tier exhausted for ${provider}. All requests will be charged.`
+      )
     } else if (metrics.remainingFreeRequests <= 10) {
-      this.createAlert(provider, 'FREE_TIER_EXHAUSTED', 'HIGH',
-        `Free tier nearly exhausted: ${metrics.remainingFreeRequests} requests remaining`)
+      this.createAlert(
+        provider,
+        'FREE_TIER_EXHAUSTED',
+        'HIGH',
+        `Free tier nearly exhausted: ${metrics.remainingFreeRequests} requests remaining`
+      )
     }
 
     // Check rate limit approaching
@@ -278,8 +299,12 @@ export class APICostTracker {
       if (rateLimitConfig) {
         const dailyRatio = metrics.dailyUsage / rateLimitConfig.requestsPerDay
         if (dailyRatio >= 0.9) {
-          this.createAlert(provider, 'RATE_LIMIT_APPROACHING', 'HIGH',
-            `Rate limit approaching: ${metrics.dailyUsage} / ${rateLimitConfig.requestsPerDay} daily requests`)
+          this.createAlert(
+            provider,
+            'RATE_LIMIT_APPROACHING',
+            'HIGH',
+            `Rate limit approaching: ${metrics.dailyUsage} / ${rateLimitConfig.requestsPerDay} daily requests`
+          )
         }
       }
     }
@@ -292,11 +317,12 @@ export class APICostTracker {
     message: string
   ): void {
     // Avoid duplicate alerts
-    const existingAlert = this.alerts.find(a => 
-      a.provider === provider && 
-      a.alertType === alertType && 
-      !a.acknowledged &&
-      Date.now() - new Date(a.timestamp).getTime() < 3600000 // 1 hour
+    const existingAlert = this.alerts.find(
+      a =>
+        a.provider === provider &&
+        a.alertType === alertType &&
+        !a.acknowledged &&
+        Date.now() - new Date(a.timestamp).getTime() < 3600000 // 1 hour
     )
 
     if (existingAlert) return
@@ -310,7 +336,7 @@ export class APICostTracker {
       message,
       severity,
       timestamp: new Date().toISOString(),
-      acknowledged: false
+      acknowledged: false,
     }
 
     this.alerts.push(alert)
@@ -359,7 +385,7 @@ export class APICostTracker {
     }
 
     const relevantUsage = this.usage.filter(u => new Date(u.timestamp) >= startDate)
-    
+
     const totalCost = relevantUsage.reduce((sum, u) => sum + u.cost, 0)
     const requestCount = relevantUsage.length
     const cachedRequests = relevantUsage.filter(u => u.cached).length
@@ -380,11 +406,11 @@ export class APICostTracker {
 
     // Generate recommendations
     const recommendations: string[] = []
-    
+
     if (cacheHitRate < 0.7) {
       recommendations.push('Consider increasing cache TTL to improve cache hit rate')
     }
-    
+
     if (totalCost > this.budgetThresholds.daily) {
       recommendations.push('Daily budget exceeded - consider using free APIs more')
     }
@@ -403,7 +429,7 @@ export class APICostTracker {
       requestCount,
       cacheHitRate,
       topProviders,
-      recommendations
+      recommendations,
     }
   }
 
@@ -411,10 +437,14 @@ export class APICostTracker {
     const currentMonth = new Date().toISOString().substring(0, 7)
     const monthlyUsage = this.usage.filter(u => u.timestamp.startsWith(currentMonth))
     const currentCost = monthlyUsage.reduce((sum, u) => sum + u.cost, 0)
-    
+
     const daysInMonth = new Date().getDate()
-    const totalDaysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
-    
+    const totalDaysInMonth = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth() + 1,
+      0
+    ).getDate()
+
     return (currentCost / daysInMonth) * totalDaysInMonth
   }
 

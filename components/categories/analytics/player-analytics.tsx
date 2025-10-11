@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { User, TrendingUp, Target } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { User, TrendingUp, Target } from 'lucide-react'
 
 interface PlayerAnalyticsProps {
   team: string
@@ -19,41 +19,42 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
   const fetchPlayerData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch real player analytics data from API
       const params = new URLSearchParams({
         sport: sport,
-        timeRange: timeRange
+        timeRange: timeRange,
       })
       if (league) params.set('league', league)
       if (team && team !== 'all') params.set('team', team)
-      
+
       const response = await fetch(`/api/analytics/player-analytics?${params}`)
-      
+
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
       }
-      
+
       const data = await response.json()
-      
+
       if (data.success) {
         // Transform the data for the chart
-        const chartData = data.players?.map((player: any) => ({
-          id: player.id,
-          name: player.name,
-          team: player.team,
-          position: player.position,
-          points: player.points || 0,
-          rebounds: player.rebounds || 0,
-          assists: player.assists || 0,
-          steals: player.steals || 0,
-          blocks: player.blocks || 0,
-          gamesPlayed: player.gamesPlayed || 0,
-          minutesPerGame: player.minutesPerGame || 0,
-          efficiency: player.efficiency || 0,
-          rank: player.rank || 0
-        })) || []
-        
+        const chartData =
+          data.players?.map((player: any) => ({
+            id: player.id,
+            name: player.name,
+            team: player.team,
+            position: player.position,
+            points: player.points || 0,
+            rebounds: player.rebounds || 0,
+            assists: player.assists || 0,
+            steals: player.steals || 0,
+            blocks: player.blocks || 0,
+            gamesPlayed: player.gamesPlayed || 0,
+            minutesPerGame: player.minutesPerGame || 0,
+            efficiency: player.efficiency || 0,
+            rank: player.rank || 0,
+          })) || []
+
         setPlayerData(chartData)
       } else {
         console.error('API returned error:', data.error)
@@ -136,10 +137,14 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Top Rebounder</p>
                 <p className="text-2xl font-bold">
-                  {playerData.length > 0 ? playerData.sort((a, b) => b.rebounds - a.rebounds)[0]?.name : 'N/A'}
+                  {playerData.length > 0
+                    ? playerData.sort((a, b) => b.rebounds - a.rebounds)[0]?.name
+                    : 'N/A'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {playerData.length > 0 ? playerData.sort((a, b) => b.rebounds - a.rebounds)[0]?.rebounds + ' RPG' : ''}
+                  {playerData.length > 0
+                    ? playerData.sort((a, b) => b.rebounds - a.rebounds)[0]?.rebounds + ' RPG'
+                    : ''}
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-muted-foreground" />
@@ -153,10 +158,14 @@ export default function PlayerAnalytics({ team, timeRange, sport, league }: Play
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Top Assister</p>
                 <p className="text-2xl font-bold">
-                  {playerData.length > 0 ? playerData.sort((a, b) => b.assists - a.assists)[0]?.name : 'N/A'}
+                  {playerData.length > 0
+                    ? playerData.sort((a, b) => b.assists - a.assists)[0]?.name
+                    : 'N/A'}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {playerData.length > 0 ? playerData.sort((a, b) => b.assists - a.assists)[0]?.assists + ' APG' : ''}
+                  {playerData.length > 0
+                    ? playerData.sort((a, b) => b.assists - a.assists)[0]?.assists + ' APG'
+                    : ''}
                 </p>
               </div>
               <User className="h-8 w-8 text-muted-foreground" />

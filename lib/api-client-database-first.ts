@@ -6,9 +6,12 @@
 const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL as string | undefined
 // Resolve base URL: if an explicit external API base is configured, use it.
 // Otherwise, fallback to localhost for server-side usage or empty for client-side
-const RESOLVED_API_BASE_URL = (typeof RAW_API_BASE_URL === 'string' && RAW_API_BASE_URL.trim().length > 0)
-  ? RAW_API_BASE_URL
-  : (typeof window === 'undefined' ? 'http://localhost:3000' : '')
+const RESOLVED_API_BASE_URL =
+  typeof RAW_API_BASE_URL === 'string' && RAW_API_BASE_URL.trim().length > 0
+    ? RAW_API_BASE_URL
+    : typeof window === 'undefined'
+      ? 'http://localhost:3000'
+      : ''
 
 export interface Team {
   id: string
@@ -77,47 +80,47 @@ export interface GameStats {
 }
 
 export interface Player {
-  id: string;
-  sport: string;
-  name: string;
-  position?: string;
-  teamId?: string;
-  teamName?: string;
-  height?: string;
-  weight?: number;
-  age?: number;
-  experienceYears?: number;
-  college?: string;
-  country?: string;
-  jerseyNumber?: number;
-  isActive?: boolean;
-  headshotUrl?: string;
-  lastUpdated: string;
+  id: string
+  sport: string
+  name: string
+  position?: string
+  teamId?: string
+  teamName?: string
+  height?: string
+  weight?: number
+  age?: number
+  experienceYears?: number
+  college?: string
+  country?: string
+  jerseyNumber?: number
+  isActive?: boolean
+  headshotUrl?: string
+  lastUpdated: string
 }
 
 export interface PlayerStats {
-  games_played: number;
-  player_id: number;
-  season: number;
-  min: string;
-  fgm: number;
-  fga: number;
-  fg_pct: number;
-  fg3m: number;
-  fg3a: number;
-  fg3_pct: number;
-  ftm: number;
-  fta: number;
-  ft_pct: number;
-  oreb: number;
-  dreb: number;
-  reb: number;
-  ast: number;
-  turnover: number;
-  stl: number;
-  blk: number;
-  pf: number;
-  pts: number;
+  games_played: number
+  player_id: number
+  season: number
+  min: string
+  fgm: number
+  fga: number
+  fg_pct: number
+  fg3m: number
+  fg3a: number
+  fg3_pct: number
+  ftm: number
+  fta: number
+  ft_pct: number
+  oreb: number
+  dreb: number
+  reb: number
+  ast: number
+  turnover: number
+  stl: number
+  blk: number
+  pf: number
+  pts: number
 }
 
 export interface AnalyticsStats {
@@ -137,62 +140,62 @@ export interface AnalyticsStats {
 }
 
 export interface Prediction {
-  id: string;
-  game_id: string;
-  prediction_type: string;
-  predicted_outcome: string;
-  confidence: number;
-  model_name: string;
-  is_correct?: boolean | null;
-  predicted_value: number;
-  created_at: string;
-  updated_at: string;
-  sport?: string;
-  accuracy?: boolean;
-  reasoning?: string;
+  id: string
+  game_id: string
+  prediction_type: string
+  predicted_outcome: string
+  confidence: number
+  model_name: string
+  is_correct?: boolean | null
+  predicted_value: number
+  created_at: string
+  updated_at: string
+  sport?: string
+  accuracy?: boolean
+  reasoning?: string
   game?: {
-    game_date: string;
-    sport: string;
+    game_date: string
+    sport: string
     away_team?: {
-      abbreviation: string;
-    };
+      abbreviation: string
+    }
     home_team?: {
-      abbreviation: string;
-    };
-  };
+      abbreviation: string
+    }
+  }
 }
 
 export interface Odd {
-  id: string;
-  game_id: string;
-  sport?: string;
-  odds_type?: string;
-  home_odds?: number;
-  away_odds?: number;
-  spread?: number;
-  total?: number;
-  bookmaker?: string;
-  source?: string;
-  timestamp?: string;
-  home_team?: string;
-  away_team?: string;
+  id: string
+  game_id: string
+  sport?: string
+  odds_type?: string
+  home_odds?: number
+  away_odds?: number
+  spread?: number
+  total?: number
+  bookmaker?: string
+  source?: string
+  timestamp?: string
+  home_team?: string
+  away_team?: string
 }
 
 export interface Standing {
-  id: string;
-  sport: string;
-  league?: string;
-  team_id: string;
-  team_name?: string;
-  season?: string | number;
-  wins?: number;
-  losses?: number;
-  ties?: number;
-  win_percentage?: number;
-  games_back?: number;
-  conference?: string;
-  division?: string;
-  updated_at?: string;
+  id: string
+  sport: string
+  league?: string
+  team_id: string
+  team_name?: string
+  season?: string | number
+  wins?: number
+  losses?: number
+  ties?: number
+  win_percentage?: number
+  games_back?: number
+  conference?: string
+  division?: string
+  updated_at?: string
 }
 
 class DatabaseFirstApiClient {
@@ -204,7 +207,11 @@ class DatabaseFirstApiClient {
   constructor(baseUrl: string = RESOLVED_API_BASE_URL) {
     this.baseUrl = baseUrl
     // Detect browser timezone when available (client-side only)
-    if (typeof globalThis !== 'undefined' && typeof (globalThis as any).window !== 'undefined' && typeof Intl !== 'undefined') {
+    if (
+      typeof globalThis !== 'undefined' &&
+      typeof (globalThis as any).window !== 'undefined' &&
+      typeof Intl !== 'undefined'
+    ) {
       try {
         this.detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || null
       } catch {
@@ -229,7 +236,7 @@ class DatabaseFirstApiClient {
   private setCachedData<T>(cacheKey: string, data: T): void {
     this.cache.set(cacheKey, {
       data,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     })
   }
 
@@ -253,39 +260,56 @@ class DatabaseFirstApiClient {
   public getCacheStats(): { size: number; keys: string[] } {
     return {
       size: this.cache.size,
-      keys: Array.from(this.cache.keys())
+      keys: Array.from(this.cache.keys()),
     }
   }
 
-  private async request<T>(endpoint: string, options?: RequestInit, retries: number = 3): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options?: RequestInit,
+    retries: number = 3
+  ): Promise<T> {
     // Always include user's timezone (client) unless caller explicitly provided one
     const endpointWithTz = this.ensureTimezoneOnEndpoint(endpoint)
     // If no external base URL is configured, use same-origin and ensure `/api` prefix for Next.js routes
-    const url = this.baseUrl && this.baseUrl.trim().length > 0
-      ? `${this.baseUrl}${endpointWithTz}`
-      : (endpointWithTz.startsWith('/api') ? endpointWithTz : `/api${endpointWithTz}`)
+    const url =
+      this.baseUrl && this.baseUrl.trim().length > 0
+        ? `${this.baseUrl}${endpointWithTz.startsWith('/api') ? endpointWithTz : `/api${endpointWithTz}`}`
+        : endpointWithTz.startsWith('/api')
+          ? endpointWithTz
+          : `/api${endpointWithTz}`
 
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
         const response = await fetch(url, {
           headers: {
-            "Content-Type": "application/json",
+            'Content-Type': 'application/json',
             ...options?.headers,
           },
           ...options,
         })
 
         if (response.ok) {
-          return response.json() as Promise<T>
+          const contentType = response.headers.get('content-type')
+          if (contentType && contentType.includes('application/json')) {
+            return response.json() as Promise<T>
+          } else {
+            // If response is not JSON, it might be an HTML error page
+            const text = await response.text()
+            console.error(`Non-JSON response from ${url}:`, text.substring(0, 200))
+            throw new Error(`Expected JSON response but got ${contentType}`)
+          }
         }
 
         // Handle rate limiting
         if (response.status === 429) {
           const retryAfter = response.headers.get('Retry-After')
           const delay = retryAfter ? parseInt(retryAfter) * 1000 : Math.pow(2, attempt) * 1000
-          
+
           if (attempt < retries) {
-            console.warn(`Rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1})`)
+            console.warn(
+              `Rate limited, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1})`
+            )
             await new Promise(resolve => setTimeout(resolve, delay))
             continue
           }
@@ -294,20 +318,44 @@ class DatabaseFirstApiClient {
         // Handle other errors
         if (response.status >= 500 && attempt < retries) {
           const delay = Math.pow(2, attempt) * 1000
-          console.warn(`Server error ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1})`)
+          console.warn(
+            `Server error ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1})`
+          )
           await new Promise(resolve => setTimeout(resolve, delay))
           continue
         }
 
-        throw new Error(`API Error: ${response.status} ${response.statusText}`)
+        // Enhanced error messages based on status code
+        let errorMessage = `API Error: ${response.status} ${response.statusText}`
+
+        if (response.status === 400) {
+          errorMessage = `Bad Request: Invalid parameters sent to ${endpoint}`
+        } else if (response.status === 401) {
+          errorMessage = `Unauthorized: Authentication required for ${endpoint}`
+        } else if (response.status === 403) {
+          errorMessage = `Forbidden: Access denied to ${endpoint}`
+        } else if (response.status === 404) {
+          errorMessage = `Not Found: API endpoint ${endpoint} does not exist`
+        } else if (response.status === 500) {
+          errorMessage = `Internal Server Error: Server encountered an error processing ${endpoint}`
+        } else if (response.status === 502) {
+          errorMessage = `Bad Gateway: Upstream server error for ${endpoint}`
+        } else if (response.status === 503) {
+          errorMessage = `Service Unavailable: ${endpoint} is temporarily unavailable`
+        }
+
+        throw new Error(errorMessage)
       } catch (error) {
         if (attempt === retries) {
           throw error
         }
-        
+
         // Network error, retry with exponential backoff
         const delay = Math.pow(2, attempt) * 1000
-        console.warn(`Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1}):`, error)
+        console.warn(
+          `Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${retries + 1}):`,
+          error
+        )
         await new Promise(resolve => setTimeout(resolve, delay))
       }
     }
@@ -324,12 +372,14 @@ class DatabaseFirstApiClient {
     }
 
     const searchParams = new URLSearchParams()
-    if (params?.league) searchParams.set("league", params.league)
-    if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.league) searchParams.set('league', params.league)
+    if (params?.sport) searchParams.set('sport', params.sport)
 
     const query = searchParams.toString()
-    const response = await this.request<{ success: boolean; data: Team[] }>(`/database-first/teams${query ? `?${query}` : ""}`)
-    
+    const response = await this.request<{ success: boolean; data: Team[] }>(
+      `/database-first/teams${query ? `?${query}` : ''}`
+    )
+
     const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
@@ -358,19 +408,21 @@ class DatabaseFirstApiClient {
     }
 
     const searchParams = new URLSearchParams()
-    if (params?.date_from) searchParams.set("date_from", params.date_from)
-    if (params?.date_to) searchParams.set("date_to", params.date_to)
-    if (params?.dateFrom) searchParams.set("date_from", params.dateFrom)
-    if (params?.dateTo) searchParams.set("date_to", params.dateTo)
-    if (params?.status) searchParams.set("status", params.status)
-    if (params?.team_id) searchParams.set("team_id", params.team_id)
-    if (params?.limit) searchParams.set("limit", params.limit.toString())
-    if (params?.sport) searchParams.set("sport", params.sport)
-    if (params?.search) searchParams.set("search", params.search)
+    if (params?.date_from) searchParams.set('date_from', params.date_from)
+    if (params?.date_to) searchParams.set('date_to', params.date_to)
+    if (params?.dateFrom) searchParams.set('date_from', params.dateFrom)
+    if (params?.dateTo) searchParams.set('date_to', params.dateTo)
+    if (params?.status) searchParams.set('status', params.status)
+    if (params?.team_id) searchParams.set('team_id', params.team_id)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.search) searchParams.set('search', params.search)
 
     const query = searchParams.toString()
-    const response = await this.request<{ success: boolean; data: Game[] }>(`/database-first/games${query ? `?${query}` : ""}`)
-    
+    const response = await this.request<{ success: boolean; data: Game[] }>(
+      `/database-first/games${query ? `?${query}` : ''}`
+    )
+
     const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
@@ -382,38 +434,38 @@ class DatabaseFirstApiClient {
 
   // Players - DATABASE FIRST
   async getPlayers(params?: {
-    sport?: string;
-    team_id?: string;
-    limit?: number;
-    search?: string;
+    sport?: string
+    team_id?: string
+    limit?: number
+    search?: string
   }): Promise<Player[]> {
-    const searchParams = new URLSearchParams();
-    if (params?.sport) searchParams.set("sport", params.sport);
-    if (params?.team_id) searchParams.set("team_id", params.team_id);
-    if (params?.limit) searchParams.set("limit", params.limit.toString());
-    if (params?.search) searchParams.set("search", params.search);
+    const searchParams = new URLSearchParams()
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.team_id) searchParams.set('team_id', params.team_id)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.search) searchParams.set('search', params.search)
 
-    const query = searchParams.toString();
+    const query = searchParams.toString()
     const response = await this.request<{ success: boolean; data: Player[] }>(
-      `/players${query ? `?${query}` : ""}`
-    );
+      `/players${query ? `?${query}` : ''}`
+    )
 
-    return response.success ? response.data : [];
+    return response.success ? response.data : []
   }
 
   async getPlayerStats(params: {
-    sport: string;
-    player_id: string;
-    season?: number;
+    sport: string
+    player_id: string
+    season?: number
   }): Promise<PlayerStats[]> {
-    const searchParams = new URLSearchParams();
-    searchParams.set("sport", params.sport);
-    searchParams.set("playerId", params.player_id);
+    const searchParams = new URLSearchParams()
+    searchParams.set('sport', params.sport)
+    searchParams.set('playerId', params.player_id)
     if (params.season) {
-      searchParams.set("season", params.season.toString());
+      searchParams.set('season', params.season.toString())
     }
-    const query = searchParams.toString();
-    return this.request<PlayerStats[]>(`/players/stats?${query}`);
+    const query = searchParams.toString()
+    return this.request<PlayerStats[]>(`/players/stats?${query}`)
   }
 
   // Predictions - DATABASE FIRST
@@ -431,15 +483,17 @@ class DatabaseFirstApiClient {
     }
 
     const searchParams = new URLSearchParams()
-    if (params?.game_id) searchParams.set("game_id", params.game_id)
-    if (params?.prediction_type) searchParams.set("prediction_type", params.prediction_type)
-    if (params?.model_name) searchParams.set("model_name", params.model_name)
-    if (params?.limit) searchParams.set("limit", params.limit.toString())
-    if (params?.sport) searchParams.set("sport", params.sport)
+    if (params?.game_id) searchParams.set('game_id', params.game_id)
+    if (params?.prediction_type) searchParams.set('prediction_type', params.prediction_type)
+    if (params?.model_name) searchParams.set('model_name', params.model_name)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.sport) searchParams.set('sport', params.sport)
 
     const query = searchParams.toString()
-    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/predictions${query ? `?${query}` : ""}`)
-    
+    const response = await this.request<{ success: boolean; data: any[] }>(
+      `/database-first/predictions${query ? `?${query}` : ''}`
+    )
+
     const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
@@ -459,14 +513,16 @@ class DatabaseFirstApiClient {
     }
 
     const searchParams = new URLSearchParams()
-    if (params?.sport) searchParams.set("sport", params.sport)
-    if (params?.game_id) searchParams.set("gameId", params.game_id)
-    if (params?.source) searchParams.set("source", params.source)
-    if (params?.limit) searchParams.set("limit", params.limit.toString())
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.game_id) searchParams.set('gameId', params.game_id)
+    if (params?.source) searchParams.set('source', params.source)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
 
     const query = searchParams.toString()
-    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/odds${query ? `?${query}` : ""}`)
-    
+    const response = await this.request<{ success: boolean; data: any[] }>(
+      `/database-first/odds${query ? `?${query}` : ''}`
+    )
+
     const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
@@ -474,19 +530,21 @@ class DatabaseFirstApiClient {
 
   // Analytics
   async getAnalyticsStats(sport?: string): Promise<AnalyticsStats> {
-    const url = sport ? `/analytics/stats?sport=${sport}` : "/analytics/stats"
+    const url = sport ? `/analytics/stats?sport=${sport}` : '/analytics/stats'
     const response = await this.request<{ success: boolean; data: AnalyticsStats }>(url)
-    return response.success ? response.data : {
-      total_games: 0,
-      total_predictions: 0,
-      total_teams: 0,
-      accuracy_rate: 0,
-      recent_predictions: 0,
-      recent_performance: {
-        accuracy_by_type: {},
-        daily_stats: []
-      }
-    }
+    return response.success
+      ? response.data
+      : {
+          total_games: 0,
+          total_predictions: 0,
+          total_teams: 0,
+          accuracy_rate: 0,
+          recent_predictions: 0,
+          recent_performance: {
+            accuracy_by_type: {},
+            daily_stats: [],
+          },
+        }
   }
 
   async getTeamAnalytics(teamId: string): Promise<any> {
@@ -494,7 +552,11 @@ class DatabaseFirstApiClient {
   }
 
   // Standings - DATABASE FIRST
-  async getStandings(params?: { league?: string; sport?: string; season?: string }): Promise<any[]> {
+  async getStandings(params?: {
+    league?: string
+    sport?: string
+    season?: string
+  }): Promise<any[]> {
     const cacheKey = this.getCacheKey('/database-first/standings', params)
     const cached = this.getCachedData<any[]>(cacheKey)
     if (cached) {
@@ -502,45 +564,58 @@ class DatabaseFirstApiClient {
     }
 
     const searchParams = new URLSearchParams()
-    if (params?.league) searchParams.set("league", params.league)
-    if (params?.sport) searchParams.set("sport", params.sport)
-    if (params?.season) searchParams.set("season", params.season)
+    if (params?.league) searchParams.set('league', params.league)
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.season) searchParams.set('season', params.season)
 
     const query = searchParams.toString()
-    const response = await this.request<{ success: boolean; data: any[] }>(`/database-first/standings${query ? `?${query}` : ""}`)
-    
+    const response = await this.request<{ success: boolean; data: any[] }>(
+      `/database-first/standings${query ? `?${query}` : ''}`
+    )
+
     const result = response.success ? response.data : []
     this.setCachedData(cacheKey, result)
     return result
   }
 
   // Team Stats
-  async getTeamStats(params?: { team_id?: string; league?: string; sport?: string; season?: string }): Promise<any[]> {
+  async getTeamStats(params?: {
+    team_id?: string
+    league?: string
+    sport?: string
+    season?: string
+  }): Promise<any[]> {
     const searchParams = new URLSearchParams()
-    if (params?.team_id) searchParams.set("team_id", params.team_id)
-    if (params?.league) searchParams.set("league", params.league)
-    if (params?.sport) searchParams.set("sport", params.sport)
-    if (params?.season) searchParams.set("season", params.season)
+    if (params?.team_id) searchParams.set('team_id', params.team_id)
+    if (params?.league) searchParams.set('league', params.league)
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.season) searchParams.set('season', params.season)
 
     const query = searchParams.toString()
-    return this.request<any[]>(`/teams/stats${query ? `?${query}` : ""}`)
+    return this.request<any[]>(`/teams/stats${query ? `?${query}` : ''}`)
   }
 
   // Upcoming Predictions
-  async getUpcomingPredictions(params?: { sport?: string; limit?: number; days?: number }): Promise<any[]> {
+  async getUpcomingPredictions(params?: {
+    sport?: string
+    limit?: number
+    days?: number
+  }): Promise<any[]> {
     const searchParams = new URLSearchParams()
-    if (params?.sport) searchParams.set("sport", params.sport)
-    if (params?.limit) searchParams.set("limit", params.limit.toString())
-    if (params?.days) searchParams.set("days", params.days.toString())
+    if (params?.sport) searchParams.set('sport', params.sport)
+    if (params?.limit) searchParams.set('limit', params.limit.toString())
+    if (params?.days) searchParams.set('days', params.days.toString())
 
     const query = searchParams.toString()
-    return this.request<any[]>(`/predictions/upcoming${query ? `?${query}` : ""}`)
+    return this.request<any[]>(`/predictions/upcoming${query ? `?${query}` : ''}`)
   }
 
   // Health check
   async getHealthStatus(): Promise<Record<string, boolean>> {
     try {
-      const response = await this.request<{ success: boolean; data: Record<string, boolean> }>("/health")
+      const response = await this.request<{ success: boolean; data: Record<string, boolean> }>(
+        '/health'
+      )
       return response.success ? response.data : {}
     } catch (error) {
       console.warn('Health check failed:', error)

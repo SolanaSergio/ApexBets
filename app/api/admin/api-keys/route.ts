@@ -12,8 +12,10 @@ export async function GET(request: NextRequest) {
       const success = apiKeyRotation.manualRotate(provider)
       return NextResponse.json({
         success,
-        message: success ? `API key rotated for ${provider}` : `Failed to rotate API key for ${provider}`,
-        stats: apiKeyRotation.getRotationStats(provider)
+        message: success
+          ? `API key rotated for ${provider}`
+          : `Failed to rotate API key for ${provider}`,
+        stats: apiKeyRotation.getRotationStats(provider),
       })
     }
 
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success,
         message: success ? 'Usage statistics reset' : 'Failed to reset usage statistics',
-        stats: apiKeyRotation.getRotationStats(provider)
+        stats: apiKeyRotation.getRotationStats(provider),
       })
     }
 
@@ -38,10 +40,7 @@ export async function GET(request: NextRequest) {
     if (provider) {
       const stats = apiKeyRotation.getRotationStats(provider)
       if (!stats) {
-        return NextResponse.json(
-          { error: `Provider '${provider}' not found` },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: `Provider '${provider}' not found` }, { status: 404 })
       }
       return NextResponse.json(stats)
     }
@@ -50,15 +49,14 @@ export async function GET(request: NextRequest) {
     const allStats = apiKeyRotation.getRotationStats()
     return NextResponse.json({
       providers: allStats,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
-
   } catch (error) {
     console.error('API key rotation endpoint error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -74,8 +72,10 @@ export async function POST(request: NextRequest) {
       const success = apiKeyRotation.addApiKey(provider, apiKey, priority)
       return NextResponse.json({
         success,
-        message: success ? 'API key added successfully' : 'Failed to add API key (may already exist)',
-        stats: apiKeyRotation.getRotationStats(provider)
+        message: success
+          ? 'API key added successfully'
+          : 'Failed to add API key (may already exist)',
+        stats: apiKeyRotation.getRotationStats(provider),
       })
     }
 
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success,
         message: success ? 'API key removed successfully' : 'Failed to remove API key (not found)',
-        stats: apiKeyRotation.getRotationStats(provider)
+        stats: apiKeyRotation.getRotationStats(provider),
       })
     }
 
@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
         valid: isValid,
         message: isValid ? 'API key is valid' : 'API key is invalid',
         provider,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     }
 
@@ -102,13 +102,12 @@ export async function POST(request: NextRequest) {
       { error: 'Invalid action or missing required parameters' },
       { status: 400 }
     )
-
   } catch (error) {
     console.error('API key rotation POST error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

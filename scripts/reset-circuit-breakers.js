@@ -22,14 +22,11 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 async function resetCircuitBreakers() {
   console.log('🔄 Resetting circuit breakers and error states...')
-  
+
   try {
     // Clear any error logs or failure counts from the database
-    const { error: clearError } = await supabase
-      .from('api_error_logs')
-      .delete()
-      .neq('id', '') // Delete all error logs
-    
+    const { error: clearError } = await supabase.from('api_error_logs').delete().neq('id', '') // Delete all error logs
+
     if (clearError) {
       console.warn('⚠️  Could not clear error logs:', clearError.message)
     } else {
@@ -41,7 +38,7 @@ async function resetCircuitBreakers() {
       .from('cache_entries')
       .delete()
       .lt('expires_at', new Date().toISOString())
-    
+
     if (clearCacheError) {
       console.warn('⚠️  Could not clear expired cache:', clearCacheError.message)
     } else {
@@ -53,7 +50,7 @@ async function resetCircuitBreakers() {
       .from('rate_limit_tracking')
       .delete()
       .neq('id', '')
-    
+
     if (resetRateLimitError) {
       console.warn('⚠️  Could not reset rate limit tracking:', resetRateLimitError.message)
     } else {
@@ -62,7 +59,6 @@ async function resetCircuitBreakers() {
 
     console.log('🎉 Circuit breakers reset successfully!')
     console.log('📝 Note: In-memory circuit breakers will reset on next server restart')
-    
   } catch (error) {
     console.error('❌ Error resetting circuit breakers:', error.message)
     process.exit(1)

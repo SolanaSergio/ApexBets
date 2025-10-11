@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useAuth } from '@/lib/auth/auth-context'
 import { useRouter } from 'next/navigation'
@@ -57,22 +57,16 @@ export function AuthGuard({ children, fallback }: AuthGuardProps) {
               <Shield className="h-12 w-12 text-primary" />
             </div>
             <CardTitle className="text-2xl">Authentication Required</CardTitle>
-            <CardDescription>
-              Please sign in to access this page
-            </CardDescription>
+            <CardDescription>Please sign in to access this page</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Button 
+            <Button
               onClick={() => router.push('/login')}
               className="w-full bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800"
             >
               Sign In
             </Button>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push('/')}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => router.push('/')} className="w-full">
               Go Home
             </Button>
           </CardContent>

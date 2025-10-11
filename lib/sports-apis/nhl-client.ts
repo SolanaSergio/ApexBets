@@ -256,11 +256,11 @@ export class NHLClient {
 
       const response = await fetch(url, {
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ProjectApex/1.0.0'
+          Accept: 'application/json',
+          'User-Agent': 'ProjectApex/1.0.0',
         },
         // Add timeout
-        signal: AbortSignal.timeout(15000) // 15 second timeout
+        signal: AbortSignal.timeout(15000), // 15 second timeout
       })
 
       if (!response.ok) {
@@ -278,11 +278,12 @@ export class NHLClient {
       }
 
       // Handle network errors with retry and fallback
-      if (error instanceof Error && (
-        error.message.includes('ENOTFOUND') ||
-        error.message.includes('ECONNREFUSED') ||
-        error.message.includes('fetch failed')
-      )) {
+      if (
+        error instanceof Error &&
+        (error.message.includes('ENOTFOUND') ||
+          error.message.includes('ECONNREFUSED') ||
+          error.message.includes('fetch failed'))
+      ) {
         if (retryCount < this.maxRetries) {
           console.warn(`NHL API network error, retrying... (${retryCount + 1}/${this.maxRetries})`)
           await this.exponentialBackoff(retryCount)
@@ -334,7 +335,9 @@ export class NHLClient {
 
   // Games & Schedule
   async getSchedule(date: string): Promise<NHLGame[]> {
-    const data = await this.request<{ dates: Array<{ games: NHLGame[] }> }>(`/schedule?date=${date}`)
+    const data = await this.request<{ dates: Array<{ games: NHLGame[] }> }>(
+      `/schedule?date=${date}`
+    )
     return data.dates?.flatMap(day => day.games) || []
   }
 
@@ -350,9 +353,8 @@ export class NHLClient {
 
   async getLiveGames(): Promise<NHLGame[]> {
     const games = await this.getTodaysGames()
-    return games.filter(game => 
-      game.status?.detailedState === 'In Progress' || 
-      game.status?.detailedState === 'Final'
+    return games.filter(
+      game => game.status?.detailedState === 'In Progress' || game.status?.detailedState === 'Final'
     )
   }
 
@@ -391,7 +393,9 @@ export class NHLClient {
 
   async getGoalieStats(season?: string): Promise<any> {
     const seasonParam = season || this.getCurrentSeasonString()
-    return this.request(`/stats/leaders?season=${seasonParam}&leaderCategories=wins,losses,otLosses,shutouts,goalsAgainstAverage,savePercentage`)
+    return this.request(
+      `/stats/leaders?season=${seasonParam}&leaderCategories=wins,losses,otLosses,shutouts,goalsAgainstAverage,savePercentage`
+    )
   }
 
   // Country and location data
@@ -408,16 +412,17 @@ export class NHLClient {
     try {
       // Use the official NHL API to get current teams dynamically
       const teams = await this.getTeams()
-      
+
       // Find team by name (case-insensitive)
-      const team = teams.find(team => 
-        team.name?.toLowerCase() === teamName.toLowerCase() ||
-        team.teamName?.toLowerCase() === teamName.toLowerCase() ||
-        team.locationName?.toLowerCase() === teamName.toLowerCase() ||
-        team.shortName?.toLowerCase() === teamName.toLowerCase()
+      const team = teams.find(
+        team =>
+          team.name?.toLowerCase() === teamName.toLowerCase() ||
+          team.teamName?.toLowerCase() === teamName.toLowerCase() ||
+          team.locationName?.toLowerCase() === teamName.toLowerCase() ||
+          team.shortName?.toLowerCase() === teamName.toLowerCase()
       )
-      
-      return team ? (team.abbreviation || null) : null
+
+      return team ? team.abbreviation || null : null
     } catch (error) {
       console.warn(`Failed to lookup team abbreviation for ${teamName}:`, error)
       return null
@@ -439,11 +444,11 @@ export class NHLClient {
     try {
       const data = await this.request<{ teams: NHLTeam[] }>('/teams')
       const teams = data.teams || []
-      
+
       // Cache teams
       this.teamCache = teams
       this.teamCacheExpiry = Date.now() + this.TEAM_CACHE_TTL
-      
+
       return teams
     } catch (error) {
       console.error('Failed to fetch NHL teams:', error)

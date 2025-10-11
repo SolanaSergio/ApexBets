@@ -207,23 +207,23 @@ export class ESPNClient {
 
   private async request<T>(endpoint: string, retryAttempt: number = 0): Promise<T> {
     // Rate limiting is now handled by the centralized Enhanced Rate Limiter
-    
+
     try {
       const response = await fetch(`${this.baseUrl}${endpoint}`)
-      
+
       if (!response.ok) {
         if (response.status === 429 && retryAttempt < this.maxRetries) {
           console.warn('ESPN API: Rate limit hit, retrying...')
           await new Promise(resolve => setTimeout(resolve, 2000 * (retryAttempt + 1)))
           return this.request<T>(endpoint, retryAttempt + 1)
         }
-        
+
         if (response.status >= 500 && retryAttempt < this.maxRetries) {
           console.warn(`ESPN API: Server error ${response.status}, retrying...`)
           await new Promise(resolve => setTimeout(resolve, 1000 * (retryAttempt + 1)))
           return this.request<T>(endpoint, retryAttempt + 1)
         }
-        
+
         console.warn(`ESPN API Error: ${response.status} ${response.statusText}`)
         return { events: [], teams: [], children: [] } as T
       }
@@ -232,22 +232,28 @@ export class ESPNClient {
       return data as T
     } catch (error) {
       if (retryAttempt < this.maxRetries) {
-        console.warn(`ESPN API: Network error, retrying... (${retryAttempt + 1}/${this.maxRetries})`)
+        console.warn(
+          `ESPN API: Network error, retrying... (${retryAttempt + 1}/${this.maxRetries})`
+        )
         await new Promise(resolve => setTimeout(resolve, 1000 * (retryAttempt + 1)))
         return this.request<T>(endpoint, retryAttempt + 1)
       }
-      
+
       console.error('ESPN API request failed:', error)
       return { events: [], teams: [], children: [] } as T
     }
   }
 
   // Scoreboard data for different sports
-  async getScoreboard(sport: 'football' | 'basketball' | 'baseball' | 'hockey', league: string, date?: string): Promise<{ events: ESPNGame[] }> {
-    const endpoint = date 
+  async getScoreboard(
+    sport: 'football' | 'basketball' | 'baseball' | 'hockey',
+    league: string,
+    date?: string
+  ): Promise<{ events: ESPNGame[] }> {
+    const endpoint = date
       ? `/${sport}/${league}/scoreboard?dates=${date}`
       : `/${sport}/${league}/scoreboard`
-    
+
     return this.request<{ events: ESPNGame[] }>(endpoint)
   }
 
@@ -257,7 +263,7 @@ export class ESPNClient {
     return data.events || []
   }
 
-  // NBA Scoreboard  
+  // NBA Scoreboard
   async getNBAScoreboard(date?: string): Promise<ESPNGame[]> {
     const data = await this.getScoreboard('basketball', 'nba', date)
     return data.events || []
@@ -276,25 +282,45 @@ export class ESPNClient {
   }
 
   // Teams for a league
-  async getTeams(sport: 'football' | 'basketball' | 'baseball' | 'hockey', league: string): Promise<ESPNTeam[]> {
-    const data = await this.request<{ sports: Array<{ leagues: Array<{ teams: ESPNTeam[] }> }> }>(`/${sport}/${league}/teams`)
+  async getTeams(
+    sport: 'football' | 'basketball' | 'baseball' | 'hockey',
+    league: string
+  ): Promise<ESPNTeam[]> {
+    const data = await this.request<{ sports: Array<{ leagues: Array<{ teams: ESPNTeam[] }> }> }>(
+      `/${sport}/${league}/teams`
+    )
     return data.sports?.[0]?.leagues?.[0]?.teams || []
   }
 
   // Standings
-  async getStandings(sport: 'football' | 'basketball' | 'baseball' | 'hockey', league: string): Promise<ESPNStanding[]> {
-    const data = await this.request<{ children: Array<{ standings: { entries: ESPNStanding[] } }> }>(`/${sport}/${league}/standings`)
+  async getStandings(
+    sport: 'football' | 'basketball' | 'baseball' | 'hockey',
+    league: string
+  ): Promise<ESPNStanding[]> {
+    const data = await this.request<{
+      children: Array<{ standings: { entries: ESPNStanding[] } }>
+    }>(`/${sport}/${league}/standings`)
     return data.children?.[0]?.standings?.entries || []
   }
 
   // Team roster
-  async getTeamRoster(sport: 'football' | 'basketball' | 'baseball' | 'hockey', league: string, teamId: string): Promise<any[]> {
-    const data = await this.request<{ athletes: any[] }>(`/${sport}/${league}/teams/${teamId}/roster`)
+  async getTeamRoster(
+    sport: 'football' | 'basketball' | 'baseball' | 'hockey',
+    league: string,
+    teamId: string
+  ): Promise<any[]> {
+    const data = await this.request<{ athletes: any[] }>(
+      `/${sport}/${league}/teams/${teamId}/roster`
+    )
     return data.athletes || []
   }
 
   // Player stats
-  async getPlayerStats(sport: 'football' | 'basketball' | 'baseball' | 'hockey', league: string, playerId: string): Promise<any> {
+  async getPlayerStats(
+    sport: 'football' | 'basketball' | 'baseball' | 'hockey',
+    league: string,
+    playerId: string
+  ): Promise<any> {
     const data = await this.request<any>(`/${sport}/${league}/athletes/${playerId}/stats`)
     return data || null
   }

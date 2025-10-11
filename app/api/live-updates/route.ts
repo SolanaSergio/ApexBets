@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { normalizeGameData } from "@/lib/utils/data-utils"
-import { databaseOptimizer } from "@/lib/database/optimize-queries"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { normalizeGameData } from '@/lib/utils/data-utils'
+import { databaseOptimizer } from '@/lib/database/optimize-queries'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 // Explicitly set runtime to suppress warnings
@@ -12,40 +12,42 @@ const CACHE_TTL = 30 // 30 seconds cache
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
-    const league = searchParams.get("league") || "all"
+    const sport = searchParams.get('sport') || 'all'
+    const league = searchParams.get('league') || 'all'
 
-    const cacheKey = `live-updates-${sport}-${league}`;
-    const cached = await databaseCacheService.get(cacheKey);
+    const cacheKey = `live-updates-${sport}-${league}`
+    const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
-        return NextResponse.json(cached);
+      return NextResponse.json(cached)
     }
 
     // ARCHITECTURE PATTERN: Database-First Approach
     // Only fetch from database - external APIs should only be called by background services
     const databaseResult = await getLiveDataFromDatabase(sport, league)
-    
+
     // Always return database data, even if empty
     console.log(`Returning database data for ${sport}`)
-    await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL);
+    await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL)
     return NextResponse.json(databaseResult)
-
   } catch (error) {
     console.error('Live updates API error:', error)
-    return NextResponse.json({ 
-      success: false,
-      error: "Internal server error",
-      live: [],
-      recent: [],
-      upcoming: [],
-      summary: {
-        totalLive: 0,
-        totalRecent: 0,
-        totalUpcoming: 0,
-        lastUpdated: new Date().toISOString(),
-        dataSource: "error"
-      }
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Internal server error',
+        live: [],
+        recent: [],
+        upcoming: [],
+        summary: {
+          totalLive: 0,
+          totalRecent: 0,
+          totalUpcoming: 0,
+          lastUpdated: new Date().toISOString(),
+          dataSource: 'error',
+        },
+      },
+      { status: 500 }
+    )
   }
 }
 
@@ -58,7 +60,7 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
     const supabase = await createClient()
 
     if (!supabase) {
-      throw new Error("Failed to create Supabase client")
+      throw new Error('Failed to create Supabase client')
     }
 
     // Use optimized database queries
@@ -72,17 +74,17 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
 
     // Normalize game data
     const normalizedLiveGames = (liveGames || []).map((game: any) => {
-      const homeTeam = game.home_team_data || { 
-        name: game.home_team || 'Home Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const homeTeam = game.home_team_data || {
+        name: game.home_team || 'Home Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      const awayTeam = game.away_team_data || { 
-        name: game.away_team || 'Visiting Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const awayTeam = game.away_team_data || {
+        name: game.away_team || 'Visiting Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      
+
       const gameData = {
         id: game.id,
         home_team_id: game.home_team_id,
@@ -102,24 +104,24 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         home_team: homeTeam,
         away_team: awayTeam,
         created_at: game.created_at,
-        updated_at: game.updated_at
+        updated_at: game.updated_at,
       }
-      
+
       return normalizeGameData(gameData, game.sport, game.league)
     })
-    
+
     const normalizedRecentGames = (recentGames || []).map((game: any) => {
-      const homeTeam = game.home_team_data || { 
-        name: game.home_team || 'Home Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const homeTeam = game.home_team_data || {
+        name: game.home_team || 'Home Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      const awayTeam = game.away_team_data || { 
-        name: game.away_team || 'Visiting Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const awayTeam = game.away_team_data || {
+        name: game.away_team || 'Visiting Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      
+
       const gameData = {
         id: game.id,
         home_team_id: game.home_team_id,
@@ -139,24 +141,24 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         home_team: homeTeam,
         away_team: awayTeam,
         created_at: game.created_at,
-        updated_at: game.updated_at
+        updated_at: game.updated_at,
       }
-      
+
       return normalizeGameData(gameData, game.sport, game.league)
     })
-    
+
     const normalizedUpcomingGames = (upcomingGames || []).map((game: any) => {
-      const homeTeam = game.home_team_data || { 
-        name: game.home_team || 'Home Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const homeTeam = game.home_team_data || {
+        name: game.home_team || 'Home Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      const awayTeam = game.away_team_data || { 
-        name: game.away_team || 'Visiting Team', 
-        logo_url: null, 
-        abbreviation: null 
+      const awayTeam = game.away_team_data || {
+        name: game.away_team || 'Visiting Team',
+        logo_url: null,
+        abbreviation: null,
       }
-      
+
       const gameData = {
         id: game.id,
         home_team_id: game.home_team_id,
@@ -176,9 +178,9 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         home_team: homeTeam,
         away_team: awayTeam,
         created_at: game.created_at,
-        updated_at: game.updated_at
+        updated_at: game.updated_at,
       }
-      
+
       return normalizeGameData(gameData, game.sport, game.league)
     })
 
@@ -192,12 +194,11 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         totalRecent: normalizedRecentGames.length,
         totalUpcoming: normalizedUpcomingGames.length,
         lastUpdated: new Date().toISOString(),
-        dataSource: "database"
+        dataSource: 'database',
       },
       sport,
-      league
+      league,
     }
-
   } catch (error) {
     console.error('Database live data fetch failed:', error)
     return {
@@ -210,10 +211,10 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
         totalRecent: 0,
         totalUpcoming: 0,
         lastUpdated: new Date().toISOString(),
-        dataSource: "error"
+        dataSource: 'error',
       },
       sport,
-      league
+      league,
     }
   }
 }

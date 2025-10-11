@@ -158,7 +158,7 @@ export class ApiSportsClient {
     const key = apiKeyRotation.getCurrentKey('api-sports')
     if (!key || key === 'your_rapidapi_key_here') {
       structuredLogger.warn('API-Sports: No valid RapidAPI key configured', {
-        provider: this.provider
+        provider: this.provider,
       })
       return null
     }
@@ -174,72 +174,72 @@ export class ApiSportsClient {
     try {
       // Check rate limits before making request
       const rateLimitResult = await enhancedRateLimiter.checkRateLimit(this.provider, endpoint)
-      
+
       if (!rateLimitResult.allowed) {
         const retryAfter = rateLimitResult.retryAfter || 60
         structuredLogger.warn('API-Sports rate limit exceeded', {
           provider: this.provider,
           endpoint,
           retryAfter,
-          remaining: rateLimitResult.remaining
+          remaining: rateLimitResult.remaining,
         })
-        
+
         // Wait for the retry period
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000))
-        
+
         // Retry once after waiting
         if (retryAttempt < 1) {
           return this.request<T>(endpoint, retryAttempt + 1)
         }
-        
+
         throw new Error(`Rate limit exceeded. Retry after ${retryAfter} seconds.`)
       }
-      
+
       // Get current API key from rotation service
       const apiKey = this.getApiKey()
       if (!apiKey || apiKey === '' || apiKey === 'your_rapidapi_key_here') {
         structuredLogger.warn('API-SPORTS API key not configured, returning empty data', {
           provider: this.provider,
-          endpoint
+          endpoint,
         })
         return { response: [] } as T
       }
-    
+
       const startTime = Date.now()
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-      
+
       const response = await fetch(`${this.baseUrl}${endpoint}`, {
         headers: {
           'X-RapidAPI-Key': apiKey,
           'X-RapidAPI-Host': 'api-football-v1.p.rapidapi.com',
-          'User-Agent': 'ApexBets/1.0'
+          'User-Agent': 'ApexBets/1.0',
         },
-        signal: controller.signal
+        signal: controller.signal,
       })
-      
+
       clearTimeout(timeoutId)
-      
+
       const duration = Date.now() - startTime
-      
+
       // Log API call for monitoring
       structuredLogger.apiCall('GET', endpoint, response.status, duration, {
         provider: this.provider,
-        remaining: rateLimitResult.remaining
+        remaining: rateLimitResult.remaining,
       })
-      
+
       if (!response.ok) {
         const errorResult = apiSpecificErrorHandler.handleError(
           this.provider,
           new Error(`HTTP ${response.status}: ${response.statusText}`),
           response.status
         )
-        
+
         if (response.status === 401) {
           structuredLogger.error('API-SPORTS authentication failed', {
             endpoint,
             provider: this.provider,
-            status: response.status
+            status: response.status,
           })
           apiKeyRotation.rotateToNextKey('api-sports', 'invalid')
           if (retryAttempt < this.maxRetries) {
@@ -250,7 +250,7 @@ export class ApiSportsClient {
           structuredLogger.warn('API-SPORTS access denied', {
             endpoint,
             provider: this.provider,
-            status: response.status
+            status: response.status,
           })
           // 403 errors typically mean the API key doesn't have access to this endpoint
           // Don't retry as it won't help - return empty data instead
@@ -259,7 +259,7 @@ export class ApiSportsClient {
         } else if (response.status === 429) {
           structuredLogger.rateLimitExceeded(this.provider, 2, {
             endpoint,
-            retryAfter: errorResult.retryAfterMs
+            retryAfter: errorResult.retryAfterMs,
           })
           apiKeyRotation.rotateToNextKey('api-sports', 'rate_limit')
           if (retryAttempt < this.maxRetries) {
@@ -283,50 +283,56 @@ export class ApiSportsClient {
       }
 
       const data = await response.json()
-      
+
       // Log successful response
       structuredLogger.info('API-SPORTS request successful', {
         provider: this.provider,
         endpoint,
         duration,
-        dataSize: JSON.stringify(data).length
+        dataSize: JSON.stringify(data).length,
       })
-      
+
       return data as T
     } catch (error) {
       const errorResult = apiSpecificErrorHandler.handleError(
         this.provider,
         error instanceof Error ? error : new Error(String(error))
       )
-      
-      structuredLogger.serviceError(this.provider, error instanceof Error ? error : new Error(String(error)), {
-        endpoint,
-        retryAttempt,
-        shouldRetry: errorResult.shouldRetry
-      })
-      
+
+      structuredLogger.serviceError(
+        this.provider,
+        error instanceof Error ? error : new Error(String(error)),
+        {
+          endpoint,
+          retryAttempt,
+          shouldRetry: errorResult.shouldRetry,
+        }
+      )
+
       if (errorResult.shouldRetry && retryAttempt < this.maxRetries) {
         const delay = errorResult.retryAfterMs || 5000
         await new Promise(resolve => setTimeout(resolve, delay))
         return this.request<T>(endpoint, retryAttempt + 1)
       }
-      
+
       throw error
     }
   }
 
   // Fixtures/Games
-  async getFixtures(params: {
-    league?: number
-    season?: number
-    team?: number
-    date?: string
-    next?: number
-    last?: number
-    live?: string
-  } = {}): Promise<ApiSportsFixture[]> {
+  async getFixtures(
+    params: {
+      league?: number
+      season?: number
+      team?: number
+      date?: string
+      next?: number
+      last?: number
+      live?: string
+    } = {}
+  ): Promise<ApiSportsFixture[]> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.league) searchParams.set('league', params.league.toString())
     if (params.season) searchParams.set('season', params.season.toString())
     if (params.team) searchParams.set('team', params.team.toString())
@@ -352,7 +358,9 @@ export class ApiSportsClient {
 
   // Teams
   async getTeams(leagueId: number, season: number): Promise<ApiSportsTeam[]> {
-    const data = await this.request<{ response: ApiSportsTeam[] }>(`/teams?league=${leagueId}&season=${season}`)
+    const data = await this.request<{ response: ApiSportsTeam[] }>(
+      `/teams?league=${leagueId}&season=${season}`
+    )
     return data.response || []
   }
 
@@ -363,7 +371,9 @@ export class ApiSportsClient {
 
   // Standings
   async getStandings(leagueId: number, season: number): Promise<ApiSportsStanding[]> {
-    const data = await this.request<{ response: { league: { standings: ApiSportsStanding[][] } }[] }>(`/standings?league=${leagueId}&season=${season}`)
+    const data = await this.request<{
+      response: { league: { standings: ApiSportsStanding[][] } }[]
+    }>(`/standings?league=${leagueId}&season=${season}`)
     return data.response?.[0]?.league?.standings?.[0] || []
   }
 
@@ -376,14 +386,18 @@ export class ApiSportsClient {
 
   // Head to Head
   async getHeadToHead(team1: number, team2: number, last?: number): Promise<ApiSportsFixture[]> {
-    const endpoint = last ? `/fixtures/headtohead?h2h=${team1}-${team2}&last=${last}` : `/fixtures/headtohead?h2h=${team1}-${team2}`
+    const endpoint = last
+      ? `/fixtures/headtohead?h2h=${team1}-${team2}&last=${last}`
+      : `/fixtures/headtohead?h2h=${team1}-${team2}`
     const data = await this.request<{ response: ApiSportsFixture[] }>(endpoint)
     return data.response || []
   }
 
   // Statistics
   async getTeamStatistics(teamId: number, leagueId: number, season: number): Promise<any> {
-    const data = await this.request<{ response: any }>(`/teams/statistics?team=${teamId}&league=${leagueId}&season=${season}`)
+    const data = await this.request<{ response: any }>(
+      `/teams/statistics?team=${teamId}&league=${leagueId}&season=${season}`
+    )
     return data.response || null
   }
 }
@@ -431,15 +445,17 @@ export const apiSportsClient = {
     return getClient().getTeams(leagueId, season)
   },
 
-  async getFixtures(params: {
-    league?: number
-    season?: number
-    team?: number
-    date?: string
-    next?: number
-    last?: number
-    live?: string
-  } = {}): Promise<any> {
+  async getFixtures(
+    params: {
+      league?: number
+      season?: number
+      team?: number
+      date?: string
+      next?: number
+      last?: number
+      live?: string
+    } = {}
+  ): Promise<any> {
     if (!this.isConfigured) {
       console.warn('API-SPORTS API key not configured, returning empty data')
       return []
@@ -461,5 +477,5 @@ export const apiSportsClient = {
       return []
     }
     return getClient().getStandings(leagueId, season)
-  }
+  },
 }

@@ -14,7 +14,10 @@ export async function GET(request: Request) {
     // Use the individual player stats route instead
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL
     if (!apiBaseUrl) {
-      return NextResponse.json({ error: 'Server not configured: NEXT_PUBLIC_API_URL is missing' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Server not configured: NEXT_PUBLIC_API_URL is missing' },
+        { status: 500 }
+      )
     }
     const response = await fetch(`${apiBaseUrl}/api/player-stats/${playerId}?sport=${sport}`)
     const stats = await response.json()

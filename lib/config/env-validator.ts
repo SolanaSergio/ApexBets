@@ -8,10 +8,10 @@ export interface EnvConfig {
   NEXT_PUBLIC_SUPABASE_URL: string
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string
   SUPABASE_SERVICE_ROLE_KEY: string
-  
+
   // API Configuration
   NEXT_PUBLIC_API_URL: string
-  
+
   // API Keys (no placeholders allowed)
   RAPIDAPI_KEY?: string
   NEXT_PUBLIC_RAPIDAPI_KEY?: string
@@ -21,13 +21,13 @@ export interface EnvConfig {
   NEXT_PUBLIC_SPORTSDB_API_KEY?: string
   BALLDONTLIE_API_KEY?: string
   NEXT_PUBLIC_BALLDONTLIE_API_KEY?: string
-  
+
   // App Configuration
   NODE_ENV: string
   NEXT_PUBLIC_APP_VERSION?: string
   HOSTNAME?: string
   PORT?: string
-  
+
   // Sports Configuration (dynamic, no hardcoded sports)
   SUPPORTED_SPORTS?: string
   NEXT_PUBLIC_SUPPORTED_SPORTS?: string
@@ -60,8 +60,16 @@ class EnvValidator {
 
     // Required Supabase variables
     this.validateRequired('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL, config)
-    this.validateRequired('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, config)
-    this.validateRequired('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY, config)
+    this.validateRequired(
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      config
+    )
+    this.validateRequired(
+      'SUPABASE_SERVICE_ROLE_KEY',
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
+      config
+    )
 
     // Optional API keys (but validate format if present)
     this.validateOptional('RAPIDAPI_KEY', process.env.RAPIDAPI_KEY, config)
@@ -69,9 +77,17 @@ class EnvValidator {
     this.validateOptional('ODDS_API_KEY', process.env.ODDS_API_KEY, config)
     this.validateOptional('NEXT_PUBLIC_ODDS_API_KEY', process.env.NEXT_PUBLIC_ODDS_API_KEY, config)
     this.validateOptional('SPORTSDB_API_KEY', process.env.SPORTSDB_API_KEY, config)
-    this.validateOptional('NEXT_PUBLIC_SPORTSDB_API_KEY', process.env.NEXT_PUBLIC_SPORTSDB_API_KEY, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_SPORTSDB_API_KEY',
+      process.env.NEXT_PUBLIC_SPORTSDB_API_KEY,
+      config
+    )
     this.validateOptional('BALLDONTLIE_API_KEY', process.env.BALLDONTLIE_API_KEY, config)
-    this.validateOptional('NEXT_PUBLIC_BALLDONTLIE_API_KEY', process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_BALLDONTLIE_API_KEY',
+      process.env.NEXT_PUBLIC_BALLDONTLIE_API_KEY,
+      config
+    )
 
     // App configuration
     this.validateRequired('NODE_ENV', process.env.NODE_ENV, config)
@@ -81,7 +97,11 @@ class EnvValidator {
 
     // Sports configuration (dynamic)
     this.validateOptional('SUPPORTED_SPORTS', process.env.SUPPORTED_SPORTS, config)
-    this.validateOptional('NEXT_PUBLIC_SUPPORTED_SPORTS', process.env.NEXT_PUBLIC_SUPPORTED_SPORTS, config)
+    this.validateOptional(
+      'NEXT_PUBLIC_SUPPORTED_SPORTS',
+      process.env.NEXT_PUBLIC_SUPPORTED_SPORTS,
+      config
+    )
 
     if (this.validationErrors.length > 0) {
       throw new Error(`Environment validation failed:\n${this.validationErrors.join('\n')}`)
@@ -91,7 +111,11 @@ class EnvValidator {
     return this.config
   }
 
-  private validateRequired(key: string, value: string | undefined, config: Partial<EnvConfig>): void {
+  private validateRequired(
+    key: string,
+    value: string | undefined,
+    config: Partial<EnvConfig>
+  ): void {
     if (!value) {
       this.validationErrors.push(`Missing required environment variable: ${key}`)
       return
@@ -102,10 +126,14 @@ class EnvValidator {
       return
     }
 
-    (config as any)[key] = value
+    ;(config as any)[key] = value
   }
 
-  private validateOptional(key: string, value: string | undefined, config: Partial<EnvConfig>): void {
+  private validateOptional(
+    key: string,
+    value: string | undefined,
+    config: Partial<EnvConfig>
+  ): void {
     if (!value) {
       return
     }
@@ -115,7 +143,7 @@ class EnvValidator {
       return
     }
 
-    (config as any)[key] = value
+    ;(config as any)[key] = value
   }
 
   private containsPlaceholder(value: string): boolean {
@@ -127,12 +155,10 @@ class EnvValidator {
       'replace_me',
       'changeme',
       'TODO',
-      'FIXME'
+      'FIXME',
     ]
-    
-    return placeholders.some(placeholder => 
-      value.toLowerCase().includes(placeholder.toLowerCase())
-    )
+
+    return placeholders.some(placeholder => value.toLowerCase().includes(placeholder.toLowerCase()))
   }
 
   /**
@@ -154,11 +180,14 @@ class EnvValidator {
     if (this.supportedSports.length > 0) {
       return this.supportedSports
     }
-    
+
     // Try to get sports from environment without full validation
     const sports = process.env.SUPPORTED_SPORTS || process.env.NEXT_PUBLIC_SUPPORTED_SPORTS || ''
-    this.supportedSports = sports.split(',').map(s => s.trim()).filter(Boolean)
-    
+    this.supportedSports = sports
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean)
+
     // If no sports configured, return empty array (will be handled by caller)
     return this.supportedSports
   }
@@ -176,15 +205,15 @@ class EnvValidator {
   /**
    * Get configuration report for health checks
    */
-  public getConfigurationReport(): { 
-    isConfigured: boolean; 
-    missingKeys: string[]; 
-    invalidKeys: string[]; 
-    apiStatuses: Record<string, any>; 
-    recommendations: string[];
-    valid: boolean; 
-    errors: string[]; 
-    config: Partial<EnvConfig> 
+  public getConfigurationReport(): {
+    isConfigured: boolean
+    missingKeys: string[]
+    invalidKeys: string[]
+    apiStatuses: Record<string, any>
+    recommendations: string[]
+    valid: boolean
+    errors: string[]
+    config: Partial<EnvConfig>
   } {
     try {
       const config = this.validate()
@@ -196,7 +225,7 @@ class EnvValidator {
         recommendations: [],
         valid: true,
         errors: [],
-        config
+        config,
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -208,7 +237,7 @@ class EnvValidator {
         recommendations: ['Fix environment variable configuration'],
         valid: false,
         errors: [errorMessage],
-        config: {}
+        config: {},
       }
     }
   }

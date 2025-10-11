@@ -34,15 +34,15 @@ export class EnhancedApiClient {
 
   constructor() {
     const raw = process.env.NEXT_PUBLIC_API_URL as string | undefined
-    this.baseUrl = (typeof raw === 'string' && raw.trim().length > 0) ? raw : ''
+    this.baseUrl = typeof raw === 'string' && raw.trim().length > 0 ? raw : ''
   }
 
   /**
    * Enhanced GET request with intelligent caching
    */
   async get<T>(
-    endpoint: string, 
-    params: Record<string, any> = {}, 
+    endpoint: string,
+    params: Record<string, any> = {},
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
     const {
@@ -51,7 +51,7 @@ export class EnhancedApiClient {
       ttl,
       bypassCache = false,
       timeout = this.defaultTimeout,
-      retries = this.defaultRetries
+      retries = this.defaultRetries,
     } = options
 
     // Create cache key
@@ -65,8 +65,8 @@ export class EnhancedApiClient {
           ...cached,
           meta: {
             ...cached.meta,
-            fromCache: true
-          }
+            fromCache: true,
+          },
         }
       }
     }
@@ -83,7 +83,7 @@ export class EnhancedApiClient {
       sport?: string
     } = {
       timeout,
-      retries
+      retries,
     }
     if (sport !== undefined) {
       requestOptions.sport = sport
@@ -125,11 +125,7 @@ export class EnhancedApiClient {
     data: any,
     options: RequestOptions = {}
   ): Promise<ApiResponse<T>> {
-    const {
-      timeout = this.defaultTimeout,
-      retries = this.defaultRetries,
-      sport
-    } = options
+    const { timeout = this.defaultTimeout, retries = this.defaultRetries, sport } = options
 
     const requestOptions: {
       method: string
@@ -141,7 +137,7 @@ export class EnhancedApiClient {
       method: 'POST',
       body: JSON.stringify(data),
       timeout,
-      retries
+      retries,
     }
     if (sport !== undefined) {
       requestOptions.sport = sport
@@ -173,8 +169,8 @@ export class EnhancedApiClient {
             data: null as any,
             meta: {
               responseTime: 0,
-              fromCache: false
-            }
+              fromCache: false,
+            },
           } as ApiResponse<T>
         }
       })
@@ -216,13 +212,7 @@ export class EnhancedApiClient {
       sport?: string
     }
   ): Promise<ApiResponse<T>> {
-    const {
-      method = 'GET',
-      body,
-      timeout,
-      retries,
-      sport
-    } = options
+    const { method = 'GET', body, timeout, retries, sport } = options
 
     const url = this.buildUrl(endpoint, params)
     const startTime = Date.now()
@@ -237,11 +227,11 @@ export class EnhancedApiClient {
           headers: {
             'Content-Type': 'application/json',
             'X-Sport': sport || 'all',
-            'X-Request-ID': this.generateRequestId()
+            'X-Request-ID': this.generateRequestId(),
           },
-          signal: controller.signal
+          signal: controller.signal,
         }
-        
+
         if (body !== undefined) {
           fetchOptions.body = body
         }
@@ -254,7 +244,7 @@ export class EnhancedApiClient {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
 
-        const data = await response.json() as any
+        const data = (await response.json()) as any
         const responseTime = Date.now() - startTime
 
         return {
@@ -263,8 +253,8 @@ export class EnhancedApiClient {
             ...data.meta,
             responseTime,
             sport,
-            fromCache: false
-          }
+            fromCache: false,
+          },
         }
       } catch (error) {
         if (attempt === retries) {
@@ -283,26 +273,28 @@ export class EnhancedApiClient {
     throw new Error('Request failed unexpectedly')
   }
 
-  private createCacheKey(
-    endpoint: string,
-    params: Record<string, any>,
-    sport?: string
-  ): string {
+  private createCacheKey(endpoint: string, params: Record<string, any>, sport?: string): string {
     const sortedParams = Object.keys(params)
       .sort()
       .map(key => `${key}=${params[key]}`)
       .join('&')
-    
+
     return `${endpoint}?${sortedParams}${sport ? `&sport=${sport}` : ''}`
   }
 
   private buildUrl(endpoint: string, params: Record<string, any>): string {
     // If no external base is configured, use same-origin and ensure `/api` prefix
-    const path = this.baseUrl && this.baseUrl.trim().length > 0
-      ? `${this.baseUrl}${endpoint}`
-      : (endpoint.startsWith('/api') ? endpoint : `/api${endpoint}`)
-    const url = new URL(path, typeof window === 'undefined' ? 'http://localhost' : window.location.origin)
-    
+    const path =
+      this.baseUrl && this.baseUrl.trim().length > 0
+        ? `${this.baseUrl}${endpoint}`
+        : endpoint.startsWith('/api')
+          ? endpoint
+          : `/api${endpoint}`
+    const url = new URL(
+      path,
+      typeof window === 'undefined' ? 'http://localhost' : window.location.origin
+    )
+
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         url.searchParams.append(key, String(value))
@@ -327,47 +319,67 @@ export const enhancedApiClient = new EnhancedApiClient()
 // Sport-specific convenience methods
 export const sportsApi = {
   async getLiveGames(sport: string, options?: RequestOptions) {
-    return enhancedApiClient.get(`/live-updates`, { sport, real: true }, {
-      ...options,
-      sport,
-      priority: 'high',
-      ttl: 30000 // 30 seconds for live data
-    })
+    return enhancedApiClient.get(
+      `/live-updates`,
+      { sport, real: true },
+      {
+        ...options,
+        sport,
+        priority: 'high',
+        ttl: 30000, // 30 seconds for live data
+      }
+    )
   },
 
   async getTeams(sport: string, options?: RequestOptions) {
-    return enhancedApiClient.get(`/teams`, { sport }, {
-      ...options,
-      sport,
-      priority: 'medium',
-      ttl: 300000 // 5 minutes for teams
-    })
+    return enhancedApiClient.get(
+      `/teams`,
+      { sport },
+      {
+        ...options,
+        sport,
+        priority: 'medium',
+        ttl: 300000, // 5 minutes for teams
+      }
+    )
   },
 
   async getStandings(sport: string, options?: RequestOptions) {
-    return enhancedApiClient.get(`/standings`, { sport }, {
-      ...options,
-      sport,
-      priority: 'medium',
-      ttl: 300000 // 5 minutes for standings
-    })
+    return enhancedApiClient.get(
+      `/standings`,
+      { sport },
+      {
+        ...options,
+        sport,
+        priority: 'medium',
+        ttl: 300000, // 5 minutes for standings
+      }
+    )
   },
 
   async getPredictions(sport: string, limit = 10, options?: RequestOptions) {
-    return enhancedApiClient.get(`/predictions`, { sport, limit }, {
-      ...options,
-      sport,
-      priority: 'medium',
-      ttl: 60000 // 1 minute for predictions
-    })
+    return enhancedApiClient.get(
+      `/predictions`,
+      { sport, limit },
+      {
+        ...options,
+        sport,
+        priority: 'medium',
+        ttl: 60000, // 1 minute for predictions
+      }
+    )
   },
 
   async getOdds(sport: string, options?: RequestOptions) {
-    return enhancedApiClient.get(`/odds`, { sport }, {
-      ...options,
-      sport,
-      priority: 'medium',
-      ttl: 120000 // 2 minutes for odds
-    })
-  }
+    return enhancedApiClient.get(
+      `/odds`,
+      { sport },
+      {
+        ...options,
+        sport,
+        priority: 'medium',
+        ttl: 120000, // 2 minutes for odds
+      }
+    )
+  },
 }

@@ -50,7 +50,7 @@ export class DynamicSportConfigService {
    */
   static async initialize(projectId: string): Promise<void> {
     if (this.initialized && this.projectId === projectId) return
-    
+
     this.projectId = projectId
     await this.loadConfigurations()
     this.initialized = true
@@ -107,7 +107,7 @@ export class DynamicSportConfigService {
           scoringFields: row.scoring_fields,
           bettingMarkets: Array.isArray(row.betting_markets) ? row.betting_markets : [],
           seasonConfig: row.season_config,
-          updateFrequency: typeof row.update_frequency === 'number' ? row.update_frequency : 30
+          updateFrequency: typeof row.update_frequency === 'number' ? row.update_frequency : 30,
         }
         this.configs.set(cfg.name, cfg)
       }
@@ -149,16 +149,20 @@ export class DynamicSportConfigService {
     // Get dynamic column configuration based on sport
     const statFields = this.getStatFieldsForSport(sport)
     const columns = this.buildColumnsString(statFields)
-    
+
     // Safely access scoringFields with fallback
-    const scoringFields = config.scoringFields || { primary: 'points', for: 'points_for', against: 'points_against' }
+    const scoringFields = config.scoringFields || {
+      primary: 'points',
+      for: 'points_for',
+      against: 'points_against',
+    }
     const primaryStat = scoringFields.primary || 'points'
 
     return {
       tableName: config.playerStatsTable,
       columns,
       primaryStat,
-      statFields
+      statFields,
     }
   }
 
@@ -170,13 +174,17 @@ export class DynamicSportConfigService {
     if (!config) {
       return {}
     }
-    
+
     // Use dynamic stat fields from configuration with fallback
-    const scoringFields = config.scoringFields || { primary: 'points', for: 'points_for', against: 'points_against' }
+    const scoringFields = config.scoringFields || {
+      primary: 'points',
+      for: 'points_for',
+      against: 'points_against',
+    }
     return {
       [scoringFields.primary]: scoringFields.primary,
       [scoringFields.for]: scoringFields.for,
-      [scoringFields.against]: scoringFields.against
+      [scoringFields.against]: scoringFields.against,
     }
   }
 
@@ -217,12 +225,12 @@ export class DynamicSportConfigService {
     const { startMonth, seasonYearOffset = 0 } = config.seasonConfig
     const year = new Date().getFullYear()
     const month = new Date().getMonth()
-    
+
     // If current month is before start month, we're in the previous year's season
     if (month < startMonth) {
       return (year - 1 + seasonYearOffset).toString()
     }
-    
+
     return (year + seasonYearOffset).toString()
   }
 

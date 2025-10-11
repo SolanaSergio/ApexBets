@@ -35,9 +35,8 @@ export class ComprehensiveDataPopulationService {
     try {
       structuredLogger.info('Starting comprehensive data population', { sports })
 
-      const sportsToProcess = sports && sports.length > 0
-        ? sports
-        : await this.getSupportedSportsFromDb()
+      const sportsToProcess =
+        sports && sports.length > 0 ? sports : await this.getSupportedSportsFromDb()
 
       for (const sport of sportsToProcess) {
         try {
@@ -45,7 +44,7 @@ export class ComprehensiveDataPopulationService {
 
           // Invoke Supabase Edge Function for data sync (authoritative source)
           const syncResult = await this.invokeEdgeFunction(sport)
-          
+
           if (syncResult.success) {
             sportsProcessed++
             totalRecords += await this.getRecordCount(sport)
@@ -53,7 +52,6 @@ export class ComprehensiveDataPopulationService {
           } else {
             errors.push(`Failed to populate data for ${sport}: ${syncResult.message}`)
           }
-
         } catch (error) {
           const errorMessage = `Error populating data for ${sport}: ${error instanceof Error ? error.message : String(error)}`
           errors.push(errorMessage)
@@ -65,23 +63,23 @@ export class ComprehensiveDataPopulationService {
 
       const result: PopulationResult = {
         success: errors.length === 0,
-        message: errors.length === 0 
-          ? `Successfully populated data for ${sportsProcessed} sports` 
-          : `Completed with ${errors.length} errors`,
+        message:
+          errors.length === 0
+            ? `Successfully populated data for ${sportsProcessed} sports`
+            : `Completed with ${errors.length} errors`,
         sportsProcessed,
         totalRecords,
         errors,
-        executionTime
+        executionTime,
       }
 
       structuredLogger.info('Comprehensive data population completed', result)
 
       return result
-
     } catch (error) {
       const executionTime = Date.now() - startTime
       const errorMessage = `Comprehensive data population failed: ${error instanceof Error ? error.message : String(error)}`
-      
+
       structuredLogger.error(errorMessage)
 
       return {
@@ -90,7 +88,7 @@ export class ComprehensiveDataPopulationService {
         sportsProcessed,
         totalRecords,
         errors: [errorMessage, ...errors],
-        executionTime
+        executionTime,
       }
     }
   }
@@ -109,16 +107,18 @@ export class ComprehensiveDataPopulationService {
     return { url: `${supabaseUrl}/functions/v1/sync-sports-data`, key: serviceRoleKey }
   }
 
-  private async invokeEdgeFunction(sport: SupportedSport): Promise<{ success: boolean; message?: string }> {
+  private async invokeEdgeFunction(
+    sport: SupportedSport
+  ): Promise<{ success: boolean; message?: string }> {
     const { url, key } = this.getEdgeFunctionConfig()
 
     const response = await fetch(url, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ sport, dataTypes: ['games', 'teams', 'players', 'standings'] })
+      body: JSON.stringify({ sport, dataTypes: ['games', 'teams', 'players', 'standings'] }),
     })
 
     if (!response.ok) {
@@ -126,7 +126,7 @@ export class ComprehensiveDataPopulationService {
       return { success: false, message: `Edge function failed (${response.status}): ${text}` }
     }
 
-    const result = await response.json().catch(() => ({})) as any
+    const result = (await response.json().catch(() => ({}))) as any
     const success = !!result?.success
     return { success, message: result?.message || 'Unknown error' }
   }
@@ -138,7 +138,7 @@ export class ComprehensiveDataPopulationService {
     } catch (error) {
       structuredLogger.error('Failed to get record count', {
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return 0
     }
@@ -149,12 +149,17 @@ export class ComprehensiveDataPopulationService {
       // Prefer explicit environment configuration to remain sport-agnostic
       const configured = process.env.SUPPORTED_SPORTS
       if (configured && configured.trim().length > 0) {
-        return configured.split(',').map(s => s.trim()).filter(Boolean) as SupportedSport[]
+        return configured
+          .split(',')
+          .map(s => s.trim())
+          .filter(Boolean) as SupportedSport[]
       }
       // If not configured, return empty to let caller decide per-request
       return []
     } catch (error) {
-      structuredLogger.error('Failed to load supported sports', { error: error instanceof Error ? error.message : String(error) })
+      structuredLogger.error('Failed to load supported sports', {
+        error: error instanceof Error ? error.message : String(error),
+      })
       return []
     }
   }
@@ -175,7 +180,7 @@ export class ComprehensiveDataPopulationService {
           sportsProcessed: 1,
           totalRecords: await this.getRecordCount(sport),
           errors: [],
-          executionTime
+          executionTime,
         }
       } else {
         return {
@@ -184,10 +189,9 @@ export class ComprehensiveDataPopulationService {
           sportsProcessed: 0,
           totalRecords: 0,
           errors: [syncResult.message || 'Unknown error'],
-          executionTime
+          executionTime,
         }
       }
-
     } catch (error) {
       const executionTime = Date.now() - startTime
       const errorMessage = `Error populating data for ${sport}: ${error instanceof Error ? error.message : String(error)}`
@@ -200,11 +204,11 @@ export class ComprehensiveDataPopulationService {
         sportsProcessed: 0,
         totalRecords: 0,
         errors: [errorMessage],
-        executionTime
+        executionTime,
       }
     }
   }
 }
 
-export const getComprehensiveDataPopulationService = () => 
+export const getComprehensiveDataPopulationService = () =>
   ComprehensiveDataPopulationService.getInstance()

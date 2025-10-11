@@ -24,11 +24,6 @@
     "target": "ES2022",
     "module": "ESNext"
   },
-  "include": [
-    "**/*.ts",
-    "types.d.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["**/*.ts", "types.d.ts"],
+  "exclude": ["node_modules"]
 }

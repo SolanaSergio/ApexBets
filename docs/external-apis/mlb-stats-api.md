@@ -2,7 +2,9 @@
 
 ## Overview
 
-The MLB Stats API is the official API provided by Major League Baseball for accessing comprehensive baseball data. It's completely free and provides the most accurate and up-to-date MLB statistics, player information, and game data.
+The MLB Stats API is the official API provided by Major League Baseball for
+accessing comprehensive baseball data. It's completely free and provides the
+most accurate and up-to-date MLB statistics, player information, and game data.
 
 **Base URL:** `https://statsapi.mlb.com/api/v1`  
 **Documentation:** https://statsapi.mlb.com/docs/  
@@ -12,9 +14,12 @@ The MLB Stats API is the official API provided by Major League Baseball for acce
 ## Authentication
 
 ### No Authentication Required
-The MLB Stats API doesn't require authentication or API keys, making it very accessible for developers.
+
+The MLB Stats API doesn't require authentication or API keys, making it very
+accessible for developers.
 
 ### Usage in Code
+
 ```typescript
 import { mlbStatsClient } from '@/lib/sports-apis'
 
@@ -27,9 +32,11 @@ const games = await mlbStatsClient.getGames()
 ### Games
 
 #### Get Games
+
 **Endpoint:** `GET /schedule`
 
 **Parameters:**
+
 - `sportId` (number, optional) - Sport ID (1 for MLB)
 - `date` (string, optional) - Date in YYYY-MM-DD format
 - `teamId` (number, optional) - Team ID
@@ -38,11 +45,13 @@ const games = await mlbStatsClient.getGames()
 - `gameType` (string, optional) - Game type (R for regular season)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2024-01-15"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -122,20 +131,24 @@ curl -X GET "https://statsapi.mlb.com/api/v1/schedule?sportId=1&date=2024-01-15"
 ### Teams
 
 #### Get Teams
+
 **Endpoint:** `GET /teams`
 
 **Parameters:**
+
 - `sportId` (number, optional) - Sport ID (1 for MLB)
 - `season` (string, optional) - Season year
 - `leagueId` (number, optional) - League ID
 - `divisionId` (number, optional) - Division ID
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.mlb.com/api/v1/teams?sportId=1&season=2024"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -183,19 +196,23 @@ curl -X GET "https://statsapi.mlb.com/api/v1/teams?sportId=1&season=2024"
 ### Players
 
 #### Get Players
+
 **Endpoint:** `GET /teams/{teamId}/roster`
 
 **Parameters:**
+
 - `teamId` (number, required) - Team ID
 - `season` (string, optional) - Season year
 - `rosterType` (string, optional) - Roster type (active, full, etc.)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.mlb.com/api/v1/teams/147/roster?season=2024"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -264,20 +281,25 @@ curl -X GET "https://statsapi.mlb.com/api/v1/teams/147/roster?season=2024"
 ### Standings
 
 #### Get Standings
+
 **Endpoint:** `GET /standings`
 
 **Parameters:**
+
 - `leagueId` (number, optional) - League ID
 - `season` (string, optional) - Season year
-- `standingsType` (string, optional) - Standings type (regularSeason, wildCard, etc.)
+- `standingsType` (string, optional) - Standings type (regularSeason, wildCard,
+  etc.)
 - `date` (string, optional) - Date in YYYY-MM-DD format
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.mlb.com/api/v1/standings?leagueId=103&season=2024"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -364,17 +386,21 @@ curl -X GET "https://statsapi.mlb.com/api/v1/standings?leagueId=103&season=2024"
 ### Game Details
 
 #### Get Game Details
+
 **Endpoint:** `GET /game/{gamePk}/feed/live`
 
 **Parameters:**
+
 - `gamePk` (number, required) - Game ID
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://statsapi.mlb.com/api/v1/game/1234567890/feed/live"
 ```
 
 **Example Response:**
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -1107,17 +1133,19 @@ curl -X GET "https://statsapi.mlb.com/api/v1/game/1234567890/feed/live"
 ## Rate Limits
 
 ### Recommended Limits
+
 - **Per Minute:** 100 requests (conservative)
 - **Per Hour:** 1000 requests
 - **Per Day:** 10000 requests
 
 ### Rate Limit Handling
+
 ```typescript
 // Conservative rate limiting for MLB Stats API
 const rateLimits = {
   requestsPerMinute: 100,
   requestsPerHour: 1000,
-  requestsPerDay: 10000
+  requestsPerDay: 10000,
 }
 ```
 
@@ -1125,15 +1153,16 @@ const rateLimits = {
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 200 | Success | Request successful |
-| 400 | Bad Request | Check request parameters |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Reduce request frequency |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                 |
+| ----------- | --------------------- | ------------------------ |
+| 200         | Success               | Request successful       |
+| 400         | Bad Request           | Check request parameters |
+| 404         | Not Found             | Verify endpoint URL      |
+| 429         | Too Many Requests     | Reduce request frequency |
+| 500         | Internal Server Error | Retry request            |
 
 ### Error Response Format
+
 ```json
 {
   "copyright": "Copyright 2024 MLB Advanced Media, L.P.",
@@ -1146,6 +1175,7 @@ const rateLimits = {
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { mlbStatsClient } from '@/lib/sports-apis'
 
@@ -1153,17 +1183,19 @@ import { mlbStatsClient } from '@/lib/sports-apis'
 async function getMLBGames(date?: string) {
   try {
     const games = await mlbStatsClient.getGames(date)
-    
-    return games.dates[0]?.games.map(game => ({
-      id: game.gamePk,
-      homeTeam: game.teams.home.team,
-      awayTeam: game.teams.away.team,
-      homeScore: game.teams.home.score,
-      awayScore: game.teams.away.score,
-      date: game.gameDate,
-      status: game.status.detailedState,
-      venue: game.venue?.name
-    })) || []
+
+    return (
+      games.dates[0]?.games.map(game => ({
+        id: game.gamePk,
+        homeTeam: game.teams.home.team,
+        awayTeam: game.teams.away.team,
+        homeScore: game.teams.home.score,
+        awayScore: game.teams.away.score,
+        date: game.gameDate,
+        status: game.status.detailedState,
+        venue: game.venue?.name,
+      })) || []
+    )
   } catch (error) {
     console.error('Failed to fetch MLB games:', error)
     throw error
@@ -1174,7 +1206,7 @@ async function getMLBGames(date?: string) {
 async function getMLBTeams() {
   try {
     const teams = await mlbStatsClient.getTeams()
-    
+
     return teams.teams.map(team => ({
       id: team.id,
       name: team.name,
@@ -1184,7 +1216,7 @@ async function getMLBTeams() {
       league: team.league?.name,
       venue: team.venue?.name,
       firstYear: team.firstYearOfPlay,
-      active: team.active
+      active: team.active,
     }))
   } catch (error) {
     console.error('Failed to fetch MLB teams:', error)
@@ -1196,7 +1228,7 @@ async function getMLBTeams() {
 async function getMLBStandings() {
   try {
     const standings = await mlbStatsClient.getStandings()
-    
+
     return standings.records.map(record => ({
       division: record.division.name,
       league: record.league.name,
@@ -1209,8 +1241,8 @@ async function getMLBStandings() {
         runsScored: team.runsScored,
         runsAllowed: team.runsAllowed,
         runDifferential: team.runDifferential,
-        streak: team.streak.streakCode
-      }))
+        streak: team.streak.streakCode,
+      })),
     }))
   } catch (error) {
     console.error('Failed to fetch MLB standings:', error)
@@ -1222,7 +1254,7 @@ async function getMLBStandings() {
 async function getTeamRoster(teamId: number) {
   try {
     const roster = await mlbStatsClient.getTeamRoster(teamId)
-    
+
     return roster.roster.map(player => ({
       id: player.person.id,
       name: player.person.fullName,
@@ -1233,7 +1265,7 @@ async function getTeamRoster(teamId: number) {
       height: player.person.height,
       weight: player.person.weight,
       batSide: player.person.batSide?.description,
-      pitchHand: player.person.pitchHand?.description
+      pitchHand: player.person.pitchHand?.description,
     }))
   } catch (error) {
     console.error('Failed to fetch team roster:', error)
@@ -1243,33 +1275,34 @@ async function getTeamRoster(teamId: number) {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchMLBStatsData(endpoint, params = {}) {
   const baseUrl = 'https://statsapi.mlb.com/api/v1'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'ApexBets/1.0.0'
-      }
+        Accept: 'application/json',
+        'User-Agent': 'ApexBets/1.0.0',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
-    
+
     // Check for empty responses
     if (!data || (data.dates && data.dates.length === 0)) {
       throw new Error('No data returned from MLB Stats API')
     }
-    
+
     return data
   } catch (error) {
     console.error('MLB Stats API request failed:', error)
@@ -1280,23 +1313,27 @@ async function fetchMLBStatsData(endpoint, params = {}) {
 // Usage
 const games = await fetchMLBStatsData('/schedule', {
   sportId: 1,
-  date: '2024-01-15'
+  date: '2024-01-15',
 })
 ```
 
 ## Best Practices
 
 ### 1. Headers and User-Agent
+
 Always include proper headers to avoid being blocked:
+
 ```typescript
 const headers = {
-  'Accept': 'application/json',
-  'User-Agent': 'ApexBets/1.0.0'
+  Accept: 'application/json',
+  'User-Agent': 'ApexBets/1.0.0',
 }
 ```
 
 ### 2. Data Validation
+
 Always validate responses as MLB Stats API can return empty data:
+
 ```typescript
 function validateMLBGame(game: any): boolean {
   return (
@@ -1313,6 +1350,7 @@ const validGames = games.dates[0]?.games.filter(validateMLBGame) || []
 ```
 
 ### 3. Error Handling with Retry
+
 ```typescript
 async function safeMLBStatsCall<T>(
   apiCall: () => Promise<T>,
@@ -1328,46 +1366,50 @@ async function safeMLBStatsCall<T>(
         await new Promise(resolve => setTimeout(resolve, delay))
         continue
       }
-      
+
       if (i === maxRetries - 1) {
         console.error('Max retries exceeded:', error)
         return null
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 1000))
     }
   }
-  
+
   return null
 }
 ```
 
 ### 4. Caching Strategy
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedMLBData(endpoint: string, params: any) {
   const cacheKey = `mlb-stats-${endpoint}-${JSON.stringify(params)}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const data = await mlbStatsClient.request(endpoint, params)
   await setCache(cacheKey, data, 300) // Cache for 5 minutes
-  
+
   return data
 }
 ```
 
 ## Integration with ApexBets
 
-The MLB Stats API is integrated into the ApexBets system as the primary data source for MLB data. It's used in the following services:
+The MLB Stats API is integrated into the ApexBets system as the primary data
+source for MLB data. It's used in the following services:
 
 - **BaseballService** - Primary data source for MLB games and statistics
 - **PlayerStatsService** - Player statistics and performance data
 - **TeamService** - Team information and standings
 - **GameService** - Game schedules and results
 
-The API is configured with conservative rate limiting, proper headers, and robust error handling to ensure reliable data access while respecting the MLB's servers.
+The API is configured with conservative rate limiting, proper headers, and
+robust error handling to ensure reliable data access while respecting the MLB's
+servers.

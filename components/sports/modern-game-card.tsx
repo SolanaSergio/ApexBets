@@ -1,12 +1,12 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Clock, TrendingUp, Star, Eye, Heart, Trophy } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Clock, TrendingUp, Star, Eye, Heart, Trophy } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Team {
   id: string
@@ -30,7 +30,7 @@ interface Game {
   id: string
   homeTeam: Team
   awayTeam: Team
-  status: "scheduled" | "live" | "final"
+  status: 'scheduled' | 'live' | 'final'
   startTime: string
   quarter?: string
   timeRemaining?: string
@@ -53,20 +53,20 @@ interface ModernGameCardProps {
   onWatch?: (gameId: string) => void
 }
 
-export function ModernGameCard({ 
-  game, 
-  showOdds = true, 
-  showPredictions = true, 
+export function ModernGameCard({
+  game,
+  showOdds = true,
+  showPredictions = true,
   interactive = true,
   onFavorite,
-  onWatch 
+  onWatch,
 }: ModernGameCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
   const [isWatching, setIsWatching] = useState(false)
   const [liveUpdate, setLiveUpdate] = useState(false)
 
-  const isLive = game.status === "live"
-  const isFinal = game.status === "final"
+  const isLive = game.status === 'live'
+  const isFinal = game.status === 'final'
   // const isScheduled = game.status === "scheduled"
 
   // Simulate live updates for demo
@@ -121,17 +121,21 @@ export function ModernGameCard({
 
   const getSportGradient = () => {
     // Use a generic gradient - no hardcoded sport-specific logic
-    return "from-gray-500 to-gray-600" // Default fallback for all sports
+    return 'from-gray-500 to-gray-600' // Default fallback for all sports
   }
 
   return (
-    <div className={cn(
-      "glass-card rounded-lg card-hover relative overflow-hidden group",
-      liveUpdate && isLive && "animate-pulse"
-    )}>
+    <div
+      className={cn(
+        'glass-card rounded-lg card-hover relative overflow-hidden group',
+        liveUpdate && isLive && 'animate-pulse'
+      )}
+    >
       {/* Background Gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${getSportGradient()} opacity-5 group-hover:opacity-10 transition-opacity duration-500`} />
-      
+      <div
+        className={`absolute inset-0 bg-gradient-to-br ${getSportGradient()} opacity-5 group-hover:opacity-10 transition-opacity duration-500`}
+      />
+
       {/* Live Indicator */}
       {isLive && (
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-pink-500 animate-pulse" />
@@ -141,7 +145,9 @@ export function ModernGameCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 bg-gradient-to-br ${getSportGradient()} rounded-lg flex items-center justify-center premium-glow`}>
+            <div
+              className={`w-10 h-10 bg-gradient-to-br ${getSportGradient()} rounded-lg flex items-center justify-center premium-glow`}
+            >
               {(() => {
                 const SportIcon = getSportIcon()
                 return <SportIcon className="w-5 h-5 text-white" />
@@ -149,12 +155,10 @@ export function ModernGameCard({
             </div>
             <div>
               <p className="font-bold text-slate-800 capitalize">{game.sport}</p>
-              {game.venue && (
-                <p className="text-sm text-slate-600 font-medium">{game.venue}</p>
-              )}
+              {game.venue && <p className="text-sm text-slate-600 font-medium">{game.venue}</p>}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             {getStatusBadge()}
             {interactive && (
@@ -164,22 +168,22 @@ export function ModernGameCard({
                   size="sm"
                   onClick={handleFavorite}
                   className={cn(
-                    "w-10 h-10 rounded-md p-0 transition-all duration-300",
-                    isFavorited ? "text-red-500 bg-red-50 hover:bg-red-100" : "hover:bg-gray-100"
+                    'w-10 h-10 rounded-md p-0 transition-all duration-300',
+                    isFavorited ? 'text-red-500 bg-red-50 hover:bg-red-100' : 'hover:bg-gray-100'
                   )}
                 >
-                  <Heart className={cn("w-4 h-4", isFavorited && "fill-current")} />
+                  <Heart className={cn('w-4 h-4', isFavorited && 'fill-current')} />
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={handleWatch}
                   className={cn(
-                    "w-10 h-10 rounded-md p-0 transition-all duration-300",
-                    isWatching ? "text-blue-500 bg-blue-50 hover:bg-blue-100" : "hover:bg-gray-100"
+                    'w-10 h-10 rounded-md p-0 transition-all duration-300',
+                    isWatching ? 'text-blue-500 bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-100'
                   )}
                 >
-                  <Eye className={cn("w-4 h-4", isWatching && "fill-current")} />
+                  <Eye className={cn('w-4 h-4', isWatching && 'fill-current')} />
                 </Button>
               </div>
             )}
@@ -193,7 +197,13 @@ export function ModernGameCard({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center">
                 {game.homeTeam.logo ? (
-                  <Image src={game.homeTeam.logo} alt={game.homeTeam.name} width={32} height={32} className="w-8 h-8" />
+                  <Image
+                    src={game.homeTeam.logo}
+                    alt={game.homeTeam.name}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8"
+                  />
                 ) : (
                   <span className="font-bold text-slate-600">{game.homeTeam.abbreviation}</span>
                 )}
@@ -204,9 +214,7 @@ export function ModernGameCard({
               </div>
             </div>
             {(isLive || isFinal) && (
-              <div className="text-3xl font-black text-gradient">
-                {game.homeTeam.score || 0}
-              </div>
+              <div className="text-3xl font-black text-gradient">{game.homeTeam.score || 0}</div>
             )}
           </div>
 
@@ -215,7 +223,13 @@ export function ModernGameCard({
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-slate-200 to-slate-300 rounded-lg flex items-center justify-center">
                 {game.awayTeam.logo ? (
-                  <Image src={game.awayTeam.logo} alt={game.awayTeam.name} width={32} height={32} className="w-8 h-8" />
+                  <Image
+                    src={game.awayTeam.logo}
+                    alt={game.awayTeam.name}
+                    width={32}
+                    height={32}
+                    className="w-8 h-8"
+                  />
                 ) : (
                   <span className="font-bold text-slate-600">{game.awayTeam.abbreviation}</span>
                 )}
@@ -226,9 +240,7 @@ export function ModernGameCard({
               </div>
             </div>
             {(isLive || isFinal) && (
-              <div className="text-3xl font-black text-gradient">
-                {game.awayTeam.score || 0}
-              </div>
+              <div className="text-3xl font-black text-gradient">{game.awayTeam.score || 0}</div>
             )}
           </div>
         </div>
@@ -247,7 +259,10 @@ export function ModernGameCard({
           <div className="grid grid-cols-3 gap-3 mb-6">
             <div className="text-center p-3 glass rounded-lg">
               <p className="text-xs font-bold text-slate-600 uppercase">Spread</p>
-              <p className="text-lg font-black text-gradient">{game.odds.spread > 0 ? '+' : ''}{game.odds.spread}</p>
+              <p className="text-lg font-black text-gradient">
+                {game.odds.spread > 0 ? '+' : ''}
+                {game.odds.spread}
+              </p>
             </div>
             <div className="text-center p-3 glass rounded-lg">
               <p className="text-xs font-bold text-slate-600 uppercase">Total</p>
@@ -256,7 +271,8 @@ export function ModernGameCard({
             <div className="text-center p-3 glass rounded-lg">
               <p className="text-xs font-bold text-slate-600 uppercase">ML</p>
               <p className="text-lg font-black text-gradient">
-                {game.odds.moneyline.home > 0 ? '+' : ''}{game.odds.moneyline.home}
+                {game.odds.moneyline.home > 0 ? '+' : ''}
+                {game.odds.moneyline.home}
               </p>
             </div>
           </div>
@@ -279,7 +295,8 @@ export function ModernGameCard({
               <div className="flex items-center gap-1">
                 <TrendingUp className="w-4 h-4 text-green-500" />
                 <span className="font-bold text-green-600">
-                  {game.predictions.spread > 0 ? '+' : ''}{game.predictions.spread}
+                  {game.predictions.spread > 0 ? '+' : ''}
+                  {game.predictions.spread}
                 </span>
               </div>
             </div>

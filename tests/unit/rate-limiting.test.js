@@ -4,7 +4,11 @@
  */
 
 const { apiRateLimiter } = require('../../lib/rules/api-rate-limiter')
-const { withRateLimit, getRateLimitStatus, isRateLimited } = require('../../lib/middleware/api-rate-limit')
+const {
+  withRateLimit,
+  getRateLimitStatus,
+  isRateLimited,
+} = require('../../lib/middleware/api-rate-limit')
 
 describe('Rate Limiting', () => {
   beforeEach(() => {
@@ -23,7 +27,7 @@ describe('Rate Limiting', () => {
     it('should track usage correctly', () => {
       apiRateLimiter.checkRateLimit('sportsdb')
       apiRateLimiter.recordRequest('sportsdb')
-      
+
       const usage = apiRateLimiter.getUsage('sportsdb')
       expect(usage.minute).toBe(1)
       expect(usage.day).toBe(1)
@@ -81,7 +85,7 @@ describe('Rate Limiting', () => {
 
       // Reset and test BALLDONTLIE (5 requests/minute)
       apiRateLimiter.reset()
-      
+
       for (let i = 0; i < 5; i++) {
         apiRateLimiter.checkRateLimit('balldontlie')
         apiRateLimiter.recordRequest('balldontlie')
@@ -98,13 +102,13 @@ describe('Rate Limiting', () => {
       const handler = withRateLimit({ service: 'sportsdb' })(async () => {
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       })
 
       const request = new Request('http://localhost:3000/api/test')
       const response = await handler(request)
-      
+
       expect(response.status).toBe(200)
       expect(response.headers.get('X-RateLimit-Remaining-Minute')).toBe('59')
     })
@@ -119,13 +123,13 @@ describe('Rate Limiting', () => {
       const handler = withRateLimit({ service: 'sportsdb' })(async () => {
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
-          headers: { 'Content-Type': 'application/json' }
+          headers: { 'Content-Type': 'application/json' },
         })
       })
 
       const request = new Request('http://localhost:3000/api/test')
       const response = await handler(request)
-      
+
       expect(response.status).toBe(429)
       expect(response.headers.get('Retry-After')).toBe('60')
     })
@@ -133,7 +137,7 @@ describe('Rate Limiting', () => {
     it('should provide correct rate limit status', () => {
       apiRateLimiter.checkRateLimit('sportsdb')
       apiRateLimiter.recordRequest('sportsdb')
-      
+
       const status = getRateLimitStatus('sportsdb')
       expect(status.minute).toBe(1)
       expect(status.day).toBe(1)
@@ -142,13 +146,13 @@ describe('Rate Limiting', () => {
     it('should correctly identify rate limited services', () => {
       // Within limits
       expect(isRateLimited('sportsdb')).toBe(false)
-      
+
       // Exhaust rate limit
       for (let i = 0; i < 30; i++) {
         apiRateLimiter.checkRateLimit('sportsdb')
         apiRateLimiter.recordRequest('sportsdb')
       }
-      
+
       expect(isRateLimited('sportsdb')).toBe(true)
     })
   })
@@ -157,10 +161,10 @@ describe('Rate Limiting', () => {
     it('should respect rate limits in API clients', async () => {
       // Test that rate limiting adds appropriate delays
       const startTime = Date.now()
-      
+
       apiRateLimiter.checkRateLimit('odds') // 6 second delay
       apiRateLimiter.recordRequest('odds')
-      
+
       const endTime = Date.now()
       // Should complete quickly as we're not actually making requests
       expect(endTime - startTime).toBeLessThan(100)
@@ -174,7 +178,7 @@ describe('Rate Limiting', () => {
         odds: { requestsPerMinute: 10, requestsPerDay: 100, burstLimit: 2 },
         sportsdb: { requestsPerMinute: 30, requestsPerDay: 10000, burstLimit: 5 },
         balldontlie: { requestsPerMinute: 5, requestsPerDay: 10000, burstLimit: 2 },
-        espn: { requestsPerMinute: 60, requestsPerDay: 10000, burstLimit: 10 }
+        espn: { requestsPerMinute: 60, requestsPerDay: 10000, burstLimit: 10 },
       }
 
       // Test that the rate limiter uses these configurations
@@ -191,7 +195,9 @@ describe('Rate Limiting', () => {
         // Test that exceeding minute limit throws
         expect(() => {
           apiRateLimiter.checkRateLimit(service)
-        }).toThrow(`Rate limit exceeded for ${service}: ${limits.requestsPerMinute} requests per minute`)
+        }).toThrow(
+          `Rate limit exceeded for ${service}: ${limits.requestsPerMinute} requests per minute`
+        )
 
         // Reset for next test
         apiRateLimiter.reset()

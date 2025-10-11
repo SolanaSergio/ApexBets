@@ -51,14 +51,14 @@ export class DynamicExamplesService {
     try {
       const teams = await this.cachedUnifiedApiClient.getTeams(sport, { limit })
       const defaultLeague = await serviceFactory.getDefaultLeague(sport)
-      
+
       return teams.map(team => ({
         id: team.id,
         name: team.name,
         abbreviation: team.abbreviation || team.name.substring(0, 3).toUpperCase(),
         league: team.league || defaultLeague,
         sport: sport,
-        logoUrl: team.logoUrl || ''
+        logoUrl: team.logoUrl || '',
       }))
     } catch (error) {
       console.error(`Error fetching example teams for ${sport}:`, error)
@@ -73,7 +73,7 @@ export class DynamicExamplesService {
     try {
       const players = await this.cachedUnifiedApiClient.getPlayers(sport, { limit })
       const defaultLeague = await serviceFactory.getDefaultLeague(sport)
-      
+
       return players.map(player => ({
         id: player.id,
         name: player.name,
@@ -81,7 +81,7 @@ export class DynamicExamplesService {
         team: player.teamName || '',
         league: defaultLeague,
         sport: sport,
-        photoUrl: player.headshotUrl || ''
+        photoUrl: player.headshotUrl || '',
       }))
     } catch (error) {
       console.error(`Error fetching example players for ${sport}:`, error)
@@ -96,7 +96,7 @@ export class DynamicExamplesService {
     try {
       const games = await this.cachedUnifiedApiClient.getGames(sport, { limit })
       const defaultLeague = await serviceFactory.getDefaultLeague(sport)
-      
+
       return games.map(game => ({
         id: game.id,
         homeTeam: game.homeTeam,
@@ -104,7 +104,7 @@ export class DynamicExamplesService {
         date: game.date,
         status: game.status,
         league: game.league || defaultLeague,
-        sport: sport
+        sport: sport,
       }))
     } catch (error) {
       console.error(`Error fetching example games for ${sport}:`, error)
@@ -126,7 +126,7 @@ export class DynamicExamplesService {
     return {
       name: sport.charAt(0).toUpperCase() + sport.slice(1),
       league: serviceFactory.getDefaultLeague(sport),
-      positions: await this.getPositionsForSport(sport)
+      positions: await this.getPositionsForSport(sport),
     }
   }
 
@@ -150,14 +150,14 @@ export class DynamicExamplesService {
     const [teams, players, games] = await Promise.all([
       this.getExampleTeams(sport, 3),
       this.getExamplePlayers(sport, 2),
-      this.getExampleGames(sport, 2)
+      this.getExampleGames(sport, 2),
     ])
 
     return {
       teams: teams.slice(0, 3),
       players: players.slice(0, 2),
       games: games.slice(0, 2),
-      sport: this.getSportConfig(sport)
+      sport: this.getSportConfig(sport),
     }
   }
 }

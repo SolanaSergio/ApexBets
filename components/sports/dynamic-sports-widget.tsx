@@ -1,20 +1,15 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { 
-  Users, 
-  Clock, 
-  BarChart3,
-  RefreshCw
-} from "lucide-react"
-import { TeamLogo } from "@/components/ui/sports-image"
-import { databaseFirstApiClient, type Game, type Team } from "@/lib/api-client-database-first"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Progress } from '@/components/ui/progress'
+import { Users, Clock, BarChart3, RefreshCw } from 'lucide-react'
+import { TeamLogo } from '@/components/ui/sports-image'
+import { databaseFirstApiClient, type Game, type Team } from '@/lib/api-client-database-first'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
 
 interface DynamicSportsWidgetProps {
   sport: SupportedSport
@@ -25,28 +20,28 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
   const [liveGames, setLiveGames] = useState<Game[]>([])
   const [topTeams, setTopTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState("live")
+  const [activeTab, setActiveTab] = useState('live')
 
   const sportConfig = SportConfigManager.getSportConfig(sport)
 
   const loadSportsData = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Load live games
       const games = await databaseFirstApiClient.getGames({
         sport,
-        status: "in_progress"
+        status: 'in_progress',
       })
       setLiveGames(games)
 
       // Load top teams
       const teams = await databaseFirstApiClient.getTeams({
-        sport
+        sport,
       })
       setTopTeams(teams)
     } catch (error) {
-      console.error("Error loading sports data:", error)
+      console.error('Error loading sports data:', error)
     } finally {
       setLoading(false)
     }
@@ -102,22 +97,29 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
               </div>
             ) : (
               <div className="space-y-3">
-                {liveGames.slice(0, 3).map((game) => (
-                  <div key={game.id} className="glass p-3 rounded-xl border border-red-200/50 data-card">
+                {liveGames.slice(0, 3).map(game => (
+                  <div
+                    key={game.id}
+                    className="glass p-3 rounded-xl border border-red-200/50 data-card"
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="text-center">
-                          <TeamLogo 
-                            teamName={game.away_team?.name || ''} 
-                            alt={game.away_team?.abbreviation || 'Away'} 
-                            width={20} 
-                            height={20} 
-                            className="mb-1" 
+                          <TeamLogo
+                            teamName={game.away_team?.name || ''}
+                            alt={game.away_team?.abbreviation || 'Away'}
+                            width={20}
+                            height={20}
+                            className="mb-1"
                           />
-                          <div className="text-xs text-muted-foreground">{game.away_team?.abbreviation}</div>
-                          <div className="text-sm font-bold stats-highlight">{game.away_score || 0}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {game.away_team?.abbreviation}
+                          </div>
+                          <div className="text-sm font-bold stats-highlight">
+                            {game.away_score || 0}
+                          </div>
                         </div>
-                        
+
                         <div className="text-center">
                           <div className="text-xs text-muted-foreground">VS</div>
                           <div className="flex items-center gap-1">
@@ -125,20 +127,24 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
                             <span className="text-xs text-red-600 font-medium">LIVE</span>
                           </div>
                         </div>
-                        
+
                         <div className="text-center">
-                          <TeamLogo 
-                            teamName={game.home_team?.name || ''} 
-                            alt={game.home_team?.abbreviation || 'Home'} 
-                            width={20} 
-                            height={20} 
-                            className="mb-1" 
+                          <TeamLogo
+                            teamName={game.home_team?.name || ''}
+                            alt={game.home_team?.abbreviation || 'Home'}
+                            width={20}
+                            height={20}
+                            className="mb-1"
                           />
-                          <div className="text-xs text-muted-foreground">{game.home_team?.abbreviation}</div>
-                          <div className="text-sm font-bold stats-highlight">{game.home_score || 0}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {game.home_team?.abbreviation}
+                          </div>
+                          <div className="text-sm font-bold stats-highlight">
+                            {game.home_score || 0}
+                          </div>
                         </div>
                       </div>
-                      
+
                       <Badge variant="destructive" className="text-xs animate-pulse">
                         LIVE
                       </Badge>
@@ -152,15 +158,18 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
           <TabsContent value="teams" className="space-y-3 mt-4">
             <div className="grid grid-cols-2 gap-2">
               {topTeams.slice(0, 6).map((team, index) => (
-                <div key={team.id} className="glass p-2 rounded-lg border border-border/50 hover:border-primary/30 transition-colors">
+                <div
+                  key={team.id}
+                  className="glass p-2 rounded-lg border border-border/50 hover:border-primary/30 transition-colors"
+                >
                   <div className="flex items-center gap-2">
                     <div className="flex items-center gap-1">
                       <span className="text-xs font-bold text-muted-foreground">#{index + 1}</span>
-                      <TeamLogo 
-                        teamName={team.name} 
-                        alt={team.abbreviation || team.name} 
-                        width={16} 
-                        height={16} 
+                      <TeamLogo
+                        teamName={team.name}
+                        alt={team.abbreviation || team.name}
+                        width={16}
+                        height={16}
                       />
                     </div>
                     <div className="flex-1 min-w-0">

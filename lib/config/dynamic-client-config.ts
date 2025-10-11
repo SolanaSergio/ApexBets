@@ -48,10 +48,13 @@ class DynamicClientConfigManager {
    */
   async getConfig(): Promise<DynamicConfig> {
     const now = new Date()
-    
+
     // Return cached config if still valid
-    if (this.config && this.lastUpdated && 
-        (now.getTime() - this.lastUpdated.getTime()) < this.CACHE_DURATION) {
+    if (
+      this.config &&
+      this.lastUpdated &&
+      now.getTime() - this.lastUpdated.getTime() < this.CACHE_DURATION
+    ) {
       return this.config
     }
 
@@ -75,14 +78,14 @@ class DynamicClientConfigManager {
       // Calculate dynamic intervals based on sports configuration
       const sports = result.data as any[]
       const config = this.calculateDynamicConfig(sports)
-      
+
       this.config = config
       this.lastUpdated = now
-      
+
       return config
     } catch (error) {
       console.error('Failed to load dynamic configuration:', error)
-      
+
       // Return fallback configuration if database fails
       return this.getFallbackConfig()
     }
@@ -118,18 +121,18 @@ class DynamicClientConfigManager {
         games: avgGamesInterval * 1000, // Convert to milliseconds
         teams: avgTeamsInterval * 1000,
         players: avgPlayersInterval * 1000,
-        health: 30 * 1000 // Always 30 seconds for health checks
+        health: 30 * 1000, // Always 30 seconds for health checks
       },
       ui: {
         refreshInterval: Math.min(avgGamesInterval * 1000, 30000), // Max 30 seconds
         debounceDelay: 300, // Static - UI behavior
-        animationDuration: 200 // Static - UI behavior
+        animationDuration: 200, // Static - UI behavior
       },
       error: {
         maxRetries: 3, // Static - error handling
         retryDelay: 1000, // Static - error handling
-        timeout: 10000 // Static - error handling
-      }
+        timeout: 10000, // Static - error handling
+      },
     }
   }
 
@@ -142,18 +145,18 @@ class DynamicClientConfigManager {
         games: 2 * 60 * 1000, // 2 minutes
         teams: 5 * 60 * 1000, // 5 minutes
         players: 5 * 60 * 1000, // 5 minutes
-        health: 30 * 1000 // 30 seconds
+        health: 30 * 1000, // 30 seconds
       },
       ui: {
         refreshInterval: 30000, // 30 seconds
         debounceDelay: 300,
-        animationDuration: 200
+        animationDuration: 200,
       },
       error: {
         maxRetries: 3,
         retryDelay: 1000,
-        timeout: 10000
-      }
+        timeout: 10000,
+      },
     }
   }
 
@@ -168,14 +171,20 @@ class DynamicClientConfigManager {
   /**
    * Get sport-specific refresh interval
    */
-  async getSportRefreshInterval(sport: string, dataType: 'games' | 'teams' | 'players'): Promise<number> {
+  async getSportRefreshInterval(
+    sport: string,
+    dataType: 'games' | 'teams' | 'players'
+  ): Promise<number> {
     try {
-      const result = await databaseService.executeSQL(`
+      const result = await databaseService.executeSQL(
+        `
         SELECT refresh_intervals
         FROM sports 
         WHERE name = $1 AND is_active = true
         LIMIT 1
-      `, [sport])
+      `,
+        [sport]
+      )
 
       if (result.success && result.data && result.data.length > 0) {
         const intervals = result.data[0].refresh_intervals

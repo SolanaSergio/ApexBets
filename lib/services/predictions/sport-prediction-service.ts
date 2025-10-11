@@ -27,7 +27,9 @@ export class SportPredictionService {
     this.modelVersion = '1.0.0'
   }
 
-  async getPredictions(params: { gameId?: string; date?: string; limit?: number } = {}): Promise<PredictionResult[]> {
+  async getPredictions(
+    params: { gameId?: string; date?: string; limit?: number } = {}
+  ): Promise<PredictionResult[]> {
     try {
       // Handle "all" sport - this should not be called for "all"
       if (this.sport === 'all') {
@@ -45,7 +47,7 @@ export class SportPredictionService {
         // If no specific game, get recent games
         return await this.getRecentPredictions(params.limit || 10)
       }
-      
+
       const gameData = await this.getGameData(params.gameId)
       if (!gameData) {
         throw new Error(`Game not found: ${params.gameId}`)
@@ -53,7 +55,7 @@ export class SportPredictionService {
 
       // Generate predictions based on sport-specific logic
       const predictions = await this.generatePredictions(gameData)
-      
+
       return predictions
     } catch (error) {
       console.error(`Error getting predictions for ${this.sport}:`, error)
@@ -66,18 +68,20 @@ export class SportPredictionService {
       // Fetch real game data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
 
       const { data: game, error } = await supabase
         .from('games')
-        .select(`
+        .select(
+          `
           *,
           home_team:teams!games_home_team_id_fkey(name, abbreviation),
           away_team:teams!games_away_team_id_fkey(name, abbreviation)
-        `)
+        `
+        )
         .eq('id', gameId)
         .eq('sport', this.sport)
         .single()
@@ -96,7 +100,7 @@ export class SportPredictionService {
         date: game.game_date,
         status: game.status,
         homeScore: game.home_score,
-        awayScore: game.away_score
+        awayScore: game.away_score,
       }
     } catch (error) {
       console.error('Error fetching game data:', error)
@@ -117,9 +121,12 @@ export class SportPredictionService {
       predictions.push(mlPrediction)
 
       // Generate statistical prediction
-      const statPrediction = await this.generateStatisticalPrediction(homeTeamStats, awayTeamStats, gameData)
+      const statPrediction = await this.generateStatisticalPrediction(
+        homeTeamStats,
+        awayTeamStats,
+        gameData
+      )
       predictions.push(statPrediction)
-
     } catch (error) {
       console.error('Error generating predictions:', error)
     }
@@ -132,7 +139,7 @@ export class SportPredictionService {
       // Fetch real team stats from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -140,10 +147,12 @@ export class SportPredictionService {
       // Get team standings for current season
       const { data: standings, error } = await supabase
         .from('league_standings')
-        .select(`
+        .select(
+          `
           *,
           team:teams!league_standings_team_id_fkey(name, abbreviation)
-        `)
+        `
+        )
         .eq('sport', this.sport)
         .eq('league_name', this.league)
         .ilike('team.name', `%${teamName}%`)
@@ -159,7 +168,7 @@ export class SportPredictionService {
           pointsAgainst: 0,
           homeRecord: { wins: 0, losses: 0, ties: 0 },
           awayRecord: { wins: 0, losses: 0, ties: 0 },
-          recentForm: []
+          recentForm: [],
         }
       }
 
@@ -169,17 +178,17 @@ export class SportPredictionService {
         ties: standings.ties || 0,
         pointsFor: standings.points_for || 0,
         pointsAgainst: standings.points_against || 0,
-        homeRecord: { 
-          wins: standings.home_wins || 0, 
+        homeRecord: {
+          wins: standings.home_wins || 0,
           losses: standings.home_losses || 0,
-          ties: standings.home_ties || 0
+          ties: standings.home_ties || 0,
         },
-        awayRecord: { 
-          wins: standings.away_wins || 0, 
+        awayRecord: {
+          wins: standings.away_wins || 0,
           losses: standings.away_losses || 0,
-          ties: standings.away_ties || 0
+          ties: standings.away_ties || 0,
         },
-        recentForm: this.calculateRecentForm(standings.streak || '')
+        recentForm: this.calculateRecentForm(standings.streak || ''),
       }
     } catch (error) {
       console.error('Error fetching team stats:', error)
@@ -190,27 +199,31 @@ export class SportPredictionService {
   private calculateRecentForm(streak: string): string[] {
     // Convert streak string to recent form array
     if (!streak) return []
-    
+
     const form: string[] = []
     const currentStreak = streak.charAt(0)
     const count = parseInt(streak.slice(1)) || 1
-    
+
     for (let i = 0; i < Math.min(count, 5); i++) {
       form.push(currentStreak)
     }
-    
+
     return form
   }
 
-  private async generateMLPrediction(homeStats: any, awayStats: any, gameData: any): Promise<PredictionResult> {
+  private async generateMLPrediction(
+    homeStats: any,
+    awayStats: any,
+    gameData: any
+  ): Promise<PredictionResult> {
     try {
       // Import advanced ML algorithms
       const { EnsembleModel } = await import('@/lib/ml/prediction-algorithms')
-      
+
       // Import types for TypeScript (these are interfaces, not runtime values)
       type TeamStats = import('@/lib/ml/prediction-algorithms').TeamStats
       type GameContext = import('@/lib/ml/prediction-algorithms').GameContext
-      
+
       // Convert stats to TeamStats format
       const homeTeamStats: TeamStats = {
         wins: homeStats.wins || 0,
@@ -223,9 +236,9 @@ export class SportPredictionService {
         recentForm: homeStats.recentForm || [],
         strengthOfSchedule: homeStats.strengthOfSchedule || 0.5,
         avgMarginOfVictory: homeStats.avgMarginOfVictory || 0,
-        consistency: homeStats.consistency || 0.5
+        consistency: homeStats.consistency || 0.5,
       }
-      
+
       const awayTeamStats: TeamStats = {
         wins: awayStats.wins || 0,
         losses: awayStats.losses || 0,
@@ -237,9 +250,9 @@ export class SportPredictionService {
         recentForm: awayStats.recentForm || [],
         strengthOfSchedule: awayStats.strengthOfSchedule || 0.5,
         avgMarginOfVictory: awayStats.avgMarginOfVictory || 0,
-        consistency: awayStats.consistency || 0.5
+        consistency: awayStats.consistency || 0.5,
       }
-      
+
       // Create game context
       const gameContext: GameContext = {
         isPlayoffs: gameData.gameType === 'playoffs' || gameData.season?.includes('playoffs'),
@@ -247,12 +260,12 @@ export class SportPredictionService {
         restDays: 2, // Default rest days, could be calculated from schedule
         travelDistance: 0, // Could be calculated from team locations
         venue: gameData.venue ?? null,
-        sport: this.sport
+        sport: this.sport,
       }
-      
+
       // Get ensemble ML prediction
       const mlPrediction = EnsembleModel.predict(homeTeamStats, awayTeamStats, gameContext)
-      
+
       // Convert to PredictionResult format
       return {
         gameId: gameData.id,
@@ -262,16 +275,17 @@ export class SportPredictionService {
         awayWinProbability: mlPrediction.awayWinProbability,
         predictedSpread: mlPrediction.predictedSpread,
         predictedTotal: mlPrediction.predictedTotal,
-        factors: mlPrediction.factors
+        factors: mlPrediction.factors,
       }
     } catch (error) {
       console.error('Error in advanced ML prediction, falling back to basic model:', error)
-      
+
       // Fallback to basic prediction if ML algorithms fail
-      const homeWinRate = homeStats.wins / Math.max(homeStats.wins + homeStats.losses + homeStats.ties, 1)
+      const homeWinRate =
+        homeStats.wins / Math.max(homeStats.wins + homeStats.losses + homeStats.ties, 1)
       const homeAdvantage = 0.04
       const homeWinProbability = Math.min(0.9, Math.max(0.1, homeWinRate + homeAdvantage))
-      
+
       return {
         gameId: gameData.id,
         model: `fallback_model_${this.sport}_v${this.modelVersion}`,
@@ -280,27 +294,31 @@ export class SportPredictionService {
         awayWinProbability: 1 - homeWinProbability,
         predictedSpread: 0,
         predictedTotal: 200,
-        factors: ['Basic statistical analysis (ML algorithms unavailable)']
+        factors: ['Basic statistical analysis (ML algorithms unavailable)'],
       }
     }
   }
 
-  private async generateStatisticalPrediction(homeStats: any, awayStats: any, gameData: any): Promise<PredictionResult> {
+  private async generateStatisticalPrediction(
+    homeStats: any,
+    awayStats: any,
+    gameData: any
+  ): Promise<PredictionResult> {
     // Statistical analysis based on team records
     const homeTotalGames = homeStats.wins + homeStats.losses + homeStats.ties
     const awayTotalGames = awayStats.wins + awayStats.losses + awayStats.ties
-    
+
     const homeWinRate = homeTotalGames > 0 ? homeStats.wins / homeTotalGames : 0.5
     const awayWinRate = awayTotalGames > 0 ? awayStats.wins / awayTotalGames : 0.5
-    
+
     // Calculate probabilities using Elo-style rating system
     const homeRating = homeWinRate * 2000 + 1000
     const awayRating = awayWinRate * 2000 + 1000
     const expectedHomeWin = 1 / (1 + Math.pow(10, (awayRating - homeRating) / 400))
-    
+
     const homeWinProbability = Math.min(0.9, Math.max(0.1, expectedHomeWin))
     const awayWinProbability = 1 - homeWinProbability
-    
+
     // Calculate confidence based on sample size
     const minGames = Math.min(homeTotalGames, awayTotalGames)
     const confidence = Math.min(0.9, Math.max(0.3, minGames / 15))
@@ -310,7 +328,7 @@ export class SportPredictionService {
     const awayAvgPoints = awayTotalGames > 0 ? awayStats.pointsFor / awayTotalGames : 0
     const homeAvgAllowed = homeTotalGames > 0 ? homeStats.pointsAgainst / homeTotalGames : 0
     const awayAvgAllowed = awayTotalGames > 0 ? awayStats.pointsAgainst / awayTotalGames : 0
-    
+
     const homeNetRating = homeAvgPoints - homeAvgAllowed
     const awayNetRating = awayAvgPoints - awayAvgAllowed
     const predictedSpread = homeNetRating - awayNetRating
@@ -329,8 +347,8 @@ export class SportPredictionService {
         'Points per game',
         'Defensive efficiency',
         'Net rating comparison',
-        'Sample size validation'
-      ]
+        'Sample size validation',
+      ],
     }
   }
 
@@ -342,7 +360,7 @@ export class SportPredictionService {
       // Fetch actual predictions from database instead of generating them
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -350,7 +368,8 @@ export class SportPredictionService {
       // Get predictions with game and team data
       const { data: predictions, error } = await supabase
         .from('predictions')
-        .select(`
+        .select(
+          `
           *,
           game:games!predictions_game_id_fkey(
             id,
@@ -363,7 +382,8 @@ export class SportPredictionService {
             home_team:teams!games_home_team_id_fkey(name, abbreviation),
             away_team:teams!games_away_team_id_fkey(name, abbreviation)
           )
-        `)
+        `
+        )
         .eq('sport', this.sport)
         .order('created_at', { ascending: false })
         .limit(limit)
@@ -373,23 +393,27 @@ export class SportPredictionService {
       }
 
       // Transform database predictions to PredictionResult format
-      return predictions.map(pred => ({
-        gameId: pred.game_id,
-        model: pred.model_name || 'ApexML',
-        confidence: pred.confidence || 0.5,
-        homeWinProbability: pred.prediction_type === 'winner' && pred.predicted_value === 1 ? pred.confidence : 0.5,
-        awayWinProbability: pred.prediction_type === 'winner' && pred.predicted_value === 0 ? pred.confidence : 0.5,
-        predictedSpread: pred.prediction_type === 'spread' ? pred.predicted_value : 0,
-        predictedTotal: pred.prediction_type === 'total_points' ? pred.predicted_value : 0,
-        factors: pred.reasoning ? [pred.reasoning] : ['Historical analysis'],
-        homeTeam: pred.game?.home_team?.name ?? null,
-        awayTeam: pred.game?.away_team?.name ?? null,
-        gameDate: pred.game?.game_date,
-        status: pred.game?.status,
-        actualValue: pred.actual_value,
-        isCorrect: pred.is_correct,
-        predictionType: pred.prediction_type
-      })).slice(0, limit)
+      return predictions
+        .map(pred => ({
+          gameId: pred.game_id,
+          model: pred.model_name || 'ApexML',
+          confidence: pred.confidence || 0.5,
+          homeWinProbability:
+            pred.prediction_type === 'winner' && pred.predicted_value === 1 ? pred.confidence : 0.5,
+          awayWinProbability:
+            pred.prediction_type === 'winner' && pred.predicted_value === 0 ? pred.confidence : 0.5,
+          predictedSpread: pred.prediction_type === 'spread' ? pred.predicted_value : 0,
+          predictedTotal: pred.prediction_type === 'total_points' ? pred.predicted_value : 0,
+          factors: pred.reasoning ? [pred.reasoning] : ['Historical analysis'],
+          homeTeam: pred.game?.home_team?.name ?? null,
+          awayTeam: pred.game?.away_team?.name ?? null,
+          gameDate: pred.game?.game_date,
+          status: pred.game?.status,
+          actualValue: pred.actual_value,
+          isCorrect: pred.is_correct,
+          predictionType: pred.prediction_type,
+        }))
+        .slice(0, limit)
     } catch (error) {
       console.error(`Error getting recent predictions for ${this.sport}:`, error)
       return []
@@ -399,19 +423,22 @@ export class SportPredictionService {
   /**
    * Get value betting opportunities
    */
-  async getValueBettingOpportunities(params: { minValue?: number; limit?: number } = {}): Promise<any[]> {
+  async getValueBettingOpportunities(
+    params: { minValue?: number; limit?: number } = {}
+  ): Promise<any[]> {
     try {
       // Fetch actual value betting opportunities from database
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
 
       const { data: opportunities, error } = await supabase
         .from('value_betting_opportunities')
-        .select(`
+        .select(
+          `
           *,
           game:games!value_betting_opportunities_game_id_fkey(
             id,
@@ -420,7 +447,8 @@ export class SportPredictionService {
             home_team:teams!games_home_team_id_fkey(name, abbreviation),
             away_team:teams!games_away_team_id_fkey(name, abbreviation)
           )
-        `)
+        `
+        )
         .eq('sport', this.sport)
         .gte('value', params.minValue || 0.05)
         .gte('expires_at', new Date().toISOString())
@@ -444,7 +472,7 @@ export class SportPredictionService {
         confidence: opp.confidence_score,
         predictedProbability: opp.predicted_probability,
         expectedValue: opp.expected_value,
-        kellyPercentage: opp.kelly_percentage
+        kellyPercentage: opp.kelly_percentage,
       }))
     } catch (error) {
       console.error(`Error getting value betting opportunities for ${this.sport}:`, error)
@@ -460,7 +488,7 @@ export class SportPredictionService {
       // Fetch real model performance data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
@@ -484,7 +512,7 @@ export class SportPredictionService {
           f1Score: 0,
           totalPredictions: 0,
           correctPredictions: 0,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         }
       }
 
@@ -492,15 +520,15 @@ export class SportPredictionService {
       const totalPredictions = predictions.length
       const correctPredictions = predictions.filter(p => p.is_correct === true).length
       const accuracy = totalPredictions > 0 ? correctPredictions / totalPredictions : 0
-      
+
       // Calculate precision and recall for win predictions
       const winPredictions = predictions.filter(p => p.predicted_value > 0.5)
       const trueWins = winPredictions.filter(p => p.actual_value > 0.5)
       const precision = winPredictions.length > 0 ? trueWins.length / winPredictions.length : 0
-      
+
       const actualWins = predictions.filter(p => p.actual_value > 0.5)
       const recall = actualWins.length > 0 ? trueWins.length / actualWins.length : 0
-      const f1Score = precision + recall > 0 ? 2 * (precision * recall) / (precision + recall) : 0
+      const f1Score = precision + recall > 0 ? (2 * (precision * recall)) / (precision + recall) : 0
 
       return {
         sport: this.sport,
@@ -512,7 +540,7 @@ export class SportPredictionService {
         f1Score: Math.round(f1Score * 100) / 100,
         totalPredictions,
         correctPredictions,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error(`Error getting model performance for ${this.sport}:`, error)
@@ -523,21 +551,24 @@ export class SportPredictionService {
   /**
    * Get prediction accuracy for a specific period
    */
-  async getPredictionAccuracy(params: { 
-    startDate?: string; 
-    endDate?: string; 
-    model?: string 
-  } = {}): Promise<any> {
+  async getPredictionAccuracy(
+    params: {
+      startDate?: string
+      endDate?: string
+      model?: string
+    } = {}
+  ): Promise<any> {
     try {
       // Fetch real prediction accuracy data from database using database service
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      
+
       if (!supabase) {
         throw new Error('Database connection failed')
       }
 
-      const startDate = params.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+      const startDate =
+        params.startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
       const endDate = params.endDate || new Date().toISOString()
       const model = params.model || this.modelVersion
 
@@ -565,7 +596,7 @@ export class SportPredictionService {
           accuracy: 0,
           totalPredictions: 0,
           correctPredictions: 0,
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         }
       }
 
@@ -582,7 +613,7 @@ export class SportPredictionService {
         accuracy: Math.round(accuracy * 100) / 100,
         totalPredictions,
         correctPredictions,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     } catch (error) {
       console.error(`Error getting prediction accuracy for ${this.sport}:`, error)

@@ -17,14 +17,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error('Error fetching image stats:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch image stats' 
+      {
+        success: false,
+        error: 'Failed to fetch image stats',
       },
       { status: 500 }
     )

@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, XCircle, AlertTriangle, Info, ExternalLink } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { CheckCircle, XCircle, AlertTriangle, Info, ExternalLink } from 'lucide-react'
 
 interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy'
@@ -117,9 +117,7 @@ export default function SetupPage() {
               {healthStatus.status.toUpperCase()}
             </Badge>
           </CardTitle>
-          <CardDescription>
-            Overall system health and configuration status
-          </CardDescription>
+          <CardDescription>Overall system health and configuration status</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -149,9 +147,7 @@ export default function SetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>Environment Configuration</CardTitle>
-          <CardDescription>
-            API keys and environment variables status
-          </CardDescription>
+          <CardDescription>API keys and environment variables status</CardDescription>
         </CardHeader>
         <CardContent>
           {!healthStatus.environment.configured ? (
@@ -164,9 +160,7 @@ export default function SetupPage() {
           ) : (
             <Alert className="mb-4">
               <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Environment is properly configured!
-              </AlertDescription>
+              <AlertDescription>Environment is properly configured!</AlertDescription>
             </Alert>
           )}
 
@@ -174,8 +168,10 @@ export default function SetupPage() {
             <div className="mb-4">
               <h4 className="font-semibold text-red-600 mb-2">Missing Required Variables:</h4>
               <ul className="list-disc list-inside space-y-1">
-                {healthStatus.environment.missingKeys.map((key) => (
-                  <li key={key} className="text-sm text-red-600">{key}</li>
+                {healthStatus.environment.missingKeys.map(key => (
+                  <li key={key} className="text-sm text-red-600">
+                    {key}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -185,8 +181,10 @@ export default function SetupPage() {
             <div className="mb-4">
               <h4 className="font-semibold text-yellow-600 mb-2">Invalid Variables:</h4>
               <ul className="list-disc list-inside space-y-1">
-                {healthStatus.environment.invalidKeys.map((key) => (
-                  <li key={key} className="text-sm text-yellow-600">{key}</li>
+                {healthStatus.environment.invalidKeys.map(key => (
+                  <li key={key} className="text-sm text-yellow-600">
+                    {key}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -196,7 +194,9 @@ export default function SetupPage() {
             <h4 className="font-semibold mb-2">Recommendations:</h4>
             <ul className="list-disc list-inside space-y-1">
               {healthStatus.environment.recommendations.map((rec, index) => (
-                <li key={index} className="text-sm text-gray-600">{rec}</li>
+                <li key={index} className="text-sm text-gray-600">
+                  {rec}
+                </li>
               ))}
             </ul>
           </div>
@@ -207,9 +207,7 @@ export default function SetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>API Services Status</CardTitle>
-          <CardDescription>
-            Real-time status of all integrated APIs
-          </CardDescription>
+          <CardDescription>Real-time status of all integrated APIs</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -219,15 +217,15 @@ export default function SetupPage() {
                   <h4 className="font-semibold capitalize">{service}</h4>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(status.status)}
-                    <Badge className={getStatusColor(status.status)}>
-                      {status.status}
-                    </Badge>
+                    <Badge className={getStatusColor(status.status)}>{status.status}</Badge>
                   </div>
                 </div>
                 <div className="text-sm text-gray-600 space-y-1">
                   <div>Requests Today: {status.usage?.requestsToday || 0}</div>
                   <div>Requests This Hour: {status.usage?.requestsThisHour || 0}</div>
-                  <div>Average Response Time: {Math.round(status.usage?.averageResponseTime || 0)}ms</div>
+                  <div>
+                    Average Response Time: {Math.round(status.usage?.averageResponseTime || 0)}ms
+                  </div>
                   <div>Error Rate: {Math.round((status.usage?.errorRate || 0) * 100)}%</div>
                 </div>
               </div>
@@ -240,9 +238,7 @@ export default function SetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>API Endpoint Tests</CardTitle>
-          <CardDescription>
-            Real-time testing of API endpoints
-          </CardDescription>
+          <CardDescription>Real-time testing of API endpoints</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -252,26 +248,14 @@ export default function SetupPage() {
                   <h4 className="font-semibold capitalize">{endpoint}</h4>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(test.status)}
-                    <Badge className={getStatusColor(test.status)}>
-                      {test.status}
-                    </Badge>
+                    <Badge className={getStatusColor(test.status)}>{test.status}</Badge>
                   </div>
                 </div>
                 {test.responseTime && (
-                  <div className="text-sm text-gray-600">
-                    Response Time: {test.responseTime}ms
-                  </div>
+                  <div className="text-sm text-gray-600">Response Time: {test.responseTime}ms</div>
                 )}
-                {test.fromCache && (
-                  <div className="text-sm text-blue-600">
-                    Served from cache
-                  </div>
-                )}
-                {test.error && (
-                  <div className="text-sm text-red-600">
-                    Error: {test.error}
-                  </div>
-                )}
+                {test.fromCache && <div className="text-sm text-blue-600">Served from cache</div>}
+                {test.error && <div className="text-sm text-red-600">Error: {test.error}</div>}
               </div>
             ))}
           </div>
@@ -282,9 +266,7 @@ export default function SetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>Cache Statistics</CardTitle>
-          <CardDescription>
-            Performance and usage statistics
-          </CardDescription>
+          <CardDescription>Performance and usage statistics</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -320,26 +302,23 @@ export default function SetupPage() {
       <Card>
         <CardHeader>
           <CardTitle>Actions</CardTitle>
-          <CardDescription>
-            Manage your system configuration
-          </CardDescription>
+          <CardDescription>Manage your system configuration</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-4">
             <Button onClick={fetchHealthStatus} variant="outline">
               Refresh Status
             </Button>
-            <Button 
+            <Button
               onClick={() => window.open('/api/health?detailed=true', '_blank')}
               variant="outline"
             >
               <ExternalLink className="h-4 w-4 mr-2" />
               View Raw Data
             </Button>
-            <Button 
+            <Button
               onClick={() => {
-                fetch('/api/health/clear-cache', { method: 'POST' })
-                  .then(() => fetchHealthStatus())
+                fetch('/api/health/clear-cache', { method: 'POST' }).then(() => fetchHealthStatus())
               }}
               variant="outline"
             >

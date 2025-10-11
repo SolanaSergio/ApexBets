@@ -35,13 +35,10 @@ export class ComprehensiveErrorHandler {
     return ComprehensiveErrorHandler.instance
   }
 
-  async handleError(
-    error: Error,
-    context: ErrorContext
-  ): Promise<ErrorRecoveryStrategy> {
+  async handleError(error: Error, context: ErrorContext): Promise<ErrorRecoveryStrategy> {
     const errorKey = `${context.service}:${context.operation}`
     const now = Date.now()
-    
+
     // Track error frequency
     const errorCount = this.errorCounts.get(errorKey) || 0
     this.errorCounts.set(errorKey, errorCount + 1)
@@ -49,59 +46,88 @@ export class ComprehensiveErrorHandler {
 
     // Categorize error
     const errorCategory = this.categorizeError(error)
-    
+
     // Get recovery strategy based on error category and context
     const strategy = this.getRecoveryStrategy(errorCategory, context, errorCount)
-    
+
     // Log error with appropriate level
     this.logError(error, context, errorCategory, strategy)
-    
+
     return strategy
   }
 
   private categorizeError(error: Error): string {
     const message = error.message.toLowerCase()
-    
+
     // Network errors
     if (message.includes('fetch') || message.includes('network') || message.includes('timeout')) {
       return 'network'
     }
-    
+
     // Rate limiting errors
-    if (message.includes('rate limit') || message.includes('429') || message.includes('too many requests')) {
+    if (
+      message.includes('rate limit') ||
+      message.includes('429') ||
+      message.includes('too many requests')
+    ) {
       return 'rate_limit'
     }
-    
+
     // Authentication errors
-    if (message.includes('401') || message.includes('unauthorized') || message.includes('invalid api key')) {
+    if (
+      message.includes('401') ||
+      message.includes('unauthorized') ||
+      message.includes('invalid api key')
+    ) {
       return 'authentication'
     }
-    
+
     // Authorization errors
-    if (message.includes('403') || message.includes('forbidden') || message.includes('access denied')) {
+    if (
+      message.includes('403') ||
+      message.includes('forbidden') ||
+      message.includes('access denied')
+    ) {
       return 'authorization'
     }
-    
+
     // Server errors
-    if (message.includes('500') || message.includes('502') || message.includes('503') || message.includes('504')) {
+    if (
+      message.includes('500') ||
+      message.includes('502') ||
+      message.includes('503') ||
+      message.includes('504')
+    ) {
       return 'server_error'
     }
-    
+
     // Data errors
-    if (message.includes('invalid json') || message.includes('parse error') || message.includes('malformed')) {
+    if (
+      message.includes('invalid json') ||
+      message.includes('parse error') ||
+      message.includes('malformed')
+    ) {
       return 'data_error'
     }
-    
+
     // Database errors
-    if (message.includes('database') || message.includes('connection') || message.includes('query')) {
+    if (
+      message.includes('database') ||
+      message.includes('connection') ||
+      message.includes('query')
+    ) {
       return 'database'
     }
-    
+
     // Validation errors
-    if (message.includes('validation') || message.includes('invalid') || message.includes('required')) {
+    if (
+      message.includes('validation') ||
+      message.includes('invalid') ||
+      message.includes('required')
+    ) {
       return 'validation'
     }
-    
+
     return 'unknown'
   }
 
@@ -110,20 +136,19 @@ export class ComprehensiveErrorHandler {
     _context: ErrorContext,
     errorCount: number
   ): ErrorRecoveryStrategy {
-
     switch (errorCategory) {
       case 'network':
         return {
           shouldRetry: errorCount < 3,
           retryAfterMs: Math.min(1000 * Math.pow(2, errorCount), 30000), // Exponential backoff, max 30s
-          logLevel: errorCount > 1 ? 'warn' : 'error'
+          logLevel: errorCount > 1 ? 'warn' : 'error',
         }
 
       case 'rate_limit':
         return {
           shouldRetry: true,
           retryAfterMs: 60000, // Wait 1 minute for rate limits
-          logLevel: 'warn'
+          logLevel: 'warn',
         }
 
       case 'authentication':
@@ -131,7 +156,7 @@ export class ComprehensiveErrorHandler {
           shouldRetry: false,
           fallbackAction: 'rotate_api_key',
           circuitBreak: true,
-          logLevel: 'error'
+          logLevel: 'error',
         }
 
       case 'authorization':
@@ -139,7 +164,7 @@ export class ComprehensiveErrorHandler {
           shouldRetry: errorCount < 2,
           retryAfterMs: 5000,
           fallbackAction: 'use_fallback_api',
-          logLevel: 'warn'
+          logLevel: 'warn',
         }
 
       case 'server_error':
@@ -147,14 +172,14 @@ export class ComprehensiveErrorHandler {
           shouldRetry: errorCount < 3,
           retryAfterMs: Math.min(2000 * Math.pow(2, errorCount), 60000), // Exponential backoff, max 1min
           fallbackAction: 'use_fallback_api',
-          logLevel: errorCount > 1 ? 'warn' : 'error'
+          logLevel: errorCount > 1 ? 'warn' : 'error',
         }
 
       case 'data_error':
         return {
           shouldRetry: false,
           fallbackAction: 'return_empty_data',
-          logLevel: 'warn'
+          logLevel: 'warn',
         }
 
       case 'database':
@@ -162,20 +187,20 @@ export class ComprehensiveErrorHandler {
           shouldRetry: errorCount < 2,
           retryAfterMs: 5000,
           fallbackAction: 'use_cached_data',
-          logLevel: 'error'
+          logLevel: 'error',
         }
 
       case 'validation':
         return {
           shouldRetry: false,
-          logLevel: 'warn'
+          logLevel: 'warn',
         }
 
       default:
         return {
           shouldRetry: errorCount < 1,
           retryAfterMs: 5000,
-          logLevel: 'error'
+          logLevel: 'error',
         }
     }
   }
@@ -197,7 +222,7 @@ export class ComprehensiveErrorHandler {
       shouldRetry: strategy.shouldRetry,
       retryAfterMs: strategy.retryAfterMs,
       fallbackAction: strategy.fallbackAction,
-      ...context.additionalData
+      ...context.additionalData,
     }
 
     switch (strategy.logLevel) {
@@ -222,63 +247,63 @@ export class ComprehensiveErrorHandler {
     maxRetries: number = 3
   ): Promise<T | null> {
     let lastError: Error | null = null
-    
+
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
         const result = await operation()
-        
+
         // Reset error count on success
         const errorKey = `${context.service}:${context.operation}`
         this.errorCounts.delete(errorKey)
-        
+
         return result
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-        
+
         const strategy = await this.handleError(lastError, {
           ...context,
-          additionalData: { attempt, maxRetries }
+          additionalData: { attempt, maxRetries },
         })
-        
+
         if (!strategy.shouldRetry || attempt >= maxRetries) {
           break
         }
-        
+
         if (strategy.retryAfterMs) {
           await new Promise(resolve => setTimeout(resolve, strategy.retryAfterMs))
         }
       }
     }
-    
+
     // If we get here, all retries failed
     structuredLogger.error(`Operation failed after ${maxRetries} retries`, {
       service: context.service,
       operation: context.operation,
       lastError: lastError?.message,
-      errorCount: this.errorCounts.get(`${context.service}:${context.operation}`)
+      errorCount: this.errorCounts.get(`${context.service}:${context.operation}`),
     })
-    
+
     return null
   }
 
   getErrorStats(service?: string): Record<string, any> {
     const stats: Record<string, any> = {}
-    
+
     for (const [key, count] of this.errorCounts.entries()) {
       const [svc, op] = key.split(':')
-      
+
       if (service && svc !== service) continue
-      
+
       if (!stats[svc]) {
         stats[svc] = {}
       }
-      
+
       stats[svc][op] = {
         errorCount: count,
-        lastErrorTime: this.lastErrorTimes.get(key)
+        lastErrorTime: this.lastErrorTimes.get(key),
       }
     }
-    
+
     return stats
   }
 
@@ -302,11 +327,11 @@ export class ComprehensiveErrorHandler {
     const errorKey = `${service}:${operation}`
     const errorCount = this.errorCounts.get(errorKey) || 0
     const lastErrorTime = this.lastErrorTimes.get(errorKey) || 0
-    
+
     // Consider service healthy if:
     // 1. No errors in the last 5 minutes, OR
     // 2. Less than 5 errors total
-    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000)
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
     return errorCount < 5 || lastErrorTime < fiveMinutesAgo
   }
 }

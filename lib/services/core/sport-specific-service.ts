@@ -99,19 +99,21 @@ export abstract class SportSpecificService extends BaseService {
 
   async healthCheck(): Promise<boolean> {
     // Check cache first
-    if (this.healthCheckCache && 
-        Date.now() - this.healthCheckCache.timestamp < this.HEALTH_CHECK_CACHE_TTL) {
+    if (
+      this.healthCheckCache &&
+      Date.now() - this.healthCheckCache.timestamp < this.HEALTH_CHECK_CACHE_TTL
+    ) {
       return this.healthCheckCache.result
     }
 
     try {
       // Test with a simple API call, but handle rate limit errors gracefully
       await this.getTeams({ limit: 1 })
-      
+
       // Cache successful result
       this.healthCheckCache = {
         result: true,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
       return true
     } catch (error) {
@@ -121,13 +123,13 @@ export abstract class SportSpecificService extends BaseService {
         // Return cached result if available, otherwise return false
         return this.healthCheckCache?.result ?? false
       }
-      
+
       console.error(`${this.sport} service health check failed:`, error)
-      
+
       // Cache failed result
       this.healthCheckCache = {
         result: false,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       }
       return false
     }

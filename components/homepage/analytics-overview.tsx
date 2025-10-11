@@ -1,260 +1,180 @@
-"use client"
+'use client'
 
-import { useMemo } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { useRealTimeData, useDashboardStats } from "@/components/data/real-time-provider"
-import { BarChart3, Target, TrendingUp, Activity, Zap } from "lucide-react"
+import { useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useRealTimeData, useDashboardStats } from '@/components/data/real-time-provider'
+import { BarChart3, Target, TrendingUp, Activity, AlertCircle } from 'lucide-react'
+import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts'
 
 export function AnalyticsOverview() {
-  const { selectedSport, supportedSports } = useRealTimeData()
-  const { stats, loading, error, lastUpdate, isConnected } = useDashboardStats()
+  const { selectedSport } = useRealTimeData()
+  const { stats, loading, error, isConnected } = useDashboardStats()
 
-  // Calculate trend data for sparklines
-  const trendData = useMemo(() => {
-    // Mock trend data - in real implementation, this would come from historical data
-    const baseValue = stats.accuracy
-    return {
-      week: baseValue + Math.random() * 10 - 5,
-      month: baseValue + Math.random() * 15 - 7,
-      overall: baseValue
-    }
+  // Mock historical data for the chart
+  const chartData = useMemo(() => {
+    return [
+      { name: 'Jan', accuracy: 68 },
+      { name: 'Feb', accuracy: 72 },
+      { name: 'Mar', accuracy: 75 },
+      { name: 'Apr', accuracy: 71 },
+      { name: 'May', accuracy: 78 },
+      { name: 'Jun', accuracy: stats.accuracy || 78 }, // Current accuracy
+    ]
   }, [stats.accuracy])
 
-  const statCards = [
-    {
-      icon: Activity,
-      title: "Live Games",
-      value: stats.liveGames,
-      subtitle: "Active now",
-      color: "text-destructive",
-      bgColor: "bg-destructive/5",
-      borderColor: "border-destructive/20"
-    },
-    {
-      icon: Target,
-      title: "Accuracy Rate",
-      value: `${stats.accuracy}%`,
-      subtitle: "Prediction success",
-      color: "text-accent",
-      bgColor: "bg-accent/5",
-      borderColor: "border-accent/20"
-    },
-    {
-      icon: BarChart3,
-      title: "Total Predictions",
-      value: stats.dataPoints.toLocaleString(),
-      subtitle: "AI insights generated",
-      color: "text-primary",
-      bgColor: "bg-primary/5",
-      borderColor: "border-primary/20"
-    },
-    {
-      icon: TrendingUp,
-      title: "Performance",
-      value: stats.accuracy > 75 ? "↗ Rising" : "→ Stable",
-      subtitle: "Overall trend",
-      color: stats.accuracy > 75 ? "text-accent" : "text-muted-foreground",
-      bgColor: stats.accuracy > 75 ? "bg-accent/5" : "bg-muted/5",
-      borderColor: stats.accuracy > 75 ? "border-accent/20" : "border-muted/20"
-    }
-  ]
-
   if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Analytics Overview</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  <div className="h-8 w-8 bg-muted rounded"></div>
-                  <div className="space-y-2">
-                    <div className="h-4 w-20 bg-muted rounded"></div>
-                    <div className="h-8 w-16 bg-muted rounded"></div>
-                    <div className="h-3 w-24 bg-muted rounded"></div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    )
+    return <LoadingSkeleton />
   }
 
   if (error) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Analytics Overview</h2>
-        </div>
-        <Card className="card-modern">
-          <CardContent className="py-12 text-center">
-            <div className="text-destructive text-4xl mb-4">⚠️</div>
-            <h3 className="text-lg font-semibold mb-2">Connection Error</h3>
-            <p className="text-muted-foreground">
-              Unable to load analytics data. Please try refreshing the page.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <ErrorState />
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          <h2 className="text-2xl font-bold">Analytics Overview</h2>
-          {lastUpdate && (
-            <span className="text-xs text-muted-foreground">
-              Updated {lastUpdate.toLocaleTimeString()}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className="text-xs text-muted-foreground">
-            {isConnected ? 'Connected' : 'Disconnected'}
-          </span>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
+      <Header isConnected={isConnected} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon
-          return (
-            <Card 
-              key={index} 
-              className={`card-modern ${stat.borderColor} hover:border-primary transition-colors`}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className={`p-3 rounded-lg ${stat.bgColor}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  {stat.title === "Performance" && (
-                    <div className={`text-xs px-2 py-1 rounded-full ${stat.bgColor} ${stat.color}`}>
-                      {stats.accuracy > 75 ? "↗" : "→"}
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-4 space-y-1">
-                  <div className="text-2xl font-bold text-foreground">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm font-medium text-foreground">
-                    {stat.title}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {stat.subtitle}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )
-        })}
+        <StatCard icon={Activity} title="Live Games" value={stats.liveGames} color="text-red-600" />
+        <StatCard icon={Target} title="Accuracy Rate" value={`${stats.accuracy}%`} color="text-green-600" />
+        <StatCard icon={BarChart3} title="Predictions" value={stats.dataPoints.toLocaleString()} color="text-blue-600" />
+        <StatCard icon={TrendingUp} title="Success Trend" value={stats.accuracy > 75 ? 'Rising' : 'Stable'} color="text-indigo-600" />
       </div>
-
-      {/* Additional Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Performance Trend */}
-        <Card className="card-modern">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">Performance Trend</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">This Week</span>
-                <span className="text-sm font-medium text-accent">
-                  {trendData.week > stats.accuracy ? '+' : ''}{Math.round(trendData.week - stats.accuracy)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">This Month</span>
-                <span className="text-sm font-medium text-accent">
-                  {trendData.month > stats.accuracy ? '+' : ''}{Math.round(trendData.month - stats.accuracy)}%
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Overall</span>
-                <span className="text-sm font-medium text-foreground">{stats.accuracy}%</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quick Stats */}
-        <Card className="card-modern">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Activity className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">Quick Stats</h3>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Games Tracked</span>
-                <span className="text-sm font-medium text-foreground">{stats.totalGames}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Sports Covered</span>
-                <span className="text-sm font-medium text-foreground">
-                  {selectedSport === "all" ? supportedSports.length : 1}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Teams Tracked</span>
-                <span className="text-sm font-medium text-foreground">{stats.teamsTracked}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Correct Predictions</span>
-                <span className="text-sm font-medium text-foreground">{stats.correctPredictions}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="lg:col-span-3">
+          <PerformanceChart data={chartData} />
+        </div>
+        <div className="lg:col-span-2">
+          <QuickStats stats={stats} selectedSport={selectedSport} />
+        </div>
       </div>
-
-      {/* Sport-specific insights */}
-      {selectedSport !== "all" && (
-        <Card className="card-modern">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Zap className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-semibold">{selectedSport.charAt(0).toUpperCase() + selectedSport.slice(1)} Insights</h3>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{stats.liveGames}</div>
-                <div className="text-sm text-muted-foreground">Live Games</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-accent">{stats.scheduledGames}</div>
-                <div className="text-sm text-muted-foreground">Scheduled</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">{stats.completedGames}</div>
-                <div className="text-sm text-muted-foreground">Completed</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-accent">{stats.dataPoints}</div>
-                <div className="text-sm text-muted-foreground">Data Points</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
+  )
+}
+
+// --- Sub-components ---
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="h-8 w-64 bg-gray-200 rounded-md animate-pulse"></div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i} className="bg-gray-100 animate-pulse h-32">
+            <CardContent className="p-6"></CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card className="bg-gray-100 animate-pulse h-64">
+        <CardContent className="p-6"></CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ErrorState() {
+  return (
+    <Card className="border-destructive/50 bg-destructive/5 text-center py-12">
+      <CardContent>
+        <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-destructive mb-2">Analytics Engine Error</h3>
+        <p className="text-muted-foreground">
+          Could not load the analytics dashboard data.
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function Header({ isConnected }: { isConnected: boolean }) {
+  return (
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <div>
+        <h2 className="text-2xl font-bold">Analytics Overview</h2>
+        <p className="text-sm text-muted-foreground">
+          A high-level view of the platform's performance.
+        </p>
+      </div>
+      <div className="flex items-center gap-2 text-xs font-medium p-2 bg-gray-100 rounded-lg">
+        <div className={`h-2.5 w-2.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+        <span className="text-muted-foreground">{isConnected ? 'Real-time connection active' : 'Disconnected'}</span>
+      </div>
+    </div>
+  )
+}
+
+function StatCard({ icon: Icon, title, value, color }: { icon: any; title: string; value: string | number; color: string }) {
+  return (
+    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <Icon className={`h-6 w-6 ${color}`} />
+        </div>
+        <p className={`text-3xl font-bold ${color}`}>{value}</p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function PerformanceChart({ data }: { data: any[] }) {
+  return (
+    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 h-full">
+      <CardHeader>
+        <CardTitle>Prediction Accuracy Trend</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ResponsiveContainer width="100%" height={250}>
+          <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
+            <Tooltip 
+              contentStyle={{ 
+                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                backdropFilter: 'blur(5px)',
+                border: '1px solid #e5e7eb',
+                borderRadius: '0.5rem',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
+              }}
+            />
+            <Area type="monotone" dataKey="accuracy" stroke="#10b981" strokeWidth={2} fill="url(#colorAccuracy)" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
+function QuickStats({ stats, selectedSport }: { stats: any; selectedSport: string }) {
+  const { supportedSports } = useRealTimeData()
+
+  const items = [
+    { label: 'Games Tracked', value: stats.totalGames },
+    { label: 'Sports Covered', value: selectedSport === 'all' ? supportedSports.length : 1 },
+    { label: 'Teams Analyzed', value: stats.teamsTracked },
+    { label: 'Correct Predictions', value: stats.correctPredictions },
+  ]
+
+  return (
+    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 h-full">
+      <CardHeader>
+        <CardTitle>Quick Stats</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {items.map(item => (
+            <div key={item.label} className="flex items-center justify-between text-sm">
+              <p className="text-muted-foreground">{item.label}</p>
+              <p className="font-semibold text-foreground">{item.value}</p>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   )
 }

@@ -22,7 +22,9 @@ export class SchemaMigrations {
 
   private initializeMigrations() {
     // Cache entries table
-    this.migrations.set('create_cache_entries_table', `
+    this.migrations.set(
+      'create_cache_entries_table',
+      `
       CREATE TABLE IF NOT EXISTS cache_entries (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         key TEXT NOT NULL UNIQUE,
@@ -38,10 +40,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_cache_entries_expires_at ON cache_entries(expires_at);
       CREATE INDEX IF NOT EXISTS idx_cache_entries_sport ON cache_entries(sport);
       CREATE INDEX IF NOT EXISTS idx_cache_entries_data_type ON cache_entries(data_type);
-    `)
+    `
+    )
 
     // API rate limits table
-    this.migrations.set('create_api_rate_limits_table', `
+    this.migrations.set(
+      'create_api_rate_limits_table',
+      `
       CREATE TABLE IF NOT EXISTS api_rate_limits (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         provider TEXT NOT NULL,
@@ -58,10 +63,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_api_rate_limits_provider ON api_rate_limits(provider);
       CREATE INDEX IF NOT EXISTS idx_api_rate_limits_window_start ON api_rate_limits(window_start);
       CREATE INDEX IF NOT EXISTS idx_api_rate_limits_daily_reset ON api_rate_limits(daily_reset_date);
-    `)
+    `
+    )
 
     // Sports configuration table
-    this.migrations.set('create_sports_config_table', `
+    this.migrations.set(
+      'create_sports_config_table',
+      `
       CREATE TABLE IF NOT EXISTS sports_config (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         sport TEXT NOT NULL UNIQUE,
@@ -84,10 +92,13 @@ export class SchemaMigrations {
 
       CREATE INDEX IF NOT EXISTS idx_sports_config_sport ON sports_config(sport);
       CREATE INDEX IF NOT EXISTS idx_sports_config_active ON sports_config(is_active);
-    `)
+    `
+    )
 
     // Enhanced teams table
-    this.migrations.set('enhance_teams_table', `
+    this.migrations.set(
+      'enhance_teams_table',
+      `
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS sport TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS league TEXT;
       ALTER TABLE teams ADD COLUMN IF NOT EXISTS conference TEXT;
@@ -104,10 +115,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_teams_sport ON teams(sport);
       CREATE INDEX IF NOT EXISTS idx_teams_league ON teams(league);
       CREATE INDEX IF NOT EXISTS idx_teams_active ON teams(is_active);
-    `)
+    `
+    )
 
     // Enhanced games table
-    this.migrations.set('enhance_games_table', `
+    this.migrations.set(
+      'enhance_games_table',
+      `
       ALTER TABLE games ADD COLUMN IF NOT EXISTS sport TEXT;
       ALTER TABLE games ADD COLUMN IF NOT EXISTS league TEXT;
       ALTER TABLE games ADD COLUMN IF NOT EXISTS season TEXT;
@@ -122,10 +136,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_games_status ON games(status);
       CREATE INDEX IF NOT EXISTS idx_games_date ON games(game_date);
       CREATE INDEX IF NOT EXISTS idx_games_teams ON games(home_team_id, away_team_id);
-    `)
+    `
+    )
 
     // Players table
-    this.migrations.set('create_players_table', `
+    this.migrations.set(
+      'create_players_table',
+      `
       CREATE TABLE IF NOT EXISTS players (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         name TEXT NOT NULL,
@@ -150,10 +167,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_players_team_id ON players(team_id);
       CREATE INDEX IF NOT EXISTS idx_players_active ON players(is_active);
       CREATE INDEX IF NOT EXISTS idx_players_name ON players(name);
-    `)
+    `
+    )
 
     // Player stats table
-    this.migrations.set('create_player_stats_table', `
+    this.migrations.set(
+      'create_player_stats_table',
+      `
       CREATE TABLE IF NOT EXISTS player_stats (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         player_id UUID REFERENCES players(id),
@@ -169,10 +189,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_player_stats_game_id ON player_stats(game_id);
       CREATE INDEX IF NOT EXISTS idx_player_stats_sport ON player_stats(sport);
       CREATE INDEX IF NOT EXISTS idx_player_stats_season ON player_stats(season);
-    `)
+    `
+    )
 
     // Odds table
-    this.migrations.set('create_odds_table', `
+    this.migrations.set(
+      'create_odds_table',
+      `
       CREATE TABLE IF NOT EXISTS odds (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         game_id UUID REFERENCES games(id),
@@ -189,10 +212,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_odds_sport ON odds(sport);
       CREATE INDEX IF NOT EXISTS idx_odds_provider ON odds(provider);
       CREATE INDEX IF NOT EXISTS idx_odds_market_type ON odds(market_type);
-    `)
+    `
+    )
 
     // Standings table
-    this.migrations.set('create_standings_table', `
+    this.migrations.set(
+      'create_standings_table',
+      `
       CREATE TABLE IF NOT EXISTS standings (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         sport TEXT NOT NULL,
@@ -216,10 +242,13 @@ export class SchemaMigrations {
       CREATE INDEX IF NOT EXISTS idx_standings_league ON standings(league);
       CREATE INDEX IF NOT EXISTS idx_standings_season ON standings(season);
       CREATE INDEX IF NOT EXISTS idx_standings_team_id ON standings(team_id);
-    `)
+    `
+    )
 
     // API error logs table
-    this.migrations.set('create_api_error_logs_table', `
+    this.migrations.set(
+      'create_api_error_logs_table',
+      `
       CREATE TABLE IF NOT EXISTS api_error_logs (
         id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
         provider TEXT NOT NULL,
@@ -233,7 +262,8 @@ export class SchemaMigrations {
 
       CREATE INDEX IF NOT EXISTS idx_api_error_logs_provider ON api_error_logs(provider);
       CREATE INDEX IF NOT EXISTS idx_api_error_logs_created_at ON api_error_logs(created_at);
-    `)
+    `
+    )
   }
 
   async runAllMigrations(): Promise<{

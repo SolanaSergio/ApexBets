@@ -7,12 +7,12 @@ export {
   HMACWebhookAuthenticator,
   hmacWebhookAuthenticator,
   type WebhookAuthenticator,
-  type ValidationResult
+  type ValidationResult,
 } from './hmac-webhook-authenticator'
 
 export {
   authenticateWebhook,
   withWebhookAuth,
   getWebhookConfigFromEnv,
-  type WebhookAuthConfig
+  type WebhookAuthConfig,
 } from './webhook-middleware'

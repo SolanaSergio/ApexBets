@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 120 // 2 minutes
@@ -19,16 +19,16 @@ async function getDefaultLeagueFromDatabase(sport: string): Promise<string | und
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const sport = searchParams.get("sport") || "all"
+    const sport = searchParams.get('sport') || 'all'
     const finalSport = sport
-    const status = searchParams.get("status") || "live"
-    
+    const status = searchParams.get('status') || 'live'
+
     // Get league from database or use provided league
-    const league = searchParams.get("league") || await getDefaultLeagueFromDatabase(finalSport)
+    const league = searchParams.get('league') || (await getDefaultLeagueFromDatabase(finalSport))
 
     // Generate cache key
     const cacheKey = `live_scores:${finalSport}:${league}:${status}`
-    
+
     // Check cache first
     const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
@@ -36,18 +36,20 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient()
-    
+
     // Get live games based on status
     if (!supabase) {
-      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+      return NextResponse.json({ error: 'Supabase client initialization failed' }, { status: 500 })
     }
     let query = supabase
       .from('games')
-      .select(`
+      .select(
+        `
         *,
         home_team_data:teams!games_home_team_id_fkey(name, logo_url, city),
         away_team_data:teams!games_away_team_id_fkey(name, logo_url, city)
-      `)
+      `
+      )
       .eq('sport', finalSport)
 
     // Apply status filter
@@ -63,11 +65,12 @@ export async function GET(request: NextRequest) {
       query = query.in('status', ['live', 'finished', 'scheduled'])
     }
 
-    const { data: games, error: gamesError } = await query
-      .order('game_date', { ascending: status === 'scheduled' })
+    const { data: games, error: gamesError } = await query.order('game_date', {
+      ascending: status === 'scheduled',
+    })
 
     if (gamesError) {
-      return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 })
+      return NextResponse.json({ error: 'Failed to fetch games' }, { status: 500 })
     }
 
     // Format games with additional data
@@ -82,14 +85,14 @@ export async function GET(request: NextRequest) {
           city: homeTeam.city,
           logo: homeTeam.logo_url,
           score: game.home_score,
-          id: game.home_team_id
+          id: game.home_team_id,
         },
         awayTeam: {
           name: awayTeam.name,
           city: awayTeam.city,
           logo: awayTeam.logo_url,
           score: game.away_score,
-          id: game.away_team_id
+          id: game.away_team_id,
         },
         status: game.status,
         game_type: game.game_type,
@@ -98,14 +101,12 @@ export async function GET(request: NextRequest) {
         league: game.league,
         venue: game.venue,
         attendance: game.attendance,
-        weather: game.weather
+        weather: game.weather,
       }
     })
 
     // Get live odds for live games
-    const liveGameIds = formattedGames
-      .filter(game => game.status === 'live')
-      .map(game => game.id)
+    const liveGameIds = formattedGames.filter(game => game.status === 'live').map(game => game.id)
 
     let liveOdds = []
     if (liveGameIds.length > 0) {
@@ -121,24 +122,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Group odds by game
-    const oddsByGame = liveOdds.reduce((acc, odd) => {
-      if (!acc[odd.game_id]) {
-        acc[odd.game_id] = []
-      }
-      acc[odd.game_id].push({
-        betType: odd.odds_type,
-        side: odd.home_odds ? 'home' : 'away',
-        odds: odd.home_odds || odd.away_odds,
-        bookmaker: odd.provider || "Unknown",
-        updatedAt: odd.last_updated
-      })
-      return acc
-    }, {} as Record<string, any[]>)
+    const oddsByGame = liveOdds.reduce(
+      (acc, odd) => {
+        if (!acc[odd.game_id]) {
+          acc[odd.game_id] = []
+        }
+        acc[odd.game_id].push({
+          betType: odd.odds_type,
+          side: odd.home_odds ? 'home' : 'away',
+          odds: odd.home_odds || odd.away_odds,
+          bookmaker: odd.provider || 'Unknown',
+          updatedAt: odd.last_updated,
+        })
+        return acc
+      },
+      {} as Record<string, any[]>
+    )
 
     // Add odds to live games
     const gamesWithOdds = formattedGames.map(game => ({
       ...game,
-      odds: oddsByGame[game.id] || []
+      odds: oddsByGame[game.id] || [],
     }))
 
     // Calculate summary statistics
@@ -154,7 +158,7 @@ export async function GET(request: NextRequest) {
         winner: game.homeTeam.score > game.awayTeam.score ? game.homeTeam.name : game.awayTeam.name,
         score: `${game.awayTeam.score}-${game.homeTeam.score}`,
         margin: Math.abs(game.homeTeam.score - game.awayTeam.score),
-        date: game.date
+        date: game.date,
       }))
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 5)
@@ -166,22 +170,21 @@ export async function GET(request: NextRequest) {
         live: liveCount,
         finished: finishedCount,
         scheduled: scheduledCount,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       },
       topPerformers,
       filters: {
         sport: finalSport,
         league,
-        status
-      }
+        status,
+      },
     }
 
     await databaseCacheService.set(cacheKey, response, CACHE_TTL)
 
     return NextResponse.json(response)
-
   } catch (error) {
-    console.error("Live scores API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('Live scores API error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

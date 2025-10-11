@@ -39,13 +39,13 @@ describe('Logo Verification Integration Tests', () => {
       // Test with a known team that should have logo_url in database
       const testTeam = 'Lakers'
       const testSport = 'basketball'
-      
+
       const result = await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       expect(result).toBeDefined()
       expect(result.url).toBeDefined()
       expect(result.source).toBeDefined()
-      
+
       // Check if result came from database
       if (result.source === 'database') {
         expect(result.url).toMatch(/^https?:\/\//)
@@ -57,13 +57,13 @@ describe('Logo Verification Integration Tests', () => {
       // Test with a known player that should have headshot_url in database
       const testPlayer = 'LeBron James'
       const testSport = 'basketball'
-      
+
       const result = await bulletproofImageService.getPlayerPhoto(testPlayer, testSport)
-      
+
       expect(result).toBeDefined()
       expect(result.url).toBeDefined()
       expect(result.source).toBeDefined()
-      
+
       // Check if result came from database
       if (result.source === 'database') {
         expect(result.url).toMatch(/^https?:\/\//)
@@ -77,12 +77,12 @@ describe('Logo Verification Integration Tests', () => {
       // Test with a team that might not be in database but exists in ESPN mappings
       const testTeam = 'Warriors'
       const testSport = 'basketball'
-      
+
       const result = await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       expect(result).toBeDefined()
       expect(result.url).toBeDefined()
-      
+
       // Should be ESPN CDN URL or SVG fallback
       if (result.source === 'espn-cdn') {
         expect(result.url).toMatch(/^https:\/\/a\.espncdn\.com/)
@@ -112,9 +112,9 @@ describe('Logo Verification Integration Tests', () => {
     it('should generate SVG fallback for unknown teams', async () => {
       const testTeam = 'TestTeam123'
       const testSport = 'basketball'
-      
+
       const result = await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       expect(result).toBeDefined()
       expect(result.url).toBeDefined()
       expect(result.source).toBe('svg')
@@ -125,9 +125,9 @@ describe('Logo Verification Integration Tests', () => {
     it('should generate SVG fallback for unknown players', async () => {
       const testPlayer = 'TestPlayer123'
       const testSport = 'basketball'
-      
+
       const result = await bulletproofImageService.getPlayerPhoto(testPlayer, testSport)
-      
+
       expect(result).toBeDefined()
       expect(result.url).toBeDefined()
       expect(result.source).toBe('svg')
@@ -139,7 +139,7 @@ describe('Logo Verification Integration Tests', () => {
       // This test assumes Lakers have colors in database
       const testTeam = 'Lakers'
       const testSport = 'basketball'
-      
+
       // First, check if team has colors in database
       const { data: teamData } = await supabase
         .from('teams')
@@ -150,11 +150,15 @@ describe('Logo Verification Integration Tests', () => {
 
       if (teamData?.primary_color && teamData?.secondary_color) {
         // Force SVG generation by using a non-existent team name variation
-        const result = await bulletproofImageService.getTeamLogo(testTeam + 'Test', testSport, 'NBA')
-        
+        const result = await bulletproofImageService.getTeamLogo(
+          testTeam + 'Test',
+          testSport,
+          'NBA'
+        )
+
         expect(result.source).toBe('svg')
         expect(result.url).toMatch(/^data:image\/svg\+xml/)
-        
+
         // SVG should contain the team colors
         const svgContent = decodeURIComponent(result.url.split(',')[1])
         expect(svgContent).toContain(teamData.primary_color)
@@ -167,20 +171,20 @@ describe('Logo Verification Integration Tests', () => {
     it('should track image load events', async () => {
       const testTeam = 'Lakers'
       const testSport = 'basketball'
-      
+
       // Clear events
       imageMonitoringService.clearEvents()
-      
+
       // Load team logo
       await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       // Check if event was tracked
       const stats = imageMonitoringService.getStats()
       expect(stats.totalLoads).toBeGreaterThan(0)
-      
+
       const teamEvents = imageMonitoringService.getEntityEvents(testTeam, 'team')
       expect(teamEvents.length).toBeGreaterThan(0)
-      
+
       const event = teamEvents[0]
       expect(event.entityType).toBe('team')
       expect(event.entityName).toBe(testTeam)
@@ -191,13 +195,13 @@ describe('Logo Verification Integration Tests', () => {
     it('should track failed image loads', async () => {
       // Clear events
       imageMonitoringService.clearEvents()
-      
+
       // Try to load a non-existent team (should generate SVG)
       await bulletproofImageService.getTeamLogo('NonExistentTeam123', 'basketball', 'NBA')
-      
+
       const stats = imageMonitoringService.getStats()
       expect(stats.totalLoads).toBeGreaterThan(0)
-      
+
       // Should have successful SVG generation, not a failure
       expect(stats.successRate).toBeGreaterThan(0)
     })
@@ -206,9 +210,9 @@ describe('Logo Verification Integration Tests', () => {
       // Load some images to generate metrics
       await bulletproofImageService.getTeamLogo('Lakers', 'basketball', 'NBA')
       await bulletproofImageService.getTeamLogo('Warriors', 'basketball', 'NBA')
-      
+
       const health = imageMonitoringService.getHealthMetrics()
-      
+
       expect(health.overallHealth).toBeDefined()
       expect(['excellent', 'good', 'warning', 'critical']).toContain(health.overallHealth)
       expect(health.databaseHitRate).toBeGreaterThanOrEqual(0)
@@ -222,21 +226,21 @@ describe('Logo Verification Integration Tests', () => {
       const testCases = [
         { team: 'Lakers', sport: 'basketball', league: 'NBA' },
         { team: 'Warriors', sport: 'basketball', league: 'NBA' },
-        { team: 'Patriots', sport: 'football', league: 'NFL' }
+        { team: 'Patriots', sport: 'football', league: 'NFL' },
       ]
 
       for (const testCase of testCases) {
         const startTime = Date.now()
         const result = await bulletproofImageService.getTeamLogo(
-          testCase.team, 
-          testCase.sport, 
+          testCase.team,
+          testCase.sport,
           testCase.league
         )
         const loadTime = Date.now() - startTime
 
         expect(result).toBeDefined()
         expect(loadTime).toBeLessThan(5000) // Should load within 5 seconds
-        
+
         console.log(`${testCase.team} logo loaded in ${loadTime}ms from ${result.source}`)
       }
     })
@@ -245,20 +249,20 @@ describe('Logo Verification Integration Tests', () => {
       // Load the same team multiple times
       const testTeam = 'Lakers'
       const testSport = 'basketball'
-      
+
       // First load
       const result1 = await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       // Second load (should be cached)
       const result2 = await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
-      
+
       expect(result1.url).toBe(result2.url)
-      
+
       // Second load should be faster (cached)
       const startTime = Date.now()
       await bulletproofImageService.getTeamLogo(testTeam, testSport, 'NBA')
       const cachedLoadTime = Date.now() - startTime
-      
+
       expect(cachedLoadTime).toBeLessThan(1000) // Cached loads should be very fast
     })
   })
@@ -272,7 +276,7 @@ describe('Logo Verification Integration Tests', () => {
 
       expect(error).toBeNull()
       expect(data).toBeDefined()
-      
+
       if (data && data.length > 0) {
         const team = data[0]
         expect(team).toHaveProperty('logo_url')
@@ -282,14 +286,11 @@ describe('Logo Verification Integration Tests', () => {
     })
 
     it('should have required image columns in players table', async () => {
-      const { data, error } = await supabase
-        .from('players')
-        .select('headshot_url')
-        .limit(1)
+      const { data, error } = await supabase.from('players').select('headshot_url').limit(1)
 
       expect(error).toBeNull()
       expect(data).toBeDefined()
-      
+
       if (data && data.length > 0) {
         const player = data[0]
         expect(player).toHaveProperty('headshot_url')
@@ -297,10 +298,7 @@ describe('Logo Verification Integration Tests', () => {
     })
 
     it('should have image audit log table', async () => {
-      const { data, error } = await supabase
-        .from('image_audit_log')
-        .select('*')
-        .limit(1)
+      const { data, error } = await supabase.from('image_audit_log').select('*').limit(1)
 
       expect(error).toBeNull()
       expect(data).toBeDefined()

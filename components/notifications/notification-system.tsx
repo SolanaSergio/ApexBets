@@ -1,15 +1,15 @@
-"use client"
+'use client'
 
-import { useEffect, useState } from "react"
-import { Bell, X, AlertCircle, CheckCircle, Info, AlertTriangle, Clock } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+import { useEffect, useState } from 'react'
+import { Bell, X, AlertCircle, CheckCircle, Info, AlertTriangle, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { cn } from '@/lib/utils'
 
 interface Notification {
   id: string
-  type: "info" | "success" | "warning" | "error"
+  type: 'info' | 'success' | 'warning' | 'error'
   title: string
   message: string
   timestamp: Date
@@ -21,41 +21,43 @@ export function NotificationSystem() {
   const [isOpen, setIsOpen] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
-  const addNotification = (notification: Omit<Notification, "id" | "timestamp" | "read">) => {
+  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: Notification = {
       ...notification,
       id: Math.random().toString(36).substr(2, 9),
       timestamp: new Date(),
       read: false,
     }
-    setNotifications((prev) => [newNotification, ...prev])
+    setNotifications(prev => [newNotification, ...prev])
   }
 
   const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((notif) => (notif.id === id ? { ...notif, read: true } : notif)))
+    setNotifications(prev =>
+      prev.map(notif => (notif.id === id ? { ...notif, read: true } : notif))
+    )
   }
 
   const removeNotification = (id: string) => {
     setIsAnimating(true)
     setTimeout(() => {
-      setNotifications((prev) => prev.filter((notif) => notif.id !== id))
+      setNotifications(prev => prev.filter(notif => notif.id !== id))
       setIsAnimating(false)
     }, 200)
   }
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((notif) => ({ ...notif, read: true })))
+    setNotifications(prev => prev.map(notif => ({ ...notif, read: true })))
   }
 
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = notifications.filter(n => !n.read).length
 
-  const getIcon = (type: Notification["type"]) => {
+  const getIcon = (type: Notification['type']) => {
     switch (type) {
-      case "success":
+      case 'success':
         return <CheckCircle className="h-4 w-4 text-green-500" />
-      case "warning":
+      case 'warning':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />
-      case "error":
+      case 'error':
         return <AlertCircle className="h-4 w-4 text-red-500" />
       default:
         return <Info className="h-4 w-4 text-blue-500" />
@@ -65,8 +67,8 @@ export function NotificationSystem() {
   const getTimeAgo = (timestamp: Date) => {
     const now = new Date()
     const diffInMinutes = Math.floor((now.getTime() - timestamp.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return "Just now"
+
+    if (diffInMinutes < 1) return 'Just now'
     if (diffInMinutes < 60) return `${diffInMinutes}m ago`
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
     return `${Math.floor(diffInMinutes / 1440)}d ago`
@@ -76,9 +78,9 @@ export function NotificationSystem() {
   useEffect(() => {
     const timer = setTimeout(() => {
       addNotification({
-        type: "info",
-        title: "Game Starting Soon",
-        message: "Game starts in 15 minutes",
+        type: 'info',
+        title: 'Game Starting Soon',
+        message: 'Game starts in 15 minutes',
       })
     }, 3000)
 
@@ -87,13 +89,13 @@ export function NotificationSystem() {
 
   return (
     <div className="relative">
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        onClick={() => setIsOpen(!isOpen)} 
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative transition-all duration-200 hover:bg-muted/50",
-          isOpen && "bg-muted/50"
+          'relative transition-all duration-200 hover:bg-muted/50',
+          isOpen && 'bg-muted/50'
         )}
       >
         <Bell className="h-4 w-4" />
@@ -102,7 +104,7 @@ export function NotificationSystem() {
             variant="destructive"
             className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs animate-pulse"
           >
-            {unreadCount > 9 ? "9+" : unreadCount}
+            {unreadCount > 9 ? '9+' : unreadCount}
           </Badge>
         )}
       </Button>
@@ -110,11 +112,8 @@ export function NotificationSystem() {
       {isOpen && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 z-40" 
-            onClick={() => setIsOpen(false)}
-          />
-          
+          <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
+
           {/* Notification Panel */}
           <Card className="absolute right-0 top-full mt-2 w-80 sm:w-96 max-h-[500px] overflow-hidden z-50 shadow-xl border-0 bg-background/95 backdrop-blur-md">
             <CardContent className="p-0">
@@ -131,18 +130,18 @@ export function NotificationSystem() {
                   </div>
                   <div className="flex items-center gap-1">
                     {unreadCount > 0 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         onClick={markAllAsRead}
                         className="text-xs h-7 px-2"
                       >
                         Mark all read
                       </Button>
                     )}
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setIsOpen(false)}
                       className="h-8 w-8 p-0"
                     >
@@ -166,21 +165,23 @@ export function NotificationSystem() {
                       <div
                         key={notification.id}
                         className={cn(
-                          "p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 group",
-                          !notification.read && "bg-primary/5 border-l-4 border-l-primary",
-                          isAnimating && "opacity-0 transform translate-x-4"
+                          'p-4 hover:bg-muted/30 cursor-pointer transition-all duration-200 group',
+                          !notification.read && 'bg-primary/5 border-l-4 border-l-primary',
+                          isAnimating && 'opacity-0 transform translate-x-4'
                         )}
                         onClick={() => markAsRead(notification.id)}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <div className="flex items-start space-x-3">
-                          <div className={cn(
-                            "flex-shrink-0 mt-0.5",
-                            notification.type === "success" && "text-green-500",
-                            notification.type === "warning" && "text-yellow-500",
-                            notification.type === "error" && "text-red-500",
-                            notification.type === "info" && "text-blue-500"
-                          )}>
+                          <div
+                            className={cn(
+                              'flex-shrink-0 mt-0.5',
+                              notification.type === 'success' && 'text-green-500',
+                              notification.type === 'warning' && 'text-yellow-500',
+                              notification.type === 'error' && 'text-red-500',
+                              notification.type === 'info' && 'text-blue-500'
+                            )}
+                          >
                             {getIcon(notification.type)}
                           </div>
                           <div className="flex-1 min-w-0">
@@ -205,7 +206,7 @@ export function NotificationSystem() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={(e) => {
+                                onClick={e => {
                                   e.stopPropagation()
                                   removeNotification(notification.id)
                                 }}
@@ -225,9 +226,9 @@ export function NotificationSystem() {
               {/* Footer */}
               {notifications.length > 0 && (
                 <div className="p-3 border-t bg-muted/20">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     className="w-full text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => setNotifications([])}
                   >

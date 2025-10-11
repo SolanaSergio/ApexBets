@@ -61,8 +61,8 @@ export class CodebaseCleanupService {
         removedFiles: 0,
         movedFiles: 0,
         updatedFiles: 0,
-        errors: 0
-      }
+        errors: 0,
+      },
     }
 
     try {
@@ -96,8 +96,9 @@ export class CodebaseCleanupService {
       result.stats.errors = result.errors.length
 
       console.log('✅ Codebase cleanup completed')
-      console.log(`📊 Stats: ${result.stats.removedFiles} removed, ${result.stats.movedFiles} moved, ${result.stats.updatedFiles} updated`)
-
+      console.log(
+        `📊 Stats: ${result.stats.removedFiles} removed, ${result.stats.movedFiles} moved, ${result.stats.updatedFiles} updated`
+      )
     } catch (error) {
       result.success = false
       result.errors.push(error instanceof Error ? error.message : 'Unknown error')
@@ -109,15 +110,8 @@ export class CodebaseCleanupService {
 
   private async analyzeFiles(): Promise<void> {
     console.log('🔍 Analyzing files...')
-    
-    const directories = [
-      'app',
-      'components',
-      'lib',
-      'hooks',
-      'types',
-      'tests'
-    ]
+
+    const directories = ['app', 'components', 'lib', 'hooks', 'types', 'tests']
 
     for (const dir of directories) {
       await this.analyzeDirectory(join(this.projectRoot, dir))
@@ -127,10 +121,10 @@ export class CodebaseCleanupService {
   private async analyzeDirectory(dirPath: string): Promise<void> {
     try {
       const entries = await readdir(dirPath, { withFileTypes: true })
-      
+
       for (const entry of entries) {
         const fullPath = join(dirPath, entry.name)
-        
+
         if (entry.isDirectory()) {
           await this.analyzeDirectory(fullPath)
         } else if (entry.isFile()) {
@@ -146,9 +140,13 @@ export class CodebaseCleanupService {
     try {
       const stats = await stat(filePath)
       const fileName = basename(filePath)
-      
+
       let type: FileAnalysis['type'] = 'other'
-      if (fileName.includes('.test.') || fileName.includes('.spec.') || filePath.includes('/test/')) {
+      if (
+        fileName.includes('.test.') ||
+        fileName.includes('.spec.') ||
+        filePath.includes('/test/')
+      ) {
         type = 'test'
       } else if (filePath.includes('/components/')) {
         type = 'component'
@@ -162,7 +160,7 @@ export class CodebaseCleanupService {
 
       const content = await readFile(filePath, 'utf-8')
       const dependencies = this.extractDependencies(content)
-      
+
       this.fileAnalysis.set(filePath, {
         path: filePath,
         size: stats.size,
@@ -170,7 +168,7 @@ export class CodebaseCleanupService {
         isUsed: false,
         usageCount: 0,
         dependencies,
-        type
+        type,
       })
     } catch (error) {
       // File might not be readable, skip
@@ -179,7 +177,7 @@ export class CodebaseCleanupService {
 
   private extractDependencies(content: string): string[] {
     const dependencies: string[] = []
-    
+
     // Extract import statements
     const importRegex = /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g
     let match
@@ -198,7 +196,7 @@ export class CodebaseCleanupService {
 
   private async identifyUnusedFiles(): Promise<void> {
     console.log('🔍 Identifying unused files...')
-    
+
     // Mark files as used if they're imported by other files
     for (const [filePath, analysis] of this.fileAnalysis) {
       for (const [otherPath, otherAnalysis] of this.fileAnalysis) {
@@ -220,14 +218,14 @@ export class CodebaseCleanupService {
 
   private async identifyDuplicateFiles(): Promise<void> {
     console.log('🔍 Identifying duplicate files...')
-    
+
     const contentMap = new Map<string, string[]>()
-    
+
     for (const [filePath] of this.fileAnalysis) {
       try {
         const content = await readFile(filePath, 'utf-8')
         const normalizedContent = this.normalizeContent(content)
-        
+
         if (!contentMap.has(normalizedContent)) {
           contentMap.set(normalizedContent, [])
         }
@@ -244,7 +242,7 @@ export class CodebaseCleanupService {
 
   private async cleanupUnusedFiles(result: CleanupResult): Promise<void> {
     console.log('🗑️ Cleaning up unused files...')
-    
+
     const filesToRemove = [
       // Unused service files
       'lib/services/auto-startup-service.ts',
@@ -278,26 +276,26 @@ export class CodebaseCleanupService {
       'lib/services/structured-logger-fixed.ts',
       'lib/services/structured-logger.ts',
       'lib/services/unified-rate-limiter.ts',
-      
+
       // Unused API files
       'app/api/cleanup/',
       'app/api/debug/',
-      
+
       // Unused component files
       'components/error-boundary.tsx',
       'components/loading-states.tsx',
       'components/sync-initializer.tsx',
       'components/sync-monitor.tsx',
-      
+
       // Unused test files
       'tests/manual-webhook-test.js',
       'tests/verification-tracker.js',
-      
+
       // Unused documentation
       'docs/currentgoogleconsoleerrors.md',
       'docs/currentterminalerrors.md',
       'docs/FIXES_IMPLEMENTED.md',
-      'docs/PERFORMANCE_AUDIT_REPORT.md'
+      'docs/PERFORMANCE_AUDIT_REPORT.md',
     ]
 
     for (const filePath of filesToRemove) {
@@ -307,28 +305,28 @@ export class CodebaseCleanupService {
         result.filesRemoved.push(filePath)
         console.log(`✅ Removed: ${filePath}`)
       } catch (error) {
-        result.errors.push(`Failed to remove ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        result.errors.push(
+          `Failed to remove ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`
+        )
       }
     }
   }
 
   private async organizeTestFiles(_result: CleanupResult): Promise<void> {
     console.log('📁 Organizing test files...')
-    
-    const testDirectories = [
-      'tests/unit',
-      'tests/integration',
-      'tests/e2e',
-      'tests/database'
-    ]
+
+    const testDirectories = ['tests/unit', 'tests/integration', 'tests/e2e', 'tests/database']
 
     for (const dir of testDirectories) {
       try {
         const fullPath = join(this.projectRoot, dir)
         const entries = await readdir(fullPath, { withFileTypes: true })
-        
+
         for (const entry of entries) {
-          if (entry.isFile() && (entry.name.endsWith('.test.ts') || entry.name.endsWith('.spec.ts'))) {
+          if (
+            entry.isFile() &&
+            (entry.name.endsWith('.test.ts') || entry.name.endsWith('.spec.ts'))
+          ) {
             // Test files are already organized, just log them
             console.log(`📄 Test file: ${join(dir, entry.name)}`)
           }
@@ -341,7 +339,7 @@ export class CodebaseCleanupService {
 
   private async cleanupDuplicateCode(_result: CleanupResult): Promise<void> {
     console.log('🔄 Cleaning up duplicate code...')
-    
+
     // This would involve more complex analysis to identify duplicate code blocks
     // For now, we'll just log the duplicate files found
     if (this.duplicateFiles.length > 0) {
@@ -354,7 +352,7 @@ export class CodebaseCleanupService {
 
   private async updateImports(_result: CleanupResult): Promise<void> {
     console.log('🔗 Updating imports...')
-    
+
     // This would involve updating import statements after file removals
     // For now, we'll just log that this step was completed
     console.log('✅ Import updates completed')
@@ -363,25 +361,24 @@ export class CodebaseCleanupService {
   private getRelativePath(from: string, to: string): string {
     const fromParts = from.split('/')
     const toParts = to.split('/')
-    
+
     let commonLength = 0
-    while (commonLength < fromParts.length && commonLength < toParts.length && 
-           fromParts[commonLength] === toParts[commonLength]) {
+    while (
+      commonLength < fromParts.length &&
+      commonLength < toParts.length &&
+      fromParts[commonLength] === toParts[commonLength]
+    ) {
       commonLength++
     }
-    
+
     const upLevels = fromParts.length - commonLength - 1
     const downPath = toParts.slice(commonLength)
-    
+
     return '../'.repeat(upLevels) + downPath.join('/')
   }
 
   private normalizeContent(content: string): string {
-    return content
-      .replace(/\s+/g, ' ')
-      .replace(/\n/g, '')
-      .replace(/\r/g, '')
-      .trim()
+    return content.replace(/\s+/g, ' ').replace(/\n/g, '').replace(/\r/g, '').trim()
   }
 
   async getCleanupRecommendations(): Promise<{
@@ -400,7 +397,8 @@ export class CodebaseCleanupService {
 
     const oldFiles = Array.from(this.fileAnalysis.entries())
       .filter(([_, analysis]) => {
-        const daysSinceModified = (Date.now() - analysis.lastModified.getTime()) / (1000 * 60 * 60 * 24)
+        const daysSinceModified =
+          (Date.now() - analysis.lastModified.getTime()) / (1000 * 60 * 60 * 24)
         return daysSinceModified > 30
       })
       .map(([path, _]) => path)
@@ -409,7 +407,7 @@ export class CodebaseCleanupService {
       unusedFiles: this.unusedFiles,
       duplicateFiles: this.duplicateFiles,
       largeFiles,
-      oldFiles
+      oldFiles,
     }
   }
 }

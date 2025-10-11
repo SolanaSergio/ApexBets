@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -27,26 +27,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
 
   useEffect(() => {
-    // Get initial session with error handling
-    const getInitialSession = async () => {
+    // Get initial user with error handling
+    const getInitialUser = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
+
         if (error) {
           const errorResult = authErrorHandler.handleAuthError(error)
-          console.warn('Session check error:', error.message)
-          
+          console.warn('User check error:', error.message)
+
           if (errorResult.shouldClearSession) {
             await authErrorHandler.clearSession(supabase)
             setSession(null)
             setUser(null)
           }
         } else {
+          // Get session separately for session data
+          const {
+            data: { session },
+          } = await supabase.auth.getSession()
           setSession(session)
-          setUser(session?.user ?? null)
+          setUser(user)
         }
       } catch (error) {
-        console.error('Error getting initial session:', error)
+        console.error('Error getting initial user:', error)
         setSession(null)
         setUser(null)
       } finally {
@@ -54,34 +61,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    getInitialSession()
+    getInitialUser()
 
     // Listen for auth changes with error handling
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          setSession(session)
-          setUser(session?.user ?? null)
-          setLoading(false)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      try {
+        setSession(session)
+        setUser(session?.user ?? null)
+        setLoading(false)
 
-          if (event === 'SIGNED_IN') {
-            // Only redirect to home if coming from login/auth pages
-            const currentPath = window.location.pathname
-            if (currentPath.startsWith('/login') || currentPath.startsWith('/auth')) {
-              router.push('/')
-            }
-          } else if (event === 'SIGNED_OUT') {
-            router.push('/login')
-          } else if (event === 'TOKEN_REFRESHED') {
-            // Handle successful token refresh
-            console.log('Token refreshed successfully')
+        if (event === 'SIGNED_IN') {
+          // Only redirect to home if coming from login/auth pages
+          const currentPath = window.location.pathname
+          if (currentPath.startsWith('/login') || currentPath.startsWith('/auth')) {
+            router.push('/')
           }
-        } catch (error) {
-          console.error('Error in auth state change:', error)
-          setLoading(false)
+        } else if (event === 'SIGNED_OUT') {
+          router.push('/login')
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Handle successful token refresh
+          console.log('Token refreshed successfully')
         }
+      } catch (error) {
+        console.error('Error in auth state change:', error)
+        setLoading(false)
       }
-    )
+    })
 
     return () => subscription.unsubscribe()
   }, [router, supabase])
@@ -99,8 +106,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email,
       password,
       options: {
-        data: metadata
-      }
+        data: metadata,
+      },
     })
     return { error }
   }
@@ -111,14 +118,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/auth/reset-password`
+      redirectTo: `${window.location.origin}/auth/reset-password`,
     })
     return { error }
   }
 
   const updatePassword = async (password: string) => {
     const { error } = await supabase.auth.updateUser({
-      password
+      password,
     })
     return { error }
   }
@@ -134,11 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     updatePassword,
   }
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

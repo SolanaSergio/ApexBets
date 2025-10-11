@@ -1,20 +1,26 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { RefreshCw, TrendingUp, Target, DollarSign } from "lucide-react"
-import { databaseFirstApiClient } from "@/lib/api-client-database-first"
-import { SportConfigManager, SupportedSport } from "@/lib/services/core/sport-config"
-import TeamPerformanceChart from "./team-performance-chart"
-import PredictionAccuracyChart from "./prediction-accuracy-chart"
-import OddsAnalysisChart from "./odds-analysis-chart"
-import TrendAnalysis from "./trend-analysis"
-import PlayerAnalytics from "./player-analytics"
-import ValueBettingOpportunities from "./value-betting-opportunities"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { RefreshCw, TrendingUp, Target, DollarSign } from 'lucide-react'
+import { databaseFirstApiClient } from '@/lib/api-client-database-first'
+import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
+import TeamPerformanceChart from './team-performance-chart'
+import PredictionAccuracyChart from './prediction-accuracy-chart'
+import OddsAnalysisChart from './odds-analysis-chart'
+import TrendAnalysis from './trend-analysis'
+import PlayerAnalytics from './player-analytics'
+import ValueBettingOpportunities from './value-betting-opportunities'
 
 interface AnalyticsOverview {
   totalGames: number
@@ -34,16 +40,16 @@ interface AnalyticsDashboardProps {
   onLeagueChange?: (league: string) => void
 }
 
-export default function AnalyticsDashboard({ 
-  selectedSport: propSelectedSport, 
+export default function AnalyticsDashboard({
+  selectedSport: propSelectedSport,
   selectedLeague: propSelectedLeague,
   onSportChange,
-  onLeagueChange
+  onLeagueChange,
 }: AnalyticsDashboardProps = {}) {
-  const [selectedTeam, setSelectedTeam] = useState<string>("all")
-  const [timeRange, setTimeRange] = useState<string>("30d")
-  const [selectedSport, setSelectedSport] = useState<string>(propSelectedSport || "")
-  const [selectedLeague, setSelectedLeague] = useState<string>(propSelectedLeague || "")
+  const [selectedTeam, setSelectedTeam] = useState<string>('all')
+  const [timeRange, setTimeRange] = useState<string>('30d')
+  const [selectedSport, setSelectedSport] = useState<string>(propSelectedSport || '')
+  const [selectedLeague, setSelectedLeague] = useState<string>(propSelectedLeague || '')
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [availableTeams, setAvailableTeams] = useState<any[]>([])
   const [overview, setOverview] = useState<AnalyticsOverview | null>(null)
@@ -66,7 +72,9 @@ export default function AnalyticsDashboard({
   const loadAvailableTeams = useCallback(async () => {
     if (!selectedSport) return
     try {
-      const response = await fetch(`/api/database-first/teams?sport=${selectedSport}${selectedLeague ? `&league=${selectedLeague}` : ''}`)
+      const response = await fetch(
+        `/api/database-first/teams?sport=${selectedSport}${selectedLeague ? `&league=${selectedLeague}` : ''}`
+      )
       const data = await response.json()
       const teams = Array.isArray(data.data) ? data.data : []
       setAvailableTeams(teams)
@@ -80,7 +88,7 @@ export default function AnalyticsDashboard({
     try {
       setLoading(true)
       const data = await databaseFirstApiClient.getAnalyticsStats(selectedSport)
-      
+
       // Transform the API response to match our interface
       setOverview({
         totalGames: data.total_games || 0,
@@ -90,7 +98,7 @@ export default function AnalyticsDashboard({
         averageValue: 0, // Not in AnalyticsStats
         profitLoss: 0, // Not in AnalyticsStats
         winRate: data.accuracy_rate || 0,
-        roi: 0 // Not in AnalyticsStats
+        roi: 0, // Not in AnalyticsStats
       })
       setLastUpdated(new Date())
     } catch (error) {
@@ -104,7 +112,7 @@ export default function AnalyticsDashboard({
         averageValue: 0,
         profitLoss: 0,
         winRate: 0,
-        roi: 0
+        roi: 0,
       })
     } finally {
       setLoading(false)
@@ -150,9 +158,9 @@ export default function AnalyticsDashboard({
             <h3 className="text-lg font-semibold mb-2">Select a Sport</h3>
             <p className="text-muted-foreground">Choose a sport to view analytics</p>
             <div className="mt-4">
-              <Select 
-                value={selectedSport} 
-                onValueChange={(value) => {
+              <Select
+                value={selectedSport}
+                onValueChange={value => {
                   setSelectedSport(value)
                   onSportChange?.(value)
                 }}
@@ -161,7 +169,7 @@ export default function AnalyticsDashboard({
                   <SelectValue placeholder="Select a sport..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {supportedSports.map((sport) => {
+                  {supportedSports.map(sport => {
                     const config = SportConfigManager.getSportConfig(sport)
                     return (
                       <SelectItem key={sport} value={sport}>
@@ -187,9 +195,9 @@ export default function AnalyticsDashboard({
       <div className="flex flex-wrap gap-4 mb-6">
         <div className="min-w-[200px]">
           <label className="text-sm font-medium mb-2 block">Sport</label>
-          <Select 
-            value={selectedSport} 
-            onValueChange={(value) => {
+          <Select
+            value={selectedSport}
+            onValueChange={value => {
               setSelectedSport(value)
               onSportChange?.(value)
             }}
@@ -198,7 +206,7 @@ export default function AnalyticsDashboard({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {supportedSports.map((sport) => {
+              {supportedSports.map(sport => {
                 const config = SportConfigManager.getSportConfig(sport)
                 return (
                   <SelectItem key={sport} value={sport}>
@@ -212,12 +220,12 @@ export default function AnalyticsDashboard({
             </SelectContent>
           </Select>
         </div>
-        
+
         <div className="min-w-[200px]">
           <label className="text-sm font-medium mb-2 block">League</label>
-          <Select 
-            value={selectedLeague} 
-            onValueChange={(value) => {
+          <Select
+            value={selectedLeague}
+            onValueChange={value => {
               setSelectedLeague(value)
               onLeagueChange?.(value)
             }}
@@ -228,12 +236,16 @@ export default function AnalyticsDashboard({
             <SelectContent>
               <SelectItem value="">All Leagues</SelectItem>
               {(() => {
-                const sportConfig = SportConfigManager.getSportConfig(selectedSport as SupportedSport)
-                return (sportConfig?.leagues || []).map((league: any) => (
-                  <SelectItem key={league.id} value={league.id}>
-                    {league.name}
-                  </SelectItem>
-                )) || []
+                const sportConfig = SportConfigManager.getSportConfig(
+                  selectedSport as SupportedSport
+                )
+                return (
+                  (sportConfig?.leagues || []).map((league: any) => (
+                    <SelectItem key={league.id} value={league.id}>
+                      {league.name}
+                    </SelectItem>
+                  )) || []
+                )
               })()}
             </SelectContent>
           </Select>
@@ -288,7 +300,8 @@ export default function AnalyticsDashboard({
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">ROI</p>
                   <p className="text-2xl font-bold">
-                    {overview.roi > 0 ? '+' : ''}{(overview.roi * 100).toFixed(1)}%
+                    {overview.roi > 0 ? '+' : ''}
+                    {(overview.roi * 100).toFixed(1)}%
                   </p>
                   <p className="text-xs text-muted-foreground">
                     P&L: ${overview.profitLoss.toFixed(2)}
@@ -307,15 +320,8 @@ export default function AnalyticsDashboard({
           <div className="flex items-center justify-between">
             <CardTitle>Analytics Filters</CardTitle>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">
-                Last updated: {lastUpdated.toLocaleTimeString()}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshData}
-                disabled={loading}
-              >
+              <Badge variant="outline">Last updated: {lastUpdated.toLocaleTimeString()}</Badge>
+              <Button variant="outline" size="sm" onClick={refreshData} disabled={loading}>
                 <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
@@ -332,7 +338,7 @@ export default function AnalyticsDashboard({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Teams</SelectItem>
-                  {availableTeams.map((team) => (
+                  {availableTeams.map(team => (
                     <SelectItem key={team.id} value={team.id}>
                       {team.name}
                     </SelectItem>
@@ -371,53 +377,53 @@ export default function AnalyticsDashboard({
         </TabsList>
 
         <TabsContent value="performance" className="space-y-6">
-          <TeamPerformanceChart 
-            team={selectedTeam} 
-            timeRange={timeRange} 
+          <TeamPerformanceChart
+            team={selectedTeam}
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />
         </TabsContent>
 
         <TabsContent value="predictions" className="space-y-6">
-          <PredictionAccuracyChart 
+          <PredictionAccuracyChart
             team={selectedTeam}
-            timeRange={timeRange} 
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />
         </TabsContent>
 
         <TabsContent value="odds" className="space-y-6">
-          <OddsAnalysisChart 
-            team={selectedTeam} 
-            timeRange={timeRange} 
+          <OddsAnalysisChart
+            team={selectedTeam}
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />
         </TabsContent>
 
         <TabsContent value="trends" className="space-y-6">
-          <TrendAnalysis 
-            team={selectedTeam} 
-            timeRange={timeRange} 
+          <TrendAnalysis
+            team={selectedTeam}
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />
         </TabsContent>
 
         <TabsContent value="players" className="space-y-6">
-          <PlayerAnalytics 
-            team={selectedTeam} 
-            timeRange={timeRange} 
+          <PlayerAnalytics
+            team={selectedTeam}
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />
         </TabsContent>
 
         <TabsContent value="betting" className="space-y-6">
-          <ValueBettingOpportunities 
-            timeRange={timeRange} 
+          <ValueBettingOpportunities
+            timeRange={timeRange}
             sport={selectedSport}
             league={selectedLeague}
           />

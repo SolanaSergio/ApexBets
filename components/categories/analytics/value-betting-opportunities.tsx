@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useCallback } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { DollarSign, TrendingUp, Target } from "lucide-react"
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { DollarSign, TrendingUp, Target } from 'lucide-react'
 
 interface ValueBettingOpportunitiesProps {
   timeRange: string
@@ -24,18 +24,24 @@ interface ValueBet {
   analysis: string
 }
 
-export default function ValueBettingOpportunities({ timeRange, sport, league }: ValueBettingOpportunitiesProps) {
+export default function ValueBettingOpportunities({
+  timeRange,
+  sport,
+  league,
+}: ValueBettingOpportunitiesProps) {
   const [valueBets, setValueBets] = useState<ValueBet[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchValueBets = useCallback(async () => {
     try {
       setLoading(true)
-      
+
       // Fetch real value betting opportunities from API
-      const response = await fetch(`/api/value-bets?sport=${sport}&league=${league}&timeRange=${timeRange}`)
+      const response = await fetch(
+        `/api/value-bets?sport=${sport}&league=${league}&timeRange=${timeRange}`
+      )
       const data = await response.json()
-      
+
       setValueBets(data.opportunities || [])
     } catch (error) {
       console.error('Error fetching value bets:', error)
@@ -76,7 +82,7 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
         <CardContent>
           {valueBets.length > 0 ? (
             <div className="space-y-4">
-              {valueBets.map((bet) => (
+              {valueBets.map(bet => (
                 <div key={bet.gameId} className="p-4 rounded-lg border">
                   <div className="flex items-center justify-between mb-3">
                     <div>
@@ -89,12 +95,16 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
                     </div>
                     <div className="text-right">
                       <div className="text-2xl font-bold text-primary">
-                        {bet.odds > 0 ? '+' : ''}{bet.odds}
+                        {bet.odds > 0 ? '+' : ''}
+                        {bet.odds}
                       </div>
-                      <Badge 
+                      <Badge
                         variant={
-                          bet.recommendation === 'strong' ? 'default' :
-                          bet.recommendation === 'moderate' ? 'secondary' : 'outline'
+                          bet.recommendation === 'strong'
+                            ? 'default'
+                            : bet.recommendation === 'moderate'
+                              ? 'secondary'
+                              : 'outline'
                         }
                       >
                         {bet.recommendation.toUpperCase()}
@@ -108,9 +118,7 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
                         +{Math.round(bet.value * 100)}%
                       </span>
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      {bet.analysis}
-                    </div>
+                    <div className="text-sm text-muted-foreground">{bet.analysis}</div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">Available at:</span>
                       <div className="flex gap-1">
@@ -167,10 +175,12 @@ export default function ValueBettingOpportunities({ timeRange, sport, league }: 
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Avg Value</p>
                 <p className="text-2xl font-bold">
-                  {valueBets.length > 0 ? 
-                    (valueBets.reduce((acc, bet) => acc + bet.value, 0) / valueBets.length * 100).toFixed(1) + '%' : 
-                    '0%'
-                  }
+                  {valueBets.length > 0
+                    ? (
+                        (valueBets.reduce((acc, bet) => acc + bet.value, 0) / valueBets.length) *
+                        100
+                      ).toFixed(1) + '%'
+                    : '0%'}
                 </p>
               </div>
               <DollarSign className="h-8 w-8 text-muted-foreground" />

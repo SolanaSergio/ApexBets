@@ -27,7 +27,7 @@ export class UnifiedCacheService {
   private stats = {
     hits: 0,
     misses: 0,
-    evictions: 0
+    evictions: 0,
   }
   private maxSize = 1000
   private cleanupInterval: NodeJS.Timeout | null = null
@@ -49,7 +49,7 @@ export class UnifiedCacheService {
    */
   async get<T>(key: string): Promise<T | null> {
     const entry = this.cache.get(key)
-    
+
     if (!entry) {
       this.stats.misses++
       return null
@@ -71,8 +71,8 @@ export class UnifiedCacheService {
    * Set data in cache with TTL and priority
    */
   async set<T>(
-    key: string, 
-    data: T, 
+    key: string,
+    data: T,
     ttl: number = 300000, // 5 minutes default
     options: {
       priority?: 'low' | 'medium' | 'high'
@@ -91,7 +91,7 @@ export class UnifiedCacheService {
       ttl,
       priority: options.priority || 'medium',
       ...(options.sport && { sport: options.sport }),
-      ...(options.dataType && { dataType: options.dataType })
+      ...(options.dataType && { dataType: options.dataType }),
     })
   }
 
@@ -146,7 +146,7 @@ export class UnifiedCacheService {
       totalSize: this.calculateTotalSize(),
       hitRate: totalRequests > 0 ? this.stats.hits / totalRequests : 0,
       missRate: totalRequests > 0 ? this.stats.misses / totalRequests : 0,
-      evictions: this.stats.evictions
+      evictions: this.stats.evictions,
     }
   }
 
@@ -164,7 +164,7 @@ export class UnifiedCacheService {
     return {
       available: true,
       size: this.cache.size,
-      maxSize: this.maxSize
+      maxSize: this.maxSize,
     }
   }
 
@@ -174,13 +174,13 @@ export class UnifiedCacheService {
   private cleanup(): void {
     const now = Date.now()
     const keysToDelete: string[] = []
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp > entry.ttl) {
         keysToDelete.push(key)
       }
     }
-    
+
     keysToDelete.forEach(key => {
       this.cache.delete(key)
       this.stats.evictions++

@@ -3,7 +3,12 @@
  * NFL-specific implementation with SportsDB integration
  */
 
-import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
+import {
+  SportSpecificService,
+  GameData,
+  TeamData,
+  PlayerData,
+} from '../../core/sport-specific-service'
 import { sportsDBClient, oddsApiClient, apiSportsClient } from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
 
@@ -14,16 +19,18 @@ export class FootballService extends SportSpecificService {
       cacheTTL: 5 * 60 * 1000, // 5 minutes
       rateLimitService: 'sportsdb',
       retryAttempts: 3,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super('football', league, config)
   }
 
-  async getGames(params: {
-    date?: string
-    status?: 'scheduled' | 'live' | 'finished'
-    teamId?: string
-  } = {}): Promise<GameData[]> {
+  async getGames(
+    params: {
+      date?: string
+      status?: 'scheduled' | 'live' | 'finished'
+      teamId?: string
+    } = {}
+  ): Promise<GameData[]> {
     const key = this.getCacheKey('games', JSON.stringify(params))
     const ttl = params.status === 'live' ? 30 * 1000 : this.config.cacheTTL
 
@@ -45,7 +52,10 @@ export class FootballService extends SportSpecificService {
             return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('SportsDB failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB failed, trying RapidAPI:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -71,27 +81,30 @@ export class FootballService extends SportSpecificService {
 
   private async fetchGamesFromRapidAPI(date: string): Promise<GameData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Get NFL league ID (1 is NFL in RapidAPI)
       const fixtures = await apiSportsClient.getFixtures({
         league: 1, // NFL
         season: new Date().getFullYear(),
-        date: date
+        date: date,
       })
       if (fixtures?.response && Array.isArray(fixtures.response)) {
         return fixtures.response.map((fixture: any) => this.mapRapidAPIGameData(fixture))
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI football error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI football error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchGamesFromSportsDB(date: string): Promise<GameData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       const events = await sportsDBClient.getEventsByDate(date, 'americanfootball')
       if (events && Array.isArray(events)) {
@@ -127,7 +140,7 @@ export class FootballService extends SportSpecificService {
       homeScore: fixture.goals?.home || null,
       awayScore: fixture.goals?.away || null,
       venue: fixture.fixture?.venue?.name || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -136,7 +149,7 @@ export class FootballService extends SportSpecificService {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      
+
       if (supabase) {
         const { data: team } = await supabase
           .from('teams')
@@ -144,7 +157,7 @@ export class FootballService extends SportSpecificService {
           .eq('name', teamName)
           .eq('sport', this.sport)
           .single()
-        
+
         if (team?.abbreviation) {
           return team.abbreviation
         }
@@ -156,9 +169,7 @@ export class FootballService extends SportSpecificService {
     // Try to get from API data if available
     try {
       const teams = await this.fetchTeamsFromSportsDB()
-      const matchingTeam = teams.find(team => 
-        team.name.toLowerCase() === teamName.toLowerCase()
-      )
+      const matchingTeam = teams.find(team => team.name.toLowerCase() === teamName.toLowerCase())
       if (matchingTeam?.abbreviation) {
         return matchingTeam.abbreviation
       }
@@ -172,41 +183,50 @@ export class FootballService extends SportSpecificService {
 
   private extractAbbreviationFromName(teamName: string): string {
     // Extract abbreviation from team name by taking first letters
-    const words = teamName.split(' ').filter(word => 
-      !['of', 'the', 'and', 'at'].includes(word.toLowerCase())
-    )
-    
+    const words = teamName
+      .split(' ')
+      .filter(word => !['of', 'the', 'and', 'at'].includes(word.toLowerCase()))
+
     if (words.length >= 2) {
       // For multi-word teams, take first letter of each major word
-      return words.slice(-2).map(word => word[0]).join('').toUpperCase()
+      return words
+        .slice(-2)
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
     } else if (words.length === 1) {
       // For single word teams, take first 3 letters
       return words[0].substring(0, 3).toUpperCase()
     }
-    
+
     return teamName.substring(0, 3).toUpperCase()
   }
 
-  private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
-    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> = {
-      'NS': 'scheduled',
-      'LIVE': 'live',
-      'FT': 'finished',
-      'HT': 'live',
-      '1H': 'live',
-      '2H': 'live',
-      '3H': 'live',
-      '4H': 'live',
-      'PST': 'postponed',
-      'CANC': 'cancelled'
-    }
+  private mapRapidAPIStatus(
+    status: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> =
+      {
+        NS: 'scheduled',
+        LIVE: 'live',
+        FT: 'finished',
+        HT: 'live',
+        '1H': 'live',
+        '2H': 'live',
+        '3H': 'live',
+        '4H': 'live',
+        PST: 'postponed',
+        CANC: 'cancelled',
+      }
     return statusMap[status] || 'scheduled'
   }
 
-  async getTeams(params: {
-    league?: string
-    search?: string
-  } = {}): Promise<TeamData[]> {
+  async getTeams(
+    params: {
+      league?: string
+      search?: string
+    } = {}
+  ): Promise<TeamData[]> {
     const key = this.getCacheKey('teams', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -227,7 +247,10 @@ export class FootballService extends SportSpecificService {
             return this.removeDuplicateTeams(teams)
           }
         } catch (error) {
-          console.warn('SportsDB teams failed, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB teams failed, trying RapidAPI:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -239,7 +262,10 @@ export class FootballService extends SportSpecificService {
             teams.push(...rapidAPITeams)
           }
         } catch (error) {
-          console.warn('RapidAPI teams failed:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'RapidAPI teams failed:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
           this.recordRapidAPIError()
         }
       }
@@ -253,17 +279,19 @@ export class FootballService extends SportSpecificService {
 
   private async fetchTeamsFromRapidAPI(): Promise<TeamData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Get NFL teams from RapidAPI - try multiple league IDs if needed
       const currentYear = new Date().getFullYear()
       const leagueIds = [1, 2, 3] // Try multiple NFL league IDs
-      
+
       for (const leagueId of leagueIds) {
         try {
           const teams = await apiSportsClient.getTeams(leagueId, currentYear)
           if (teams?.response && Array.isArray(teams.response) && teams.response.length > 0) {
-            const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
+            const mappedTeams = await Promise.all(
+              teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+            )
             return mappedTeams
           }
         } catch (leagueError) {
@@ -273,14 +301,17 @@ export class FootballService extends SportSpecificService {
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI football teams error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI football teams error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchTeamsFromSportsDB(search?: string): Promise<TeamData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       const teams = await sportsDBClient.searchTeams(search || 'americanfootball')
       if (teams && Array.isArray(teams)) {
@@ -313,7 +344,7 @@ export class FootballService extends SportSpecificService {
       city: this.extractCityFromName(team.team?.name),
       abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -338,12 +369,12 @@ export class FootballService extends SportSpecificService {
     if (parts.length > 1) {
       // Use sport-specific configuration for team suffixes if available
       const suffixes: string[] = []
-      
+
       // If no suffixes configured, try to extract city by removing the last word
       if (suffixes.length === 0) {
         return parts.slice(0, -1).join(' ')
       }
-      
+
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {
           return parts.slice(0, i).join(' ')
@@ -353,10 +384,12 @@ export class FootballService extends SportSpecificService {
     return teamName
   }
 
-  async getPlayers(params: {
-    teamId?: string
-    search?: string
-  } = {}): Promise<PlayerData[]> {
+  async getPlayers(
+    params: {
+      teamId?: string
+      search?: string
+    } = {}
+  ): Promise<PlayerData[]> {
     const key = this.getCacheKey('players', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -367,15 +400,19 @@ export class FootballService extends SportSpecificService {
     try {
       // Fetch from database using production client
       const { productionSupabaseClient } = await import('@/lib/supabase/production-client')
-      const players = await productionSupabaseClient.getPlayers('football', params.teamId, params.limit || 100)
-      
+      const players = await productionSupabaseClient.getPlayers(
+        'football',
+        params.teamId,
+        params.limit || 100
+      )
+
       return players.map((player: any) => ({
         id: player.id,
         name: player.name,
         position: player.position,
         team_id: player.team_id,
         sport: 'football',
-        ...player
+        ...player,
       }))
     } catch (error) {
       console.error('Error fetching football players:', error)
@@ -417,13 +454,13 @@ export class FootballService extends SportSpecificService {
         console.warn('Odds API client not configured, returning empty odds')
         return []
       }
-      
+
       const odds = await oddsApiClient.getOdds({
         sport: 'americanfootball_nfl',
         regions: 'us',
         markets: 'h2h,spreads,totals',
         oddsFormat: 'american',
-        dateFormat: 'iso'
+        dateFormat: 'iso',
       })
       return odds
     } catch (error) {
@@ -473,12 +510,16 @@ export class FootballService extends SportSpecificService {
       awayTeam: rawData.strAwayTeam,
       date: rawData.dateEvent,
       time: rawData.strTime,
-      status: rawData.strStatus === 'FT' ? 'finished' : 
-              rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
+      status:
+        rawData.strStatus === 'FT'
+          ? 'finished'
+          : rawData.strStatus === 'LIVE'
+            ? 'live'
+            : 'scheduled',
       homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
       awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
       venue: rawData.strVenue,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -491,7 +532,7 @@ export class FootballService extends SportSpecificService {
       abbreviation: rawData.strTeamShort,
       city: rawData.strTeam.split(' ').slice(0, -1).join(' '),
       logo: rawData.strTeamBadge,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -504,7 +545,7 @@ export class FootballService extends SportSpecificService {
       team: rawData.strTeam || rawData.team,
       position: rawData.strPosition || rawData.position,
       stats: rawData.stats || {},
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 }

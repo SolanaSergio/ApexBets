@@ -45,7 +45,10 @@ export abstract class BaseService {
       const isDbOnly = options?.dbOnly === true
       // Check rate limit before making external requests
       if (!isDbOnly) {
-        const rateLimitResult = await enhancedRateLimiter.checkRateLimit(this.config.rateLimitService, 'default')
+        const rateLimitResult = await enhancedRateLimiter.checkRateLimit(
+          this.config.rateLimitService,
+          'default'
+        )
         if (!rateLimitResult.allowed) {
           console.warn(`Rate limit exceeded for ${this.config.name}: Returning empty data`)
           return [] as T
@@ -56,20 +59,18 @@ export abstract class BaseService {
       // Removed unused startTime variable
       try {
         const data = await errorHandlingService.withCircuitBreaker(
-          () => errorHandlingService.withRetry(
-            fetchFn,
-            {
+          () =>
+            errorHandlingService.withRetry(fetchFn, {
               maxRetries: this.config.retryAttempts,
               baseDelay: this.config.retryDelay,
               maxDelay: this.config.retryDelay * 10,
-              backoffMultiplier: 2
-            }
-          ),
+              backoffMultiplier: 2,
+            }),
           this.config.name,
           {
             failureThreshold: 5,
             recoveryTimeout: 60000,
-            monitoringPeriod: 300000
+            monitoringPeriod: 300000,
           }
         )
 
@@ -79,7 +80,7 @@ export abstract class BaseService {
         // Cache the result using unified cache
         await unifiedCacheService.set(key, data, ttl || this.config.cacheTTL, {
           priority: 'medium',
-          dataType: this.config.name
+          dataType: this.config.name,
         })
 
         return data

@@ -1,14 +1,17 @@
-import { NextRequest } from "next/server"
-import { createClient } from "@/lib/supabase/server"
-import { normalizeGameData, normalizeTeamData, deduplicateGames } from "@/lib/utils/data-utils"
-import { cachedSupabaseQuery } from "@/lib/utils/supabase-query-cache"
+import { NextRequest } from 'next/server'
+import { createClient } from '@/lib/supabase/server'
+import { normalizeGameData, normalizeTeamData, deduplicateGames } from '@/lib/utils/data-utils'
+import { cachedSupabaseQuery } from '@/lib/utils/supabase-query-cache'
 
 // Map to store active connections
-const connections = new Map<string, {
-  response: any
-  sport: string
-  lastPing: number
-}>()
+const connections = new Map<
+  string,
+  {
+    response: any
+    sport: string
+    lastPing: number
+  }
+>()
 
 // Keep track of last sent data to avoid sending duplicates
 const lastSentData = new Map<string, string>()
@@ -22,11 +25,12 @@ setInterval(() => {
       connections.delete(id)
     }
   }
-  
+
   // Clean up old last sent data
   for (const [sport, _dataStr] of lastSentData) {
     // Remove entries older than 10 minutes
-    if (Math.random() < 0.1) { // Random cleanup to avoid performance issues
+    if (Math.random() < 0.1) {
+      // Random cleanup to avoid performance issues
       lastSentData.delete(sport)
     }
   }
@@ -34,7 +38,7 @@ setInterval(() => {
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
-  const sport = searchParams.get("sport") || "all"
+  const sport = searchParams.get('sport') || 'all'
   const connectionId = Math.random().toString(36).substring(2, 15)
 
   // Create a readable stream
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
   const headers = {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
+    Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*',
   }
 
@@ -54,14 +58,18 @@ export async function GET(request: NextRequest) {
   connections.set(connectionId, {
     response: writer,
     sport,
-    lastPing: Date.now()
+    lastPing: Date.now(),
   })
 
   // Send initial connection message
-  writer.write(encoder.encode(`data: ${JSON.stringify({
-    type: "connected",
-    timestamp: new Date().toISOString()
-  })}\n\n`))
+  writer.write(
+    encoder.encode(
+      `data: ${JSON.stringify({
+        type: 'connected',
+        timestamp: new Date().toISOString(),
+      })}\n\n`
+    )
+  )
 
   // Function to send data to this client
   const sendData = (data: any) => {
@@ -78,25 +86,28 @@ export async function GET(request: NextRequest) {
   // Function to fetch live data with caching
   const fetchLiveDataWithCache = async (sport: string) => {
     // Skip if sport is "all" to prevent excessive queries
-    if (sport === "all") {
+    if (sport === 'all') {
       return []
     }
 
     try {
       // Use cached query to reduce database load
       const cacheKey = `live-games-${sport}`
-      const liveGames = await cachedSupabaseQuery(cacheKey, async () => {
-        const supabase = await createClient()
+      const liveGames = await cachedSupabaseQuery(
+        cacheKey,
+        async () => {
+          const supabase = await createClient()
 
-        if (!supabase) {
-          throw new Error("Database connection failed")
-        }
+          if (!supabase) {
+            throw new Error('Database connection failed')
+          }
 
-        // Get live games from database with enhanced filtering and error handling
-        // NOTE: Removed 'broadcast' column as it doesn't exist in the database
-        const { data: liveGames, error: liveGamesError } = await supabase
-          .from('games')
-          .select(`
+          // Get live games from database with enhanced filtering and error handling
+          // NOTE: Removed 'broadcast' column as it doesn't exist in the database
+          const { data: liveGames, error: liveGamesError } = await supabase
+            .from('games')
+            .select(
+              `
             id,
             external_id,
             sport,
@@ -123,37 +134,40 @@ export async function GET(request: NextRequest) {
             created_at,
             home_team_data:teams!games_home_team_id_fkey(name, logo_url, abbreviation),
             away_team_data:teams!games_away_team_id_fkey(name, logo_url, abbreviation)
-          `)
-          .eq('sport', sport)
-          .in('status', ['live', 'in_progress', 'in progress'])
-          .order('game_date', { ascending: true })
-          .limit(50) // Limit results to prevent excessive data
+          `
+            )
+            .eq('sport', sport)
+            .in('status', ['live', 'in_progress', 'in progress'])
+            .order('game_date', { ascending: true })
+            .limit(50) // Limit results to prevent excessive data
 
-        if (liveGamesError) {
-          console.error('Live games error:', liveGamesError)
-          throw liveGamesError
-        }
+          if (liveGamesError) {
+            console.error('Live games error:', liveGamesError)
+            throw liveGamesError
+          }
 
-        return liveGames || []
-      }, 30000) // 30 second cache TTL
+          return liveGames || []
+        },
+        30000
+      ) // 30 second cache TTL
 
       // Format live games with enhanced data normalization
       const formattedLiveGames = liveGames.map(game => {
-        const homeTeam = game.home_team_data || { 
-          name: 'Home Team', 
-          logo_url: null, 
-          abbreviation: null 
+        const homeTeam = game.home_team_data || {
+          name: 'Home Team',
+          logo_url: null,
+          abbreviation: null,
         }
-        const awayTeam = game.away_team_data || { 
-          name: 'Visiting Team', 
-          logo_url: null, 
-          abbreviation: null 
+        const awayTeam = game.away_team_data || {
+          name: 'Visiting Team',
+          logo_url: null,
+          abbreviation: null,
         }
-        
+
         // Normalize team data with sport context
         const normalizedHomeTeam = normalizeTeamData(homeTeam, sport, game.league_name)
         const normalizedAwayTeam = normalizeTeamData(awayTeam, sport, game.league_name)
-        
+
         const gameData = {
           id: game.id,
           home_team_id: game.home_team_id,
@@ -169,24 +183,24 @@ export async function GET(request: NextRequest) {
           sport: game.sport,
           // Removed broadcast field as it doesn't exist in the database
           attendance: game.attendance,
-        game_type: game.game_type,
-        // overtime periods not selected in query
+          game_type: game.game_type,
+          // overtime periods not selected in query
           home_team: normalizedHomeTeam,
           away_team: normalizedAwayTeam,
           created_at: game.created_at,
-          updated_at: game.last_updated
+          updated_at: game.last_updated,
         }
-        
+
         // Normalize and return the game data with sport-specific normalization
         return normalizeGameData(gameData, sport, game.league_name)
       })
 
       // Remove duplicates and ensure data consistency
       const uniqueGames = deduplicateGames(formattedLiveGames)
-      
+
       return uniqueGames
     } catch (error) {
-      console.error("Live stream data fetch error:", error)
+      console.error('Live stream data fetch error:', error)
       // Return empty array on error
       return []
     }
@@ -196,35 +210,35 @@ export async function GET(request: NextRequest) {
   const sendLiveData = async () => {
     try {
       const liveGames = await fetchLiveDataWithCache(sport)
-      
+
       // Create a string representation to check for changes
       const dataStr = JSON.stringify(liveGames)
       const lastDataStr = lastSentData.get(sport)
-      
+
       // Only send data if it has changed
       if (dataStr !== lastDataStr) {
         lastSentData.set(sport, dataStr)
-        
+
         // Send live game updates
         sendData({
-          type: "game_update",
+          type: 'game_update',
           data: liveGames,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         })
       }
 
       // Send heartbeat
       sendData({
-        type: "heartbeat",
-        timestamp: new Date().toISOString()
+        type: 'heartbeat',
+        timestamp: new Date().toISOString(),
       })
     } catch (error) {
-      console.error("Live stream error:", error)
+      console.error('Live stream error:', error)
       // Send empty data instead of error to prevent client disconnection
       sendData({
-        type: "game_update",
+        type: 'game_update',
         data: [],
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       })
     }
   }
@@ -254,35 +268,39 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const { sport, data } = await request.json()
-    
+
     // Update last sent data
     const dataStr = JSON.stringify(data)
     lastSentData.set(sport, dataStr)
-    
+
     // Send data to all clients interested in this sport
     for (const [id, connection] of connections) {
       if (connection.sport === sport) {
         try {
           const encoder = new TextEncoder()
-          connection.response.write(encoder.encode(`data: ${JSON.stringify({
-            type: "game_update",
-            data,
-            timestamp: new Date().toISOString()
-          })}\n\n`))
+          connection.response.write(
+            encoder.encode(
+              `data: ${JSON.stringify({
+                type: 'game_update',
+                data,
+                timestamp: new Date().toISOString(),
+              })}\n\n`
+            )
+          )
         } catch (error) {
           // Remove broken connections
           connections.delete(id)
         }
       }
     }
-    
+
     return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     })
   } catch (error) {
     return new Response(JSON.stringify({ success: false, error: 'Failed to send updates' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     })
   }
 }

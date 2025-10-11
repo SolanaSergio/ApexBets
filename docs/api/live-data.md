@@ -1,6 +1,7 @@
 # Live Data APIs
 
-This section covers real-time data endpoints that provide live scores, updates, and streaming information.
+This section covers real-time data endpoints that provide live scores, updates,
+and streaming information.
 
 ## Live Scores
 
@@ -9,11 +10,14 @@ This section covers real-time data endpoints that provide live scores, updates, 
 **Description:** Real-time game scores and live game information.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
-- `status` (string, optional) - Game status: "live", "finished", "scheduled", "all" (default: "live")
+- `status` (string, optional) - Game status: "live", "finished", "scheduled",
+  "all" (default: "live")
 
 **Response:**
+
 ```json
 {
   "games": [
@@ -77,6 +81,7 @@ This section covers real-time data endpoints that provide live scores, updates, 
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-scores?sport=basketball&status=live"
 ```
@@ -87,15 +92,18 @@ curl -X GET "https://your-domain.com/api/live-scores?sport=basketball&status=liv
 
 **Endpoint:** `GET /api/live-updates`
 
-**Description:** Real-time updates for live games including score changes, events, and statistics.
+**Description:** Real-time updates for live games including score changes,
+events, and statistics.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -136,6 +144,7 @@ curl -X GET "https://your-domain.com/api/live-scores?sport=basketball&status=liv
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-updates?sport=basketball&gameId=123&limit=20"
 ```
@@ -149,11 +158,13 @@ curl -X GET "https://your-domain.com/api/live-updates?sport=basketball&gameId=12
 **Description:** Comprehensive live updates across all sports and games.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `limit` (number, optional) - Maximum results (default: 100)
 - `since` (string, optional) - Timestamp to get updates since (ISO format)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -216,6 +227,7 @@ curl -X GET "https://your-domain.com/api/live-updates?sport=basketball&gameId=12
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-updates/all?limit=50&since=2024-01-15T20:00:00.000Z"
 ```
@@ -229,12 +241,15 @@ curl -X GET "https://your-domain.com/api/live-updates/all?limit=50&since=2024-01
 **Description:** Streaming information and links for live games.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID
-- `platform` (string, optional) - Streaming platform: "espn", "nba", "nfl", "mlb"
+- `platform` (string, optional) - Streaming platform: "espn", "nba", "nfl",
+  "mlb"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -287,6 +302,7 @@ curl -X GET "https://your-domain.com/api/live-updates/all?limit=50&since=2024-01
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-stream?sport=basketball&gameId=123"
 ```
@@ -300,12 +316,14 @@ curl -X GET "https://your-domain.com/api/live-stream?sport=basketball&gameId=123
 **Description:** Real-time game statistics for live games.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID
 - `statType` (string, optional) - Stat type: "team", "player", "quarter"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -324,17 +342,17 @@ curl -X GET "https://your-domain.com/api/live-stream?sport=basketball&gameId=123
         "field_goals": {
           "made": 25,
           "attempted": 50,
-          "percentage": 0.500
+          "percentage": 0.5
         },
         "three_pointers": {
           "made": 8,
           "attempted": 20,
-          "percentage": 0.400
+          "percentage": 0.4
         },
         "free_throws": {
           "made": 7,
           "attempted": 10,
-          "percentage": 0.700
+          "percentage": 0.7
         },
         "rebounds": {
           "offensive": 8,
@@ -384,13 +402,13 @@ curl -X GET "https://your-domain.com/api/live-stream?sport=basketball&gameId=123
         "home_score": 28,
         "away_score": 22,
         "home_stats": {
-          "field_goals": {"made": 11, "attempted": 20},
-          "three_pointers": {"made": 3, "attempted": 8},
+          "field_goals": { "made": 11, "attempted": 20 },
+          "three_pointers": { "made": 3, "attempted": 8 },
           "rebounds": 12
         },
         "away_stats": {
-          "field_goals": {"made": 9, "attempted": 18},
-          "three_pointers": {"made": 2, "attempted": 6},
+          "field_goals": { "made": 9, "attempted": 18 },
+          "three_pointers": { "made": 2, "attempted": 6 },
           "rebounds": 8
         }
       }
@@ -405,6 +423,7 @@ curl -X GET "https://your-domain.com/api/live-stream?sport=basketball&gameId=123
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-stats?sport=basketball&gameId=123&statType=team"
 ```
@@ -418,6 +437,7 @@ curl -X GET "https://your-domain.com/api/live-stats?sport=basketball&gameId=123&
 **Description:** Real-time betting odds updates for live games.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID
@@ -425,6 +445,7 @@ curl -X GET "https://your-domain.com/api/live-stats?sport=basketball&gameId=123&
 - `betType` (string, optional) - Bet type: "moneyline", "spread", "total"
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -473,6 +494,7 @@ curl -X GET "https://your-domain.com/api/live-stats?sport=basketball&gameId=123&
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-odds?sport=basketball&gameId=123&betType=moneyline"
 ```
@@ -486,13 +508,16 @@ curl -X GET "https://your-domain.com/api/live-odds?sport=basketball&gameId=123&b
 **Description:** Real-time game events and play-by-play information.
 
 **Parameters:**
+
 - `sport` (string, optional) - Sport name (default: "all")
 - `league` (string, optional) - League name
 - `gameId` (string, optional) - Specific game ID
-- `eventType` (string, optional) - Event type: "score", "foul", "timeout", "substitution"
+- `eventType` (string, optional) - Event type: "score", "foul", "timeout",
+  "substitution"
 - `limit` (number, optional) - Maximum results (default: 50)
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -547,6 +572,7 @@ curl -X GET "https://your-domain.com/api/live-odds?sport=basketball&gameId=123&b
 ```
 
 **Example:**
+
 ```bash
 curl -X GET "https://your-domain.com/api/live-events?sport=basketball&gameId=123&eventType=score&limit=20"
 ```

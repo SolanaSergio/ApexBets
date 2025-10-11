@@ -26,21 +26,20 @@ export async function GET(request: NextRequest) {
 
     // Validate sport parameter
     if (!sport) {
-      return NextResponse.json(
-        { error: 'Sport parameter is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Sport parameter is required' }, { status: 400 })
     }
 
     if (!serviceFactory.isSportSupported(sport)) {
       return NextResponse.json(
-        { error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}` },
+        {
+          error: `Unsupported sport: ${sport}. Supported sports: ${(await serviceFactory.getSupportedSports()).join(', ')}`,
+        },
         { status: 400 }
       )
     }
 
     const teamStatsService = new SportTeamStatsService(sport, league)
-    
+
     let data: any = null
 
     switch (type) {
@@ -67,10 +66,10 @@ export async function GET(request: NextRequest) {
 
     if (!data) {
       return NextResponse.json(
-        { 
+        {
           success: false,
           error: 'No data available',
-          data: null
+          data: null,
         },
         { status: 404 }
       )
@@ -84,25 +83,24 @@ export async function GET(request: NextRequest) {
         league: league || serviceFactory.getDefaultLeague(sport),
         season: season || 'current',
         type,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     }
 
     await databaseCacheService.set(cacheKey, result, CACHE_TTL)
 
     return NextResponse.json(result)
-
   } catch (error) {
     console.error('Team stats API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to fetch team statistics',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )

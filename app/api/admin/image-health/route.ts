@@ -11,15 +11,15 @@ export async function GET(_request: NextRequest) {
       data: {
         stats,
         health,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
   } catch (error) {
     console.error('Error fetching image health metrics:', error)
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch image health metrics' 
+      {
+        success: false,
+        error: 'Failed to fetch image health metrics',
       },
       { status: 500 }
     )

@@ -8,10 +8,10 @@ import { getComprehensiveDataPopulationService } from '@/lib/services/comprehens
 export async function POST(request: NextRequest) {
   try {
     console.log('🚀 Starting data population via API...')
-    
+
     // Check if this is a valid request
     let populate = false
-    
+
     try {
       const body = await request.json()
       populate = body.populate
@@ -20,29 +20,25 @@ export async function POST(request: NextRequest) {
       console.log('No JSON body provided, treating as trigger request')
       populate = true
     }
-    
+
     if (!populate) {
-      return NextResponse.json(
-        { error: 'Missing populate parameter' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Missing populate parameter' }, { status: 400 })
     }
-    
+
     // Start the comprehensive data population in the background
-    getComprehensiveDataPopulationService().populateAllData();
-    
+    getComprehensiveDataPopulationService().populateAllData()
+
     return NextResponse.json({
       success: true,
       message: 'Data population triggered in the background.',
     })
-    
   } catch (error) {
     console.error('❌ Error in data population API:', error)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Data population failed',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -54,10 +50,10 @@ export async function GET() {
     // Return current database status
     const { createClient } = await import('@/lib/supabase/server')
     const supabase = await createClient()
-    
+
     // Get counts for each table
     if (!supabase) {
-      return NextResponse.json({ error: "Supabase client initialization failed" }, { status: 500 })
+      return NextResponse.json({ error: 'Supabase client initialization failed' }, { status: 500 })
     }
     const [teams, games, playerStats, odds, predictions, standings] = await Promise.all([
       supabase.from('teams').select('*', { count: 'exact', head: true }),
@@ -65,9 +61,9 @@ export async function GET() {
       supabase.from('player_stats').select('*', { count: 'exact', head: true }),
       supabase.from('odds').select('*', { count: 'exact', head: true }),
       supabase.from('predictions').select('*', { count: 'exact', head: true }),
-      supabase.from('league_standings').select('*', { count: 'exact', head: true })
+      supabase.from('league_standings').select('*', { count: 'exact', head: true }),
     ])
-    
+
     return NextResponse.json({
       success: true,
       currentData: {
@@ -76,18 +72,17 @@ export async function GET() {
         playerStats: playerStats.count || 0,
         odds: odds.count || 0,
         predictions: predictions.count || 0,
-        standings: standings.count || 0
+        standings: standings.count || 0,
       },
-      message: 'Database status retrieved successfully'
+      message: 'Database status retrieved successfully',
     })
-    
   } catch (error) {
     console.error('❌ Error getting database status:', error)
-    
+
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to get database status',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -50,9 +50,7 @@ export function ForgotPasswordForm() {
             <p className="text-gray-600 mt-2 leading-relaxed">
               We've sent a password reset link to <strong className="text-blue-600">{email}</strong>
             </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Don't see it? Check your spam folder.
-            </p>
+            <p className="text-sm text-gray-500 mt-2">Don't see it? Check your spam folder.</p>
           </div>
         </div>
         <Button
@@ -89,15 +87,13 @@ export function ForgotPasswordForm() {
             type="email"
             placeholder="john@company.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
             disabled={loading}
             className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        <p className="text-xs text-gray-500">
-          We'll send you a link to reset your password
-        </p>
+        <p className="text-xs text-gray-500">We'll send you a link to reset your password</p>
       </div>
 
       <Button

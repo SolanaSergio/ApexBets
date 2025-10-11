@@ -1,23 +1,28 @@
 // @ts-nocheck
 /// <reference path="./types.d.ts" />
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 interface PopulationResult {
-  success: boolean;
+  success: boolean
   stats: {
-    teamsProcessed: number;
-    teamsUpdated: number;
-    teamsFailed: number;
-    playersProcessed: number;
-    playersUpdated: number;
-    playersFailed: number;
-  };
-  bySport: Record<string, { updated: number; failed: number }>;
-  failures: Array<{ name: string; sport: string; error: string }>;
+    teamsProcessed: number
+    teamsUpdated: number
+    teamsFailed: number
+    playersProcessed: number
+    playersUpdated: number
+    playersFailed: number
+  }
+  bySport: Record<string, { updated: number; failed: number }>
+  failures: Array<{ name: string; sport: string; error: string }>
 }
 
-async function generateTeamLogoURL(teamName: string, sport: string, league: string, supabase: any): Promise<string | null> {
+async function generateTeamLogoURL(
+  teamName: string,
+  sport: string,
+  league: string,
+  supabase: any
+): Promise<string | null> {
   try {
     // Get sport configuration from database
     const { data: sportConfig } = await supabase
@@ -25,9 +30,9 @@ async function generateTeamLogoURL(teamName: string, sport: string, league: stri
       .select('logo_template, cdn_config')
       .eq('name', sport)
       .eq('is_active', true)
-      .single();
+      .single()
 
-    if (!sportConfig?.logo_template) return null;
+    if (!sportConfig?.logo_template) return null
 
     // Get team CDN mapping from database
     const { data: teamMapping } = await supabase
@@ -38,22 +43,28 @@ async function generateTeamLogoURL(teamName: string, sport: string, league: stri
       .eq('league', league)
       .eq('cdn_provider', 'espn')
       .eq('is_active', true)
-      .single();
+      .single()
 
-    if (!teamMapping?.cdn_team_id) return null;
+    if (!teamMapping?.cdn_team_id) return null
 
-    const url = `https://a.espncdn.com${sportConfig.logo_template}`
-      .replace('{teamId}', teamMapping.cdn_team_id);
+    const url = `https://a.espncdn.com${sportConfig.logo_template}`.replace(
+      '{teamId}',
+      teamMapping.cdn_team_id
+    )
 
     // Verify URL exists
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok ? url : null;
+    const response = await fetch(url, { method: 'HEAD' })
+    return response.ok ? url : null
   } catch {
-    return null;
+    return null
   }
 }
 
-async function generatePlayerPhotoURL(playerId: string, sport: string, supabase: any): Promise<string | null> {
+async function generatePlayerPhotoURL(
+  playerId: string,
+  sport: string,
+  supabase: any
+): Promise<string | null> {
   try {
     // Get sport configuration from database
     const { data: sportConfig } = await supabase
@@ -61,18 +72,20 @@ async function generatePlayerPhotoURL(playerId: string, sport: string, supabase:
       .select('player_template')
       .eq('name', sport)
       .eq('is_active', true)
-      .single();
+      .single()
 
-    if (!sportConfig?.player_template) return null;
+    if (!sportConfig?.player_template) return null
 
-    const url = `https://a.espncdn.com${sportConfig.player_template}`
-      .replace('{playerId}', playerId);
+    const url = `https://a.espncdn.com${sportConfig.player_template}`.replace(
+      '{playerId}',
+      playerId
+    )
 
     // Verify URL exists
-    const response = await fetch(url, { method: 'HEAD' });
-    return response.ok ? url : null;
+    const response = await fetch(url, { method: 'HEAD' })
+    return response.ok ? url : null
   } catch {
-    return null;
+    return null
   }
 }
 
@@ -98,22 +111,22 @@ async function logAuditEvent(
       old_url: oldUrl,
       new_url: newUrl,
       status,
-      error_message: errorMessage
-    });
+      error_message: errorMessage,
+    })
   } catch (error) {
-    console.error('Failed to log audit event:', error);
+    console.error('Failed to log audit event:', error)
   }
 }
 
 serve(async (req: Request) => {
   try {
-    const url = new URL(req.url);
-    const sport = url.searchParams.get('sport');
-    
+    const url = new URL(req.url)
+    const sport = url.searchParams.get('sport')
+
     // Initialize Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
     const result: PopulationResult = {
       success: true,
@@ -123,38 +136,40 @@ serve(async (req: Request) => {
         teamsFailed: 0,
         playersProcessed: 0,
         playersUpdated: 0,
-        playersFailed: 0
+        playersFailed: 0,
       },
       bySport: {},
-      failures: []
-    };
+      failures: [],
+    }
 
     // Process teams
-    let teamsQuery = supabase.from('teams').select('id, name, sport, league, logo_url, primary_color, secondary_color');
+    let teamsQuery = supabase
+      .from('teams')
+      .select('id, name, sport, league, logo_url, primary_color, secondary_color')
     if (sport) {
-      teamsQuery = teamsQuery.eq('sport', sport);
+      teamsQuery = teamsQuery.eq('sport', sport)
     }
-    
-    const { data: teams, error: teamsError } = await teamsQuery;
-    if (teamsError) throw teamsError;
+
+    const { data: teams, error: teamsError } = await teamsQuery
+    if (teamsError) throw teamsError
 
     for (const team of teams || []) {
-      result.stats.teamsProcessed++;
-      
+      result.stats.teamsProcessed++
+
       try {
-        const espnUrl = await generateTeamLogoURL(team.name, team.sport, team.league, supabase);
-        
+        const espnUrl = await generateTeamLogoURL(team.name, team.sport, team.league, supabase)
+
         if (espnUrl && espnUrl !== team.logo_url) {
           // Update team with ESPN URL
           const { error: updateError } = await supabase
             .from('teams')
             .update({
               logo_url: espnUrl,
-              last_updated: new Date().toISOString()
+              last_updated: new Date().toISOString(),
             })
-            .eq('id', team.id);
+            .eq('id', team.id)
 
-          if (updateError) throw updateError;
+          if (updateError) throw updateError
 
           await logAuditEvent(
             supabase,
@@ -166,21 +181,21 @@ serve(async (req: Request) => {
             team.logo_url,
             espnUrl,
             'success'
-          );
+          )
 
-          result.stats.teamsUpdated++;
-          result.bySport[team.sport] = result.bySport[team.sport] || { updated: 0, failed: 0 };
-          result.bySport[team.sport].updated++;
+          result.stats.teamsUpdated++
+          result.bySport[team.sport] = result.bySport[team.sport] || { updated: 0, failed: 0 }
+          result.bySport[team.sport].updated++
         }
       } catch (error) {
-        result.stats.teamsFailed++;
-        result.bySport[team.sport] = result.bySport[team.sport] || { updated: 0, failed: 0 };
-        result.bySport[team.sport].failed++;
+        result.stats.teamsFailed++
+        result.bySport[team.sport] = result.bySport[team.sport] || { updated: 0, failed: 0 }
+        result.bySport[team.sport].failed++
         result.failures.push({
           name: team.name,
           sport: team.sport,
-          error: error.message || 'Unknown error'
-        });
+          error: error.message || 'Unknown error',
+        })
 
         await logAuditEvent(
           supabase,
@@ -193,38 +208,38 @@ serve(async (req: Request) => {
           null,
           'failed',
           error.message
-        );
+        )
       }
     }
 
     // Process players
-    let playersQuery = supabase.from('players').select('id, name, sport, headshot_url');
+    let playersQuery = supabase.from('players').select('id, name, sport, headshot_url')
     if (sport) {
-      playersQuery = playersQuery.eq('sport', sport);
+      playersQuery = playersQuery.eq('sport', sport)
     }
-    
-    const { data: players, error: playersError } = await playersQuery;
-    if (playersError) throw playersError;
+
+    const { data: players, error: playersError } = await playersQuery
+    if (playersError) throw playersError
 
     for (const player of players || []) {
-      result.stats.playersProcessed++;
-      
+      result.stats.playersProcessed++
+
       try {
         // Use player ID or generate from name
-        const playerId = player.id.split('-')[0] || player.name.replace(/\s+/g, '-').toLowerCase();
-        const espnUrl = await generatePlayerPhotoURL(playerId, player.sport, supabase);
-        
+        const playerId = player.id.split('-')[0] || player.name.replace(/\s+/g, '-').toLowerCase()
+        const espnUrl = await generatePlayerPhotoURL(playerId, player.sport, supabase)
+
         if (espnUrl && espnUrl !== player.headshot_url) {
           // Update player with ESPN URL
           const { error: updateError } = await supabase
             .from('players')
             .update({
               headshot_url: espnUrl,
-              last_updated: new Date().toISOString()
+              last_updated: new Date().toISOString(),
             })
-            .eq('id', player.id);
+            .eq('id', player.id)
 
-          if (updateError) throw updateError;
+          if (updateError) throw updateError
 
           await logAuditEvent(
             supabase,
@@ -236,21 +251,21 @@ serve(async (req: Request) => {
             player.headshot_url,
             espnUrl,
             'success'
-          );
+          )
 
-          result.stats.playersUpdated++;
-          result.bySport[player.sport] = result.bySport[player.sport] || { updated: 0, failed: 0 };
-          result.bySport[player.sport].updated++;
+          result.stats.playersUpdated++
+          result.bySport[player.sport] = result.bySport[player.sport] || { updated: 0, failed: 0 }
+          result.bySport[player.sport].updated++
         }
       } catch (error) {
-        result.stats.playersFailed++;
-        result.bySport[player.sport] = result.bySport[player.sport] || { updated: 0, failed: 0 };
-        result.bySport[player.sport].failed++;
+        result.stats.playersFailed++
+        result.bySport[player.sport] = result.bySport[player.sport] || { updated: 0, failed: 0 }
+        result.bySport[player.sport].failed++
         result.failures.push({
           name: player.name,
           sport: player.sport,
-          error: error.message || 'Unknown error'
-        });
+          error: error.message || 'Unknown error',
+        })
 
         await logAuditEvent(
           supabase,
@@ -263,7 +278,7 @@ serve(async (req: Request) => {
           null,
           'failed',
           error.message
-        );
+        )
       }
     }
 
@@ -273,21 +288,23 @@ serve(async (req: Request) => {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
       },
-    });
-
+    })
   } catch (error) {
-    console.error('Error in populate-images function:', error);
-    
-    return new Response(JSON.stringify({
-      success: false,
-      error: error.message || 'Unknown error occurred'
-    }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    console.error('Error in populate-images function:', error)
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Unknown error occurred',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+        },
+      }
+    )
   }
-});
+})

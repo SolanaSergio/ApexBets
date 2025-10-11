@@ -11,24 +11,20 @@ async function getKnownTeamsFromDatabase(sport: string): Promise<string[]> {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
     const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
+
     if (!supabaseUrl || !supabaseKey) {
       console.warn('Supabase credentials not available, using empty team list')
       return []
     }
-    
+
     const supabase = createClient(supabaseUrl, supabaseKey)
-    const { data, error } = await supabase
-      .from('teams')
-      .select('name')
-      .eq('sport', sport)
-      .limit(50)
-    
+    const { data, error } = await supabase.from('teams').select('name').eq('sport', sport).limit(50)
+
     if (error) {
       console.warn('Error fetching teams from database:', error)
       return []
     }
-    
+
     return data?.map(team => team.name) || []
   } catch (error) {
     console.warn('Error in getKnownTeamsFromDatabase:', error)
@@ -47,7 +43,7 @@ describe('Comprehensive Games API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       if (data.data.length > 0) {
@@ -58,12 +54,12 @@ describe('Comprehensive Games API Tests', () => {
           away_team_id: expect.any(String),
           game_date: expect.any(String),
           status: expect.any(String),
-          season: expect.any(String)
+          season: expect.any(String),
         })
 
         // Verify date format is ISO string
         expect(game.game_date).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
-        
+
         // Verify status is valid NBA game status
         const validStatuses = ['scheduled', 'in_progress', 'completed', 'postponed', 'cancelled']
         expect(validStatuses).toContain(game.status)
@@ -77,7 +73,7 @@ describe('Comprehensive Games API Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       expect(data.meta.source).toBe('direct_apis')
@@ -90,17 +86,17 @@ describe('Comprehensive Games API Tests', () => {
           away_team: expect.any(Object),
           game_date: expect.any(String),
           status: expect.any(String),
-          season: expect.any(String)
+          season: expect.any(String),
         })
 
         // Verify team data structure
         expect(game.home_team).toMatchObject({
           name: expect.any(String),
-          abbreviation: expect.any(String)
+          abbreviation: expect.any(String),
         })
         expect(game.away_team).toMatchObject({
           name: expect.any(String),
-          abbreviation: expect.any(String)
+          abbreviation: expect.any(String),
         })
       }
     })
@@ -114,7 +110,9 @@ describe('Comprehensive Games API Tests', () => {
 
       // Live games should have in_progress status
       data.data.forEach((game: any) => {
-        expect(['in_progress', 'live', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(game.status)
+        expect(['in_progress', 'live', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr']).toContain(
+          game.status
+        )
       })
     })
 
@@ -128,7 +126,7 @@ describe('Comprehensive Games API Tests', () => {
       // Scheduled games should be valid
       data.data.forEach((game: any) => {
         expect(game.status).toBe('scheduled')
-        
+
         // Game date should be valid (can be past, present, or future)
         const gameDate = new Date(game.game_date)
         expect(gameDate).toBeInstanceOf(Date)
@@ -217,13 +215,13 @@ describe('Comprehensive Games API Tests', () => {
 
       if (data.data.length > 0) {
         const game = data.data[0]
-        
+
         // Check if team information is included
         if (game.home_team) {
           expect(game.home_team).toMatchObject({
             id: expect.any(String),
             name: expect.any(String),
-            abbreviation: expect.any(String)
+            abbreviation: expect.any(String),
           })
         }
 
@@ -231,7 +229,7 @@ describe('Comprehensive Games API Tests', () => {
           expect(game.away_team).toMatchObject({
             id: expect.any(String),
             name: expect.any(String),
-            abbreviation: expect.any(String)
+            abbreviation: expect.any(String),
           })
         }
       }
@@ -247,17 +245,19 @@ describe('Comprehensive Games API Tests', () => {
         // Get known teams dynamically from database instead of hardcoded list
         const knownBasketballTeams = await getKnownTeamsFromDatabase('basketball')
 
-        const teamNames = data.data.flatMap((game: any) => [
-          game.homeTeam || game.home_team?.name || '', 
-          game.awayTeam || game.away_team?.name || ''
-        ]).filter((name: string) => name.length > 0)
-        
+        const teamNames = data.data
+          .flatMap((game: any) => [
+            game.homeTeam || game.home_team?.name || '',
+            game.awayTeam || game.away_team?.name || '',
+          ])
+          .filter((name: string) => name.length > 0)
+
         // Check if we have any team names at all (more flexible validation)
         expect(teamNames.length).toBeGreaterThan(0)
-        
+
         // If we have team names, check if any match known teams
         if (teamNames.length > 0) {
-          const hasKnownTeam = teamNames.some((name: string) => 
+          const hasKnownTeam = teamNames.some((name: string) =>
             knownBasketballTeams.some(knownTeam => name.includes(knownTeam))
           )
           // This is optional - we might have valid teams that aren't in our known list
@@ -285,15 +285,15 @@ describe('Comprehensive Games API Tests', () => {
           date: new Date().toISOString(),
           season: '2024-25',
           status: 'scheduled',
-          venue: 'Test Arena'
+          venue: 'Test Arena',
         }
 
         const response = await fetch(`${baseUrl}/games`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
-          body: JSON.stringify(gameData)
+          body: JSON.stringify(gameData),
         })
 
         const data = await response.json()
@@ -306,23 +306,23 @@ describe('Comprehensive Games API Tests', () => {
           away_team_id: expect.any(String),
           game_date: expect.any(String),
           status: 'scheduled',
-          season: '2024-25'
+          season: '2024-25',
         })
       }
     })
 
     it('should reject game creation with missing required fields', async () => {
       const gameData = {
-        homeTeam: 'Lakers'
+        homeTeam: 'Lakers',
         // Missing awayTeam
       }
 
       const response = await fetch(`${baseUrl}/games`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(gameData)
+        body: JSON.stringify(gameData),
       })
 
       const data = await response.json()
@@ -334,15 +334,15 @@ describe('Comprehensive Games API Tests', () => {
     it('should reject game creation with non-existent teams', async () => {
       const gameData = {
         homeTeam: 'NonExistentTeam1',
-        awayTeam: 'NonExistentTeam2'
+        awayTeam: 'NonExistentTeam2',
       }
 
       const response = await fetch(`${baseUrl}/games`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify(gameData)
+        body: JSON.stringify(gameData),
       })
 
       const data = await response.json()
@@ -379,9 +379,9 @@ describe('Comprehensive Games API Tests', () => {
       const response = await fetch(`${baseUrl}/games`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
         },
-        body: 'invalid json'
+        body: 'invalid json',
       })
 
       expect(response.status).toBe(500)
@@ -399,12 +399,12 @@ describe('Comprehensive Games API Tests', () => {
     })
 
     it('should handle concurrent requests efficiently', async () => {
-      const requests = Array(10).fill(null).map(() => 
-        fetch(`${baseUrl}/games`)
-      )
+      const requests = Array(10)
+        .fill(null)
+        .map(() => fetch(`${baseUrl}/games`))
 
       const responses = await Promise.all(requests)
-      
+
       responses.forEach(response => {
         expect(response.status).toBe(200)
       })

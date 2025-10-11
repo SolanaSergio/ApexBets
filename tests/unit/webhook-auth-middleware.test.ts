@@ -7,12 +7,12 @@ import { hmacWebhookAuthenticator } from '@/lib/security/hmac-webhook-authentica
 
 describe('Webhook Authentication Middleware', () => {
   const testSecret = 'test_webhook_secret_key_for_testing_purposes_minimum_32_chars'
-  
+
   describe('HMAC Signature Generation and Validation', () => {
     test('should generate valid HMAC signature', () => {
       const payload = { test: 'data', number: 123 }
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
-      
+
       expect(signature).toMatch(/^sha256=[a-f0-9]{64}$/)
       expect(signature).toContain('sha256=')
     })
@@ -20,7 +20,7 @@ describe('Webhook Authentication Middleware', () => {
     test('should validate correct HMAC signature', () => {
       const payload = { test: 'data', number: 123 }
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
-      
+
       const isValid = hmacWebhookAuthenticator.validateSignature(payload, signature, testSecret)
       expect(isValid).toBe(true)
     })
@@ -28,23 +28,31 @@ describe('Webhook Authentication Middleware', () => {
     test('should reject invalid HMAC signature', () => {
       const payload = { test: 'data', number: 123 }
       const invalidSignature = 'sha256=invalid_signature_here'
-      
-      const isValid = hmacWebhookAuthenticator.validateSignature(payload, invalidSignature, testSecret)
+
+      const isValid = hmacWebhookAuthenticator.validateSignature(
+        payload,
+        invalidSignature,
+        testSecret
+      )
       expect(isValid).toBe(false)
     })
 
     test('should reject signature without proper prefix', () => {
       const payload = { test: 'data' }
       const signatureWithoutPrefix = 'abcd1234567890'
-      
-      const isValid = hmacWebhookAuthenticator.validateSignature(payload, signatureWithoutPrefix, testSecret)
+
+      const isValid = hmacWebhookAuthenticator.validateSignature(
+        payload,
+        signatureWithoutPrefix,
+        testSecret
+      )
       expect(isValid).toBe(false)
     })
 
     test('should handle string payloads', () => {
       const payload = '{"test":"data","number":123}'
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
-      
+
       const isValid = hmacWebhookAuthenticator.validateSignature(payload, signature, testSecret)
       expect(isValid).toBe(true)
     })
@@ -52,10 +60,14 @@ describe('Webhook Authentication Middleware', () => {
     test('should detect payload tampering', () => {
       const originalPayload = { test: 'data', number: 123 }
       const tamperedPayload = { test: 'data', number: 456 }
-      
+
       const signature = hmacWebhookAuthenticator.generateSignature(originalPayload, testSecret)
-      const isValid = hmacWebhookAuthenticator.validateSignature(tamperedPayload, signature, testSecret)
-      
+      const isValid = hmacWebhookAuthenticator.validateSignature(
+        tamperedPayload,
+        signature,
+        testSecret
+      )
+
       expect(isValid).toBe(false)
     })
   })
@@ -120,7 +132,7 @@ describe('Webhook Authentication Middleware', () => {
       const headers = {
         'x-forwarded-for': '203.0.113.5',
         'x-real-ip': '203.0.113.6',
-        'x-client-ip': '203.0.113.7'
+        'x-client-ip': '203.0.113.7',
       }
       const ip = hmacWebhookAuthenticator.extractClientIP(headers)
       expect(ip).toBe('203.0.113.5')
@@ -133,7 +145,7 @@ describe('Webhook Authentication Middleware', () => {
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
       const clientIP = '192.168.1.1'
       const allowedIPs = ['192.168.1.1', '10.0.0.1']
-      
+
       const result = hmacWebhookAuthenticator.validateWebhookRequest(
         payload,
         signature,
@@ -141,7 +153,7 @@ describe('Webhook Authentication Middleware', () => {
         clientIP,
         allowedIPs
       )
-      
+
       expect(result.isValid).toBe(true)
       expect(result.errors).toHaveLength(0)
     })
@@ -151,7 +163,7 @@ describe('Webhook Authentication Middleware', () => {
       const invalidSignature = 'sha256=invalid'
       const clientIP = '192.168.1.1'
       const allowedIPs = ['192.168.1.1']
-      
+
       const result = hmacWebhookAuthenticator.validateWebhookRequest(
         payload,
         invalidSignature,
@@ -159,7 +171,7 @@ describe('Webhook Authentication Middleware', () => {
         clientIP,
         allowedIPs
       )
-      
+
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('Invalid HMAC signature')
     })
@@ -169,7 +181,7 @@ describe('Webhook Authentication Middleware', () => {
       const signature = hmacWebhookAuthenticator.generateSignature(payload, testSecret)
       const clientIP = '192.168.1.100'
       const allowedIPs = ['192.168.1.1', '10.0.0.1']
-      
+
       const result = hmacWebhookAuthenticator.validateWebhookRequest(
         payload,
         signature,
@@ -177,7 +189,7 @@ describe('Webhook Authentication Middleware', () => {
         clientIP,
         allowedIPs
       )
-      
+
       expect(result.isValid).toBe(false)
       expect(result.errors).toContain('IP address not allowed')
     })
@@ -187,7 +199,7 @@ describe('Webhook Authentication Middleware', () => {
       const invalidSignature = 'sha256=invalid'
       const clientIP = '192.168.1.100'
       const allowedIPs = ['192.168.1.1']
-      
+
       const result = hmacWebhookAuthenticator.validateWebhookRequest(
         payload,
         invalidSignature,
@@ -195,7 +207,7 @@ describe('Webhook Authentication Middleware', () => {
         clientIP,
         allowedIPs
       )
-      
+
       expect(result.isValid).toBe(false)
       expect(result.errors).toHaveLength(2)
       expect(result.errors).toContain('Invalid HMAC signature')
@@ -212,7 +224,9 @@ describe('Webhook Authentication Middleware', () => {
 
     test('should handle malformed signatures gracefully', () => {
       const payload = { test: 'data' }
-      expect(hmacWebhookAuthenticator.validateSignature(payload, 'malformed', testSecret)).toBe(false)
+      expect(hmacWebhookAuthenticator.validateSignature(payload, 'malformed', testSecret)).toBe(
+        false
+      )
       expect(hmacWebhookAuthenticator.validateSignature(payload, '', testSecret)).toBe(false)
     })
 

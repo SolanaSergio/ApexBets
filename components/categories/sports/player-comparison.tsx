@@ -1,24 +1,22 @@
-"use client"
+'use client'
 
-import { useState, useCallback, useMemo } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
+import { useState, useCallback, useMemo } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Progress } from '@/components/ui/progress'
+import { Users, Target, Trophy, Zap, Award, TrendingUp, BarChart3, X } from 'lucide-react'
 import {
-  Users,
-  Target,
-  Trophy,
-  Zap,
-  Award,
-  TrendingUp,
-  BarChart3,
-  X
-} from "lucide-react"
-import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from "recharts"
-import { TeamLogo, PlayerPhoto } from "@/components/ui/sports-image"
-import { usePlayers, usePlayerStats } from "@/components/data/real-time-provider"
-import type { Player, PlayerStats } from "@/lib/api-client-database-first"
+  RadarChart,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  ResponsiveContainer,
+} from 'recharts'
+import { TeamLogo, PlayerPhoto } from '@/components/ui/sports-image'
+import { usePlayers, usePlayerStats } from '@/components/data/real-time-provider'
+import type { Player, PlayerStats } from '@/lib/api-client-database-first'
 
 interface PlayerComparisonProps {
   selectedPlayer?: Player | null
@@ -26,17 +24,20 @@ interface PlayerComparisonProps {
 
 export default function PlayerComparison({ selectedPlayer }: PlayerComparisonProps) {
   const [comparisonPlayer, setComparisonPlayer] = useState<Player | null>(null)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [searchQuery, setSearchQuery] = useState('')
   const { players: allPlayers } = usePlayers(selectedPlayer?.sport)
   const { stats: player1AllStats } = usePlayerStats(selectedPlayer?.id)
   const { stats: player2AllStats } = usePlayerStats(comparisonPlayer?.id)
 
   const searchResults = useMemo(() => {
     if (!searchQuery || searchQuery.length < 2 || !allPlayers) return []
-    return allPlayers.filter(player =>
-      player.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-      player.id !== selectedPlayer?.id
-    ).slice(0, 10)
+    return allPlayers
+      .filter(
+        player =>
+          player.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+          player.id !== selectedPlayer?.id
+      )
+      .slice(0, 10)
   }, [searchQuery, allPlayers, selectedPlayer])
 
   const getPlayerStatsForSeason = useCallback((playerStats: PlayerStats[], season: number) => {
@@ -46,26 +47,40 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
   const calculateAverages = useCallback((stats: PlayerStats[]) => {
     if (stats.length === 0) return null
 
-    const totals = stats.reduce((acc, stat) => ({
-      pts: acc.pts + stat.pts,
-      reb: acc.reb + stat.reb,
-      ast: acc.ast + stat.ast,
-      stl: acc.stl + stat.stl,
-      blk: acc.blk + stat.blk,
-      fgm: acc.fgm + stat.fgm,
-      fga: acc.fga + stat.fga,
-      fg3m: acc.fg3m + stat.fg3m,
-      fg3a: acc.fg3a + stat.fg3a,
-      ftm: acc.ftm + stat.ftm,
-      fta: acc.fta + stat.fta,
-      turnover: acc.turnover + stat.turnover,
-      pf: acc.pf + stat.pf,
-      games: acc.games + 1
-    }), {
-      pts: 0, reb: 0, ast: 0, stl: 0, blk: 0,
-      fgm: 0, fga: 0, fg3m: 0, fg3a: 0, ftm: 0, fta: 0,
-      turnover: 0, pf: 0, games: 0
-    })
+    const totals = stats.reduce(
+      (acc, stat) => ({
+        pts: acc.pts + stat.pts,
+        reb: acc.reb + stat.reb,
+        ast: acc.ast + stat.ast,
+        stl: acc.stl + stat.stl,
+        blk: acc.blk + stat.blk,
+        fgm: acc.fgm + stat.fgm,
+        fga: acc.fga + stat.fga,
+        fg3m: acc.fg3m + stat.fg3m,
+        fg3a: acc.fg3a + stat.fg3a,
+        ftm: acc.ftm + stat.ftm,
+        fta: acc.fta + stat.fta,
+        turnover: acc.turnover + stat.turnover,
+        pf: acc.pf + stat.pf,
+        games: acc.games + 1,
+      }),
+      {
+        pts: 0,
+        reb: 0,
+        ast: 0,
+        stl: 0,
+        blk: 0,
+        fgm: 0,
+        fga: 0,
+        fg3m: 0,
+        fg3a: 0,
+        ftm: 0,
+        fta: 0,
+        turnover: 0,
+        pf: 0,
+        games: 0,
+      }
+    )
 
     return {
       pts: (totals.pts / totals.games).toFixed(1),
@@ -76,7 +91,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
       fg_pct: totals.fga > 0 ? ((totals.fgm / totals.fga) * 100).toFixed(1) : 0,
       fg3_pct: totals.fg3a > 0 ? ((totals.fg3m / totals.fg3a) * 100).toFixed(1) : 0,
       ft_pct: totals.fta > 0 ? ((totals.ftm / totals.fta) * 100).toFixed(1) : 0,
-      games: totals.games
+      games: totals.games,
     }
   }, [])
 
@@ -103,7 +118,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
       { category: 'Assists', player1: Number(player1Avg.ast), player2: Number(player2Avg.ast) },
       { category: 'Steals', player1: Number(player1Avg.stl), player2: Number(player2Avg.stl) },
       { category: 'Blocks', player1: Number(player1Avg.blk), player2: Number(player2Avg.blk) },
-      { category: 'FG%', player1: Number(player1Avg.fg_pct), player2: Number(player2Avg.fg_pct) }
+      { category: 'FG%', player1: Number(player1Avg.fg_pct), player2: Number(player2Avg.fg_pct) },
     ]
   }, [player1Avg, player2Avg])
 
@@ -143,21 +158,19 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                 className="h-12 w-12 rounded-full"
               />
               <div>
-                <div className="font-semibold">
-                  {selectedPlayer.name}
-                </div>
+                <div className="font-semibold">{selectedPlayer.name}</div>
                 <div className="text-sm text-muted-foreground flex items-center gap-2">
                   <Badge variant="secondary">{selectedPlayer.position}</Badge>
-                    <span className="flex items-center gap-1">
-                      <TeamLogo
-                        teamName={selectedPlayer.teamName || ''}
-                        alt={selectedPlayer.teamName || ''}
-                        width={16}
-                        height={16}
-                        className="h-4 w-4"
-                      />
-                      {selectedPlayer.teamName}
-                    </span>
+                  <span className="flex items-center gap-1">
+                    <TeamLogo
+                      teamName={selectedPlayer.teamName || ''}
+                      alt={selectedPlayer.teamName || ''}
+                      width={16}
+                      height={16}
+                      className="h-4 w-4"
+                    />
+                    {selectedPlayer.teamName}
+                  </span>
                 </div>
               </div>
             </div>
@@ -172,7 +185,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                 type="text"
                 placeholder="Search for a player to compare..."
                 value={searchQuery}
-                onChange={(e) => {
+                onChange={e => {
                   setSearchQuery(e.target.value)
                 }}
                 className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
@@ -183,7 +196,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                   size="sm"
                   className="absolute right-1 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
                   onClick={() => {
-                    setSearchQuery("")
+                    setSearchQuery('')
                     setComparisonPlayer(null)
                   }}
                 >
@@ -195,13 +208,13 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
             {/* Search Results */}
             {searchQuery.length >= 2 && searchResults.length > 0 && (
               <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-2">
-                {searchResults.map((player) => (
+                {searchResults.map(player => (
                   <div
                     key={player.id}
                     className="flex items-center justify-between p-2 hover:bg-muted/50 cursor-pointer rounded"
                     onClick={() => {
                       setComparisonPlayer(player)
-                      setSearchQuery("")
+                      setSearchQuery('')
                     }}
                   >
                     <div className="flex items-center space-x-3">
@@ -213,9 +226,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                         className="h-8 w-8 rounded-full"
                       />
                       <div>
-                        <div className="font-medium text-sm">
-                          {player.name}
-                        </div>
+                        <div className="font-medium text-sm">{player.name}</div>
                         <div className="text-xs text-muted-foreground">
                           {player.position} • {player.teamName}
                         </div>
@@ -238,9 +249,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                     className="h-12 w-12 rounded-full"
                   />
                   <div>
-                    <div className="font-semibold">
-                      {comparisonPlayer.name}
-                    </div>
+                    <div className="font-semibold">{comparisonPlayer.name}</div>
                     <div className="text-sm text-muted-foreground flex items-center gap-2">
                       <Badge variant="secondary">{comparisonPlayer.position}</Badge>
                       <span className="flex items-center gap-1">
@@ -258,11 +267,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">Player 2</Badge>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setComparisonPlayer(null)}
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => setComparisonPlayer(null)}>
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
@@ -326,7 +331,7 @@ export default function PlayerComparison({ selectedPlayer }: PlayerComparisonPro
                   { key: 'ast', label: 'Assists', icon: Zap },
                   { key: 'stl', label: 'Steals', icon: Award },
                   { key: 'blk', label: 'Blocks', icon: TrendingUp },
-                  { key: 'fg_pct', label: 'FG%', icon: BarChart3 }
+                  { key: 'fg_pct', label: 'FG%', icon: BarChart3 },
                 ].map(({ key, label, icon: Icon }) => {
                   const player1Value = Number((player1Avg as any)[key])
                   const player2Value = Number((player2Avg as any)[key])

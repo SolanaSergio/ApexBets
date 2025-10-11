@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -15,7 +15,10 @@ interface ResetPasswordClientProps {
   refreshToken?: string | undefined
 }
 
-export default function ResetPasswordClient({ accessToken, refreshToken }: ResetPasswordClientProps) {
+export default function ResetPasswordClient({
+  accessToken,
+  refreshToken,
+}: ResetPasswordClientProps) {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -63,7 +66,7 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
     }
 
     const { error: updateError } = await updatePassword(password)
-    
+
     if (updateError) {
       setError(updateError.message)
     } else {
@@ -72,7 +75,7 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
         router.push('/login?message=password-updated')
       }, 2000)
     }
-    
+
     setLoading(false)
   }
 
@@ -88,7 +91,8 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">Password updated!</h2>
                 <p className="text-slate-600 mt-2">
-                  Your password has been successfully updated. You can now sign in with your new password.
+                  Your password has been successfully updated. You can now sign in with your new
+                  password.
                 </p>
               </div>
               <Button
@@ -129,7 +133,7 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your new password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={e => setPassword(e.target.value)}
                   required
                   className="h-11 pr-10"
                 />
@@ -147,9 +151,7 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
                   )}
                 </Button>
               </div>
-              <p className="text-xs text-slate-500">
-                Must be at least 6 characters long
-              </p>
+              <p className="text-xs text-slate-500">Must be at least 6 characters long</p>
             </div>
 
             <div className="space-y-2">
@@ -160,7 +162,7 @@ export default function ResetPasswordClient({ accessToken, refreshToken }: Reset
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm your new password"
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  onChange={e => setConfirmPassword(e.target.value)}
                   required
                   className="h-11 pr-10"
                 />

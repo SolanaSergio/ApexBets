@@ -14,7 +14,7 @@ describe('Live Scores API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(Array.isArray(data.data)).toBe(true)
 
@@ -27,11 +27,19 @@ describe('Live Scores API Integration Tests', () => {
           date: expect.any(String),
           status: expect.any(String),
           league: expect.any(String),
-          sport: expect.any(String)
+          sport: expect.any(String),
         })
 
         // Live games should have live status
-        expect(['live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr', 'Halftime']).toContain(game.status)
+        expect([
+          'live',
+          'in_progress',
+          '1st Qtr',
+          '2nd Qtr',
+          '3rd Qtr',
+          '4th Qtr',
+          'Halftime',
+        ]).toContain(game.status)
       }
     })
 
@@ -42,7 +50,7 @@ describe('Live Scores API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All games should be basketball
@@ -56,10 +64,10 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const game = data.data[0]
-        
+
         // Live games should have scores
         if (game.status === 'live' || game.status.includes('Qtr') || game.status === 'Halftime') {
           expect(game.homeScore).toBeDefined()
@@ -77,10 +85,10 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const today = new Date().toISOString().split('T')[0]
-        
+
         // Live games should be from today
         data.data.forEach((game: any) => {
           expect(game.date).toBe(today)
@@ -93,14 +101,22 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const statuses = data.data.map((game: any) => game.status)
         const validStatuses = [
-          'live', 'in_progress', '1st Qtr', '2nd Qtr', '3rd Qtr', '4th Qtr', 
-          'Halftime', 'Final', 'finished', 'scheduled'
+          'live',
+          'in_progress',
+          '1st Qtr',
+          '2nd Qtr',
+          '3rd Qtr',
+          '4th Qtr',
+          'Halftime',
+          'Final',
+          'finished',
+          'scheduled',
         ]
-        
+
         statuses.forEach((status: string) => {
           expect(validStatuses).toContain(status)
         })
@@ -112,10 +128,10 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const game = data.data[0]
-        
+
         // Team names should be non-empty strings
         expect(game.homeTeam).toBeTruthy()
         expect(game.awayTeam).toBeTruthy()
@@ -131,10 +147,10 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const game = data.data[0]
-        
+
         // Should have time information for live games
         if (game.status === 'live' || game.status.includes('Qtr')) {
           expect(game.time).toBeDefined()
@@ -148,7 +164,7 @@ describe('Live Scores API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       data.data.forEach((game: any) => {
         // Required fields
         expect(game.id).toBeDefined()
@@ -158,7 +174,7 @@ describe('Live Scores API Integration Tests', () => {
         expect(game.status).toBeDefined()
         expect(game.league).toBeDefined()
         expect(game.sport).toBeDefined()
-        
+
         // Field types
         expect(typeof game.id).toBe('string')
         expect(typeof game.homeTeam).toBe('string')
@@ -167,7 +183,7 @@ describe('Live Scores API Integration Tests', () => {
         expect(typeof game.status).toBe('string')
         expect(typeof game.league).toBe('string')
         expect(typeof game.sport).toBe('string')
-        
+
         // Non-empty strings
         expect(game.id.length).toBeGreaterThan(0)
         expect(game.homeTeam.length).toBeGreaterThan(0)
@@ -185,7 +201,7 @@ describe('Live Scores API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       // Empty array is acceptable when no games are live
     })

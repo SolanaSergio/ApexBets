@@ -36,8 +36,8 @@ export class QueryOptimizer {
       suggestions,
       performance: {
         estimatedTime: this.estimateQueryTime(query),
-        complexity: this.assessQueryComplexity(query)
-      }
+        complexity: this.assessQueryComplexity(query),
+      },
     }
   }
 

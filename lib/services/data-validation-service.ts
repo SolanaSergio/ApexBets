@@ -51,15 +51,24 @@ export class DataValidationService {
         }
 
         // Validate status
-        if (game.status && !['scheduled', 'live', 'finished', 'postponed', 'cancelled'].includes(game.status)) {
+        if (
+          game.status &&
+          !['scheduled', 'live', 'finished', 'postponed', 'cancelled'].includes(game.status)
+        ) {
           warnings.push(`Game ${game.id} has invalid status: ${game.status}`)
         }
 
         // Validate scores if present
-        if (game.homeScore !== undefined && (typeof game.homeScore !== 'number' || game.homeScore < 0)) {
+        if (
+          game.homeScore !== undefined &&
+          (typeof game.homeScore !== 'number' || game.homeScore < 0)
+        ) {
           warnings.push(`Game ${game.id} has invalid home score: ${game.homeScore}`)
         }
-        if (game.awayScore !== undefined && (typeof game.awayScore !== 'number' || game.awayScore < 0)) {
+        if (
+          game.awayScore !== undefined &&
+          (typeof game.awayScore !== 'number' || game.awayScore < 0)
+        ) {
           warnings.push(`Game ${game.id} has invalid away score: ${game.awayScore}`)
         }
 
@@ -70,28 +79,33 @@ export class DataValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        validatedCount
+        validatedCount,
       }
 
       structuredLogger.debug('Live games validation completed', result)
 
       return result
-
     } catch (error) {
       structuredLogger.error('Live games validation failed', {
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
 
       return {
         isValid: false,
         errors: [`Validation failed: ${error instanceof Error ? error.message : String(error)}`],
         warnings: [],
-        validatedCount
+        validatedCount,
       }
     }
   }
 
-  async validateComponentDataAccess(component: string): Promise<{ component: string; hasRequiredData: boolean; dataQuality: 'excellent' | 'good' | 'fair' | 'poor'; missingData: string[]; recommendations: string[] }> {
+  async validateComponentDataAccess(component: string): Promise<{
+    component: string
+    hasRequiredData: boolean
+    dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
+    missingData: string[]
+    recommendations: string[]
+  }> {
     // Basic stub using existing validation logic
     const result = this.validateLiveGames([])
     return {
@@ -99,20 +113,33 @@ export class DataValidationService {
       hasRequiredData: result.isValid,
       dataQuality: 'fair',
       missingData: result.errors,
-      recommendations: ['Verify data sources and API connectivity']
+      recommendations: ['Verify data sources and API connectivity'],
     }
   }
 
-  async validateAllComponents(): Promise<Array<{ component: string; hasRequiredData: boolean; dataQuality: 'excellent' | 'good' | 'fair' | 'poor'; missingData: string[]; recommendations: string[] }>> {
+  async validateAllComponents(): Promise<
+    Array<{
+      component: string
+      hasRequiredData: boolean
+      dataQuality: 'excellent' | 'good' | 'fair' | 'poor'
+      missingData: string[]
+      recommendations: string[]
+    }>
+  > {
     const components = ['dashboard', 'teams', 'standings', 'players']
     const results = await Promise.all(components.map(c => this.validateComponentDataAccess(c)))
     return results
   }
 
-  async getDataPopulationRecommendations(): Promise<Array<{ component: string; recommendations: string[] }>> {
+  async getDataPopulationRecommendations(): Promise<
+    Array<{ component: string; recommendations: string[] }>
+  > {
     return [
-      { component: 'teams', recommendations: ['Ensure team table has indexes', 'Backfill missing logos'] },
-      { component: 'players', recommendations: ['Sync player rosters from primary provider'] }
+      {
+        component: 'teams',
+        recommendations: ['Ensure team table has indexes', 'Backfill missing logos'],
+      },
+      { component: 'players', recommendations: ['Sync player rosters from primary provider'] },
     ]
   }
 
@@ -126,7 +153,7 @@ export class DataValidationService {
           isValid: false,
           errors: ['Game object is null or undefined'],
           warnings: [],
-          validatedCount: 0
+          validatedCount: 0,
         }
       }
 
@@ -150,15 +177,14 @@ export class DataValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        validatedCount: 1
+        validatedCount: 1,
       }
-
     } catch (error) {
       return {
         isValid: false,
         errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
         warnings: [],
-        validatedCount: 0
+        validatedCount: 0,
       }
     }
   }
@@ -173,7 +199,7 @@ export class DataValidationService {
           isValid: false,
           errors: ['Team object is null or undefined'],
           warnings: [],
-          validatedCount: 0
+          validatedCount: 0,
         }
       }
 
@@ -186,7 +212,12 @@ export class DataValidationService {
       }
 
       // Validate optional fields
-      if (team.foundedYear && (typeof team.foundedYear !== 'number' || team.foundedYear < 1800 || team.foundedYear > new Date().getFullYear())) {
+      if (
+        team.foundedYear &&
+        (typeof team.foundedYear !== 'number' ||
+          team.foundedYear < 1800 ||
+          team.foundedYear > new Date().getFullYear())
+      ) {
         warnings.push(`Team ${team.name} has invalid founded year: ${team.foundedYear}`)
       }
 
@@ -194,15 +225,14 @@ export class DataValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        validatedCount: 1
+        validatedCount: 1,
       }
-
     } catch (error) {
       return {
         isValid: false,
         errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
         warnings: [],
-        validatedCount: 0
+        validatedCount: 0,
       }
     }
   }
@@ -217,7 +247,7 @@ export class DataValidationService {
           isValid: false,
           errors: ['Player object is null or undefined'],
           warnings: [],
-          validatedCount: 0
+          validatedCount: 0,
         }
       }
 
@@ -234,7 +264,12 @@ export class DataValidationService {
         warnings.push(`Player ${player.name} has invalid age: ${player.age}`)
       }
 
-      if (player.jerseyNumber && (typeof player.jerseyNumber !== 'number' || player.jerseyNumber < 0 || player.jerseyNumber > 99)) {
+      if (
+        player.jerseyNumber &&
+        (typeof player.jerseyNumber !== 'number' ||
+          player.jerseyNumber < 0 ||
+          player.jerseyNumber > 99)
+      ) {
         warnings.push(`Player ${player.name} has invalid jersey number: ${player.jerseyNumber}`)
       }
 
@@ -242,15 +277,14 @@ export class DataValidationService {
         isValid: errors.length === 0,
         errors,
         warnings,
-        validatedCount: 1
+        validatedCount: 1,
       }
-
     } catch (error) {
       return {
         isValid: false,
         errors: [`Validation error: ${error instanceof Error ? error.message : String(error)}`],
         warnings: [],
-        validatedCount: 0
+        validatedCount: 0,
       }
     }
   }

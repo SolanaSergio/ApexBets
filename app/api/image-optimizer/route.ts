@@ -16,13 +16,13 @@ export async function GET(request: NextRequest) {
         required: 'src - Image URL to optimize',
         optional: {
           w: 'Width (default: 800)',
-          h: 'Height (default: 600)', 
+          h: 'Height (default: 600)',
           q: 'Quality 1-100 (default: 80)',
-          f: 'Format: webp, jpg, png (default: webp)'
+          f: 'Format: webp, jpg, png (default: webp)',
         },
-        example: '/api/image-optimizer?src=https://example.com/image.jpg&w=400&h=300&q=90'
+        example: '/api/image-optimizer?src=https://example.com/image.jpg&w=400&h=300&q=90',
       },
-      status: 'ready'
+      status: 'ready',
     })
   }
 
@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
         url.searchParams.set('fit', 'crop')
         return NextResponse.redirect(url.toString())
       }
-      
+
       // For other external images, return as-is
       return NextResponse.redirect(src)
     }
@@ -49,9 +49,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(src)
   } catch (error) {
     console.error('Image optimization error:', error)
-    return NextResponse.json({
-      error: 'Image optimization failed',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    }, { status: 500 })
+    return NextResponse.json(
+      {
+        error: 'Image optimization failed',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    )
   }
 }

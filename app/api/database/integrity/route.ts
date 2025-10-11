@@ -4,7 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { runDataIntegrityChecks, fixDataIntegrityIssues } from '@/lib/services/database/schema-validator'
+import {
+  runDataIntegrityChecks,
+  fixDataIntegrityIssues,
+} from '@/lib/services/database/schema-validator'
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +20,7 @@ export async function GET(request: NextRequest) {
     // Filter checks based on type if specified
     let filteredChecks = integrityChecks
     if (checkType !== 'all') {
-      filteredChecks = integrityChecks.filter(check => 
+      filteredChecks = integrityChecks.filter(check =>
         check.checkName.toLowerCase().includes(checkType.toLowerCase())
       )
     }
@@ -34,26 +37,25 @@ export async function GET(request: NextRequest) {
           total: totalChecks,
           passed: passedChecks,
           failed: totalChecks - passedChecks,
-          allPassed
-        }
+          allPassed,
+        },
       },
       meta: {
         checkType,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Database integrity checks API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to run database integrity checks',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
     // Filter checks based on type if specified
     let filteredChecks = integrityChecks
     if (checkType !== 'all') {
-      filteredChecks = integrityChecks.filter(check => 
+      filteredChecks = integrityChecks.filter(check =>
         check.checkName.toLowerCase().includes(checkType.toLowerCase())
       )
     }
@@ -87,27 +89,26 @@ export async function POST(request: NextRequest) {
           total: filteredChecks.length,
           passed: filteredChecks.filter(check => check.passed).length,
           failed: filteredChecks.filter(check => !check.passed).length,
-          allPassed: filteredChecks.every(check => check.passed)
+          allPassed: filteredChecks.every(check => check.passed),
         },
-        fixResults
+        fixResults,
       },
       meta: {
         checkType,
-        timestamp: new Date().toISOString()
-      }
+        timestamp: new Date().toISOString(),
+      },
     })
-
   } catch (error) {
     console.error('Database integrity checks API error:', error)
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
+      {
+        success: false,
         error: 'Failed to run database integrity checks',
         details: errorMessage,
-        data: null
+        data: null,
       },
       { status: 500 }
     )

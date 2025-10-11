@@ -20,11 +20,14 @@ export interface RetryConfig {
 
 export class ErrorHandlingService {
   private static instance: ErrorHandlingService
-  private circuitBreakers: Map<string, {
-    failures: number
-    lastFailure: Date | null
-    state: 'closed' | 'open' | 'half-open'
-  }> = new Map()
+  private circuitBreakers: Map<
+    string,
+    {
+      failures: number
+      lastFailure: Date | null
+      state: 'closed' | 'open' | 'half-open'
+    }
+  > = new Map()
 
   public static getInstance(): ErrorHandlingService {
     if (!ErrorHandlingService.instance) {
@@ -39,11 +42,11 @@ export class ErrorHandlingService {
     config: CircuitBreakerConfig = {
       failureThreshold: 5,
       recoveryTimeout: 60000, // 1 minute
-      monitoringPeriod: 300000 // 5 minutes
+      monitoringPeriod: 300000, // 5 minutes
     }
   ): Promise<T> {
     const circuitBreaker = this.getCircuitBreaker(serviceName)
-    
+
     if (circuitBreaker.state === 'open') {
       if (Date.now() - (circuitBreaker.lastFailure?.getTime() || 0) > config.recoveryTimeout) {
         circuitBreaker.state = 'half-open'
@@ -55,27 +58,27 @@ export class ErrorHandlingService {
 
     try {
       const result = await operation()
-      
+
       if (circuitBreaker.state === 'half-open') {
         circuitBreaker.state = 'closed'
         circuitBreaker.failures = 0
         structuredLogger.info('Circuit breaker closed after successful operation', { serviceName })
       }
-      
+
       return result
     } catch (error) {
       circuitBreaker.failures++
       circuitBreaker.lastFailure = new Date()
-      
+
       if (circuitBreaker.failures >= config.failureThreshold) {
         circuitBreaker.state = 'open'
         structuredLogger.error('Circuit breaker opened due to failures', {
           serviceName,
           failures: circuitBreaker.failures,
-          threshold: config.failureThreshold
+          threshold: config.failureThreshold,
         })
       }
-      
+
       throw error
     }
   }
@@ -86,41 +89,41 @@ export class ErrorHandlingService {
       maxRetries: 3,
       baseDelay: 1000,
       maxDelay: 10000,
-      backoffMultiplier: 2
+      backoffMultiplier: 2,
     }
   ): Promise<T> {
     let lastError: Error | null = null
-    
+
     for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
       try {
         return await operation()
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
-        
+
         if (attempt === config.maxRetries) {
           structuredLogger.error('Max retries exceeded', {
             maxRetries: config.maxRetries,
-            error: lastError.message
+            error: lastError.message,
           })
           throw lastError
         }
-        
+
         const delay = Math.min(
           config.baseDelay * Math.pow(config.backoffMultiplier, attempt),
           config.maxDelay
         )
-        
+
         structuredLogger.warn('Operation failed, retrying', {
           attempt: attempt + 1,
           maxRetries: config.maxRetries,
           delay,
-          error: lastError.message
+          error: lastError.message,
         })
-        
+
         await this.delay(delay)
       }
     }
-    
+
     throw lastError || new Error('Unknown error')
   }
 
@@ -129,7 +132,7 @@ export class ErrorHandlingService {
       this.circuitBreakers.set(serviceName, {
         failures: 0,
         lastFailure: null,
-        state: 'closed'
+        state: 'closed',
       })
     }
     return this.circuitBreakers.get(serviceName)!
@@ -164,7 +167,7 @@ export class ErrorHandlingService {
     structuredLogger.error('Error occurred', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      context
+      context,
     })
   }
 }

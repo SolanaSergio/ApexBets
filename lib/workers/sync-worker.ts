@@ -74,7 +74,7 @@ class SyncWorker {
       lastSync: 'N/A',
       totalSynced: 0,
       errors: 0,
-      successRate: 0
+      successRate: 0,
     })
 
     // If service is not running but worker is, restart it
@@ -104,7 +104,7 @@ class SyncWorker {
     return {
       isRunning: this.isRunning,
       serviceRunning: false,
-      stats: { message: 'Data sync service was removed' }
+      stats: { message: 'Data sync service was removed' },
     }
   }
 }

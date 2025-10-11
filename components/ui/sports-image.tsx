@@ -1,16 +1,16 @@
-"use client"
+'use client'
 
 import React, { useState, useCallback, useEffect } from 'react'
 import Image from 'next/image'
 import { cn } from '@/lib/utils'
-import { 
+import {
   imageService,
-  getSportsImageUrl, 
+  getSportsImageUrl,
   getFallbackImageUrl,
   IMAGE_SOURCES,
   type SportsLeague,
   type TeamLogoConfig,
-  type PlayerPhotoConfig
+  type PlayerPhotoConfig,
 } from '@/lib/services/image-service'
 
 interface SportsImageProps {
@@ -51,16 +51,16 @@ interface SportsImageGenericProps extends Omit<SportsImageProps, 'src'> {
 /**
  * Generic sports image component with bulletproof fallback support
  */
-export function SportsImage({ 
-  src, 
-  alt, 
-  width = 200, 
-  height = 200, 
+export function SportsImage({
+  src,
+  alt,
+  width = 200,
+  height = 200,
   className,
   fallbackType = 'sports',
   onError,
   priority = false,
-  quality = 80
+  quality = 80,
 }: SportsImageProps) {
   const [imgSrc, setImgSrc] = useState(src)
   const [hasError, setHasError] = useState(false)
@@ -77,21 +77,21 @@ export function SportsImage({
   }, [hasError, fallbackType, onError])
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div className={cn('relative overflow-hidden', className)}>
       <Image
         src={imgSrc || getFallbackImageUrl(fallbackType)}
         alt={alt}
         width={width}
         height={height}
         className={cn(
-          "object-contain transition-opacity duration-200",
-          hasError && "opacity-50",
-          isFallback && "opacity-90"
+          'object-contain transition-opacity duration-200',
+          hasError && 'opacity-50',
+          isFallback && 'opacity-90'
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={isFallback} // Don't optimize SVG data URIs
+        unoptimized={isFallback} // Don't optimize static fallback images
       />
     </div>
   )
@@ -100,8 +100,8 @@ export function SportsImage({
 /**
  * Team logo component with bulletproof fallback support
  */
-export function TeamLogo({ 
-  teamName, 
+export function TeamLogo({
+  teamName,
   league,
   alt,
   width = 200,
@@ -112,7 +112,7 @@ export function TeamLogo({
   priority = false,
   quality = 80,
   sport,
-  logoUrl
+  logoUrl,
 }: TeamLogoProps) {
   const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
@@ -125,14 +125,14 @@ export function TeamLogo({
       try {
         setLoading(true)
         setHasError(false)
-        
+
         const startTime = Date.now()
-        
+
         // If logoUrl is provided, use it directly
         if (logoUrl) {
           setImgSrc(logoUrl)
           setIsFallback(false)
-          
+
           // Track direct logo usage
           try {
             await fetch('/api/monitor/image-event', {
@@ -145,27 +145,27 @@ export function TeamLogo({
                 source: 'database',
                 success: true,
                 url: logoUrl,
-                loadTime: Date.now() - startTime
-              })
+                loadTime: Date.now() - startTime,
+              }),
             })
           } catch (error) {
             console.debug('Failed to track image event:', error)
           }
           return
         }
-        
+
         // Otherwise, use bulletproof image service
         const result = await imageService.getTeamLogoUrl(teamName, league, sport)
         const loadTime = Date.now() - startTime
-        
+
         // Validate result structure
         if (!result || typeof result !== 'object' || !result.url) {
           throw new Error('Invalid result from image service')
         }
-        
+
         setImgSrc(result.url)
-        setIsFallback(result.url.startsWith('data:image/svg+xml'))
-        
+        setIsFallback(result.url.startsWith('/images/fallbacks/'))
+
         // Track successful image load (fire-and-forget)
         fetch('/api/monitor/image-event', {
           method: 'POST',
@@ -177,8 +177,8 @@ export function TeamLogo({
             source: result.source,
             success: true,
             url: result.url,
-            loadTime
-          })
+            loadTime,
+          }),
         }).catch(error => {
           console.debug('Failed to track image event:', error)
         })
@@ -189,7 +189,7 @@ export function TeamLogo({
         const fallbackUrl = getFallbackImageUrl(fallbackType)
         setImgSrc(fallbackUrl)
         setIsFallback(true)
-        
+
         // Track failed image load (fire-and-forget)
         fetch('/api/monitor/image-event', {
           method: 'POST',
@@ -198,11 +198,11 @@ export function TeamLogo({
             entityType: 'team',
             entityName: teamName,
             sport,
-            source: 'svg',
+            source: 'static',
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error',
-            loadTime
-          })
+            loadTime,
+          }),
         }).catch(trackError => {
           console.debug('Failed to track image event:', trackError)
         })
@@ -231,21 +231,21 @@ export function TeamLogo({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div className={cn('relative overflow-hidden', className)}>
       <Image
         src={imgSrc}
         alt={alt || `${teamName} logo`}
         width={width}
         height={height}
         className={cn(
-          "object-contain transition-opacity duration-200",
-          hasError && "opacity-50",
-          isFallback && "opacity-90"
+          'object-contain transition-opacity duration-200',
+          hasError && 'opacity-50',
+          isFallback && 'opacity-90'
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={isFallback} // Don't optimize SVG data URIs
+        unoptimized={isFallback} // Don't optimize static fallback images
       />
     </div>
   )
@@ -254,8 +254,8 @@ export function TeamLogo({
 /**
  * Player photo component with bulletproof fallback support
  */
-export function PlayerPhoto({ 
-  playerId, 
+export function PlayerPhoto({
+  playerId,
   alt,
   width = 200,
   height = 200,
@@ -264,7 +264,7 @@ export function PlayerPhoto({
   onError,
   priority = false,
   quality = 80,
-  playerName
+  playerName,
 }: PlayerPhotoProps) {
   const [imgSrc, setImgSrc] = useState<string>('')
   const [hasError, setHasError] = useState(false)
@@ -276,16 +276,16 @@ export function PlayerPhoto({
       try {
         setLoading(true)
         setHasError(false)
-        
+
         const startTime = Date.now()
-        
+
         // Use bulletproof image service
         const result = await imageService.getPlayerPhotoUrl(String(playerId), undefined, playerName)
         const loadTime = Date.now() - startTime
-        
+
         setImgSrc(result.url)
-        setIsFallback(result.url.startsWith('data:image/svg+xml'))
-        
+        setIsFallback(result.url.startsWith('/images/fallbacks/'))
+
         // Track successful image load
         try {
           await fetch('/api/monitor/image-event', {
@@ -297,8 +297,8 @@ export function PlayerPhoto({
               source: result.source,
               success: true,
               url: result.url,
-              loadTime
-            })
+              loadTime,
+            }),
           })
         } catch (error) {
           console.debug('Failed to track image event:', error)
@@ -310,7 +310,7 @@ export function PlayerPhoto({
         const fallbackUrl = getFallbackImageUrl('player')
         setImgSrc(fallbackUrl)
         setIsFallback(true)
-        
+
         // Track failed image load
         try {
           await fetch('/api/monitor/image-event', {
@@ -319,11 +319,11 @@ export function PlayerPhoto({
             body: JSON.stringify({
               entityType: 'player',
               entityName: playerName || String(playerId),
-              source: 'svg',
+              source: 'static',
               success: false,
               error: error instanceof Error ? error.message : 'Unknown error',
-              loadTime
-            })
+              loadTime,
+            }),
           })
         } catch (trackError) {
           console.debug('Failed to track image event:', trackError)
@@ -350,21 +350,21 @@ export function PlayerPhoto({
   }
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div className={cn('relative overflow-hidden', className)}>
       <Image
         src={imgSrc}
         alt={alt || `Player ${playerId}`}
         width={width}
         height={height}
         className={cn(
-          "object-cover transition-opacity duration-200",
-          hasError && "opacity-50",
-          isFallback && "opacity-90"
+          'object-cover transition-opacity duration-200',
+          hasError && 'opacity-50',
+          isFallback && 'opacity-90'
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={isFallback} // Don't optimize SVG data URIs
+        unoptimized={isFallback} // Don't optimize static fallback images
       />
     </div>
   )
@@ -373,7 +373,7 @@ export function PlayerPhoto({
 /**
  * Sports category image component with bulletproof fallback
  */
-export function SportsImageGeneric({ 
+export function SportsImageGeneric({
   category,
   alt,
   width = 200,
@@ -382,11 +382,11 @@ export function SportsImageGeneric({
   fallbackType = 'sports',
   onError,
   priority = false,
-  quality = 80
+  quality = 80,
 }: SportsImageGenericProps) {
   const [imgSrc, setImgSrc] = useState(() => getSportsImageUrl(String(category), { width, height }))
   const [hasError, setHasError] = useState(false)
-  const [isFallback, setIsFallback] = useState(imgSrc.startsWith('data:image/svg+xml'))
+  const [isFallback, setIsFallback] = useState(imgSrc.startsWith('/images/fallbacks/'))
 
   const handleError = useCallback(() => {
     if (!hasError) {
@@ -399,21 +399,21 @@ export function SportsImageGeneric({
   }, [hasError, fallbackType, onError])
 
   return (
-    <div className={cn("relative overflow-hidden", className)}>
+    <div className={cn('relative overflow-hidden', className)}>
       <Image
         src={imgSrc}
         alt={alt || `${String(category)} image`}
         width={width}
         height={height}
         className={cn(
-          "object-cover transition-opacity duration-200",
-          hasError && "opacity-50",
-          isFallback && "opacity-90"
+          'object-cover transition-opacity duration-200',
+          hasError && 'opacity-50',
+          isFallback && 'opacity-90'
         )}
         onError={handleError}
         priority={priority}
         quality={quality}
-        unoptimized={isFallback} // Don't optimize SVG data URIs
+        unoptimized={isFallback} // Don't optimize static fallback images
       />
     </div>
   )
@@ -425,19 +425,13 @@ export function SportsImageGeneric({
 export function SportsImageSkeleton({
   width = 200,
   height = 200,
-  className
+  className,
 }: {
   width?: number
   height?: number
   className?: string
 }) {
   return (
-    <div 
-      className={cn(
-        "animate-pulse bg-muted rounded-lg",
-        className
-      )}
-      style={{ width, height }}
-    />
+    <div className={cn('animate-pulse bg-muted rounded-lg', className)} style={{ width, height }} />
   )
 }

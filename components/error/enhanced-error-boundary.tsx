@@ -1,18 +1,10 @@
-"use client"
+'use client'
 
 import React, { Component, ReactNode } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { 
-  AlertTriangle, 
-  RefreshCw, 
-  Bug, 
-  Wifi, 
-  Server,
-  Clock,
-  Home
-} from 'lucide-react'
+import { AlertTriangle, RefreshCw, Bug, Wifi, Server, Clock, Home } from 'lucide-react'
 
 interface ErrorInfo {
   componentStack: string
@@ -41,13 +33,13 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   constructor(props: ErrorBoundaryProps) {
     super(props)
-    
+
     this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
       errorId: '',
-      retryCount: 0
+      retryCount: 0,
     }
   }
 
@@ -55,13 +47,13 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     return {
       hasError: true,
       error,
-      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     }
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({
-      errorInfo
+      errorInfo,
     })
 
     // Log error to monitoring service
@@ -84,54 +76,60 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
       url: window.location.href,
-      errorId: this.state.errorId
+      errorId: this.state.errorId,
     }
 
     // In production, send to error monitoring service
     console.error('Error Boundary caught an error:', errorData)
   }
 
-  private getErrorType = (error: Error): {
+  private getErrorType = (
+    error: Error
+  ): {
     type: 'network' | 'api' | 'render' | 'unknown'
     icon: React.ComponentType<any>
     color: string
   } => {
     const message = error.message.toLowerCase()
-    
-    if (message.includes('fetch') || message.includes('network') || message.includes('connection')) {
+
+    if (
+      message.includes('fetch') ||
+      message.includes('network') ||
+      message.includes('connection')
+    ) {
       return { type: 'network', icon: Wifi, color: 'text-orange-500' }
     }
-    
+
     if (message.includes('api') || message.includes('http') || message.includes('server')) {
       return { type: 'api', icon: Server, color: 'text-red-500' }
     }
-    
+
     if (message.includes('render') || message.includes('component')) {
       return { type: 'render', icon: Bug, color: 'text-purple-500' }
     }
-    
+
     return { type: 'unknown', icon: AlertTriangle, color: 'text-yellow-500' }
   }
 
   private handleRetry = () => {
     const { maxRetries = 3 } = this.props
-    
+
     if (this.state.retryCount >= maxRetries) {
       return
     }
 
     this.setState(prevState => ({
-      retryCount: prevState.retryCount + 1
+      retryCount: prevState.retryCount + 1,
     }))
 
     // Exponential backoff for retries
     const delay = Math.pow(2, this.state.retryCount) * 1000
-    
+
     const timeout = setTimeout(() => {
       this.setState({
         hasError: false,
         error: null,
-        errorInfo: null
+        errorInfo: null,
       })
     }, delay)
 
@@ -143,7 +141,7 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
       hasError: false,
       error: null,
       errorInfo: null,
-      retryCount: 0
+      retryCount: 0,
     })
   }
 
@@ -181,13 +179,15 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
                 </Badge>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <div className="text-center text-sm text-muted-foreground">
-                {type === 'network' && "Please check your internet connection and try again."}
-                {type === 'api' && "Our servers are experiencing issues. Please try again in a moment."}
-                {type === 'render' && "There was a problem displaying this content."}
-                {type === 'unknown' && "An unexpected error occurred. Please try refreshing the page."}
+                {type === 'network' && 'Please check your internet connection and try again.'}
+                {type === 'api' &&
+                  'Our servers are experiencing issues. Please try again in a moment.'}
+                {type === 'render' && 'There was a problem displaying this content.'}
+                {type === 'unknown' &&
+                  'An unexpected error occurred. Please try refreshing the page.'}
               </div>
 
               {showDetails && this.state.error && (
@@ -210,7 +210,7 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
               <div className="flex flex-col sm:flex-row gap-2 justify-center">
                 {canRetry && (
-                  <Button 
+                  <Button
                     onClick={this.handleRetry}
                     variant="default"
                     size="sm"
@@ -220,8 +220,8 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
                     Retry ({maxRetries - this.state.retryCount} left)
                   </Button>
                 )}
-                
-                <Button 
+
+                <Button
                   onClick={this.handleReset}
                   variant="outline"
                   size="sm"
@@ -230,8 +230,8 @@ export class EnhancedErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
                   <Clock className="h-4 w-4" />
                   Reset
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={this.handleGoHome}
                   variant="outline"
                   size="sm"
@@ -275,7 +275,7 @@ export function withErrorBoundary<P extends object>(
 export function useErrorHandler() {
   return (error: Error, context?: string) => {
     console.error(`Manual error report${context ? ` (${context})` : ''}:`, error)
-    
+
     // In production, send to error monitoring service
     const errorData = {
       message: error.message,
@@ -283,9 +283,9 @@ export function useErrorHandler() {
       context,
       timestamp: new Date().toISOString(),
       userAgent: navigator.userAgent,
-      url: window.location.href
+      url: window.location.href,
     }
-    
+
     // Could integrate with services like Sentry, LogRocket, etc.
     console.error('Error reported:', errorData)
   }

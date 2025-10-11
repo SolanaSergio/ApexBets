@@ -45,32 +45,32 @@ export class LogoPopulationService {
         name: 'espn-cdn',
         baseUrl: 'https://a.espncdn.com/i/teamlogos',
         getTeamLogoUrl: this.getESPNLogoUrl.bind(this),
-        priority: 1
+        priority: 1,
       },
       {
         name: 'sportsdb',
         baseUrl: 'https://www.thesportsdb.com/images/media/team/logo',
         getTeamLogoUrl: this.getSportsDBLogoUrl.bind(this),
-        priority: 2
+        priority: 2,
       },
       {
         name: 'sport-specific',
         baseUrl: 'various',
         getTeamLogoUrl: this.getNFLLogoUrl.bind(this),
-        priority: 3
+        priority: 3,
       },
       {
         name: 'logos-world',
         baseUrl: 'https://logos-world.net/wp-content/uploads/2020/06',
         getTeamLogoUrl: this.getLogosWorldUrl.bind(this),
-        priority: 4
+        priority: 4,
       },
       {
         name: 'team-logos',
         baseUrl: 'https://team-logos.com',
         getTeamLogoUrl: this.getTeamLogosUrl.bind(this),
-        priority: 5
-      }
+        priority: 5,
+      },
     ]
   }
 
@@ -84,7 +84,7 @@ export class LogoPopulationService {
     results: TeamLogoResult[]
   }> {
     structuredLogger.info('Starting logo population for all teams')
-    
+
     // Get all teams without logos
     const teamsQuery = `
       SELECT id, name, sport, abbreviation, league_name 
@@ -92,16 +92,16 @@ export class LogoPopulationService {
       WHERE logo_url IS NULL AND is_active = true
       ORDER BY sport, name
     `
-    
+
     const teamsResult = await databaseService.executeSQL(teamsQuery)
-    
+
     if (!teamsResult.success || teamsResult.data.length === 0) {
       structuredLogger.info('No teams found without logos')
       return {
         totalProcessed: 0,
         successful: 0,
         failed: 0,
-        results: []
+        results: [],
       }
     }
 
@@ -116,12 +116,14 @@ export class LogoPopulationService {
     const batchSize = 10
     for (let i = 0; i < teams.length; i += batchSize) {
       const batch = teams.slice(i, i + batchSize)
-      
-      structuredLogger.info(`Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(teams.length / batchSize)}`)
-      
+
+      structuredLogger.info(
+        `Processing batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(teams.length / batchSize)}`
+      )
+
       const batchPromises = batch.map(team => this.populateTeamLogo(team))
       const batchResults = await Promise.allSettled(batchPromises)
-      
+
       batchResults.forEach((result: PromiseSettledResult<TeamLogoResult>, index: number) => {
         if (result.status === 'fulfilled') {
           results.push(result.value)
@@ -139,7 +141,7 @@ export class LogoPopulationService {
             logoUrl: null,
             source: 'error',
             success: false,
-            error: result.reason?.message || 'Unknown error'
+            error: result.reason?.message || 'Unknown error',
           })
           failed++
         }
@@ -155,55 +157,61 @@ export class LogoPopulationService {
       totalProcessed: teams.length,
       successful,
       failed,
-      successRate: `${((successful / teams.length) * 100).toFixed(1)}%`
+      successRate: `${((successful / teams.length) * 100).toFixed(1)}%`,
     })
 
     return {
       totalProcessed: teams.length,
       successful,
       failed,
-      results
+      results,
     }
   }
 
   /**
    * Populate logo for a specific team
    */
-  async populateTeamLogo(team: { id: string; name: string; sport: string; abbreviation?: string; league_name?: string }): Promise<TeamLogoResult> {
+  async populateTeamLogo(team: {
+    id: string
+    name: string
+    sport: string
+    abbreviation?: string
+    league_name?: string
+  }): Promise<TeamLogoResult> {
     const { id: teamId, name: teamName, sport } = team
-    
+
     structuredLogger.debug('Populating logo for team', { teamName, sport })
 
     // Try each logo source in priority order
     for (const source of this.logoSources.sort((a, b) => a.priority - b.priority)) {
       try {
         const logoUrl = await source.getTeamLogoUrl(teamName, sport)
-        
-        if (logoUrl && await this.validateLogoUrl(logoUrl)) {
+
+        if (logoUrl && (await this.validateLogoUrl(logoUrl))) {
           // Update database with logo URL
           const updateQuery = `
             UPDATE teams 
             SET logo_url = $1, last_updated = NOW() 
             WHERE id = $2
           `
-          
+
           const updateResult = await databaseService.executeSQL(updateQuery, [logoUrl, teamId])
-          
+
           if (updateResult.success) {
             structuredLogger.info('Successfully populated logo', {
               teamName,
               sport,
               source: source.name,
-              logoUrl
+              logoUrl,
             })
-            
+
             return {
               teamId,
               teamName,
               sport,
               logoUrl,
               source: source.name,
-              success: true
+              success: true,
             }
           }
         }
@@ -212,14 +220,14 @@ export class LogoPopulationService {
           teamName,
           sport,
           source: source.name,
-          error: error instanceof Error ? error.message : String(error)
+          error: error instanceof Error ? error.message : String(error),
         })
       }
     }
 
     // All sources failed
     structuredLogger.warn('Failed to find logo for team', { teamName, sport })
-    
+
     return {
       teamId,
       teamName,
@@ -227,7 +235,7 @@ export class LogoPopulationService {
       logoUrl: null,
       source: 'none',
       success: false,
-      error: 'No valid logo found from any source'
+      error: 'No valid logo found from any source',
     }
   }
 
@@ -243,14 +251,14 @@ export class LogoPopulationService {
         WHERE name = $1 AND is_active = true
         LIMIT 1
       `
-      
+
       const sportResult = await databaseService.executeSQL(sportQuery, [sport])
       if (!sportResult.success || sportResult.data.length === 0) {
         return null
       }
 
       // const sportData = sportResult.data[0]
-      
+
       // Get league information for the sport
       const leagueQuery = `
         SELECT name, abbreviation 
@@ -259,7 +267,7 @@ export class LogoPopulationService {
         ORDER BY level ASC
         LIMIT 1
       `
-      
+
       const leagueResult = await databaseService.executeSQL(leagueQuery, [sport])
       if (!leagueResult.success || leagueResult.data.length === 0) {
         return null
@@ -270,7 +278,7 @@ export class LogoPopulationService {
 
       // Try multiple ESPN URL patterns based on sport and league
       const urlPatterns = this.generateESPNUrlPatterns(teamName, sport, leagueCode)
-      
+
       // Test each pattern to find a valid logo
       for (const url of urlPatterns) {
         if (await this.validateLogoUrl(url)) {
@@ -283,7 +291,7 @@ export class LogoPopulationService {
       structuredLogger.debug('ESPN logo URL generation failed', {
         teamName,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -294,31 +302,36 @@ export class LogoPopulationService {
    */
   private generateESPNUrlPatterns(teamName: string, sport: string, leagueCode: string): string[] {
     const patterns: string[] = []
-    
+
     // Clean team name for URL generation
-    const cleanName = teamName.toLowerCase()
+    const cleanName = teamName
+      .toLowerCase()
       .replace(/[^a-z0-9\s]/g, '')
       .replace(/\s+/g, '')
       .substring(0, 10) // Limit length
-    
+
     // Pattern 1: Standard ESPN format
     patterns.push(`https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${cleanName}.png`)
-    
+
     // Pattern 2: Alternative ESPN format
-    patterns.push(`https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${cleanName.substring(0, 3)}.png`)
-    
+    patterns.push(
+      `https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${cleanName.substring(0, 3)}.png`
+    )
+
     // Pattern 3: ESPN with team abbreviation
     const abbreviation = this.generateTeamAbbreviation(teamName)
     if (abbreviation) {
-      patterns.push(`https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${abbreviation.toLowerCase()}.png`)
+      patterns.push(
+        `https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${abbreviation.toLowerCase()}.png`
+      )
     }
-    
+
     // Pattern 4: ESPN with numeric ID (try common patterns)
     const numericPatterns = this.generateNumericPatterns(teamName, sport)
     numericPatterns.forEach(num => {
       patterns.push(`https://a.espncdn.com/i/teamlogos/${leagueCode}/500/${num}.png`)
     })
-    
+
     return patterns
   }
 
@@ -328,7 +341,7 @@ export class LogoPopulationService {
   private generateTeamAbbreviation(teamName: string): string | null {
     // Common abbreviation patterns
     const words = teamName.split(' ')
-    
+
     if (words.length >= 2) {
       // Take first letter of each word
       return words.map(word => word.charAt(0)).join('')
@@ -336,7 +349,7 @@ export class LogoPopulationService {
       // Take first 3 characters
       return words[0].substring(0, 3)
     }
-    
+
     return null
   }
 
@@ -345,28 +358,40 @@ export class LogoPopulationService {
    */
   private generateNumericPatterns(teamName: string, sport: string): string[] {
     const patterns: string[] = []
-    
+
     // Generate patterns based on team name hash
     const hash = this.hashString(teamName)
     const baseNum = Math.abs(hash) % 1000
-    
+
     // Try variations around the hash
     for (let i = 0; i < 10; i++) {
       patterns.push((baseNum + i).toString())
     }
-    
+
     // Try common team ID patterns for each sport
     const sportPatterns: Record<string, number[]> = {
-      'basketball': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-      'football': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-      'baseball': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30],
-      'hockey': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-      'soccer': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+      basketball: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30,
+      ],
+      football: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32,
+      ],
+      baseball: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30,
+      ],
+      hockey: [
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32,
+      ],
+      soccer: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
     }
-    
+
     const sportNums = sportPatterns[sport] || []
     sportNums.forEach(num => patterns.push(num.toString()))
-    
+
     return patterns
   }
 
@@ -377,7 +402,7 @@ export class LogoPopulationService {
     let hash = 0
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32-bit integer
     }
     return hash
@@ -395,17 +420,17 @@ export class LogoPopulationService {
         WHERE name = $1 AND is_active = true
         LIMIT 1
       `
-      
+
       const sportResult = await databaseService.executeSQL(sportQuery, [sport])
       if (!sportResult.success || sportResult.data.length === 0) {
         return null
       }
 
       // const sportData = sportResult.data[0]
-      
+
       // Generate multiple SportsDB URL patterns
       const urlPatterns = this.generateSportsDBUrlPatterns(teamName, sport, sport)
-      
+
       // Test each pattern to find a valid logo
       for (const url of urlPatterns) {
         if (await this.validateLogoUrl(url)) {
@@ -418,7 +443,7 @@ export class LogoPopulationService {
       structuredLogger.debug('SportsDB logo URL generation failed', {
         teamName,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -427,32 +452,44 @@ export class LogoPopulationService {
   /**
    * Generate multiple SportsDB URL patterns
    */
-  private generateSportsDBUrlPatterns(teamName: string, sport: string, _sportDisplayName: string): string[] {
+  private generateSportsDBUrlPatterns(
+    teamName: string,
+    sport: string,
+    _sportDisplayName: string
+  ): string[] {
     const patterns: string[] = []
-    
+
     // Clean team name variations
-    const cleanName = teamName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '')
-    const slugName = teamName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '-')
+    const cleanName = teamName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '')
+    const slugName = teamName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '-')
     const shortName = cleanName.substring(0, 8)
-    
+
     // Pattern 1: Standard SportsDB format
     patterns.push(`https://www.thesportsdb.com/images/media/team/logo/${cleanName}.png`)
-    
+
     // Pattern 2: With sport prefix
     patterns.push(`https://www.thesportsdb.com/images/media/team/logo/${sport}-${cleanName}.png`)
-    
+
     // Pattern 3: Slug format
     patterns.push(`https://www.thesportsdb.com/images/media/team/logo/${slugName}.png`)
-    
+
     // Pattern 4: Short name
     patterns.push(`https://www.thesportsdb.com/images/media/team/logo/${shortName}.png`)
-    
+
     // Pattern 5: With league prefix
     const leaguePrefix = this.getLeaguePrefix(sport)
     if (leaguePrefix) {
-      patterns.push(`https://www.thesportsdb.com/images/media/team/logo/${leaguePrefix}-${cleanName}.png`)
+      patterns.push(
+        `https://www.thesportsdb.com/images/media/team/logo/${leaguePrefix}-${cleanName}.png`
+      )
     }
-    
+
     return patterns
   }
 
@@ -461,13 +498,13 @@ export class LogoPopulationService {
    */
   private getLeaguePrefix(sport: string): string | null {
     const leaguePrefixes: Record<string, string> = {
-      'basketball': 'nba',
-      'football': 'nfl',
-      'baseball': 'mlb',
-      'hockey': 'nhl',
-      'soccer': 'pl' // Premier League
+      basketball: 'nba',
+      football: 'nfl',
+      baseball: 'mlb',
+      hockey: 'nhl',
+      soccer: 'pl', // Premier League
     }
-    
+
     return leaguePrefixes[sport] || null
   }
 
@@ -483,17 +520,17 @@ export class LogoPopulationService {
         WHERE name = $1 AND is_active = true
         LIMIT 1
       `
-      
+
       const sportResult = await databaseService.executeSQL(sportQuery, [sport])
       if (!sportResult.success || sportResult.data.length === 0) {
         return null
       }
 
       // const sportData = sportResult.data[0]
-      
+
       // Generate multiple sport-specific URL patterns
       const urlPatterns = this.generateSportSpecificUrlPatterns(teamName, sport, sport)
-      
+
       // Test each pattern to find a valid logo
       for (const url of urlPatterns) {
         if (await this.validateLogoUrl(url)) {
@@ -506,7 +543,7 @@ export class LogoPopulationService {
       structuredLogger.debug('Sport-specific logo URL generation failed', {
         teamName,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -515,33 +552,50 @@ export class LogoPopulationService {
   /**
    * Generate sport-specific URL patterns
    */
-  private generateSportSpecificUrlPatterns(teamName: string, sport: string, _sportDisplayName: string): string[] {
+  private generateSportSpecificUrlPatterns(
+    teamName: string,
+    sport: string,
+    _sportDisplayName: string
+  ): string[] {
     const patterns: string[] = []
-    
+
     // Clean team name for URL generation
-    const cleanName = teamName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '')
+    const cleanName = teamName
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .replace(/\s+/g, '')
     const abbreviation = this.generateTeamAbbreviation(teamName)
-    
+
     // Sport-specific URL patterns
     switch (sport) {
       case 'football':
         // NFL-specific patterns
         if (abbreviation) {
-          patterns.push(`https://static.www.nfl.com/image/private/t_headshot_desktop/league/${abbreviation.toLowerCase()}.png`)
-          patterns.push(`https://static.nfl.com/static/content/public/static/img/logos/teams/${abbreviation.toLowerCase()}.png`)
+          patterns.push(
+            `https://static.www.nfl.com/image/private/t_headshot_desktop/league/${abbreviation.toLowerCase()}.png`
+          )
+          patterns.push(
+            `https://static.nfl.com/static/content/public/static/img/logos/teams/${abbreviation.toLowerCase()}.png`
+          )
         }
-        patterns.push(`https://static.www.nfl.com/image/private/t_headshot_desktop/league/${cleanName}.png`)
+        patterns.push(
+          `https://static.www.nfl.com/image/private/t_headshot_desktop/league/${cleanName}.png`
+        )
         break
-        
+
       case 'basketball':
         // NBA-specific patterns
         if (abbreviation) {
-          patterns.push(`https://cdn.nba.com/logos/nba/${abbreviation.toLowerCase()}/global/L/logo.svg`)
-          patterns.push(`https://cdn.nba.com/logos/nba/${abbreviation.toLowerCase()}/global/D/logo.svg`)
+          patterns.push(
+            `https://cdn.nba.com/logos/nba/${abbreviation.toLowerCase()}/global/L/logo.svg`
+          )
+          patterns.push(
+            `https://cdn.nba.com/logos/nba/${abbreviation.toLowerCase()}/global/D/logo.svg`
+          )
         }
         patterns.push(`https://cdn.nba.com/logos/nba/${cleanName}/global/L/logo.svg`)
         break
-        
+
       case 'baseball':
         // MLB-specific patterns
         if (abbreviation) {
@@ -550,33 +604,43 @@ export class LogoPopulationService {
         }
         patterns.push(`https://www.mlbstatic.com/team-logos/${cleanName}.svg`)
         break
-        
+
       case 'hockey':
         // NHL-specific patterns
         if (abbreviation) {
-          patterns.push(`https://cms.nhl.bamgrid.com/images/logos/team/${abbreviation.toLowerCase()}/dark.svg`)
-          patterns.push(`https://cms.nhl.bamgrid.com/images/logos/team/${abbreviation.toLowerCase()}/light.svg`)
+          patterns.push(
+            `https://cms.nhl.bamgrid.com/images/logos/team/${abbreviation.toLowerCase()}/dark.svg`
+          )
+          patterns.push(
+            `https://cms.nhl.bamgrid.com/images/logos/team/${abbreviation.toLowerCase()}/light.svg`
+          )
         }
         patterns.push(`https://cms.nhl.bamgrid.com/images/logos/team/${cleanName}/dark.svg`)
         break
-        
+
       case 'soccer':
         // Soccer-specific patterns
         if (abbreviation) {
-          patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`)
-          patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.svg`)
+          patterns.push(
+            `https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`
+          )
+          patterns.push(
+            `https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.svg`
+          )
         }
         patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${cleanName}-Logo.png`)
         break
-        
+
       default:
         // Generic patterns for unknown sports
         if (abbreviation) {
-          patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`)
+          patterns.push(
+            `https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`
+          )
         }
         patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${cleanName}-Logo.png`)
     }
-    
+
     return patterns
   }
 
@@ -585,32 +649,39 @@ export class LogoPopulationService {
    */
   private async getLogosWorldUrl(teamName: string, sport: string): Promise<string | null> {
     try {
-      const cleanName = teamName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '')
+      const cleanName = teamName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '')
       const abbreviation = this.generateTeamAbbreviation(teamName)
-      
+
       const patterns: string[] = []
-      
+
       if (abbreviation) {
-        patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`)
-        patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.svg`)
+        patterns.push(
+          `https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.png`
+        )
+        patterns.push(
+          `https://logos-world.net/wp-content/uploads/2020/06/${abbreviation.toLowerCase()}-Logo.svg`
+        )
       }
-      
+
       patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${cleanName}-Logo.png`)
       patterns.push(`https://logos-world.net/wp-content/uploads/2020/06/${cleanName}-Logo.svg`)
-      
+
       // Test each pattern
       for (const url of patterns) {
         if (await this.validateLogoUrl(url)) {
           return url
         }
       }
-      
+
       return null
     } catch (error) {
       structuredLogger.debug('LogosWorld logo URL generation failed', {
         teamName,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -621,32 +692,35 @@ export class LogoPopulationService {
    */
   private async getTeamLogosUrl(teamName: string, sport: string): Promise<string | null> {
     try {
-      const cleanName = teamName.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, '')
+      const cleanName = teamName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, '')
       const abbreviation = this.generateTeamAbbreviation(teamName)
-      
+
       const patterns: string[] = []
-      
+
       if (abbreviation) {
         patterns.push(`https://team-logos.com/${abbreviation.toLowerCase()}.png`)
         patterns.push(`https://team-logos.com/${abbreviation.toLowerCase()}.svg`)
       }
-      
+
       patterns.push(`https://team-logos.com/${cleanName}.png`)
       patterns.push(`https://team-logos.com/${cleanName}.svg`)
-      
+
       // Test each pattern
       for (const url of patterns) {
         if (await this.validateLogoUrl(url)) {
           return url
         }
       }
-      
+
       return null
     } catch (error) {
       structuredLogger.debug('TeamLogos logo URL generation failed', {
         teamName,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
       return null
     }
@@ -657,9 +731,9 @@ export class LogoPopulationService {
    */
   private async validateLogoUrl(url: string): Promise<boolean> {
     try {
-      const response = await fetch(url, { 
+      const response = await fetch(url, {
         method: 'HEAD',
-        signal: AbortSignal.timeout(2000) // Reduced from 5s to 2s
+        signal: AbortSignal.timeout(2000), // Reduced from 5s to 2s
       })
       return response.ok
     } catch (error) {
@@ -688,25 +762,28 @@ export class LogoPopulationService {
     `
 
     const result = await databaseService.executeSQL(statsQuery)
-    
+
     if (!result.success) {
       throw new Error('Failed to fetch logo statistics')
     }
 
-    const coverageBySport: Record<string, { total: number; withLogos: number; percentage: number }> = {}
+    const coverageBySport: Record<
+      string,
+      { total: number; withLogos: number; percentage: number }
+    > = {}
     let totalTeams = 0
     let teamsWithLogos = 0
 
     result.data.forEach((row: any) => {
       const { sport, total_teams, teams_with_logos } = row
       const percentage = total_teams > 0 ? (teams_with_logos / total_teams) * 100 : 0
-      
+
       coverageBySport[sport] = {
         total: total_teams,
         withLogos: teams_with_logos,
-        percentage: Math.round(percentage * 100) / 100
+        percentage: Math.round(percentage * 100) / 100,
       }
-      
+
       totalTeams += total_teams
       teamsWithLogos += teams_with_logos
     })
@@ -715,7 +792,7 @@ export class LogoPopulationService {
       totalTeams,
       teamsWithLogos,
       teamsWithoutLogos: totalTeams - teamsWithLogos,
-      coverageBySport
+      coverageBySport,
     }
   }
 }

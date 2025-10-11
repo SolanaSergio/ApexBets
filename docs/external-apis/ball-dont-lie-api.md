@@ -2,7 +2,9 @@
 
 ## Overview
 
-Ball Don't Lie API provides comprehensive sports data for NBA, NFL, MLB, and NHL. It's a reliable source for player statistics, team information, game data, and standings.
+Ball Don't Lie API provides comprehensive sports data for NBA, NFL, MLB, and
+NHL. It's a reliable source for player statistics, team information, game data,
+and standings.
 
 **Base URL:** `https://api.balldontlie.io/v1`  
 **Documentation:** https://www.balldontlie.io/  
@@ -12,6 +14,7 @@ Ball Don't Lie API provides comprehensive sports data for NBA, NFL, MLB, and NHL
 ## Authentication
 
 ### API Key Setup
+
 1. Visit [balldontlie.io](https://www.balldontlie.io/)
 2. Sign up for a free account
 3. Generate your API key
@@ -23,6 +26,7 @@ NEXT_PUBLIC_BALLDONTLIE_API_KEY=your_api_key_here
 ```
 
 ### Usage in Code
+
 ```typescript
 import { ballDontLieClient } from '@/lib/sports-apis'
 
@@ -35,9 +39,11 @@ const games = await ballDontLieClient.getGames()
 ### Games
 
 #### Get Games
+
 **Endpoint:** `GET /games`
 
 **Parameters:**
+
 - `season` (number, optional) - Season year (e.g., 2024)
 - `team_ids[]` (array, optional) - Array of team IDs
 - `per_page` (number, optional) - Results per page (max 100, default 25)
@@ -46,12 +52,14 @@ const games = await ballDontLieClient.getGames()
 - `end_date` (string, optional) - End date (YYYY-MM-DD)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api.balldontlie.io/v1/games?season=2024&per_page=25" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Example Response:**
+
 ```json
 {
   "data": [
@@ -98,19 +106,23 @@ curl -X GET "https://api.balldontlie.io/v1/games?season=2024&per_page=25" \
 ### Teams
 
 #### Get Teams
+
 **Endpoint:** `GET /teams`
 
 **Parameters:**
+
 - `per_page` (number, optional) - Results per page (max 100, default 25)
 - `page` (number, optional) - Page number (default 1)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api.balldontlie.io/v1/teams" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Example Response:**
+
 ```json
 {
   "data": [
@@ -137,21 +149,25 @@ curl -X GET "https://api.balldontlie.io/v1/teams" \
 ### Players
 
 #### Get Players
+
 **Endpoint:** `GET /players`
 
 **Parameters:**
+
 - `per_page` (number, optional) - Results per page (max 100, default 25)
 - `page` (number, optional) - Page number (default 1)
 - `search` (string, optional) - Search by player name
 - `team_ids[]` (array, optional) - Array of team IDs
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api.balldontlie.io/v1/players?search=LeBron" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Example Response:**
+
 ```json
 {
   "data": [
@@ -192,9 +208,11 @@ curl -X GET "https://api.balldontlie.io/v1/players?search=LeBron" \
 ### Statistics
 
 #### Get Player Stats
+
 **Endpoint:** `GET /stats`
 
 **Parameters:**
+
 - `per_page` (number, optional) - Results per page (max 100, default 25)
 - `page` (number, optional) - Page number (default 1)
 - `player_ids[]` (array, optional) - Array of player IDs
@@ -205,12 +223,14 @@ curl -X GET "https://api.balldontlie.io/v1/players?search=LeBron" \
 - `end_date` (string, optional) - End date (YYYY-MM-DD)
 
 **Example Request:**
+
 ```bash
 curl -X GET "https://api.balldontlie.io/v1/stats?player_ids[]=123&season=2024" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Example Response:**
+
 ```json
 {
   "data": [
@@ -299,6 +319,7 @@ curl -X GET "https://api.balldontlie.io/v1/stats?player_ids[]=123&season=2024" \
 - **Per Day:** No specific limit mentioned
 
 ### Rate Limit Headers
+
 The API returns rate limit information in response headers:
 
 ```
@@ -311,16 +332,17 @@ X-RateLimit-Reset: 1640995200
 
 ### Common Error Codes
 
-| Status Code | Description | Solution |
-|-------------|-------------|----------|
-| 400 | Bad Request | Check request parameters |
-| 401 | Unauthorized | Verify API key |
-| 403 | Forbidden | Check API key permissions |
-| 404 | Not Found | Verify endpoint URL |
-| 429 | Too Many Requests | Wait for rate limit reset |
-| 500 | Internal Server Error | Retry request |
+| Status Code | Description           | Solution                  |
+| ----------- | --------------------- | ------------------------- |
+| 400         | Bad Request           | Check request parameters  |
+| 401         | Unauthorized          | Verify API key            |
+| 403         | Forbidden             | Check API key permissions |
+| 404         | Not Found             | Verify endpoint URL       |
+| 429         | Too Many Requests     | Wait for rate limit reset |
+| 500         | Internal Server Error | Retry request             |
 
 ### Error Response Format
+
 ```json
 {
   "error": "Rate limit exceeded",
@@ -332,6 +354,7 @@ X-RateLimit-Reset: 1640995200
 ## Code Examples
 
 ### TypeScript Integration
+
 ```typescript
 import { ballDontLieClient } from '@/lib/sports-apis'
 
@@ -340,9 +363,9 @@ async function getNBAGames() {
   try {
     const games = await ballDontLieClient.getGames({
       season: 2024,
-      per_page: 25
+      per_page: 25,
     })
-    
+
     return games.data.map(game => ({
       id: game.id,
       homeTeam: game.home_team.full_name,
@@ -350,7 +373,7 @@ async function getNBAGames() {
       homeScore: game.home_team_score,
       awayScore: game.visitor_team_score,
       date: game.date,
-      status: game.status
+      status: game.status,
     }))
   } catch (error) {
     console.error('Failed to fetch games:', error)
@@ -364,9 +387,9 @@ async function getPlayerStats(playerId: number) {
     const stats = await ballDontLieClient.getStats({
       player_ids: [playerId],
       season: 2024,
-      per_page: 100
+      per_page: 100,
     })
-    
+
     return stats.data.map(stat => ({
       gameId: stat.game.id,
       points: stat.pts,
@@ -377,7 +400,7 @@ async function getPlayerStats(playerId: number) {
       minutes: stat.min,
       fieldGoalPercentage: stat.fg_pct,
       threePointPercentage: stat.fg3_pct,
-      freeThrowPercentage: stat.ft_pct
+      freeThrowPercentage: stat.ft_pct,
     }))
   } catch (error) {
     console.error('Failed to fetch player stats:', error)
@@ -387,27 +410,28 @@ async function getPlayerStats(playerId: number) {
 ```
 
 ### JavaScript Example
+
 ```javascript
 // Using fetch directly
 async function fetchBallDontLieData(endpoint, params = {}) {
   const apiKey = process.env.BALLDONTLIE_API_KEY
   const baseUrl = 'https://api.balldontlie.io/v1'
-  
+
   const queryString = new URLSearchParams(params).toString()
   const url = `${baseUrl}${endpoint}?${queryString}`
-  
+
   try {
     const response = await fetch(url, {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json'
-      }
+        Authorization: `Bearer ${apiKey}`,
+        Accept: 'application/json',
+      },
     })
-    
+
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`)
     }
-    
+
     return await response.json()
   } catch (error) {
     console.error('API request failed:', error)
@@ -418,40 +442,44 @@ async function fetchBallDontLieData(endpoint, params = {}) {
 // Usage
 const games = await fetchBallDontLieData('/games', {
   season: 2024,
-  per_page: 25
+  per_page: 25,
 })
 ```
 
 ## Best Practices
 
 ### 1. Pagination
+
 Always use pagination for large datasets:
+
 ```typescript
 async function getAllGames() {
   const allGames = []
   let page = 1
   let hasMore = true
-  
+
   while (hasMore) {
     const response = await ballDontLieClient.getGames({
       per_page: 100,
-      page: page
+      page: page,
     })
-    
+
     allGames.push(...response.data)
     hasMore = response.meta.next_page !== null
     page++
-    
+
     // Add delay to respect rate limits
     await new Promise(resolve => setTimeout(resolve, 100))
   }
-  
+
   return allGames
 }
 ```
 
 ### 2. Error Handling
+
 Implement robust error handling:
+
 ```typescript
 async function safeApiCall<T>(apiCall: () => Promise<T>): Promise<T | null> {
   try {
@@ -462,7 +490,7 @@ async function safeApiCall<T>(apiCall: () => Promise<T>): Promise<T | null> {
       await new Promise(resolve => setTimeout(resolve, 60000)) // Wait 1 minute
       return await apiCall()
     }
-    
+
     console.error('API call failed:', error)
     return null
   }
@@ -470,27 +498,31 @@ async function safeApiCall<T>(apiCall: () => Promise<T>): Promise<T | null> {
 ```
 
 ### 3. Caching
+
 Cache responses to reduce API calls:
+
 ```typescript
 import { getCache, setCache } from '@/lib/redis'
 
 async function getCachedGames(season: number) {
   const cacheKey = `balldontlie-games-${season}`
   const cached = await getCache(cacheKey)
-  
+
   if (cached) {
     return cached
   }
-  
+
   const games = await ballDontLieClient.getGames({ season })
   await setCache(cacheKey, games, 300) // Cache for 5 minutes
-  
+
   return games
 }
 ```
 
 ### 4. Data Validation
+
 Always validate API responses:
+
 ```typescript
 function validateGameData(game: any): boolean {
   return (
@@ -509,11 +541,13 @@ const validGames = games.data.filter(validateGameData)
 
 ## Integration with ApexBets
 
-The Ball Don't Lie API is integrated into the ApexBets system as a primary data source for basketball data. It's used in the following services:
+The Ball Don't Lie API is integrated into the ApexBets system as a primary data
+source for basketball data. It's used in the following services:
 
 - **BasketballService** - Primary data source for NBA games and statistics
 - **PlayerStatsService** - Player statistics and performance data
 - **GameService** - Game schedules and results
 - **TeamService** - Team information and standings
 
-The API is configured with automatic retry logic, rate limiting, and fallback mechanisms to ensure reliable data access.
+The API is configured with automatic retry logic, rate limiting, and fallback
+mechanisms to ensure reliable data access.

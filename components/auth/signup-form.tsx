@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -14,7 +14,7 @@ export function SignupForm() {
     email: '',
     password: '',
     firstName: '',
-    lastName: ''
+    lastName: '',
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -24,7 +24,7 @@ export function SignupForm() {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }))
   }
 
@@ -48,7 +48,7 @@ export function SignupForm() {
     const { error: signUpError } = await signUp(formData.email, formData.password, {
       first_name: formData.firstName,
       last_name: formData.lastName,
-      full_name: `${formData.firstName} ${formData.lastName}`
+      full_name: `${formData.firstName} ${formData.lastName}`,
     })
 
     if (signUpError) {
@@ -144,9 +144,7 @@ export function SignupForm() {
             className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
-        <p className="text-xs text-gray-500">
-          Must be at least 6 characters long
-        </p>
+        <p className="text-xs text-gray-500">Must be at least 6 characters long</p>
       </div>
 
       <Button

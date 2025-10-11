@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useState } from 'react'
 import { useAuth } from '@/lib/auth/auth-context'
@@ -58,7 +58,7 @@ export function LoginForm() {
             type="email"
             placeholder="your@email.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={e => setEmail(e.target.value)}
             required
             disabled={loading}
             className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
@@ -77,7 +77,7 @@ export function LoginForm() {
             type={showPassword ? 'text' : 'password'}
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={e => setPassword(e.target.value)}
             required
             disabled={loading}
             className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500"

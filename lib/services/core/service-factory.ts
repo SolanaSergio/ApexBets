@@ -41,7 +41,9 @@ export class ServiceFactory {
   async getService(sport: SupportedSport, league?: string): Promise<SportSpecificService> {
     // Handle "all" sport - return a special service that aggregates all sports
     if (sport === 'all') {
-      throw new Error('Cannot get individual service for "all" sport. Use getSupportedSports() to get individual sports.')
+      throw new Error(
+        'Cannot get individual service for "all" sport. Use getSupportedSports() to get individual sports.'
+      )
     }
 
     // Ensure service registry is initialized
@@ -49,9 +51,9 @@ export class ServiceFactory {
       await ServiceRegistry.initialize()
     }
 
-    const actualLeague = league || await this.getDefaultLeague(sport)
+    const actualLeague = league || (await this.getDefaultLeague(sport))
     const key = `${sport}:${actualLeague}`
-    
+
     if (!this.services.has(key)) {
       const service = await this.createService(sport, actualLeague)
       this.services.set(key, service)
@@ -99,7 +101,7 @@ export class ServiceFactory {
     if (sport === 'all') {
       return true
     }
-    
+
     await dynamicSportsManager.refreshConfiguration()
     return dynamicSportsManager.isSportSupported(sport)
   }
@@ -110,12 +112,12 @@ export class ServiceFactory {
    */
   async getHealthStatus(): Promise<Record<string, boolean>> {
     const status: Record<string, boolean> = {}
-    
+
     // Perform health checks sequentially to respect burst limits
     for (const [key, service] of Array.from(this.services.entries())) {
       try {
         status[key] = await service.healthCheck()
-        
+
         // Add a small delay between health checks to respect burst limits
         await new Promise(resolve => setTimeout(resolve, 100))
       } catch (error) {
@@ -142,7 +144,7 @@ export class ServiceFactory {
   clearAllHealthCheckCaches(): void {
     for (const service of Array.from(this.services.values())) {
       if ('clearHealthCheckCache' in service) {
-        (service as any).clearHealthCheckCache()
+        ;(service as any).clearHealthCheckCache()
       }
     }
   }
@@ -152,7 +154,7 @@ export class ServiceFactory {
    */
   getAllCacheStats(): Record<string, any> {
     const stats: Record<string, any> = {}
-    
+
     for (const [key, service] of Array.from(this.services.entries())) {
       stats[key] = service.getCacheStats()
     }
@@ -163,10 +165,15 @@ export class ServiceFactory {
   /**
    * Create a new service instance
    */
-  private async createService(sport: SupportedSport, league: string): Promise<SportSpecificService> {
+  private async createService(
+    sport: SupportedSport,
+    league: string
+  ): Promise<SportSpecificService> {
     // Handle "all" sport - this should not be called for "all"
     if (sport === 'all') {
-      throw new Error('Cannot create individual service for "all" sport. Use getSupportedSports() to get individual sports.')
+      throw new Error(
+        'Cannot create individual service for "all" sport. Use getSupportedSports() to get individual sports.'
+      )
     }
 
     let ServiceClass = this.serviceRegistry.get(sport)
@@ -184,14 +191,14 @@ export class ServiceFactory {
       this.serviceRegistry.set(sport, ServiceClass)
     }
 
-    return new ServiceClass(sport, league)
+    return new ServiceClass(league)
   }
 
   /**
    * Warm up services by pre-loading common data
    */
   async warmupServices(sports: SupportedSport[] = []): Promise<void> {
-    const warmupPromises = sports.map(async (sport) => {
+    const warmupPromises = sports.map(async sport => {
       try {
         const service = await this.getService(sport)
         await service.getTeams({ limit: 5 })

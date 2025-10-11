@@ -1,14 +1,8 @@
-"use client"
+'use client'
 
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Activity, 
-  Users, 
-  Trophy, 
-  Target,
-  Loader2
-} from "lucide-react"
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Activity, Users, Trophy, Target, Loader2 } from 'lucide-react'
 
 interface LoadingProps {
   count?: number
@@ -16,7 +10,10 @@ interface LoadingProps {
   animated?: boolean
 }
 
-export function EnhancedLoadingCard({ variant = 'default', animated = true }: Omit<LoadingProps, 'count'>) {
+export function EnhancedLoadingCard({
+  variant = 'default',
+  animated = true,
+}: Omit<LoadingProps, 'count'>) {
   return (
     <Card className={`${animated ? 'animate-pulse' : ''}`}>
       <CardHeader className={variant === 'compact' ? 'pb-2' : ''}>
@@ -56,11 +53,13 @@ export function EnhancedLoadingGrid({ count = 6, variant = 'default' }: LoadingP
 
 export function EnhancedLoadingStats({ count = 4, variant = 'default' }: LoadingProps) {
   const icons = [Activity, Users, Trophy, Target]
-  
+
   return (
-    <div className={`grid gap-3 lg:gap-4 ${
-      variant === 'compact' ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4'
-    }`}>
+    <div
+      className={`grid gap-3 lg:gap-4 ${
+        variant === 'compact' ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-2 lg:grid-cols-4'
+      }`}
+    >
       {Array.from({ length: count }).map((_, i) => {
         const Icon = icons[i % icons.length]
         return (
@@ -68,7 +67,9 @@ export function EnhancedLoadingStats({ count = 4, variant = 'default' }: Loading
             <CardContent className={variant === 'compact' ? 'p-3' : 'p-4 lg:p-6'}>
               <div className="flex items-center justify-between mb-2">
                 <Skeleton className={variant === 'compact' ? 'h-3 w-12' : 'h-4 w-16'} />
-                <Icon className={`text-muted-foreground/50 ${variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'}`} />
+                <Icon
+                  className={`text-muted-foreground/50 ${variant === 'compact' ? 'h-3 w-3' : 'h-4 w-4'}`}
+                />
               </div>
               <Skeleton className={variant === 'compact' ? 'h-6 w-8 mb-1' : 'h-8 w-12 mb-1'} />
               <Skeleton className={variant === 'compact' ? 'h-2 w-16' : 'h-3 w-20'} />
@@ -80,12 +81,15 @@ export function EnhancedLoadingStats({ count = 4, variant = 'default' }: Loading
   )
 }
 
-export function EnhancedLoadingTable({ rows = 8, variant = 'default' }: LoadingProps & { rows?: number }) {
+export function EnhancedLoadingTable({
+  rows = 8,
+  variant = 'default',
+}: LoadingProps & { rows?: number }) {
   const isCompact = variant === 'compact'
   const headerHeight = isCompact ? 'h-3' : 'h-4'
   const rowHeight = isCompact ? 'h-4' : 'h-6'
   const padding = isCompact ? 'p-2' : 'p-3'
-  
+
   return (
     <div className={isCompact ? 'space-y-1' : 'space-y-2'}>
       {/* Header */}
@@ -101,10 +105,13 @@ export function EnhancedLoadingTable({ rows = 8, variant = 'default' }: LoadingP
         </div>
         <Skeleton className={`${headerHeight} w-12`} />
       </div>
-      
+
       {/* Rows */}
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className={`flex items-center gap-3 ${padding} hover:bg-muted/20 animate-pulse`}>
+        <div
+          key={i}
+          className={`flex items-center gap-3 ${padding} hover:bg-muted/20 animate-pulse`}
+        >
           <Skeleton className={`${rowHeight} w-6 rounded-full`} />
           <Skeleton className={`${rowHeight} w-6 rounded`} />
           <Skeleton className={`${headerHeight} w-32`} />
@@ -207,17 +214,17 @@ export function LoadingDashboard() {
 }
 
 // Enhanced spinner with sport-specific animations
-export function SportLoadingSpinner({ 
+export function SportLoadingSpinner({
   size = 'default',
-  message = 'Loading...'
-}: { 
+  message = 'Loading...',
+}: {
   size?: 'sm' | 'default' | 'lg'
   message?: string
 }) {
   const sizeClasses = {
     sm: 'h-4 w-4',
     default: 'h-6 w-6',
-    lg: 'h-8 w-8'
+    lg: 'h-8 w-8',
   }
 
   const getSportIcon = () => {
@@ -242,17 +249,19 @@ export function SportLoadingSpinner({
 }
 
 // Shimmer effect for enhanced loading
-export function ShimmerEffect({ className = "" }: { className?: string }) {
+export function ShimmerEffect({ className = '' }: { className?: string }) {
   return (
-    <div className={`animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent ${className}`} />
+    <div
+      className={`animate-shimmer bg-gradient-to-r from-transparent via-white/20 to-transparent ${className}`}
+    />
   )
 }
 
 // Loading overlay with sport context
-export function SportLoadingOverlay({ 
+export function SportLoadingOverlay({
   message = 'Loading sports data...',
-  progress = 0
-}: { 
+  progress = 0,
+}: {
   message?: string
   progress?: number
 }) {
@@ -268,7 +277,7 @@ export function SportLoadingOverlay({
                 <span>{Math.round(progress)}%</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
-                <div 
+                <div
                   className="bg-gradient-to-r from-primary to-accent h-2 rounded-full transition-all duration-300"
                   style={{ width: `${progress}%` }}
                 />

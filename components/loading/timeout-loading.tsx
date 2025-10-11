@@ -1,11 +1,11 @@
-"use client"
+'use client'
 
-import { useState, useEffect, ReactNode } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, RefreshCw, Loader2 } from "lucide-react"
+import { useState, useEffect, ReactNode } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { AlertCircle, RefreshCw, Loader2 } from 'lucide-react'
 
 interface TimeoutLoadingProps {
   children: ReactNode
@@ -22,9 +22,9 @@ export function TimeoutLoading({
   loading,
   timeout = 30000, // 30 seconds default
   onRetry,
-  errorMessage = "Failed to load data",
-  loadingMessage = "Loading...",
-  timeoutMessage = "Loading is taking longer than expected"
+  errorMessage = 'Failed to load data',
+  loadingMessage = 'Loading...',
+  timeoutMessage = 'Loading is taking longer than expected',
 }: TimeoutLoadingProps) {
   const [hasTimedOut, setHasTimedOut] = useState(false)
   const [showTimeoutWarning, setShowTimeoutWarning] = useState(false)
@@ -70,12 +70,7 @@ export function TimeoutLoading({
             </AlertDescription>
           </Alert>
           {onRetry && (
-            <Button 
-              onClick={onRetry} 
-              variant="outline" 
-              className="mt-4"
-              disabled={loading}
-            >
+            <Button onClick={onRetry} variant="outline" className="mt-4" disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Try Again
             </Button>
@@ -91,12 +86,10 @@ export function TimeoutLoading({
         {showTimeoutWarning && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {timeoutMessage}. Please wait...
-            </AlertDescription>
+            <AlertDescription>{timeoutMessage}. Please wait...</AlertDescription>
           </Alert>
         )}
-        
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -132,7 +125,7 @@ export function TimeoutLoadingGrid({
   timeout = 30000,
   onRetry,
   count = 6,
-  variant = 'default'
+  variant = 'default',
 }: TimeoutLoadingGridProps) {
   const [hasTimedOut, setHasTimedOut] = useState(false)
 
@@ -164,16 +157,12 @@ export function TimeoutLoadingGrid({
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  Failed to load data. The request took longer than {timeout / 1000} seconds to complete.
+                  Failed to load data. The request took longer than {timeout / 1000} seconds to
+                  complete.
                 </AlertDescription>
               </Alert>
               {onRetry && (
-                <Button 
-                  onClick={onRetry} 
-                  variant="outline" 
-                  className="mt-4"
-                  disabled={loading}
-                >
+                <Button onClick={onRetry} variant="outline" className="mt-4" disabled={loading}>
                   <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                   Try Again
                 </Button>

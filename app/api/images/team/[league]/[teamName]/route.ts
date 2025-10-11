@@ -38,7 +38,7 @@ export async function GET(
         'Cache-Control': 'public, max-age=31536000, immutable', // Cache for 1 year
         'Access-Control-Allow-Origin': '*',
         'X-Image-Source': result.source,
-        'X-Image-Fallback': result.fallback ? 'true' : 'false'
+        'X-Image-Fallback': result.fallback ? 'true' : 'false',
       },
     })
   } catch (error) {
@@ -56,7 +56,7 @@ export async function GET(
         'Content-Type': 'image/svg+xml',
         'Cache-Control': 'public, max-age=3600',
         'X-Image-Source': 'fallback',
-        'X-Image-Fallback': 'true'
+        'X-Image-Fallback': 'true',
       },
     })
   }

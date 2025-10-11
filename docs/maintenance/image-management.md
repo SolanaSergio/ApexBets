@@ -2,7 +2,8 @@
 
 ## Overview
 
-This guide covers maintenance tasks for the ApexBets image management system, including automated updates, monitoring, and troubleshooting.
+This guide covers maintenance tasks for the ApexBets image management system,
+including automated updates, monitoring, and troubleshooting.
 
 ## Daily Maintenance
 
@@ -23,10 +24,11 @@ The system runs these tasks automatically:
 ### Manual Checks
 
 1. **Image Health Dashboard**
+
    ```bash
    curl /api/admin/image-health
    ```
-   
+
    Check for:
    - Overall health status
    - Database hit rate (>80% target)
@@ -34,10 +36,11 @@ The system runs these tasks automatically:
    - Average load time (<200ms target)
 
 2. **Recent Failures**
+
    ```bash
    curl /api/admin/image-stats
    ```
-   
+
    Review:
    - Failed image loads
    - High SVG usage patterns
@@ -48,9 +51,10 @@ The system runs these tasks automatically:
 ### Database Cleanup
 
 1. **Audit Log Cleanup**
+
    ```sql
    -- Remove audit logs older than 90 days
-   DELETE FROM image_audit_log 
+   DELETE FROM image_audit_log
    WHERE created_at < NOW() - INTERVAL '90 days';
    ```
 
@@ -58,7 +62,7 @@ The system runs these tasks automatically:
    ```sql
    -- Find teams with stale logos (older than 90 days)
    SELECT name, sport, logo_url, last_updated
-   FROM teams 
+   FROM teams
    WHERE last_updated < NOW() - INTERVAL '90 days'
    AND logo_url IS NOT NULL;
    ```
@@ -80,19 +84,21 @@ The system runs these tasks automatically:
 ### Data Population
 
 1. **Full Logo Population**
+
    ```bash
    # Populate all sports
    curl -X POST /api/admin/populate-logos
-   
+
    # Populate specific sport
    curl -X POST /api/admin/populate-logos?sport=basketball
    ```
 
 2. **Verification Run**
+
    ```bash
    # Verify all images
    curl -X POST /api/admin/verify-logos
-   
+
    # Verify specific sport
    curl -X POST /api/admin/verify-logos?sport=football
    ```
@@ -100,10 +106,11 @@ The system runs these tasks automatically:
 ### Team Color Updates
 
 1. **Update Team Colors**
+
    ```sql
    -- Example: Update Lakers colors
-   UPDATE teams 
-   SET primary_color = '#552583', 
+   UPDATE teams
+   SET primary_color = '#552583',
        secondary_color = '#FDB927',
        last_updated = NOW()
    WHERE name = 'Lakers' AND sport = 'basketball';
@@ -112,7 +119,7 @@ The system runs these tasks automatically:
 2. **Bulk Color Updates**
    ```sql
    -- Update all NBA team colors
-   UPDATE teams 
+   UPDATE teams
    SET primary_color = CASE name
      WHEN 'Lakers' THEN '#552583'
      WHEN 'Warriors' THEN '#1D428A'
@@ -136,11 +143,13 @@ The system runs these tasks automatically:
 **Symptoms**: >20% of images using SVG fallbacks
 
 **Causes**:
+
 - Missing ESPN CDN URLs in database
 - ESPN CDN URLs are broken
 - Team names don't match ESPN mappings
 
 **Solutions**:
+
 1. Run populate-images Edge Function
 2. Check ESPN CDN mappings
 3. Verify team names in database
@@ -151,11 +160,13 @@ The system runs these tasks automatically:
 **Symptoms**: Average load time >500ms
 
 **Causes**:
+
 - Database performance issues
 - ESPN CDN connectivity problems
 - Large SVG generation overhead
 
 **Solutions**:
+
 1. Check database performance
 2. Verify ESPN CDN accessibility
 3. Optimize SVG generation
@@ -166,11 +177,13 @@ The system runs these tasks automatically:
 **Symptoms**: SVG logos using default colors
 
 **Causes**:
+
 - Teams table missing color data
 - Color values are null/empty
 - SVG generator not reading colors
 
 **Solutions**:
+
 1. Update teams table with colors
 2. Run populate-images to update colors
 3. Check SVG generator implementation
@@ -180,11 +193,13 @@ The system runs these tasks automatically:
 **Symptoms**: ESPN CDN URLs returning 404
 
 **Causes**:
+
 - ESPN changed URL structure
 - Team ID mappings outdated
 - Network connectivity issues
 
 **Solutions**:
+
 1. Update ESPN CDN mappings
 2. Verify team ID mappings
 3. Check network connectivity
@@ -215,11 +230,13 @@ Set up alerts for:
 ### Monitoring Dashboard
 
 Access the monitoring dashboard at:
+
 ```
 /api/admin/image-health
 ```
 
 Key sections:
+
 - Overall health status
 - Source distribution
 - Performance metrics
@@ -231,11 +248,13 @@ Key sections:
 ### Deploying Edge Functions
 
 1. **Populate Images**
+
    ```bash
    supabase functions deploy populate-images
    ```
 
 2. **Auto Update Images**
+
    ```bash
    supabase functions deploy auto-update-images
    ```
@@ -248,12 +267,14 @@ Key sections:
 ### Testing Edge Functions
 
 1. **Test Populate Images**
+
    ```bash
    curl -X POST https://[project-ref].supabase.co/functions/v1/populate-images \
      -H "Authorization: Bearer [service-key]"
    ```
 
 2. **Test Auto Update**
+
    ```bash
    curl -X POST https://[project-ref].supabase.co/functions/v1/auto-update-images \
      -H "Authorization: Bearer [service-key]"
@@ -268,11 +289,13 @@ Key sections:
 ### Cron Job Management
 
 1. **List Cron Jobs**
+
    ```sql
    SELECT * FROM cron.job;
    ```
 
 2. **Add Cron Job**
+
    ```sql
    SELECT cron.schedule('job-name', 'schedule', 'command');
    ```
@@ -287,6 +310,7 @@ Key sections:
 ### Database Optimization
 
 1. **Index Optimization**
+
    ```sql
    -- Ensure proper indexes exist
    CREATE INDEX IF NOT EXISTS idx_teams_name_sport ON teams(name, sport);
@@ -328,13 +352,14 @@ Key sections:
 ### Database Backup
 
 1. **Regular Backups**
+
    ```bash
    # Backup teams table
    pg_dump -t teams [connection-string] > teams_backup.sql
-   
+
    # Backup players table
    pg_dump -t players [connection-string] > players_backup.sql
-   
+
    # Backup audit log
    pg_dump -t image_audit_log [connection-string] > audit_log_backup.sql
    ```
@@ -347,6 +372,7 @@ Key sections:
 ### Edge Function Backup
 
 1. **Function Code Backup**
+
    ```bash
    # Backup function code
    cp -r supabase/functions/ functions_backup/

@@ -29,11 +29,11 @@ test.describe('Dashboard E2E Tests', () => {
   test('should display stats cards with real data', async ({ page }) => {
     // Wait for stats cards to load
     await page.waitForSelector('[data-testid="stats-cards"]')
-    
+
     // Check that stats cards are populated with data
     const statsCards = page.locator('[data-testid="stats-cards"] .card')
     await expect(statsCards).toHaveCount(4)
-    
+
     // Check that each card has content
     for (let i = 0; i < 4; i++) {
       const card = statsCards.nth(i)
@@ -46,14 +46,14 @@ test.describe('Dashboard E2E Tests', () => {
   test('should display recent games with real data', async ({ page }) => {
     // Wait for recent games to load
     await page.waitForSelector('[data-testid="recent-games"]')
-    
+
     // Check that recent games section is visible
     await expect(page.getByText('Recent Games')).toBeVisible()
-    
+
     // Check that games are displayed
     const games = page.locator('[data-testid="recent-games"] .game-item')
     await expect(games.first()).toBeVisible()
-    
+
     // Check that each game has team names
     const firstGame = games.first()
     await expect(firstGame.locator('.team-name')).toHaveCount(2)
@@ -62,10 +62,10 @@ test.describe('Dashboard E2E Tests', () => {
   test('should display predictions panel with real data', async ({ page }) => {
     // Wait for predictions panel to load
     await page.waitForSelector('[data-testid="predictions-panel"]')
-    
+
     // Check that predictions panel is visible
     await expect(page.getByText('Predictions')).toBeVisible()
-    
+
     // Check that predictions are displayed
     const predictions = page.locator('[data-testid="predictions-panel"] .prediction-item')
     await expect(predictions.first()).toBeVisible()
@@ -101,10 +101,10 @@ test.describe('Dashboard E2E Tests', () => {
   test('should handle loading states gracefully', async ({ page }) => {
     // Check that loading skeletons are displayed initially
     await expect(page.locator('.skeleton')).toBeVisible()
-    
+
     // Wait for content to load
     await page.waitForSelector('[data-testid="stats-cards"]', { timeout: 10000 })
-    
+
     // Check that loading skeletons are no longer visible
     await expect(page.locator('.skeleton')).not.toBeVisible()
   })
@@ -112,13 +112,13 @@ test.describe('Dashboard E2E Tests', () => {
   test('should be responsive on mobile devices', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 667 })
-    
+
     // Check that dashboard is still functional
     await expect(page.getByText('Project Apex')).toBeVisible()
-    
+
     // Check that navigation is accessible
     await expect(page.getByRole('navigation')).toBeVisible()
-    
+
     // Check that main content is visible
     await expect(page.locator('[data-testid="stats-cards"]')).toBeVisible()
   })
@@ -126,7 +126,7 @@ test.describe('Dashboard E2E Tests', () => {
   test('should handle API errors gracefully', async ({ page }) => {
     // Test with invalid API endpoint to trigger real error
     await page.goto('/api/invalid-endpoint')
-    
+
     // Check that error state is handled gracefully
     expect(page.url()).toContain('/api/invalid-endpoint')
   })

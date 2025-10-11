@@ -31,7 +31,7 @@ export class DynamicTeamServiceClient {
       // Try to fetch from database first using client-side client
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      
+
       if (supabase) {
         const { data: teamData } = await supabase
           .from('teams')
@@ -44,13 +44,15 @@ export class DynamicTeamServiceClient {
         if (teamData) {
           return {
             logoUrl: teamData.logo_url || '',
-            colors: teamData.colors ? JSON.parse(teamData.colors) : {
-              primary: '#000000',
-              secondary: '#ffffff'
-            },
+            colors: teamData.colors
+              ? JSON.parse(teamData.colors)
+              : {
+                  primary: '#000000',
+                  secondary: '#ffffff',
+                },
             teamName,
             league: league || 'unknown',
-            sport: sport || 'unknown'
+            sport: sport || 'unknown',
           }
         }
       }
@@ -60,38 +62,40 @@ export class DynamicTeamServiceClient {
         logoUrl: '',
         colors: {
           primary: '#000000',
-          secondary: '#ffffff'
+          secondary: '#ffffff',
         },
         teamName,
         league: league || 'unknown',
-        sport: sport || 'unknown'
+        sport: sport || 'unknown',
       }
 
       structuredLogger.debug('Using default team logo data', { teamName, league, sport })
       return defaultData
-
     } catch (error) {
       structuredLogger.error('Failed to get team logo data', {
         teamName,
         league,
         sport,
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
       })
 
       return {
         logoUrl: '',
         colors: {
           primary: '#000000',
-          secondary: '#ffffff'
+          secondary: '#ffffff',
         },
         teamName,
         league: league || 'unknown',
-        sport: sport || 'unknown'
+        sport: sport || 'unknown',
       }
     }
   }
 
-  async getTeamColors(teamName: string, sport?: string): Promise<{ primary: string; secondary: string }> {
+  async getTeamColors(
+    teamName: string,
+    sport?: string
+  ): Promise<{ primary: string; secondary: string }> {
     const logoData = await this.getTeamLogoData(teamName, undefined, sport)
     return logoData.colors
   }
@@ -105,11 +109,11 @@ export class DynamicTeamServiceClient {
 export const dynamicTeamServiceClient = DynamicTeamServiceClient.getInstance()
 
 // Export convenience functions
-export const getTeamLogoData = (teamName: string, league?: string, sport?: string) => 
+export const getTeamLogoData = (teamName: string, league?: string, sport?: string) =>
   dynamicTeamServiceClient.getTeamLogoData(teamName, league, sport)
 
-export const getTeamColors = (teamName: string, sport?: string) => 
+export const getTeamColors = (teamName: string, sport?: string) =>
   dynamicTeamServiceClient.getTeamColors(teamName, sport)
 
-export const getTeamLogoUrl = (teamName: string, league?: string, sport?: string) => 
+export const getTeamLogoUrl = (teamName: string, league?: string, sport?: string) =>
   dynamicTeamServiceClient.getTeamLogoUrl(teamName, league, sport)

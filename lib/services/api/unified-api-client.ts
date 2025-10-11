@@ -105,12 +105,15 @@ export class UnifiedApiClient {
     return UnifiedApiClient.instance
   }
 
-  async getGames(sport: SupportedSport, options: {
-    date?: string
-    status?: string
-    limit?: number
-    league?: string
-  } = {}): Promise<UnifiedGameData[]> {
+  async getGames(
+    sport: SupportedSport,
+    options: {
+      date?: string
+      status?: string
+      limit?: number
+      league?: string
+    } = {}
+  ): Promise<UnifiedGameData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
@@ -119,7 +122,7 @@ export class UnifiedApiClient {
         ...(options.date && { date_from: options.date }),
         ...(options.status && { status: options.status }),
         ...(options.limit && { limit: options.limit.toString() }),
-        ...(options.league && { league: options.league })
+        ...(options.league && { league: options.league }),
       })
 
       const response = await fetch(`/api/database-first/games?${params}`)
@@ -143,17 +146,20 @@ export class UnifiedApiClient {
     return this.getGames(sport, { status: 'live' })
   }
 
-  async getTeams(sport: SupportedSport, options: {
-    limit?: number
-    league?: string
-  } = {}): Promise<UnifiedTeamData[]> {
+  async getTeams(
+    sport: SupportedSport,
+    options: {
+      limit?: number
+      league?: string
+    } = {}
+  ): Promise<UnifiedTeamData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
       const params = new URLSearchParams({
         sport,
         ...(options.limit && { limit: options.limit.toString() }),
-        ...(options.league && { league: options.league })
+        ...(options.league && { league: options.league }),
       })
 
       const response = await fetch(`/api/database-first/teams?${params}`)
@@ -173,11 +179,14 @@ export class UnifiedApiClient {
     }
   }
 
-  async getPlayers(sport: SupportedSport, options: {
-    limit?: number
-    teamId?: string
-    position?: string
-  } = {}): Promise<UnifiedPlayerData[]> {
+  async getPlayers(
+    sport: SupportedSport,
+    options: {
+      limit?: number
+      teamId?: string
+      position?: string
+    } = {}
+  ): Promise<UnifiedPlayerData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
@@ -185,7 +194,7 @@ export class UnifiedApiClient {
         sport,
         ...(options.limit && { limit: options.limit.toString() }),
         ...(options.teamId && { team_id: options.teamId }),
-        ...(options.position && { position: options.position })
+        ...(options.position && { position: options.position }),
       })
 
       const response = await fetch(`/api/players?${params}`)
@@ -205,17 +214,20 @@ export class UnifiedApiClient {
     }
   }
 
-  async getStandings(sport: SupportedSport, options: {
-    season?: string
-    league?: string
-  } = {}): Promise<UnifiedStandingsData[]> {
+  async getStandings(
+    sport: SupportedSport,
+    options: {
+      season?: string
+      league?: string
+    } = {}
+  ): Promise<UnifiedStandingsData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
       const params = new URLSearchParams({
         sport,
         ...(options.season && { season: options.season }),
-        ...(options.league && { league: options.league })
+        ...(options.league && { league: options.league }),
       })
 
       const response = await fetch(`/api/database-first/standings?${params}`)
@@ -235,17 +247,20 @@ export class UnifiedApiClient {
     }
   }
 
-  async getOdds(sport: SupportedSport, options: {
-    gameId?: string
-    limit?: number
-  } = {}): Promise<UnifiedOddsData[]> {
+  async getOdds(
+    sport: SupportedSport,
+    options: {
+      gameId?: string
+      limit?: number
+    } = {}
+  ): Promise<UnifiedOddsData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
       const params = new URLSearchParams({
         sport,
         ...(options.gameId && { game_id: options.gameId }),
-        ...(options.limit && { limit: options.limit.toString() })
+        ...(options.limit && { limit: options.limit.toString() }),
       })
 
       const response = await fetch(`/api/database-first/odds?${params}`)
@@ -265,17 +280,20 @@ export class UnifiedApiClient {
     }
   }
 
-  async getPredictions(sport: SupportedSport, options: {
-    gameId?: string
-    limit?: number
-  } = {}): Promise<UnifiedPredictionData[]> {
+  async getPredictions(
+    sport: SupportedSport,
+    options: {
+      gameId?: string
+      limit?: number
+    } = {}
+  ): Promise<UnifiedPredictionData[]> {
     try {
       // ARCHITECTURE PATTERN: Database-First Approach
       // Call internal API routes that fetch from database, not external APIs
       const params = new URLSearchParams({
         sport,
         ...(options.gameId && { game_id: options.gameId }),
-        ...(options.limit && { limit: options.limit.toString() })
+        ...(options.limit && { limit: options.limit.toString() }),
       })
 
       const response = await fetch(`/api/database-first/predictions?${params}`)
@@ -318,7 +336,10 @@ export class UnifiedApiClient {
     return []
   }
 
-  async getValueBets(_sport: SupportedSport, _options?: { league?: string; limit?: number }): Promise<any[]> {
+  async getValueBets(
+    _sport: SupportedSport,
+    _options?: { league?: string; limit?: number }
+  ): Promise<any[]> {
     return []
   }
 
@@ -341,7 +362,6 @@ export class UnifiedApiClient {
   clearAllCaches(): void {
     return
   }
-  
 
   private normalizeGameData(data: any): UnifiedGameData {
     return {
@@ -355,7 +375,7 @@ export class UnifiedApiClient {
       homeScore: data.homeScore || data.home_score || data.homeTeamScore,
       awayScore: data.awayScore || data.away_score || data.awayTeamScore,
       venue: data.venue || data.stadium || data.location,
-      season: data.season || data.seasonYear
+      season: data.season || data.seasonYear,
     }
   }
 
@@ -376,7 +396,7 @@ export class UnifiedApiClient {
       primaryColor: data.primaryColor || data.color || data.primary_color,
       secondaryColor: data.secondaryColor || data.secondary_color,
       country: data.country || data.nation,
-      isActive: data.isActive !== false
+      isActive: data.isActive !== false,
     }
   }
 
@@ -395,7 +415,7 @@ export class UnifiedApiClient {
       country: data.country || data.nationality || data.nation,
       jerseyNumber: data.jerseyNumber || data.number || data.jersey,
       isActive: data.isActive !== false,
-      headshotUrl: data.headshotUrl || data.photo || data.image || data.avatar
+      headshotUrl: data.headshotUrl || data.photo || data.image || data.avatar,
     }
   }
 
@@ -414,7 +434,7 @@ export class UnifiedApiClient {
       gamesBehind: data.gamesBehind || data.games_behind || data.gb,
       pointsFor: data.pointsFor || data.points_for || data.pf || 0,
       pointsAgainst: data.pointsAgainst || data.points_against || data.pa || 0,
-      lastUpdated: data.lastUpdated || data.last_updated || new Date().toISOString()
+      lastUpdated: data.lastUpdated || data.last_updated || new Date().toISOString(),
     }
   }
 
@@ -427,7 +447,7 @@ export class UnifiedApiClient {
       outcome: data.outcome || data.selection || data.option || '',
       price: data.price || data.odds || data.decimal_odds || 0,
       point: data.point || data.spread || data.handicap,
-      lastUpdated: data.lastUpdated || data.last_updated || new Date().toISOString()
+      lastUpdated: data.lastUpdated || data.last_updated || new Date().toISOString(),
     }
   }
 
@@ -438,7 +458,7 @@ export class UnifiedApiClient {
       predictionModel: data.predictionModel || data.model || data.algorithm || '',
       predictedOutcome: data.predictedOutcome || data.prediction || data.outcome || '',
       confidence: data.confidence || data.probability || data.certainty || 0,
-      predictionTimestamp: data.predictionTimestamp || data.timestamp || new Date().toISOString()
+      predictionTimestamp: data.predictionTimestamp || data.timestamp || new Date().toISOString(),
     }
   }
 }

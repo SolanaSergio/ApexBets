@@ -16,7 +16,7 @@ class MockRateLimiter {
       odds: { requestsPerMinute: 10, requestsPerDay: 100, burstLimit: 2 },
       sportsdb: { requestsPerMinute: 30, requestsPerDay: 10000, burstLimit: 5 },
       balldontlie: { requestsPerMinute: 5, requestsPerDay: 10000, burstLimit: 2 },
-      espn: { requestsPerMinute: 60, requestsPerDay: 10000, burstLimit: 10 }
+      espn: { requestsPerMinute: 60, requestsPerDay: 10000, burstLimit: 10 },
     }
   }
 
@@ -37,11 +37,15 @@ class MockRateLimiter {
     const dayCount = this.requestCounts.get(dayKey)
 
     if (minuteCount.minute >= config.requestsPerMinute) {
-      throw new Error(`Rate limit exceeded for ${apiName}: ${config.requestsPerMinute} requests per minute`)
+      throw new Error(
+        `Rate limit exceeded for ${apiName}: ${config.requestsPerMinute} requests per minute`
+      )
     }
 
     if (dayCount.day >= config.requestsPerDay) {
-      throw new Error(`Rate limit exceeded for ${apiName}: ${config.requestsPerDay} requests per day`)
+      throw new Error(
+        `Rate limit exceeded for ${apiName}: ${config.requestsPerDay} requests per day`
+      )
     }
 
     const burstKey = `${apiName}_burst`
@@ -76,7 +80,7 @@ class MockRateLimiter {
     return {
       minute: minuteCount.minute,
       day: dayCount.day,
-      burst: burstCount
+      burst: burstCount,
     }
   }
 
@@ -104,7 +108,7 @@ describe('Rate Limiter Core Logic', () => {
     it('should track usage correctly', () => {
       rateLimiter.checkRateLimit('sportsdb')
       rateLimiter.recordRequest('sportsdb')
-      
+
       const usage = rateLimiter.getUsage('sportsdb')
       expect(usage.minute).toBe(1)
       expect(usage.day).toBe(1)
@@ -115,7 +119,7 @@ describe('Rate Limiter Core Logic', () => {
       for (let i = 0; i < 30; i++) {
         rateLimiter.checkRateLimit('sportsdb')
         rateLimiter.recordRequest('sportsdb')
-        
+
         // Small delay to avoid burst limit
         if (i % 4 === 3) {
           // Reset burst count every 4 requests
@@ -133,10 +137,10 @@ describe('Rate Limiter Core Logic', () => {
       // Test day limit by directly setting the day count
       const now = Date.now()
       const dayKey = `sportsdb_${Math.floor(now / 86400000)}`
-      
+
       // Set day count to 10000 (the limit)
       rateLimiter.requestCounts.set(dayKey, { minute: 0, day: 10000, lastReset: now })
-      
+
       // Next request should fail due to day limit
       expect(() => {
         rateLimiter.checkRateLimit('sportsdb')
@@ -163,7 +167,7 @@ describe('Rate Limiter Core Logic', () => {
       for (let i = 0; i < 10; i++) {
         rateLimiter.checkRateLimit('odds')
         rateLimiter.recordRequest('odds')
-        
+
         // Reset burst count every request to avoid burst limit
         rateLimiter.burstCounts.clear()
       }
@@ -176,12 +180,12 @@ describe('Rate Limiter Core Logic', () => {
     it('should have correct limits for BALLDONTLIE API', () => {
       // Reset for BALLDONTLIE test
       rateLimiter.reset()
-      
+
       // Test BALLDONTLIE (5 requests/minute, burst limit 2)
       for (let i = 0; i < 5; i++) {
         rateLimiter.checkRateLimit('balldontlie')
         rateLimiter.recordRequest('balldontlie')
-        
+
         // Reset burst count every request to avoid burst limit
         rateLimiter.burstCounts.clear()
       }
@@ -194,12 +198,12 @@ describe('Rate Limiter Core Logic', () => {
     it('should have correct limits for RapidAPI', () => {
       // Reset for RapidAPI test
       rateLimiter.reset()
-      
+
       // Test RapidAPI (100 requests/minute, burst limit 10)
       for (let i = 0; i < 100; i++) {
         rateLimiter.checkRateLimit('rapidapi')
         rateLimiter.recordRequest('rapidapi')
-        
+
         // Reset burst count every 9 requests to avoid burst limit
         if (i % 9 === 8) {
           rateLimiter.burstCounts.clear()
@@ -214,12 +218,12 @@ describe('Rate Limiter Core Logic', () => {
     it('should have correct limits for ESPN API', () => {
       // Reset for ESPN test
       rateLimiter.reset()
-      
+
       // Test ESPN (60 requests/minute, burst limit 10)
       for (let i = 0; i < 60; i++) {
         rateLimiter.checkRateLimit('espn')
         rateLimiter.recordRequest('espn')
-        
+
         // Reset burst count every 9 requests to avoid burst limit
         if (i % 9 === 8) {
           rateLimiter.burstCounts.clear()
@@ -236,19 +240,19 @@ describe('Rate Limiter Core Logic', () => {
     it('should track usage across different APIs independently', () => {
       rateLimiter.checkRateLimit('odds')
       rateLimiter.recordRequest('odds')
-      
+
       rateLimiter.checkRateLimit('sportsdb')
       rateLimiter.recordRequest('sportsdb')
-      
+
       const oddsUsage = rateLimiter.getUsage('odds')
       const sportsdbUsage = rateLimiter.getUsage('sportsdb')
-      
+
       expect(oddsUsage.minute).toBe(1)
       expect(sportsdbUsage.minute).toBe(1)
       expect(oddsUsage.minute).toBe(sportsdbUsage.minute)
     })
 
-    it('should reset burst counts after timeout', (done) => {
+    it('should reset burst counts after timeout', done => {
       // Make 5 burst requests
       for (let i = 0; i < 5; i++) {
         rateLimiter.checkRateLimit('sportsdb')
@@ -275,23 +279,23 @@ describe('Rate Limiter Core Logic', () => {
   describe('Configuration Validation', () => {
     it('should have correct configuration for all APIs', () => {
       const config = rateLimiter.getApiConfig()
-      
+
       expect(config.rapidapi.requestsPerMinute).toBe(100)
       expect(config.rapidapi.requestsPerDay).toBe(10000)
       expect(config.rapidapi.burstLimit).toBe(10)
-      
+
       expect(config.odds.requestsPerMinute).toBe(10)
       expect(config.odds.requestsPerDay).toBe(100)
       expect(config.odds.burstLimit).toBe(2)
-      
+
       expect(config.sportsdb.requestsPerMinute).toBe(30)
       expect(config.sportsdb.requestsPerDay).toBe(10000)
       expect(config.sportsdb.burstLimit).toBe(5)
-      
+
       expect(config.balldontlie.requestsPerMinute).toBe(5)
       expect(config.balldontlie.requestsPerDay).toBe(10000)
       expect(config.balldontlie.burstLimit).toBe(2)
-      
+
       expect(config.espn.requestsPerMinute).toBe(60)
       expect(config.espn.requestsPerDay).toBe(10000)
       expect(config.espn.burstLimit).toBe(10)

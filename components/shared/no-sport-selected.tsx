@@ -1,12 +1,11 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { AlertCircle, Settings, RefreshCw } from "lucide-react"
-import { SupportedSport } from "@/lib/services/core/sport-config"
-import { SportConfigManager } from "@/lib/services/core/sport-config"
-
+import { useState, useEffect } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { AlertCircle, Settings, RefreshCw } from 'lucide-react'
+import { SupportedSport } from '@/lib/services/core/sport-config'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
 
 interface NoSportSelectedProps {
   onSportSelect?: (sport: SupportedSport) => void
@@ -16,12 +15,12 @@ interface NoSportSelectedProps {
   showSportSelector?: boolean
 }
 
-export function NoSportSelected({ 
+export function NoSportSelected({
   onSportSelect,
-  className = "",
-  title = "No Sport Selected",
-  description = "Please select a sport to view data",
-  showSportSelector = true
+  className = '',
+  title = 'No Sport Selected',
+  description = 'Please select a sport to view data',
+  showSportSelector = true,
 }: NoSportSelectedProps) {
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
 
@@ -43,11 +42,9 @@ export function NoSportSelected({
           <AlertCircle className="h-6 w-6 text-muted-foreground" />
         </div>
         <CardTitle className="text-xl">{title}</CardTitle>
-        <CardDescription className="text-base">
-          {description}
-        </CardDescription>
+        <CardDescription className="text-base">{description}</CardDescription>
       </CardHeader>
-      
+
       <CardContent className="space-y-4">
         {showSportSelector && (
           <div className="space-y-3">
@@ -55,7 +52,7 @@ export function NoSportSelected({
               Choose a sport to get started:
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {supportedSports.map((sport) => {
+              {supportedSports.map(sport => {
                 const config = SportConfigManager.getSportConfig(sport)
                 return (
                   <Button
@@ -64,12 +61,8 @@ export function NoSportSelected({
                     onClick={() => handleSportSelect(sport)}
                     className="h-auto p-4 flex flex-col items-center space-y-2"
                   >
-                    <span className={`text-2xl ${config?.color}`}>
-                      {config?.icon}
-                    </span>
-                    <span className="text-sm font-medium">
-                      {config?.name}
-                    </span>
+                    <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
+                    <span className="text-sm font-medium">{config?.name}</span>
                   </Button>
                 )
               })}
@@ -94,7 +87,7 @@ export function NoSportSelected({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => window.location.href = '/settings'}
+              onClick={() => (window.location.href = '/settings')}
               className="text-xs"
             >
               <Settings className="h-3 w-3 mr-1" />
@@ -106,5 +99,3 @@ export function NoSportSelected({
     </Card>
   )
 }
-
-

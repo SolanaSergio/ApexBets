@@ -14,7 +14,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(Array.isArray(data.data)).toBe(true)
 
@@ -28,7 +28,7 @@ describe('Value Bets API Integration Tests', () => {
           bet_type: expect.any(String),
           value_percentage: expect.any(Number),
           confidence: expect.any(Number),
-          created_at: expect.any(String)
+          created_at: expect.any(String),
         })
 
         // Verify value percentage is reasonable
@@ -46,18 +46,18 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const valueBet = data.data[0]
-        
+
         // Should have odds information
         if (valueBet.odds) {
           expect(valueBet.odds).toMatchObject({
             home_odds: expect.any(Number),
             away_odds: expect.any(Number),
-            source: expect.any(String)
+            source: expect.any(String),
           })
-          
+
           expect(valueBet.odds.home_odds).toBeGreaterThan(0)
           expect(valueBet.odds.away_odds).toBeGreaterThan(0)
         }
@@ -69,16 +69,16 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const valueBet = data.data[0]
-        
+
         // Should have prediction information
         if (valueBet.prediction) {
           expect(valueBet.prediction).toMatchObject({
             predicted_value: expect.any(Number),
             model_name: expect.any(String),
-            confidence: expect.any(Number)
+            confidence: expect.any(Number),
           })
         }
       }
@@ -91,7 +91,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All value bets should be spread bets
@@ -107,7 +107,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All value bets should have value percentage >= 5.0
@@ -123,7 +123,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
 
       // All value bets should have confidence >= 0.7
@@ -137,15 +137,15 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const valueBet = data.data[0]
-        
+
         // Should have game information
         expect(valueBet.game_id).toBeDefined()
         expect(valueBet.home_team).toBeDefined()
         expect(valueBet.away_team).toBeDefined()
-        
+
         // Team names should be non-empty strings
         expect(valueBet.home_team.length).toBeGreaterThan(0)
         expect(valueBet.away_team.length).toBeGreaterThan(0)
@@ -157,13 +157,13 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       data.data.forEach((valueBet: any) => {
         // Verify created_at is a valid ISO string
         const createdAt = new Date(valueBet.created_at)
         expect(createdAt).toBeInstanceOf(Date)
         expect(createdAt.getTime()).not.toBeNaN()
-        
+
         // Verify created_at is not in the future
         const now = new Date()
         expect(createdAt.getTime()).toBeLessThanOrEqual(now.getTime())
@@ -177,7 +177,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(data.data.length).toBeLessThanOrEqual(10)
     })
@@ -187,7 +187,7 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       data.data.forEach((valueBet: any) => {
         // Required fields
         expect(valueBet.id).toBeDefined()
@@ -198,7 +198,7 @@ describe('Value Bets API Integration Tests', () => {
         expect(valueBet.value_percentage).toBeDefined()
         expect(valueBet.confidence).toBeDefined()
         expect(valueBet.created_at).toBeDefined()
-        
+
         // Field types
         expect(typeof valueBet.id).toBe('string')
         expect(typeof valueBet.game_id).toBe('string')
@@ -208,7 +208,7 @@ describe('Value Bets API Integration Tests', () => {
         expect(typeof valueBet.value_percentage).toBe('number')
         expect(typeof valueBet.confidence).toBe('number')
         expect(typeof valueBet.created_at).toBe('string')
-        
+
         // Non-empty strings
         expect(valueBet.id.length).toBeGreaterThan(0)
         expect(valueBet.game_id.length).toBeGreaterThan(0)
@@ -223,19 +223,19 @@ describe('Value Bets API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.length > 0) {
         const betTypes = [...new Set(data.data.map((vb: any) => vb.bet_type))]
-        
+
         // Should have at least one bet type
         expect(betTypes.length).toBeGreaterThan(0)
-        
+
         // Common bet types
         const commonTypes = ['spread', 'total', 'moneyline', 'over_under']
-        const hasCommonType = commonTypes.some(type => 
+        const hasCommonType = commonTypes.some(type =>
           (betTypes as string[]).some((bType: string) => bType.toLowerCase().includes(type))
         )
-        
+
         // At least one common bet type should be present
         expect(hasCommonType).toBe(true)
       }
@@ -249,7 +249,7 @@ describe('Value Bets API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Array),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       // Empty array is acceptable when no value bets exist
     })

@@ -105,16 +105,16 @@ export class CachedUnifiedApiClient {
   // Cache configuration
   private getCacheTtl(dataType: string): number {
     const cacheConfig: Record<string, number> = {
-      'live_games': 120000, // 2 minutes for live games
-      'scheduled_games': 300000, // 5 minutes for scheduled games
-      'finished_games': 3600000, // 1 hour for finished games
-      'teams': 1800000, // 30 minutes for team data
-      'players': 1800000, // 30 minutes for player data
-      'odds': 120000, // 2 minutes for odds
-      'predictions': 600000, // 10 minutes for predictions
-      'standings': 1800000, // 30 minutes for standings
-      'analytics': 900000, // 15 minutes for analytics
-      'api_response': 300000 // 5 minutes for general API responses
+      live_games: 120000, // 2 minutes for live games
+      scheduled_games: 300000, // 5 minutes for scheduled games
+      finished_games: 3600000, // 1 hour for finished games
+      teams: 1800000, // 30 minutes for team data
+      players: 1800000, // 30 minutes for player data
+      odds: 120000, // 2 minutes for odds
+      predictions: 600000, // 10 minutes for predictions
+      standings: 1800000, // 30 minutes for standings
+      analytics: 900000, // 15 minutes for analytics
+      api_response: 300000, // 5 minutes for general API responses
     }
 
     return cacheConfig[dataType] || this.defaultCacheTtl
@@ -128,10 +128,7 @@ export class CachedUnifiedApiClient {
     return `${prefix}:${sortedParams}`
   }
 
-  private async deduplicateRequest<T>(
-    cacheKey: string,
-    fetchFn: () => Promise<T>
-  ): Promise<T> {
+  private async deduplicateRequest<T>(cacheKey: string, fetchFn: () => Promise<T>): Promise<T> {
     // Check if request is already pending
     if (this.pendingRequests.has(cacheKey)) {
       return this.pendingRequests.get(cacheKey)!
@@ -180,11 +177,7 @@ export class CachedUnifiedApiClient {
         // Try to store in database cache for persistence (if available)
         if (databaseCacheService.isAvailable()) {
           try {
-            databaseCacheService.set(
-              cacheKey,
-              memCached,
-              this.getCacheTtl(dataType)
-            )
+            databaseCacheService.set(cacheKey, memCached, this.getCacheTtl(dataType))
           } catch (dbError) {
             // Database cache not available, just use memory cache
             console.warn('Database cache set error:', (dbError as Error).message)
@@ -278,7 +271,7 @@ export class CachedUnifiedApiClient {
       try {
         const supportedSports = await serviceFactory.getSupportedSports()
         const allGames: UnifiedGameData[] = []
-        
+
         // Fetch games from each supported sport
         for (const individualSport of supportedSports) {
           try {
@@ -289,7 +282,7 @@ export class CachedUnifiedApiClient {
             // Continue with other sports even if one fails
           }
         }
-        
+
         return allGames
       } catch (error) {
         console.error(`Error fetching games for all sports:`, error)
@@ -315,7 +308,7 @@ export class CachedUnifiedApiClient {
       const unifiedGames: UnifiedGameData[] = games.map(game => ({
         ...game,
         homeScore: game.homeScore ?? 0,
-        awayScore: game.awayScore ?? 0
+        awayScore: game.awayScore ?? 0,
       }))
       await this.setCachedData(cacheKey, unifiedGames, 'scheduled_games', sport)
       return unifiedGames
@@ -357,7 +350,7 @@ export class CachedUnifiedApiClient {
           venue: game.venue,
           ...(game.odds && { odds: game.odds }),
           ...(game.predictions && { predictions: game.predictions }),
-          lastUpdated: new Date().toISOString()
+          lastUpdated: new Date().toISOString(),
         }))
         await this.setCachedData(cacheKey, unifiedGames, 'live_games', sport)
         return unifiedGames
@@ -444,7 +437,7 @@ export class CachedUnifiedApiClient {
       try {
         const supportedSports = await serviceFactory.getSupportedSports()
         const allOdds: any[] = []
-        
+
         // Fetch odds from each supported sport
         for (const individualSport of supportedSports) {
           try {
@@ -455,7 +448,7 @@ export class CachedUnifiedApiClient {
             // Continue with other sports even if one fails
           }
         }
-        
+
         return allOdds
       } catch (error) {
         console.error(`Error fetching odds for all sports:`, error)
@@ -499,7 +492,7 @@ export class CachedUnifiedApiClient {
       try {
         const supportedSports = await serviceFactory.getSupportedSports()
         const allPredictions: any[] = []
-        
+
         // Fetch predictions from each supported sport
         for (const individualSport of supportedSports) {
           try {
@@ -510,7 +503,7 @@ export class CachedUnifiedApiClient {
             // Continue with other sports even if one fails
           }
         }
-        
+
         return allPredictions
       } catch (error) {
         console.error(`Error fetching predictions for all sports:`, error)
@@ -532,7 +525,7 @@ export class CachedUnifiedApiClient {
         throw new Error(`No service available for sport: ${sport}`)
       }
 
-        const predictions = await (service as any).getPredictions?.(params) || []
+      const predictions = (await (service as any).getPredictions?.(params)) || []
       await this.setCachedData(cacheKey, predictions, 'predictions', sport)
       return predictions
     } catch (error) {
@@ -554,7 +547,7 @@ export class CachedUnifiedApiClient {
       try {
         const supportedSports = await serviceFactory.getSupportedSports()
         const allStandings: any[] = []
-        
+
         // Fetch standings from each supported sport
         for (const individualSport of supportedSports) {
           try {
@@ -565,7 +558,7 @@ export class CachedUnifiedApiClient {
             // Continue with other sports even if one fails
           }
         }
-        
+
         return allStandings
       } catch (error) {
         console.error(`Error fetching standings for all sports:`, error)
@@ -619,7 +612,7 @@ export class CachedUnifiedApiClient {
         throw new Error(`No service available for sport: ${sport}`)
       }
 
-      const analytics = await (service as any).getAnalytics?.(params) || []
+      const analytics = (await (service as any).getAnalytics?.(params)) || []
       await this.setCachedData(cacheKey, analytics, 'analytics', sport)
       return analytics
     } catch (error) {
@@ -649,12 +642,12 @@ export class CachedUnifiedApiClient {
     try {
       const dbStats = await databaseCacheService.getStats()
       const memStats = cacheService.getStats()
-      
+
       return {
         database: dbStats,
         memory: memStats,
         totalEntries: dbStats.totalEntries + memStats.totalEntries,
-        totalSize: dbStats.totalSize + memStats.totalSize
+        totalSize: dbStats.totalSize + memStats.totalSize,
       }
     } catch (error) {
       console.error('Error getting cache stats:', error)

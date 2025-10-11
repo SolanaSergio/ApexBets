@@ -28,7 +28,7 @@ const GameUpdateSchema = BaseWebhookSchema.extend({
     time_remaining: z.string().nullable().optional(),
     attendance: z.number().nullable().optional(),
     weather: z.string().nullable().optional(),
-  })
+  }),
 })
 
 // Score update webhook schema
@@ -42,7 +42,7 @@ const ScoreUpdateSchema = BaseWebhookSchema.extend({
     period: z.string().nullable().optional(),
     time_remaining: z.string().nullable().optional(),
     last_play: z.string().nullable().optional(),
-  })
+  }),
 })
 
 // Odds update webhook schema
@@ -57,7 +57,7 @@ const OddsUpdateSchema = BaseWebhookSchema.extend({
     total: z.number().nullable().optional(),
     bookmaker: z.string().optional(),
     source: z.string().optional(),
-  })
+  }),
 })
 
 // Team update webhook schema
@@ -68,24 +68,28 @@ const TeamUpdateSchema = BaseWebhookSchema.extend({
     name: z.string().optional(),
     abbreviation: z.string().optional(),
     logo_url: z.string().url().nullable().optional(),
-    record: z.object({
-      wins: z.number(),
-      losses: z.number(),
-      ties: z.number().optional(),
-    }).optional(),
-    standings: z.object({
-      sport: z.string(),
-      league: z.string(),
-      season: z.string(),
-      wins: z.number(),
-      losses: z.number(),
-      ties: z.number().optional(),
-      win_percentage: z.number(),
-      games_back: z.number().optional(),
-      conference: z.string().optional(),
-      division: z.string().optional(),
-    }).optional(),
-  })
+    record: z
+      .object({
+        wins: z.number(),
+        losses: z.number(),
+        ties: z.number().optional(),
+      })
+      .optional(),
+    standings: z
+      .object({
+        sport: z.string(),
+        league: z.string(),
+        season: z.string(),
+        wins: z.number(),
+        losses: z.number(),
+        ties: z.number().optional(),
+        win_percentage: z.number(),
+        games_back: z.number().optional(),
+        conference: z.string().optional(),
+        division: z.string().optional(),
+      })
+      .optional(),
+  }),
 })
 
 // Player update webhook schema
@@ -98,32 +102,38 @@ const PlayerUpdateSchema = BaseWebhookSchema.extend({
     position: z.string().optional(),
     jersey_number: z.number().optional(),
     stats: z.record(z.union([z.string(), z.number()])).optional(),
-  })
+  }),
 })
 
 // Full sync webhook schema
 const FullSyncSchema = BaseWebhookSchema.extend({
   type: z.literal('full_sync'),
-  data: z.object({
-    sync_type: z.enum(['games', 'teams', 'players', 'odds', 'all']).optional().default('all'),
-    date_range: z.object({
-      start: z.string(),
-      end: z.string(),
-    }).optional(),
-  }).optional()
+  data: z
+    .object({
+      sync_type: z.enum(['games', 'teams', 'players', 'odds', 'all']).optional().default('all'),
+      date_range: z
+        .object({
+          start: z.string(),
+          end: z.string(),
+        })
+        .optional(),
+    })
+    .optional(),
 })
 
 // Batch webhook schema
 const BatchWebhookSchema = z.object({
   type: z.literal('batch'),
-  events: z.array(z.union([
-    GameUpdateSchema,
-    ScoreUpdateSchema,
-    OddsUpdateSchema,
-    TeamUpdateSchema,
-    PlayerUpdateSchema,
-    FullSyncSchema,
-  ])),
+  events: z.array(
+    z.union([
+      GameUpdateSchema,
+      ScoreUpdateSchema,
+      OddsUpdateSchema,
+      TeamUpdateSchema,
+      PlayerUpdateSchema,
+      FullSyncSchema,
+    ])
+  ),
   batch_id: z.string().optional(),
   timestamp: z.string().optional(),
 })
@@ -170,7 +180,7 @@ export class WebhookValidator {
       return {
         isValid: true,
         errors: [],
-        data: validatedData
+        data: validatedData,
       }
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -178,16 +188,16 @@ export class WebhookValidator {
           const path = err.path.join('.')
           return `${path}: ${err.message}`
         })
-        
+
         return {
           isValid: false,
           errors,
         }
       }
-      
+
       return {
         isValid: false,
-        errors: ['Unknown validation error']
+        errors: ['Unknown validation error'],
       }
     }
   }
@@ -222,12 +232,12 @@ export class WebhookValidator {
   static isValidEventType(eventType: string): boolean {
     const validTypes = [
       'game_update',
-      'score_update', 
+      'score_update',
       'odds_update',
       'team_update',
       'player_update',
       'full_sync',
-      'batch'
+      'batch',
     ]
     return validTypes.includes(eventType)
   }

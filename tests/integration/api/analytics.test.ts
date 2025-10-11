@@ -14,12 +14,12 @@ describe('Analytics API Integration Tests', () => {
       expect(response.status).toBe(200)
       expect(data).toMatchObject({
         data: expect.any(Object),
-        meta: expect.any(Object)
+        meta: expect.any(Object),
       })
       expect(data.data).toMatchObject({
         total_games: expect.any(Number),
         total_predictions: expect.any(Number),
-        accuracy_rate: expect.any(Number)
+        accuracy_rate: expect.any(Number),
       })
 
       // Verify numeric values are reasonable
@@ -37,11 +37,11 @@ describe('Analytics API Integration Tests', () => {
       expect(data.data.recent_performance).toBeDefined()
       expect(data.data.recent_performance).toMatchObject({
         accuracy_by_type: expect.any(Object),
-        daily_stats: expect.any(Array)
+        daily_stats: expect.any(Array),
       })
 
       // Verify accuracy_by_type structure
-      Object.values(data.data.recent_performance.accuracy_by_type).forEach((accuracy) => {
+      Object.values(data.data.recent_performance.accuracy_by_type).forEach(accuracy => {
         expect(typeof accuracy).toBe('number')
         expect(accuracy).toBeGreaterThanOrEqual(0)
         expect(accuracy).toBeLessThanOrEqual(1)
@@ -52,7 +52,7 @@ describe('Analytics API Integration Tests', () => {
         expect(day).toMatchObject({
           date: expect.any(String),
           predictions_made: expect.any(Number),
-          correct_predictions: expect.any(Number)
+          correct_predictions: expect.any(Number),
         })
         expect(day.predictions_made).toBeGreaterThanOrEqual(0)
         expect(day.correct_predictions).toBeGreaterThanOrEqual(0)
@@ -65,12 +65,12 @@ describe('Analytics API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       if (data.data.recent_performance.daily_stats.length > 0) {
         data.data.recent_performance.daily_stats.forEach((day: any) => {
           // Verify date format (YYYY-MM-DD)
           expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-          
+
           // Verify date is valid
           const date = new Date(day.date)
           expect(date).toBeInstanceOf(Date)
@@ -84,17 +84,17 @@ describe('Analytics API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       const accuracyByType = data.data.recent_performance.accuracy_by_type
       // This might be empty if no predictions exist, which is acceptable
       expect(Object.keys(accuracyByType).length).toBeGreaterThanOrEqual(0)
-      
+
       // Common prediction types that might be present
       const possibleTypes = ['spread', 'total', 'moneyline', 'over_under', 'winner']
-      const hasKnownType = possibleTypes.some(type => 
+      const hasKnownType = possibleTypes.some(type =>
         Object.keys(accuracyByType).some(key => key.toLowerCase().includes(type))
       )
-      
+
       // If there are prediction types, at least one should be known
       if (Object.keys(accuracyByType).length > 0) {
         expect(hasKnownType).toBe(true)
@@ -106,7 +106,7 @@ describe('Analytics API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       // Verify all required fields are present and have correct types
       expect(typeof data.data.total_games).toBe('number')
       expect(typeof data.data.total_predictions).toBe('number')
@@ -121,7 +121,7 @@ describe('Analytics API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(200)
-      
+
       // Even with no data, structure should be consistent
       expect(data.data.total_games).toBeDefined()
       expect(data.data.total_predictions).toBeDefined()

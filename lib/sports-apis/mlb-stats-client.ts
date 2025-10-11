@@ -263,19 +263,19 @@ export class MLBStatsClient {
 
   private async request<T>(endpoint: string): Promise<T> {
     // Rate limiting is now handled by the centralized Enhanced Rate Limiter
-    
+
     try {
       const url = `${this.baseUrl}${endpoint}`
-      
+
       const response = await fetch(url, {
         headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'ProjectApex/1.0.0'
+          Accept: 'application/json',
+          'User-Agent': 'ProjectApex/1.0.0',
         },
         // Add timeout
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+        signal: AbortSignal.timeout(10000), // 10 second timeout
       })
-      
+
       if (!response.ok) {
         if (response.status === 429) {
           throw new Error('MLB Stats API: Rate limit exceeded')
@@ -299,16 +299,17 @@ export class MLBStatsClient {
     try {
       // Use the official MLB API to get current teams dynamically
       const teams = await this.getTeams()
-      
+
       // Find team by name (case-insensitive, multiple matching strategies)
-      const team = teams.find(team => 
-        team.name?.toLowerCase() === teamName.toLowerCase() ||
-        team.locationName?.toLowerCase() === teamName.toLowerCase() ||
-        team.teamName?.toLowerCase() === teamName.toLowerCase() ||
-        `${team.locationName} ${team.teamName}`.toLowerCase() === teamName.toLowerCase() ||
-        team.franchiseName?.toLowerCase() === teamName.toLowerCase()
+      const team = teams.find(
+        team =>
+          team.name?.toLowerCase() === teamName.toLowerCase() ||
+          team.locationName?.toLowerCase() === teamName.toLowerCase() ||
+          team.teamName?.toLowerCase() === teamName.toLowerCase() ||
+          `${team.locationName} ${team.teamName}`.toLowerCase() === teamName.toLowerCase() ||
+          team.franchiseName?.toLowerCase() === teamName.toLowerCase()
       )
-      
+
       return team ? team.id : null
     } catch (error) {
       console.warn(`Failed to lookup team ID for ${teamName}:`, error)
@@ -332,13 +333,13 @@ export class MLBStatsClient {
       const endpoint = season ? `/teams?sportId=1&season=${season}` : '/teams?sportId=1'
       const data = await this.request<{ teams: MLBTeam[] }>(endpoint)
       const teams = data.teams || []
-      
+
       // Cache current season teams only
       if (!season) {
         this.teamCache = teams
         this.teamCacheExpiry = Date.now() + this.TEAM_CACHE_TTL
       }
-      
+
       return teams
     } catch (error) {
       console.error('Failed to fetch MLB teams:', error)
@@ -352,9 +353,7 @@ export class MLBStatsClient {
   }
 
   async getTeamRoster(teamId: number, season?: number): Promise<MLBPlayer[]> {
-    const endpoint = season 
-      ? `/teams/${teamId}/roster?season=${season}`
-      : `/teams/${teamId}/roster`
+    const endpoint = season ? `/teams/${teamId}/roster?season=${season}` : `/teams/${teamId}/roster`
     const data = await this.request<{ roster: Array<{ person: MLBPlayer }> }>(endpoint)
     return data.roster?.map(item => item.person) || []
   }
@@ -371,9 +370,10 @@ export class MLBStatsClient {
     try {
       const teams = await this.getTeams()
       const allPlayers: MLBPlayer[] = []
-      
+
       // Get roster for each team (limited search to avoid too many requests)
-      for (const team of teams.slice(0, 5)) { // Limit to first 5 teams for demo
+      for (const team of teams.slice(0, 5)) {
+        // Limit to first 5 teams for demo
         try {
           const roster = await this.getTeamRoster(team.id)
           allPlayers.push(...roster)
@@ -381,10 +381,8 @@ export class MLBStatsClient {
           console.warn(`Failed to get roster for team ${team.name}:`, error)
         }
       }
-      
-      return allPlayers.filter(player =>
-        player.fullName.toLowerCase().includes(name.toLowerCase())
-      )
+
+      return allPlayers.filter(player => player.fullName.toLowerCase().includes(name.toLowerCase()))
     } catch (error) {
       console.error('Error searching players:', error)
       return []
@@ -392,25 +390,27 @@ export class MLBStatsClient {
   }
 
   // Games & Schedule
-  async getSchedule(params: {
-    startDate?: string
-    endDate?: string
-    teamId?: number
-    season?: number
-  } = {}): Promise<MLBGame[]> {
+  async getSchedule(
+    params: {
+      startDate?: string
+      endDate?: string
+      teamId?: number
+      season?: number
+    } = {}
+  ): Promise<MLBGame[]> {
     const searchParams = new URLSearchParams()
-    
+
     // SportId is required for MLB API - 1 is for MLB
     searchParams.set('sportId', '1')
-    
+
     if (params.startDate) searchParams.set('startDate', params.startDate)
     if (params.endDate) searchParams.set('endDate', params.endDate)
     if (params.teamId) searchParams.set('teamIds', params.teamId.toString())
     if (params.season) searchParams.set('season', params.season.toString())
-    
+
     const endpoint = `/schedule?${searchParams.toString()}`
     const data = await this.request<{ dates: Array<{ games: MLBGame[] }> }>(endpoint)
-    
+
     // Flatten games from all dates
     return data.dates?.flatMap(date => date.games) || []
   }
@@ -422,14 +422,17 @@ export class MLBStatsClient {
 
   async getLiveGames(): Promise<MLBGame[]> {
     const games = await this.getTodaysGames()
-    return games.filter(game => 
-      game.status.abstractGameState === 'Live' ||
-      game.status.detailedState.includes('In Progress')
+    return games.filter(
+      game =>
+        game.status.abstractGameState === 'Live' ||
+        game.status.detailedState.includes('In Progress')
     )
   }
 
   async getGame(gamePk: number): Promise<MLBGame | null> {
-    const data = await this.request<{ dates: Array<{ games: MLBGame[] }> }>(`/schedule?sportId=1&gamePk=${gamePk}`)
+    const data = await this.request<{ dates: Array<{ games: MLBGame[] }> }>(
+      `/schedule?sportId=1&gamePk=${gamePk}`
+    )
     return data.dates?.[0]?.games?.[0] || null
   }
 
@@ -446,32 +449,38 @@ export class MLBStatsClient {
   }
 
   // Stats
-  async getPlayerStats(playerId: number, params: {
-    season?: number
-    group?: string
-    stats?: string
-  } = {}): Promise<any> {
+  async getPlayerStats(
+    playerId: number,
+    params: {
+      season?: number
+      group?: string
+      stats?: string
+    } = {}
+  ): Promise<any> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.season) searchParams.set('season', params.season.toString())
     if (params.group) searchParams.set('group', params.group)
     if (params.stats) searchParams.set('stats', params.stats)
-    
+
     const endpoint = `/people/${playerId}/stats?${searchParams.toString()}`
     return this.request(endpoint)
   }
 
-  async getTeamStats(teamId: number, params: {
-    season?: number
-    group?: string
-    stats?: string
-  } = {}): Promise<any> {
+  async getTeamStats(
+    teamId: number,
+    params: {
+      season?: number
+      group?: string
+      stats?: string
+    } = {}
+  ): Promise<any> {
     const searchParams = new URLSearchParams()
-    
+
     if (params.season) searchParams.set('season', params.season.toString())
     if (params.group) searchParams.set('group', params.group)
     if (params.stats) searchParams.set('stats', params.stats)
-    
+
     const endpoint = `/teams/${teamId}/stats?${searchParams.toString()}`
     return this.request(endpoint)
   }
@@ -490,14 +499,14 @@ export class MLBStatsClient {
   // Utility methods
   async getCurrentSeason(): Promise<number> {
     try {
-      const data = await this.request<{ seasons: Array<{ seasonId: string }> }>('/seasons/current?sportId=1')
+      const data = await this.request<{ seasons: Array<{ seasonId: string }> }>(
+        '/seasons/current?sportId=1'
+      )
       return parseInt(data.seasons?.[0]?.seasonId || new Date().getFullYear().toString())
     } catch {
       return new Date().getFullYear()
     }
   }
-
-
 
   // Health check
   async healthCheck(): Promise<boolean> {

@@ -17,7 +17,7 @@ class SupabaseQueryCache {
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
-      ttl: ttl || this.defaultTTL
+      ttl: ttl || this.defaultTTL,
     })
   }
 

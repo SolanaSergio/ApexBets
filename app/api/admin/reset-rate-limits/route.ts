@@ -20,35 +20,34 @@ export async function POST(request: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       )
-      
+
       const { data: providers } = await supabase
         .from('api_providers')
         .select('provider_name')
         .eq('is_active', true)
-      
+
       if (providers) {
-        providers.forEach(provider => {
+        providers.forEach((provider: { provider_name: string }) => {
           apiKeyRotation.resetKeyUsage(provider.provider_name)
         })
       }
     }
 
     // Clear database cache
-    await databaseCacheService.clear();
-    console.log('✅ Cleared database cache');
+    await databaseCacheService.clear()
+    console.log('✅ Cleared database cache')
 
     return NextResponse.json({
       success: true,
       message: `Rate limits reset for ${service}`,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
-
   } catch (error) {
     console.error('Rate limit reset error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to reset rate limits',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )
@@ -59,18 +58,17 @@ export async function GET() {
   try {
     // Rate limiting is handled by Enhanced Rate Limiter
     const sportsDbStatus = { message: 'Rate limiting handled by Enhanced Rate Limiter' }
-    
+
     return NextResponse.json({
       sportsdb: sportsDbStatus,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     })
-
   } catch (error) {
     console.error('Rate limit status error:', error)
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to get rate limit status',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        message: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 }
     )

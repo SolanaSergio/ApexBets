@@ -3,10 +3,23 @@
  * NBA-specific implementation with BallDontLie and SportsDB integration
  */
 
-import { SportSpecificService, GameData, TeamData, PlayerData } from '../../core/sport-specific-service'
-import { ballDontLieClient, sportsDBClient, oddsApiClient, apiSportsClient, nbaStatsClient, espnClient } from '../../../sports-apis'
+import {
+  SportSpecificService,
+  GameData,
+  TeamData,
+  PlayerData,
+} from '../../core/sport-specific-service'
+import {
+  ballDontLieClient,
+  sportsDBClient,
+  oddsApiClient,
+  apiSportsClient,
+  nbaStatsClient,
+  espnClient,
+} from '../../../sports-apis'
 import { ServiceConfig } from '../../core/base-service'
 import { SportConfigManager } from '../../core/sport-config'
+import { unifiedCacheService } from '../../unified-cache-service'
 
 export class BasketballService extends SportSpecificService {
   constructor(league: string = 'NBA') {
@@ -15,16 +28,18 @@ export class BasketballService extends SportSpecificService {
       cacheTTL: 5 * 60 * 1000, // 5 minutes
       rateLimitService: 'balldontlie',
       retryAttempts: 3,
-      retryDelay: 1000
+      retryDelay: 1000,
     }
     super('basketball', league, config)
   }
 
-  async getGames(params: {
-    date?: string
-    status?: 'scheduled' | 'live' | 'finished'
-    teamId?: string
-  } = {}): Promise<GameData[]> {
+  async getGames(
+    params: {
+      date?: string
+      status?: 'scheduled' | 'live' | 'finished'
+      teamId?: string
+    } = {}
+  ): Promise<GameData[]> {
     const key = this.getCacheKey('games', JSON.stringify(params))
     const ttl = params.status === 'live' ? 30 * 1000 : this.config.cacheTTL
 
@@ -51,7 +66,10 @@ export class BasketballService extends SportSpecificService {
           return this.removeDuplicateGames(games)
         }
       } catch (error) {
-        console.warn('NBA Stats API failed, trying fallback APIs:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          'NBA Stats API failed, trying fallback APIs:',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Second: Try TheSportsDB (free, unlimited)
@@ -63,7 +81,10 @@ export class BasketballService extends SportSpecificService {
             return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('SportsDB failed, trying ESPN:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB failed, trying ESPN:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -75,7 +96,10 @@ export class BasketballService extends SportSpecificService {
           return this.removeDuplicateGames(games)
         }
       } catch (error) {
-        console.warn('ESPN failed, trying Ball Don\'t Lie:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          "ESPN failed, trying Ball Don't Lie:",
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Fourth: Try Ball Don't Lie (basketball-specific but rate-limited)
@@ -87,7 +111,10 @@ export class BasketballService extends SportSpecificService {
             return this.removeDuplicateGames(games)
           }
         } catch (error) {
-          console.warn('BallDontLie failed, trying RapidAPI as last resort:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'BallDontLie failed, trying RapidAPI as last resort:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -113,11 +140,11 @@ export class BasketballService extends SportSpecificService {
 
   private async fetchGamesFromBallDontLie(date: string): Promise<GameData[]> {
     if (!this.hasBallDontLieKey()) return []
-    
+
     try {
       const nbaGames = await ballDontLieClient.getGames({
         start_date: date,
-        end_date: date
+        end_date: date,
       })
       if (nbaGames?.data && Array.isArray(nbaGames.data)) {
         return nbaGames.data.map(game => this.mapGameData(game))
@@ -130,28 +157,31 @@ export class BasketballService extends SportSpecificService {
 
   private async fetchGamesFromRapidAPI(date: string): Promise<GameData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Use dynamic league configuration
       const leagueConfig = this.getLeagueConfig()
       const fixtures = await apiSportsClient.getFixtures({
         league: leagueConfig?.rapidApiId || 39, // NBA default fallback
         season: new Date().getFullYear(),
-        date: date
+        date: date,
       })
       if (fixtures?.response && Array.isArray(fixtures.response)) {
         return fixtures.response.map((fixture: any) => this.mapRapidAPIGameData(fixture))
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchGamesFromSportsDB(date: string): Promise<GameData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       // Use dynamic sport mapping - NO hardcoded sport names
       const sportName = await this.getAPISportName(this.sport)
@@ -172,9 +202,9 @@ export class BasketballService extends SportSpecificService {
   private async getAPISportName(sport: string): Promise<string> {
     // Check cache first
     const cacheKey = `sport-api-name:${sport}`
-    const cached = await this.cache?.get(cacheKey)
+    const cached = await unifiedCacheService.get<string>(cacheKey)
     if (cached) return cached
-    
+
     try {
       // Query database for API mapping
       const { createClient } = require('@supabase/supabase-js')
@@ -182,25 +212,25 @@ export class BasketballService extends SportSpecificService {
         process.env.NEXT_PUBLIC_SUPABASE_URL,
         process.env.SUPABASE_SERVICE_ROLE_KEY
       )
-      
+
       const { data } = await supabase
         .from('api_mappings')
         .select('sport_name_mapping')
         .eq('sport', sport)
         .eq('provider', 'sportsdb')
         .single()
-      
+
       if (data?.sport_name_mapping?.apiName) {
-        await this.cache?.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
+        await unifiedCacheService.set(cacheKey, data.sport_name_mapping.apiName, 3600000) // 1 hour cache
         return data.sport_name_mapping.apiName
       }
     } catch (error) {
       console.warn(`Failed to get API sport name for ${sport} from database:`, error)
     }
-    
+
     // Fallback: capitalize first letter (dynamic transformation)
     const apiName = sport.charAt(0).toUpperCase() + sport.slice(1)
-    await this.cache?.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
+    await unifiedCacheService.set(cacheKey, apiName, 300000) // 5 minute cache for fallback
     return apiName
   }
 
@@ -210,12 +240,12 @@ export class BasketballService extends SportSpecificService {
       // Convert date format: YYYY-MM-DD to YYYYMMDD
       const gameDate = date.replace(/-/g, '')
       const scoreboardData = await nbaStatsClient.getScoreboard(gameDate)
-      
+
       if (scoreboardData?.resultSets) {
         const gameHeaderResultSet = scoreboardData.resultSets.find(
           (rs: any) => rs.name === 'GameHeader'
         )
-        
+
         if (gameHeaderResultSet?.rowSet) {
           return gameHeaderResultSet.rowSet.map((row: any[]) => {
             const headers = gameHeaderResultSet.headers
@@ -270,10 +300,12 @@ export class BasketballService extends SportSpecificService {
     return []
   }
 
-  async getTeams(params: {
-    league?: string
-    search?: string
-  } = {}): Promise<TeamData[]> {
+  async getTeams(
+    params: {
+      league?: string
+      search?: string
+    } = {}
+  ): Promise<TeamData[]> {
     const key = this.getCacheKey('teams', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -299,7 +331,10 @@ export class BasketballService extends SportSpecificService {
           return this.removeDuplicateTeams(teams)
         }
       } catch (error) {
-        console.warn('NBA Stats API failed for teams, trying fallback:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          'NBA Stats API failed for teams, trying fallback:',
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Second: Try TheSportsDB
@@ -311,7 +346,10 @@ export class BasketballService extends SportSpecificService {
             return this.removeDuplicateTeams(teams)
           }
         } catch (error) {
-          console.warn('SportsDB failed for teams, trying ESPN:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'SportsDB failed for teams, trying ESPN:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -323,7 +361,10 @@ export class BasketballService extends SportSpecificService {
           return this.removeDuplicateTeams(teams)
         }
       } catch (error) {
-        console.warn('ESPN failed for teams, trying Ball Don\'t Lie:', error instanceof Error ? error.message : 'Unknown error')
+        console.warn(
+          "ESPN failed for teams, trying Ball Don't Lie:",
+          error instanceof Error ? error.message : 'Unknown error'
+        )
       }
 
       // Fourth: Try Ball Don't Lie
@@ -335,7 +376,10 @@ export class BasketballService extends SportSpecificService {
             return this.removeDuplicateTeams(teams)
           }
         } catch (error) {
-          console.warn('Ball Don\'t Lie failed for teams, trying RapidAPI:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            "Ball Don't Lie failed for teams, trying RapidAPI:",
+            error instanceof Error ? error.message : 'Unknown error'
+          )
         }
       }
 
@@ -347,7 +391,10 @@ export class BasketballService extends SportSpecificService {
             teams.push(...rapidAPITeams)
           }
         } catch (error) {
-          console.warn('RapidAPI failed for teams:', error instanceof Error ? error.message : 'Unknown error')
+          console.warn(
+            'RapidAPI failed for teams:',
+            error instanceof Error ? error.message : 'Unknown error'
+          )
           this.recordRapidAPIError()
         }
       }
@@ -361,7 +408,7 @@ export class BasketballService extends SportSpecificService {
 
   private async fetchTeamsFromBallDontLie(): Promise<TeamData[]> {
     if (!this.hasBallDontLieKey()) return []
-    
+
     try {
       const nbaTeams = await ballDontLieClient.getTeams()
       if (nbaTeams?.data && Array.isArray(nbaTeams.data)) {
@@ -375,25 +422,33 @@ export class BasketballService extends SportSpecificService {
 
   private async fetchTeamsFromRapidAPI(): Promise<TeamData[]> {
     if (!apiSportsClient.isConfigured) return []
-    
+
     try {
       // Use dynamic league configuration
       const leagueConfig = this.getLeagueConfig()
-      const teams = await apiSportsClient.getTeams(leagueConfig?.rapidApiId || 39, new Date().getFullYear())
+      const teams = await apiSportsClient.getTeams(
+        leagueConfig?.rapidApiId || 39,
+        new Date().getFullYear()
+      )
       if (teams?.response && Array.isArray(teams.response)) {
-        const mappedTeams = await Promise.all(teams.response.map((team: any) => this.mapRapidAPITeamData(team)))
+        const mappedTeams = await Promise.all(
+          teams.response.map((team: any) => this.mapRapidAPITeamData(team))
+        )
         return mappedTeams
       }
     } catch (error) {
       // Log the error but don't throw - let other APIs handle the request
-      console.warn('RapidAPI teams error (falling back to other APIs):', error instanceof Error ? error.message : 'Unknown error')
+      console.warn(
+        'RapidAPI teams error (falling back to other APIs):',
+        error instanceof Error ? error.message : 'Unknown error'
+      )
     }
     return []
   }
 
   private async fetchTeamsFromSportsDB(search?: string): Promise<TeamData[]> {
     if (!this.hasSportsDBKey()) return []
-    
+
     try {
       const sportsDBTeams = await sportsDBClient.searchTeams(search || this.sport)
       if (sportsDBTeams && Array.isArray(sportsDBTeams)) {
@@ -426,10 +481,9 @@ export class BasketballService extends SportSpecificService {
       city: this.extractCityFromName(team.team?.name),
       abbreviation: await this.getTeamAbbreviation(team.team?.name),
       logo: team.team?.logo || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
-
 
   private extractCityFromName(teamName: string): string {
     // Extract city from team name (e.g., "Los Angeles Lakers" -> "Los Angeles")
@@ -438,12 +492,12 @@ export class BasketballService extends SportSpecificService {
       // Use sport-specific configuration for team suffixes if available
       const leagueConfig = this.getLeagueConfig()
       const suffixes = leagueConfig?.teamSuffixes || []
-      
+
       // If no suffixes configured, try to extract city by removing the last word
       if (suffixes.length === 0) {
         return parts.slice(0, -1).join(' ')
       }
-      
+
       for (let i = parts.length - 1; i >= 0; i--) {
         if (suffixes.includes(parts[i])) {
           return parts.slice(0, i).join(' ')
@@ -475,24 +529,30 @@ export class BasketballService extends SportSpecificService {
   private getLeagueConfig(): any {
     // Get league configuration from sport config manager
     try {
-      const sportConfig = require('../../core/sport-config').SportConfigManager.getSportConfig(this.sport)
-      return sportConfig?.leagues?.find((l: any) => l.name === this.league) || {
-        rapidApiId: this.sport === 'basketball' ? 39 : undefined, // NBA default
-        teamSuffixes: undefined
-      }
+      const sportConfig = require('../../core/sport-config').SportConfigManager.getSportConfig(
+        this.sport
+      )
+      return (
+        sportConfig?.leagues?.find((l: any) => l.name === this.league) || {
+          rapidApiId: this.sport === 'basketball' ? 39 : undefined, // NBA default
+          teamSuffixes: undefined,
+        }
+      )
     } catch (error) {
       // Fallback configuration
       return {
         rapidApiId: this.sport === 'basketball' ? 39 : undefined,
-        teamSuffixes: undefined
+        teamSuffixes: undefined,
       }
     }
   }
 
-  async getPlayers(params: {
-    teamId?: string
-    search?: string
-  } = {}): Promise<PlayerData[]> {
+  async getPlayers(
+    params: {
+      teamId?: string
+      search?: string
+    } = {}
+  ): Promise<PlayerData[]> {
     const key = this.getCacheKey('players', JSON.stringify(params))
     const ttl = 30 * 60 * 1000 // 30 minutes
 
@@ -508,9 +568,9 @@ export class BasketballService extends SportSpecificService {
       if (dataSource === 'balldontlie' && this.hasBallDontLieKey()) {
         try {
           const nbaPlayers = await ballDontLieClient.getPlayers({
-            search: params.search
+            search: params.search,
           })
-          
+
           if (nbaPlayers && nbaPlayers.data && Array.isArray(nbaPlayers.data)) {
             players.push(...nbaPlayers.data.map(player => this.mapPlayerData(player)))
           }
@@ -531,9 +591,9 @@ export class BasketballService extends SportSpecificService {
         if (this.hasBallDontLieKey()) {
           try {
             const nbaPlayers = await ballDontLieClient.getPlayers({
-              search: params.search
+              search: params.search,
             })
-            
+
             if (nbaPlayers && nbaPlayers.data && Array.isArray(nbaPlayers.data)) {
               players.push(...nbaPlayers.data.map(player => this.mapPlayerData(player)))
             }
@@ -577,17 +637,18 @@ export class BasketballService extends SportSpecificService {
       // Use SportsDB for standings data
       const currentSeason = season || new Date().getFullYear().toString()
       const standings = await sportsDBClient.getLeaguesBySport('basketball')
-      
+
       // Filter for NBA and return formatted standings
-      const nbaLeagues = standings.filter(league => 
-        league.strLeague?.toLowerCase().includes('nba') ||
-        league.strLeague?.toLowerCase().includes('basketball')
+      const nbaLeagues = standings.filter(
+        league =>
+          league.strLeague?.toLowerCase().includes('nba') ||
+          league.strLeague?.toLowerCase().includes('basketball')
       )
-      
+
       return nbaLeagues.map(league => ({
         league: league.strLeague,
         season: currentSeason,
-        teams: [] // Would need specific standings API
+        teams: [], // Would need specific standings API
       }))
     } catch (error) {
       console.error('Error fetching basketball standings:', error)
@@ -608,13 +669,13 @@ export class BasketballService extends SportSpecificService {
         console.warn('Odds API client not configured, returning empty odds')
         return []
       }
-      
+
       const odds = await oddsApiClient.getOdds({
         sport: 'basketball_nba',
         regions: 'us',
         markets: 'h2h,spreads,totals',
         oddsFormat: 'american',
-        dateFormat: 'iso'
+        dateFormat: 'iso',
       })
       return odds
     } catch (error) {
@@ -647,7 +708,7 @@ export class BasketballService extends SportSpecificService {
       homeScore: fixture.goals?.home || null,
       awayScore: fixture.goals?.away || null,
       venue: fixture.fixture?.venue?.name || null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -656,7 +717,7 @@ export class BasketballService extends SportSpecificService {
     try {
       const { createClient } = await import('@/lib/supabase/client')
       const supabase = createClient()
-      
+
       if (supabase) {
         const { data: team } = await supabase
           .from('teams')
@@ -664,7 +725,7 @@ export class BasketballService extends SportSpecificService {
           .eq('name', teamName)
           .eq('sport', this.sport)
           .single()
-        
+
         if (team?.abbreviation) {
           return team.abbreviation
         }
@@ -676,9 +737,7 @@ export class BasketballService extends SportSpecificService {
     // Try to get from API data if available
     try {
       const teams = await this.fetchTeamsFromBallDontLie()
-      const matchingTeam = teams.find(team => 
-        team.name.toLowerCase() === teamName.toLowerCase()
-      )
+      const matchingTeam = teams.find(team => team.name.toLowerCase() === teamName.toLowerCase())
       if (matchingTeam?.abbreviation) {
         return matchingTeam.abbreviation
       }
@@ -692,32 +751,39 @@ export class BasketballService extends SportSpecificService {
 
   private extractAbbreviationFromName(teamName: string): string {
     // Extract abbreviation from team name by taking first letters
-    const words = teamName.split(' ').filter(word => 
-      !['of', 'the', 'and', 'at'].includes(word.toLowerCase())
-    )
-    
+    const words = teamName
+      .split(' ')
+      .filter(word => !['of', 'the', 'and', 'at'].includes(word.toLowerCase()))
+
     if (words.length >= 2) {
       // For multi-word teams, take first letter of each major word
-      return words.slice(-2).map(word => word[0]).join('').toUpperCase()
+      return words
+        .slice(-2)
+        .map(word => word[0])
+        .join('')
+        .toUpperCase()
     } else if (words.length === 1) {
       // For single word teams, take first 3 letters
       return words[0].substring(0, 3).toUpperCase()
     }
-    
+
     return teamName.substring(0, 3).toUpperCase()
   }
 
-  private mapRapidAPIStatus(status: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
-    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> = {
-      'NS': 'scheduled',
-      'LIVE': 'live',
-      'FT': 'finished',
-      'HT': 'live',
-      '1H': 'live',
-      '2H': 'live',
-      'PST': 'postponed',
-      'CANC': 'cancelled'
-    }
+  private mapRapidAPIStatus(
+    status: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+    const statusMap: Record<string, 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled'> =
+      {
+        NS: 'scheduled',
+        LIVE: 'live',
+        FT: 'finished',
+        HT: 'live',
+        '1H': 'live',
+        '2H': 'live',
+        PST: 'postponed',
+        CANC: 'cancelled',
+      }
     return statusMap[status] || 'scheduled'
   }
 
@@ -730,10 +796,11 @@ export class BasketballService extends SportSpecificService {
         // If it's a UUID, try to find the game in our database first
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
-        
+
         const response = await supabase
           ?.from('games')
-          .select(`
+          .select(
+            `
             id,
             external_id,
             sport,
@@ -758,20 +825,21 @@ export class BasketballService extends SportSpecificService {
             betting_odds,
             last_updated,
             created_at
-          `)
+          `
+          )
           .eq('id', gameId)
           .single()
-        
+
         if (!response || response.error || !response.data) {
           return null
         }
-        
+
         const gameData = response.data
-        
+
         // Return the game data from our database
         return this.mapGameData(gameData)
       }
-      
+
       if (this.hasBallDontLieKey()) {
         const game = await ballDontLieClient.getGameById(numericId)
         return this.mapGameData(game)
@@ -791,23 +859,19 @@ export class BasketballService extends SportSpecificService {
         // If it's a UUID, try to find the team in our database first
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
-        
-        const response = await supabase
-          ?.from('teams')
-          .select('*')
-          .eq('id', teamId)
-          .single()
-        
+
+        const response = await supabase?.from('teams').select('*').eq('id', teamId).single()
+
         if (!response || response.error || !response.data) {
           return null
         }
-        
+
         const teamData = response.data
-        
+
         // Return the team data from our database
         return this.mapTeamData(teamData)
       }
-      
+
       if (this.hasBallDontLieKey()) {
         const team = await ballDontLieClient.getTeamById(numericId)
         return this.mapTeamData(team)
@@ -827,23 +891,19 @@ export class BasketballService extends SportSpecificService {
         // If it's a UUID, try to find the player in our database first
         const { createClient } = await import('@/lib/supabase/client')
         const supabase = createClient()
-        
-        const response = await supabase
-          ?.from('players')
-          .select('*')
-          .eq('id', playerId)
-          .single()
-        
+
+        const response = await supabase?.from('players').select('*').eq('id', playerId).single()
+
         if (!response || response.error || !response.data) {
           return null
         }
-        
+
         const playerData = response.data
-        
+
         // Return the player data from our database
         return this.mapPlayerData(playerData)
       }
-      
+
       if (this.hasBallDontLieKey()) {
         const player = await ballDontLieClient.getPlayerById(numericId)
         return this.mapPlayerData(player)
@@ -867,12 +927,16 @@ export class BasketballService extends SportSpecificService {
         awayTeam: rawData.visitor_team.full_name,
         date: rawData.date,
         time: rawData.time,
-        status: rawData.status === 'Final' ? 'finished' : 
-                rawData.status === 'In Progress' ? 'live' : 'scheduled',
+        status:
+          rawData.status === 'Final'
+            ? 'finished'
+            : rawData.status === 'In Progress'
+              ? 'live'
+              : 'scheduled',
         homeScore: rawData.home_team_score || null,
         awayScore: rawData.visitor_team_score || null,
         venue: rawData.arena_name || null,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
 
@@ -885,12 +949,16 @@ export class BasketballService extends SportSpecificService {
       awayTeam: rawData.strAwayTeam,
       date: rawData.dateEvent,
       time: rawData.strTime,
-      status: rawData.strStatus === 'FT' ? 'finished' : 
-              rawData.strStatus === 'LIVE' ? 'live' : 'scheduled',
+      status:
+        rawData.strStatus === 'FT'
+          ? 'finished'
+          : rawData.strStatus === 'LIVE'
+            ? 'live'
+            : 'scheduled',
       homeScore: rawData.intHomeScore ? parseInt(rawData.intHomeScore) : null,
       awayScore: rawData.intAwayScore ? parseInt(rawData.intAwayScore) : null,
       venue: rawData.strVenue || null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -904,7 +972,7 @@ export class BasketballService extends SportSpecificService {
         name: rawData.full_name,
         abbreviation: rawData.abbreviation,
         city: rawData.city,
-        lastUpdated: new Date().toISOString()
+        lastUpdated: new Date().toISOString(),
       }
     }
 
@@ -917,7 +985,7 @@ export class BasketballService extends SportSpecificService {
       abbreviation: rawData.strTeamShort,
       city: rawData.strTeam.split(' ').slice(0, -1).join(' '),
       logo: rawData.strTeamBadge,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -932,9 +1000,9 @@ export class BasketballService extends SportSpecificService {
       stats: {
         height_feet: rawData.height_feet,
         height_inches: rawData.height_inches,
-        weight_pounds: rawData.weight_pounds
+        weight_pounds: rawData.weight_pounds,
       },
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -957,7 +1025,7 @@ export class BasketballService extends SportSpecificService {
       homeScore: game.HOME_TEAM_SCORE || null,
       awayScore: game.VISITOR_TEAM_SCORE || null,
       venue: game.ARENA_NAME || null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -969,19 +1037,27 @@ export class BasketballService extends SportSpecificService {
       name: team.TEAM_NAME || '',
       city: team.TEAM_CITY || '',
       abbreviation: team.TEAM_ABBREVIATION || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-  private mapNBAStatsStatus(statusText: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+  private mapNBAStatsStatus(
+    statusText: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
     if (!statusText) return 'scheduled'
-    
+
     const status = statusText.toLowerCase()
     if (status.includes('final')) return 'finished'
-    if (status.includes('qtr') || status.includes('quarter') || status.includes('ot') || status.includes('halftime')) return 'live'
+    if (
+      status.includes('qtr') ||
+      status.includes('quarter') ||
+      status.includes('ot') ||
+      status.includes('halftime')
+    )
+      return 'live'
     if (status.includes('postponed')) return 'postponed'
     if (status.includes('cancelled')) return 'cancelled'
-    
+
     return 'scheduled'
   }
 
@@ -989,7 +1065,7 @@ export class BasketballService extends SportSpecificService {
   private mapESPNGameData(game: any): GameData {
     const homeTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'home')
     const awayTeam = game.competitions?.[0]?.competitors?.find((c: any) => c.homeAway === 'away')
-    
+
     return {
       id: game.id?.toString() || '',
       sport: this.sport,
@@ -1001,7 +1077,7 @@ export class BasketballService extends SportSpecificService {
       homeScore: parseInt(homeTeam?.score) || null,
       awayScore: parseInt(awayTeam?.score) || null,
       venue: game.competitions?.[0]?.venue?.fullName || null,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
@@ -1014,20 +1090,22 @@ export class BasketballService extends SportSpecificService {
       city: team.location || '',
       abbreviation: team.abbreviation || '',
       logo: team.logos?.[0]?.href || '',
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
     }
   }
 
-  private mapESPNStatus(statusName: string): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
+  private mapESPNStatus(
+    statusName: string
+  ): 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled' {
     if (!statusName) return 'scheduled'
-    
+
     const status = statusName.toLowerCase()
     if (status.includes('final')) return 'finished'
-    if (status.includes('in progress') || status.includes('halftime') || status.includes('live')) return 'live'
+    if (status.includes('in progress') || status.includes('halftime') || status.includes('live'))
+      return 'live'
     if (status.includes('postponed')) return 'postponed'
     if (status.includes('cancelled')) return 'cancelled'
-    
+
     return 'scheduled'
   }
-
 }
