@@ -97,6 +97,7 @@ export function CleanDashboard({ className = '', defaultSport = null }: CleanDas
   const [selectedSupportedSport, setSelectedSupportedSport] = useState<SupportedSport | null>(
     defaultSport
   )
+  const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [activeTab, setActiveTab] = useState('overview')
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -471,7 +472,7 @@ export function CleanDashboard({ className = '', defaultSport = null }: CleanDas
 
       // Use default sport if provided, otherwise set the first available sport
       if (!selectedSupportedSport) {
-        const supportedSports = SportConfigManager.getSupportedSports()
+        const supportedSports = await SportConfigManager.getSupportedSports()
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
@@ -488,7 +489,7 @@ export function CleanDashboard({ className = '', defaultSport = null }: CleanDas
 
       // Use default sport if provided, otherwise set the first available sport
       if (!selectedSupportedSport) {
-        const supportedSports = SportConfigManager.getSupportedSports()
+        const supportedSports = await SportConfigManager.getSupportedSports()
         if (supportedSports.length > 0) {
           const sportToSet = defaultSport || supportedSports[0]
           setSelectedSupportedSport(sportToSet)
@@ -618,6 +619,20 @@ export function CleanDashboard({ className = '', defaultSport = null }: CleanDas
       initializeAndLoadData()
     }
   }, [selectedSupportedSport, initializeAndLoadData]) // Add initializeAndLoadData dependency
+
+  // Load supported sports on mount
+  useEffect(() => {
+    const loadSupportedSports = async () => {
+      try {
+        const sports = await SportConfigManager.getSupportedSports()
+        setSupportedSports(sports)
+      } catch (error) {
+        console.error('Failed to load supported sports:', error)
+        setSupportedSports([])
+      }
+    }
+    loadSupportedSports()
+  }, [])
 
   // Update live games with real-time updates
   useEffect(() => {
@@ -1081,44 +1096,9 @@ export function CleanDashboard({ className = '', defaultSport = null }: CleanDas
 
             <TabsContent value="all-sports" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {SportConfigManager.getSupportedSports().map((sport: SupportedSport) => {
-                  const config = SportConfigManager.getSportConfig(sport)
-                  const isHealthy = true // Assume healthy
-
-                  return (
-                    <Card
-                      key={sport}
-                      className="hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={() => setSelectedSupportedSport(sport)}
-                    >
-                      <CardContent className="p-4 flex items-center space-x-4">
-                        <div className="flex items-center space-x-3">
-                          <div
-                            className={`p-3 rounded-full bg-muted flex items-center justify-center ${selectedSupportedSport === sport ? 'bg-primary/10' : ''}`}
-                          >
-                            <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-lg">{config?.name}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {config?.leagues?.length || 0} leagues
-                            </div>
-                            <div className="flex items-center gap-1 mt-1">
-                              {isHealthy ? (
-                                <CheckCircle className="h-4 w-4 text-green-500" />
-                              ) : (
-                                <AlertCircle className="h-4 w-4 text-red-500" />
-                              )}
-                              <span className="text-xs text-muted-foreground">
-                                {isHealthy ? 'Healthy' : 'Issues'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
+                {supportedSports.map((sport: SupportedSport) => (
+                  <SportCard key={sport} sport={sport} selectedSupportedSport={selectedSupportedSport} setSelectedSupportedSport={setSelectedSupportedSport} />
+                ))}
               </div>
             </TabsContent>
           </Tabs>
@@ -1154,6 +1134,54 @@ function DashboardSkeleton() {
       </div>
     </div>
   )
+}
+
+function SportCard({ sport, selectedSupportedSport, setSelectedSupportedSport }: { sport: SupportedSport; selectedSupportedSport: SupportedSport | null; setSelectedSupportedSport: (sport: SupportedSport | null) => void }) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const sportConfig = await SportConfigManager.getSportConfig(sport);
+      setConfig(sportConfig);
+    };
+    fetchConfig();
+  }, [sport]);
+
+  const isHealthy = true; // Assume healthy for now
+
+  return (
+    <Card
+      key={sport}
+      className="hover:shadow-md transition-shadow cursor-pointer"
+      onClick={() => setSelectedSupportedSport(sport)}
+    >
+      <CardContent className="p-4 flex items-center space-x-4">
+        <div className="flex items-center space-x-3">
+          <div
+            className={`p-3 rounded-full bg-muted flex items-center justify-center ${selectedSupportedSport === sport ? 'bg-primary/10' : ''}`}
+          >
+            <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-lg">{config?.name}</div>
+            <div className="text-sm text-muted-foreground">
+              {config?.leagues?.length || 0} leagues
+            </div>
+            <div className="flex items-center gap-1 mt-1">
+              {isHealthy ? (
+                <CheckCircle className="h-4 w-4 text-green-500" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-red-500" />
+              )}
+              <span className="text-xs text-muted-foreground">
+                {isHealthy ? 'Healthy' : 'Issues'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default CleanDashboard

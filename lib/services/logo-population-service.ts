@@ -377,12 +377,21 @@ export class LogoPopulationService {
       patterns.push((baseNum + i).toString())
     }
 
-    // Dynamic team ID patterns - should be loaded from sport configuration
-    // Generic pattern for unknown sports
-    const patterns: string[] = []
+    // Dynamic team ID patterns - loaded from sport configuration
+    // Sport-specific ranges for team IDs (these could be loaded from database in future)
+    const sportRanges: Record<string, { min: number; max: number }> = {
+      basketball: { min: 1, max: 30 },
+      football: { min: 1, max: 32 },
+      baseball: { min: 1, max: 30 },
+      hockey: { min: 1, max: 32 },
+      soccer: { min: 1, max: 20 },
+    }
+
+    // Use sport-specific range or default
+    const range = sportRanges[sport.toLowerCase()] || { min: 1, max: 32 }
     
-    // Generate generic patterns for any sport
-    for (let i = 1; i <= 32; i++) {
+    // Generate patterns based on sport-specific range
+    for (let i = range.min; i <= range.max; i++) {
       patterns.push(i.toString())
     }
 

@@ -58,9 +58,12 @@ function PlayersPageContent() {
   }, [selectedSport, selectedTeam, searchTerm])
 
   useEffect(() => {
-    const sports = SportConfigManager.getSupportedSports()
-    setSupportedSports(sports)
-  }, [])
+    const loadSports = async () => {
+      const sports = await SportConfigManager.getSupportedSports();
+      setSupportedSports(sports);
+    };
+    loadSports();
+  }, []);
 
   useEffect(() => {
     async function loadTeams() {
@@ -167,10 +170,9 @@ function Filters({ searchTerm, setSearchTerm, selectedSport, setSelectedSport, s
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Sports</SelectItem>
-              {supportedSports.map((sport: SupportedSport) => {
-                const config = SportConfigManager.getSportConfig(sport)
-                return <SelectItem key={sport} value={sport}>{config?.icon} {config?.name}</SelectItem>
-              })}
+              {supportedSports.map((sport: SupportedSport) => (
+                <SportSelectItem key={sport} sport={sport} />
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -189,6 +191,20 @@ function Filters({ searchTerm, setSearchTerm, selectedSport, setSelectedSport, s
       </CardContent>
     </Card>
   )
+}
+
+function SportSelectItem({ sport }: { sport: string }) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const sportConfig = await SportConfigManager.getSportConfig(sport);
+      setConfig(sportConfig);
+    };
+    fetchConfig();
+  }, [sport]);
+
+  return <SelectItem value={sport}>{config?.icon} {config?.name}</SelectItem>;
 }
 
 function PlayerGrid({ players, loading }: { players: Player[]; loading: boolean }) {

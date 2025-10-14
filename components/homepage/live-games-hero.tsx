@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { TeamLogo } from '@/components/ui/sports-image'
 import { useLiveGames, useRealTimeData } from '@/components/data/real-time-provider'
+import { isGameActuallyLive } from '@/lib/utils/data-utils'
 import { ChevronLeft, ChevronRight, Clock, Play, RefreshCw, ArrowRight } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -206,7 +207,7 @@ function GameDisplay({ currentGame, nextGame, prevGame, gameCount }: { currentGa
           <div className="text-center px-4">
             <div className="text-3xl font-bold text-muted-foreground">VS</div>
             <div className="text-sm text-muted-foreground mt-2">
-              {currentGame.status === 'live' ? 'Live' : format(new Date(currentGame.game_date), 'h:mm a')}
+              {isGameActuallyLive(currentGame) ? 'Live' : format(new Date(currentGame.game_date), 'h:mm a')}
             </div>
           </div>
 

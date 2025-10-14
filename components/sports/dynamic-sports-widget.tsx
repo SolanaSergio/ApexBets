@@ -21,8 +21,7 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
   const [topTeams, setTopTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('live')
-
-  const sportConfig = SportConfigManager.getSportConfig(sport)
+  const [sportConfig, setSportConfig] = useState<any>(null)
 
   const loadSportsData = useCallback(async () => {
     try {
@@ -50,6 +49,20 @@ export function DynamicSportsWidget({ sport, className }: DynamicSportsWidgetPro
   useEffect(() => {
     loadSportsData()
   }, [loadSportsData])
+
+  // Load sport config
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
 
   if (loading) {
     return <DynamicSportsWidgetSkeleton />

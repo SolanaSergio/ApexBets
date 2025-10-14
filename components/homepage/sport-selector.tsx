@@ -12,7 +12,7 @@ import { useSportConfigs } from '@/hooks/use-sport-config'
 import { Globe, Trophy } from 'lucide-react'
 
 export function SportSelector() {
-  const { selectedSport, setSelectedSport, supportedSports } = useRealTimeData()
+  const { selectedSport, setSelectedSport } = useRealTimeData()
   const { configs: sportConfigs, loading } = useSportConfigs()
 
   if (loading) {

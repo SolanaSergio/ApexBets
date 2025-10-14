@@ -56,10 +56,13 @@ function TrendsPageContent() {
   }, [selectedSport])
 
   useEffect(() => {
-    const sports = SportConfigManager.getSupportedSports()
-    setSupportedSports(sports)
-    loadData()
-  }, [loadData])
+    const loadSports = async () => {
+      const sports = await SportConfigManager.getSupportedSports();
+      setSupportedSports(sports);
+    };
+    loadSports();
+    loadData();
+  }, [loadData]);
 
   if (loading || !data) {
     return <div className="p-8"><h1 className="text-2xl font-bold">Loading Market Trends...</h1></div>
@@ -96,16 +99,29 @@ function SportFilters({ selected, setSelected, supported }: { selected: Supporte
   return (
     <div className="flex flex-wrap gap-2 p-4 bg-gray-50 rounded-lg">
       <Button onClick={() => setSelected('all')} variant={selected === 'all' ? 'default' : 'outline'}>All Sports</Button>
-      {supported.map((sport: SupportedSport) => {
-        const config = SportConfigManager.getSportConfig(sport)
-        return (
-          <Button key={sport} onClick={() => setSelected(sport)} variant={selected === sport ? 'default' : 'outline'}>
-            {config?.icon} {config?.name}
-          </Button>
-        )
-      })}
+      {supported.map((sport: SupportedSport) => (
+        <SportFilterButton key={sport} sport={sport} selected={selected} setSelected={setSelected} />
+      ))}
     </div>
   )
+}
+
+function SportFilterButton({ sport, selected, setSelected }: { sport: SupportedSport; selected: SupportedSport | 'all'; setSelected: (sport: SupportedSport | 'all') => void }) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const sportConfig = await SportConfigManager.getSportConfig(sport);
+      setConfig(sportConfig);
+    };
+    fetchConfig();
+  }, [sport]);
+
+  return (
+    <Button onClick={() => setSelected(sport)} variant={selected === sport ? 'default' : 'outline'}>
+      {config?.icon} {config?.name}
+    </Button>
+  );
 }
 
 function KeyMetrics({ metrics }: { metrics: any }) {

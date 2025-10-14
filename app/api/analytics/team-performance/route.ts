@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     const league = searchParams.get('league')
 
     // Validate sport parameter dynamically
-    const supportedSports: SupportedSport[] = SportConfigManager.getSupportedSports()
+    const supportedSports: SupportedSport[] = await SportConfigManager.getSupportedSports()
     if (!sport || !supportedSports.includes(sport as SupportedSport)) {
       return NextResponse.json(
         {

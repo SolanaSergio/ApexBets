@@ -30,7 +30,7 @@ export function DynamicQuickAccessPanel() {
       setLoading(true)
 
       // Get supported sports to calculate across all sports
-      const supportedSports = SportConfigManager.getSupportedSports()
+      const supportedSports = await SportConfigManager.getSupportedSports()
 
       let totalLiveGames = 0
       let totalTeams = 0

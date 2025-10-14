@@ -29,6 +29,7 @@ export function SportSelector({
   const [isOpen, setIsOpen] = useState(false)
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentSportConfig, setCurrentSportConfig] = useState<any>(null)
 
   useEffect(() => {
     loadSportData()
@@ -39,20 +40,37 @@ export function SportSelector({
       setLoading(true)
       // Initialize sport config manager first
       await SportConfigManager.initialize()
-      const sports = SportConfigManager.getSupportedSports()
+      const sports = await SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
     } catch (error) {
       console.error('Error loading sport data:', error)
       // Fallback to synchronous initialization
       SportConfigManager.initializeSync()
-      const sports = SportConfigManager.getSupportedSports()
+      const sports = await SportConfigManager.getSupportedSports()
       setSupportedSports(sports)
     } finally {
       setLoading(false)
     }
   }
 
-  const currentSportConfig = selectedSport ? SportConfigManager.getSportConfig(selectedSport) : null
+  // Load current sport config
+  useEffect(() => {
+    const loadCurrentConfig = async () => {
+      if (selectedSport) {
+        try {
+          const config = await SportConfigManager.getSportConfig(selectedSport)
+          setCurrentSportConfig(config)
+        } catch (error) {
+          console.error('Failed to load current sport config:', error)
+          setCurrentSportConfig(null)
+        }
+      } else {
+        setCurrentSportConfig(null)
+      }
+    }
+    loadCurrentConfig()
+  }, [selectedSport])
+
   const isServiceHealthy = true // Assume healthy
 
   if (loading) {
@@ -70,28 +88,16 @@ export function SportSelector({
   if (variant === 'compact') {
     return (
       <div className={`flex space-x-2 overflow-x-auto pb-2 ${className}`}>
-        {supportedSports.map(sport => {
-          const config = SportConfigManager.getSportConfig(sport)
-          const isSelected = sport === selectedSport
-          const isHealthy = isServiceHealthy
-
-          return (
-            <Button
-              key={sport}
-              variant={isSelected ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onSportChange(sport)}
-              className={`flex-shrink-0 min-w-fit px-3 py-2 ${isSelected ? 'shadow-md' : ''} ${
-                !isHealthy ? 'opacity-50' : ''
-              } transition-all duration-200 hover:scale-105`}
-              disabled={!isHealthy}
-            >
-              <span className={`text-lg mr-2 ${config?.color}`}>{config?.icon}</span>
-              <span className="font-medium whitespace-nowrap">{config?.name}</span>
-              {!isHealthy && <AlertCircle className="h-3 w-3 ml-1 text-red-500" />}
-            </Button>
-          )
-        })}
+        {supportedSports.map(sport => (
+          <SportItem
+            key={sport}
+            sport={sport}
+            selectedSport={selectedSport}
+            onSportChange={onSportChange}
+            isServiceHealthy={isServiceHealthy}
+            variant="button"
+          />
+        ))}
       </div>
     )
   }
@@ -102,28 +108,16 @@ export function SportSelector({
       <div className={className}>
         {/* Mobile: Horizontal scrollable buttons */}
         <div className="flex space-x-2 overflow-x-auto pb-2 lg:hidden">
-          {supportedSports.map(sport => {
-            const config = SportConfigManager.getSportConfig(sport)
-            const isSelected = sport === selectedSport
-            const isHealthy = isServiceHealthy
-
-            return (
-              <Button
-                key={sport}
-                variant={isSelected ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onSportChange(sport)}
-                className={`flex-shrink-0 min-w-fit px-3 py-2 ${isSelected ? 'shadow-md' : ''} ${
-                  !isHealthy ? 'opacity-50' : ''
-                } transition-all duration-200 hover:scale-105`}
-                disabled={!isHealthy}
-              >
-                <span className={`text-lg mr-2 ${config?.color}`}>{config?.icon}</span>
-                <span className="font-medium whitespace-nowrap">{config?.name}</span>
-                {!isHealthy && <AlertCircle className="h-3 w-3 ml-1 text-red-500" />}
-              </Button>
-            )
-          })}
+          {supportedSports.map(sport => (
+            <SportItem
+              key={sport}
+              sport={sport}
+              selectedSport={selectedSport}
+              onSportChange={onSportChange}
+              isServiceHealthy={isServiceHealthy}
+              variant="button"
+            />
+          ))}
         </div>
 
         {/* Desktop: Dropdown */}
@@ -159,54 +153,19 @@ export function SportSelector({
 
             <DropdownMenuContent className="w-80 p-2" align="start">
               <div className="space-y-1">
-                {supportedSports.map(sport => {
-                  const config = SportConfigManager.getSportConfig(sport)
-                  const isSelected = sport === selectedSport
-                  const isHealthy = isServiceHealthy
-
-                  return (
-                    <DropdownMenuItem
-                      key={sport}
-                      onClick={() => {
-                        onSportChange(sport)
-                        setIsOpen(false)
-                      }}
-                      className="p-3 rounded-lg cursor-pointer hover:bg-muted/50"
-                    >
-                      <div className="flex items-center space-x-3 w-full">
-                        <div
-                          className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}
-                        >
-                          <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium">{config?.name}</span>
-                            {isSelected && (
-                              <Badge variant="default" className="text-xs">
-                                Active
-                              </Badge>
-                            )}
-                            {isHealthy ? (
-                              <CheckCircle className="h-3 w-3 text-green-500" />
-                            ) : (
-                              <AlertCircle className="h-3 w-3 text-red-500" />
-                            )}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {(config?.leagues || []).join(', ')}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Activity className="h-3 w-3 text-yellow-500" />
-                          <span className="text-xs text-muted-foreground">
-                            {config?.leagues?.length || 0}
-                          </span>
-                        </div>
-                      </div>
-                    </DropdownMenuItem>
-                  )
-                })}
+                {supportedSports.map(sport => (
+                  <SportItem
+                    key={sport}
+                    sport={sport}
+                    selectedSport={selectedSport}
+                    onSportChange={(sport) => {
+                      onSportChange(sport)
+                      setIsOpen(false)
+                    }}
+                    isServiceHealthy={isServiceHealthy}
+                    variant="dropdown"
+                  />
+                ))}
               </div>
 
               <DropdownMenuSeparator className="my-2" />
@@ -257,54 +216,19 @@ export function SportSelector({
 
         <DropdownMenuContent className="w-80 p-2" align="start">
           <div className="space-y-1">
-            {supportedSports.map(sport => {
-              const config = SportConfigManager.getSportConfig(sport)
-              const isSelected = sport === selectedSport
-              const isHealthy = isServiceHealthy
-
-              return (
-                <DropdownMenuItem
-                  key={sport}
-                  onClick={() => {
-                    onSportChange(sport)
-                    setIsOpen(false)
-                  }}
-                  className="p-3 rounded-lg cursor-pointer hover:bg-muted/50"
-                >
-                  <div className="flex items-center space-x-3 w-full">
-                    <div
-                      className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}
-                    >
-                      <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium">{config?.name}</span>
-                        {isSelected && (
-                          <Badge variant="default" className="text-xs">
-                            Active
-                          </Badge>
-                        )}
-                        {isHealthy ? (
-                          <CheckCircle className="h-3 w-3 text-green-500" />
-                        ) : (
-                          <AlertCircle className="h-3 w-3 text-red-500" />
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {(config?.leagues || []).join(', ')}
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Activity className="h-3 w-3 text-yellow-500" />
-                      <span className="text-xs text-muted-foreground">
-                        {config?.leagues?.length || 0}
-                      </span>
-                    </div>
-                  </div>
-                </DropdownMenuItem>
-              )
-            })}
+            {supportedSports.map(sport => (
+              <SportItem
+                key={sport}
+                sport={sport}
+                selectedSport={selectedSport}
+                onSportChange={(sport) => {
+                  onSportChange(sport)
+                  setIsOpen(false)
+                }}
+                isServiceHealthy={isServiceHealthy}
+                variant="dropdown"
+              />
+            ))}
           </div>
 
           <DropdownMenuSeparator className="my-2" />
@@ -318,6 +242,95 @@ export function SportSelector({
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
+  )
+}
+
+function SportItem({ 
+  sport, 
+  selectedSport, 
+  onSportChange, 
+  isServiceHealthy, 
+  variant 
+}: { 
+  sport: SupportedSport
+  selectedSport: SupportedSport | null
+  onSportChange: (sport: SupportedSport) => void
+  isServiceHealthy: boolean
+  variant: 'button' | 'dropdown'
+}) {
+  const [config, setConfig] = useState<any>(null)
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const sportConfig = await SportConfigManager.getSportConfig(sport)
+        setConfig(sportConfig)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setConfig(null)
+      }
+    }
+    loadConfig()
+  }, [sport])
+
+  const isSelected = sport === selectedSport
+  const isHealthy = isServiceHealthy
+
+  if (variant === 'button') {
+    return (
+      <Button
+        variant={isSelected ? 'default' : 'outline'}
+        size="sm"
+        onClick={() => onSportChange(sport)}
+        className={`flex-shrink-0 min-w-fit px-3 py-2 ${isSelected ? 'shadow-md' : ''} ${
+          !isHealthy ? 'opacity-50' : ''
+        } transition-all duration-200 hover:scale-105`}
+        disabled={!isHealthy}
+      >
+        <span className={`text-lg mr-2 ${config?.color}`}>{config?.icon}</span>
+        <span className="font-medium whitespace-nowrap">{config?.name}</span>
+        {!isHealthy && <AlertCircle className="h-3 w-3 ml-1 text-red-500" />}
+      </Button>
+    )
+  }
+
+  return (
+    <DropdownMenuItem
+      onClick={() => onSportChange(sport)}
+      className="p-3 rounded-lg cursor-pointer hover:bg-muted/50"
+    >
+      <div className="flex items-center space-x-3 w-full">
+        <div
+          className={`p-2 rounded-lg bg-muted/50 ${isSelected ? 'bg-primary/10' : ''}`}
+        >
+          <span className={`text-xl ${config?.color}`}>{config?.icon}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">{config?.name}</span>
+            {isSelected && (
+              <Badge variant="default" className="text-xs">
+                Active
+              </Badge>
+            )}
+            {isHealthy ? (
+              <CheckCircle className="h-3 w-3 text-green-500" />
+            ) : (
+              <AlertCircle className="h-3 w-3 text-red-500" />
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {(config?.leagues || []).join(', ')}
+          </div>
+        </div>
+        <div className="flex items-center space-x-1">
+          <Activity className="h-3 w-3 text-yellow-500" />
+          <span className="text-xs text-muted-foreground">
+            {config?.leagues?.length || 0}
+          </span>
+        </div>
+      </div>
+    </DropdownMenuItem>
   )
 }
 

@@ -134,7 +134,7 @@ export class DatabaseAuditService {
     try {
       // Use proper Supabase client to test database connection
       const supabase = this.getSupabaseClient()
-      const { data, error } = await supabase.from('sports').select('*').limit(1)
+      const { error } = await supabase.from('sports').select('*').limit(1)
       const executionTime = Date.now() - startTime
       
       const isValid = !error
@@ -248,7 +248,7 @@ export class DatabaseAuditService {
         }
       } else {
         // Fallback-safe integrity checks using Supabase client
-        const supabase = this.getAdminClient()
+        const supabase = this.getSupabaseClient()
 
         const addIf = (cond: boolean, msg: string) => {
           if (cond) issues.push(msg)
@@ -391,7 +391,7 @@ export class DatabaseAuditService {
         }
       } else {
         // Use RPC function for database operations
-        const supabase = this.getAdminClient()
+        const supabase = this.getSupabaseClient()
         const { data, error } = await supabase.rpc('get_public_indexes')
         if (error) {
           throw new Error(`Failed to get indexes: ${error?.message || 'Unknown error'}`)
@@ -456,7 +456,7 @@ export class DatabaseAuditService {
         foreignKeys = fkResult.success ? fkResult.data : []
       } else {
         // Use RPC function for database operations
-        const supabase = this.getAdminClient()
+        const supabase = this.getSupabaseClient()
         const { data, error } = await supabase.rpc('get_public_foreign_keys')
         if (error) {
           throw new Error(`Failed to get foreign keys: ${error?.message || 'Unknown error'}`)

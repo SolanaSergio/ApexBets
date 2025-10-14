@@ -25,8 +25,16 @@ export function NoSportSelected({
   const [supportedSports, setSupportedSports] = useState<SupportedSport[]>([])
 
   useEffect(() => {
-    const sports = SportConfigManager.getSupportedSports()
-    setSupportedSports(sports)
+    const loadSports = async () => {
+      try {
+        const sports = await SportConfigManager.getSupportedSports()
+        setSupportedSports(sports)
+      } catch (error) {
+        console.error('Failed to load supported sports:', error)
+        setSupportedSports([])
+      }
+    }
+    loadSports()
   }, [])
 
   const handleSportSelect = (sport: SupportedSport) => {
@@ -52,20 +60,9 @@ export function NoSportSelected({
               Choose a sport to get started:
             </p>
             <div className="grid grid-cols-2 gap-2">
-              {supportedSports.map(sport => {
-                const config = SportConfigManager.getSportConfig(sport)
-                return (
-                  <Button
-                    key={sport}
-                    variant="outline"
-                    onClick={() => handleSportSelect(sport)}
-                    className="h-auto p-4 flex flex-col items-center space-y-2"
-                  >
-                    <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
-                    <span className="text-sm font-medium">{config?.name}</span>
-                  </Button>
-                )
-              })}
+              {supportedSports.map(sport => (
+                <SportButton key={sport} sport={sport} onSelect={handleSportSelect} />
+              ))}
             </div>
           </div>
         )}
@@ -97,5 +94,33 @@ export function NoSportSelected({
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function SportButton({ sport, onSelect }: { sport: SupportedSport; onSelect: (sport: SupportedSport) => void }) {
+  const [config, setConfig] = useState<any>(null)
+
+  useEffect(() => {
+    const loadConfig = async () => {
+      try {
+        const sportConfig = await SportConfigManager.getSportConfig(sport)
+        setConfig(sportConfig)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setConfig(null)
+      }
+    }
+    loadConfig()
+  }, [sport])
+
+  return (
+    <Button
+      variant="outline"
+      onClick={() => onSelect(sport)}
+      className="h-auto p-4 flex flex-col items-center space-y-2"
+    >
+      <span className={`text-2xl ${config?.color}`}>{config?.icon}</span>
+      <span className="text-sm font-medium">{config?.name}</span>
+    </Button>
   )
 }

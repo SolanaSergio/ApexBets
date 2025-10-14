@@ -1,9 +1,9 @@
 import { type NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { envValidator } from '@/lib/config/env-validator'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportPredictionService } from '@/lib/services/predictions/sport-prediction-service'
 import { cachedSupabaseQuery } from '@/lib/utils/supabase-query-cache'
+import { SportConfigManager } from '@/lib/services/core/sport-config'
 
 export async function POST(request: NextRequest) {
   try {
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
 
       // 3. Populate player stats (dynamic based on sport configuration)
       // Check if sport supports player stats from database configuration
-      const sportConfig = await getSportConfig(sport)
+const sportConfig = await SportConfigManager.getSportConfig(sport)
       if (sportConfig?.supportsPlayerStats) {
         console.log('Populating player stats...')
         // Use cached query to prevent duplicate calls
@@ -376,7 +376,7 @@ export async function POST(request: NextRequest) {
 async function getCurrentSeason(sport: string): Promise<string> {
   try {
     // Get sport configuration from database
-    const sportConfig = await getSportConfig(sport)
+    const sportConfig = await SportConfigManager.getSportConfig(sport)
     if (sportConfig?.seasonConfig) {
       return sportConfig.seasonConfig.currentSeason || `${new Date().getFullYear()}`
     }

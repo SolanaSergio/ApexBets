@@ -16,13 +16,13 @@ export function DynamicSportsWidgetGrid() {
     try {
       setLoading(true)
       await SportConfigManager.initialize()
-      const sports = SportConfigManager.getSupportedSports()
+      const sports = await SportConfigManager.getSupportedSports()
       setSupportedSports(sports.slice(0, 3)) // Show first 3 sports
     } catch (error) {
       console.error('Error loading supported sports:', error)
       // Fallback to sync initialization
       SportConfigManager.initializeSync()
-      const sports = SportConfigManager.getSupportedSports()
+      const sports = await SportConfigManager.getSupportedSports()
       setSupportedSports(sports.slice(0, 3))
     } finally {
       setLoading(false)

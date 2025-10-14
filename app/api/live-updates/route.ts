@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { normalizeGameData } from '@/lib/utils/data-utils'
+import { normalizeGameData, isGameActuallyLive } from '@/lib/utils/data-utils'
 import { databaseOptimizer } from '@/lib/database/optimize-queries'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get('sport') || 'all'
     const league = searchParams.get('league') || 'all'
 
-    const cacheKey = `live-updates-${sport}-${league}`
+    const verify = searchParams.get('verify') === 'true'
+    const cacheKey = `live-updates-${sport}-${league}-${verify ? 'verify' : 'std'}`
     const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -25,9 +26,24 @@ export async function GET(request: NextRequest) {
     // Only fetch from database - external APIs should only be called by background services
     const databaseResult = await getLiveDataFromDatabase(sport, league)
 
+    // If verify flag is set, trigger a background sync via Supabase Edge Function
+    if (verify) {
+      try {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        if (supabaseUrl && supabaseAnonKey) {
+          fetch(`${supabaseUrl}/functions/v1/sync-sports-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${supabaseAnonKey}` },
+            body: JSON.stringify({ sport: sport === 'all' ? undefined : sport, dataTypes: ['games'] }),
+          }).catch(() => {})
+        }
+      } catch {}
+    }
+
     // Always return database data, even if empty
     console.log(`Returning database data for ${sport}`)
-    await databaseCacheService.set(cacheKey, databaseResult, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, databaseResult, verify ? 5 : CACHE_TTL)
     return NextResponse.json(databaseResult)
   } catch (error) {
     console.error('Live updates API error:', error)
@@ -110,6 +126,32 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
       return normalizeGameData(gameData, game.sport, game.league_name)
     })
 
+    // Filter to only truly live games (has activity or real scores)
+    // Fetch grace window per sport from DB
+    let graceWindowMinutes: number | undefined
+    try {
+      const client = await createClient()
+      const sportKey = sport === 'all' ? (normalizedLiveGames[0]?.sport || 'all') : sport
+      if (client && sportKey && sportKey !== 'all') {
+        const { data } = await client
+          .from('sports')
+          .select('grace_window_minutes')
+          .eq('name', sportKey)
+          .single()
+        if (data && typeof data.grace_window_minutes === 'number') {
+          graceWindowMinutes = data.grace_window_minutes
+        }
+      }
+    } catch {}
+
+    const trulyLiveGames = normalizedLiveGames.filter((game: any) => {
+      try {
+        return isGameActuallyLive(game, { graceWindowMinutes: graceWindowMinutes ?? 15 })
+      } catch {
+        return false
+      }
+    })
+
     const normalizedRecentGames = (recentGames || []).map((game: any) => {
       const homeTeam = game.home_team_data || {
         name: game.home_team || 'Home Team',
@@ -186,11 +228,11 @@ async function getLiveDataFromDatabase(sport: string, league: string) {
 
     return {
       success: true,
-      live: normalizedLiveGames,
+      live: trulyLiveGames,
       recent: normalizedRecentGames.slice(0, 10),
       upcoming: normalizedUpcomingGames.slice(0, 10),
       summary: {
-        totalLive: normalizedLiveGames.length,
+        totalLive: trulyLiveGames.length,
         totalRecent: normalizedRecentGames.length,
         totalUpcoming: normalizedUpcomingGames.length,
         lastUpdated: new Date().toISOString(),

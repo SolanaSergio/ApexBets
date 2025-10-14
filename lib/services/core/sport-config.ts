@@ -17,6 +17,7 @@ export interface SportConfig {
   dataSource: string
   apiKey?: string
   playerStatsTable?: string
+  supportsPlayerStats?: boolean
   leagues?: string[]
   positions: string[]
   scoringFields: string[] | { primary: string; for: string; against: string }
@@ -89,6 +90,7 @@ class SportConfigManagerImpl {
       isActive: sport.is_active,
       dataSource: 'database',
       playerStatsTable: 'player_stats',
+      supportsPlayerStats: true,
       leagues: leagues.map(l => l.name),
       positions: [], // Will be loaded dynamically per sport
       scoringFields: ['points'], // Will be loaded dynamically per sport
@@ -210,8 +212,21 @@ class SportConfigManagerImpl {
       .map(config => config.name)
   }
 
+  getSportConfigSync(sport: SupportedSport): SportConfig | undefined {
+    if (!this.initialized) {
+      console.warn('Sport config not initialized yet, returning undefined')
+      return undefined
+    }
+    return this.configs.get(sport)
+  }
+
   async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
     const config = await this.getSportConfig(sport)
+    return config?.leagues || []
+  }
+
+  getLeaguesForSportSync(sport: SupportedSport): string[] {
+    const config = this.getSportConfigSync(sport)
     return config?.leagues || []
   }
 
@@ -246,6 +261,10 @@ export class SportConfigManagerProxy {
     return sportConfigManager.getSportConfig(sport)
   }
 
+  static async getAllSportConfigs(): Promise<SportConfig[]> {
+    return sportConfigManager.getAllSportConfigs()
+  }
+
   static async getSportConfigAsync(sport: SupportedSport) {
     return sportConfigManager.getSportConfig(sport)
   }
@@ -266,8 +285,16 @@ export class SportConfigManagerProxy {
     return sportConfigManager.getAllSportsSync()
   }
 
+  static getSportConfigSync(sport: SupportedSport): SportConfig | undefined {
+    return sportConfigManager.getSportConfigSync(sport)
+  }
+
   static async getLeaguesForSport(sport: SupportedSport): Promise<string[]> {
     return sportConfigManager.getLeaguesForSport(sport)
+  }
+
+  static getLeaguesForSportSync(sport: SupportedSport): string[] {
+    return sportConfigManager.getLeaguesForSportSync(sport)
   }
 
   static async getDefaultLeague(sport: SupportedSport): Promise<string | null> {

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get('sport') || 'all'
 
     // Validate sport parameter dynamically if provided
-    const supportedSports: SupportedSport[] = SportConfigManager.getSupportedSports()
+    const supportedSports: SupportedSport[] = await SportConfigManager.getSupportedSports()
     if (sport !== 'all' && !supportedSports.includes(sport as SupportedSport)) {
       return NextResponse.json(
         {
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     const predictions = []
 
     // Set default league dynamically from config
-    const sportConfig = SportConfigManager.getSportConfig(sport as SupportedSport)
+    const sportConfig = await SportConfigManager.getSportConfig(sport as SupportedSport)
     const defaultLeague =
       sportConfig?.leagues && sportConfig.leagues.length > 0 ? sportConfig.leagues[0] : ''
     const predictionService = new SportPredictionService(sport as SupportedSport, defaultLeague)

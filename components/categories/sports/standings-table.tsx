@@ -31,6 +31,7 @@ export default function StandingsTable({ sport, className = '' }: StandingsTable
   const [standings, setStandings] = useState<StandingsData[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedConference, setSelectedConference] = useState<string>('all')
+  const [sportConfig, setSportConfig] = useState<any>(null)
 
   const loadStandings = useCallback(async () => {
     try {
@@ -92,7 +93,19 @@ export default function StandingsTable({ sport, className = '' }: StandingsTable
     loadStandings()
   }, [loadStandings])
 
-  const sportConfig = SportConfigManager.getSportConfig(sport)
+  // Load sport config
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
 
   // Check if we're in off-season or have insufficient data
   const isOffSeason = useMemo(() => {

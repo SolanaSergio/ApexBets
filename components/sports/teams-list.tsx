@@ -32,6 +32,7 @@ export function TeamsList({ sport, className = '' }: TeamsListProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [leagueFilter, setLeagueFilter] = useState<string>('all')
   const [sortBy, setSortBy] = useState<'name' | 'league' | 'city'>('name')
+  const [sportConfig, setSportConfig] = useState<any>(null)
 
   const loadTeams = useCallback(async () => {
     try {
@@ -53,6 +54,20 @@ export function TeamsList({ sport, className = '' }: TeamsListProps) {
   useEffect(() => {
     loadTeams()
   }, [loadTeams])
+
+  // Load sport config
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -99,9 +114,7 @@ export function TeamsList({ sport, className = '' }: TeamsListProps) {
   const uniqueLeagues = useMemo(() => {
     const leagues = Array.from(new Set(teams.map(team => team.league)))
     return leagues.sort()
-  }, [teams])
-
-  const sportConfig = SportConfigManager.getSportConfig(sport)
+  }, [teams]  )
 
   if (loading) {
     return <TeamsListSkeleton />
@@ -221,7 +234,20 @@ interface TeamCardProps {
 }
 
 function TeamCard({ team, sport }: TeamCardProps) {
-  const sportConfig = SportConfigManager.getSportConfig(sport)
+  const [sportConfig, setSportConfig] = useState<any>(null)
+
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
 
   return (
     <Card className="hover:shadow-md transition-shadow">

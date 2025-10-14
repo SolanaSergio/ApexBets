@@ -216,7 +216,7 @@ export function normalizeGameData(game: any, sport: string, league?: string) {
  * Check if a game is actually live (not just marked as live)
  * Only returns true for games that are truly in progress with real activity
  */
-export function isGameActuallyLive(game: any): boolean {
+export function isGameActuallyLive(game: any, options?: { graceWindowMinutes?: number }): boolean {
   // Validate input
   if (!game || typeof game !== 'object') {
     return false
@@ -294,8 +294,19 @@ export function isGameActuallyLive(game: any): boolean {
     statusLower.includes('q') ||
     statusLower.includes('p')
 
-  // Game must have live status AND either real scores or live indicators
-  return hasLiveStatus && (hasRealScores || hasLiveIndicators)
+  // Grace window: treat as live for a limited time after scheduled start even if 0-0
+  let withinGraceWindow = false
+  try {
+    const gameStart = game.game_date ? new Date(game.game_date).getTime() : NaN
+    if (!Number.isNaN(gameStart)) {
+      const now = Date.now()
+      const windowMs = ((options?.graceWindowMinutes ?? 15) * 60 * 1000)
+      withinGraceWindow = now - gameStart >= 0 && now - gameStart <= windowMs
+    }
+  } catch {}
+
+  // Game must have live status AND either: real scores, live indicators, or be in grace window
+  return hasLiveStatus && (hasRealScores || hasLiveIndicators || withinGraceWindow)
 }
 
 /**
@@ -408,7 +419,7 @@ export async function normalizeSportData(data: any, sport: string): Promise<any>
   try {
     // Get sport configuration dynamically
     const { SportConfigManager } = await import('@/lib/services/core/sport-config')
-    const config = SportConfigManager.getSportConfig(sport)
+    const config = await SportConfigManager.getSportConfig(sport)
 
     if (!config) {
       console.warn(`No configuration found for sport: ${sport}`)

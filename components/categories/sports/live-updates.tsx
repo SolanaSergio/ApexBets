@@ -37,6 +37,7 @@ export default function LiveUpdates({ sport, className = '' }: LiveUpdatesProps)
   const [liveGames, setLiveGames] = useState<any[]>([])
   const [valueBets, setValueBets] = useState<ValueBet[]>([])
   const [oddsUpdates, setOddsUpdates] = useState<any[]>([])
+  const [sportConfig, setSportConfig] = useState<any>(null)
   const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
 
   const loadLiveGames = useCallback(async () => {
@@ -87,13 +88,25 @@ export default function LiveUpdates({ sport, className = '' }: LiveUpdatesProps)
     return () => clearInterval(interval)
   }, [loadLiveData])
 
+  // Load sport config
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await loadLiveData()
     setRefreshing(false)
   }
-
-  const sportConfig = SportConfigManager.getSportConfig(sport)
 
   if (loading) {
     return <LiveUpdatesSkeleton />

@@ -37,6 +37,7 @@ export function GamesList({ sport, className = '' }: GamesListProps) {
   >('all')
   const [dateFilter, setDateFilter] = useState<string>('')
   const [activeTab, setActiveTab] = useState('all')
+  const [sportConfig, setSportConfig] = useState<any>(null)
 
   const loadGames = useCallback(async () => {
     try {
@@ -88,6 +89,20 @@ export function GamesList({ sport, className = '' }: GamesListProps) {
     loadGames()
   }, [loadGames])
 
+  // Load sport config
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
+
   const handleRefresh = async () => {
     setRefreshing(true)
     await loadGames()
@@ -131,8 +146,6 @@ export function GamesList({ sport, className = '' }: GamesListProps) {
     () => filteredGames.filter(game => game.status === 'completed'),
     [filteredGames]
   )
-
-  const sportConfig = SportConfigManager.getSportConfig(sport)
 
   if (loading) {
     return <GamesListSkeleton />
@@ -291,7 +304,21 @@ interface GameCardProps {
 }
 
 function GameCard({ game, sport }: GameCardProps) {
-  const sportConfig = SportConfigManager.getSportConfig(sport)
+  const [sportConfig, setSportConfig] = useState<any>(null)
+
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(sport)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [sport])
+
   const isLive = (() => {
     try {
       return isGameActuallyLive(game)

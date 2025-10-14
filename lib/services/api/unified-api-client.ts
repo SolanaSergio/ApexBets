@@ -315,12 +315,11 @@ export class UnifiedApiClient {
 
   // Helper and auxiliary methods expected by API routes
   getSupportedSports(): SupportedSport[] {
-    return SportConfigManager.getSupportedSports()
+    return SportConfigManager.getAllSportsSync()
   }
 
   getLeaguesForSport(sport: SupportedSport): string[] {
-    const cfg = SportConfigManager.getSportConfig(sport)
-    return cfg?.leagues || []
+    return SportConfigManager.getLeaguesForSportSync(sport)
   }
 
   getDefaultLeague(sport: SupportedSport): string {

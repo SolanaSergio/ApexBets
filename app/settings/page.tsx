@@ -1,5 +1,6 @@
 'use client'
 
+import React, { useState, useEffect } from 'react'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,7 +15,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { User, Bell, Shield, Palette, Database, Download, Trash2, Save } from 'lucide-react'
+import { User, Bell, Shield, Palette, Database, Download, Trash2, Save, RefreshCw, History, BarChart3, Loader2 } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
 
 export default function SettingsPage() {
   return (
@@ -47,6 +50,9 @@ function SettingsTabs() {
     { value: 'appearance', label: 'Appearance', icon: Palette },
     { value: 'privacy', label: 'Privacy', icon: Shield },
     { value: 'data', label: 'Data Management', icon: Database },
+    { value: 'live-config', label: 'Live Config', icon: Database },
+    { value: 'historical', label: 'Historical Data', icon: History },
+    { value: 'predictions', label: 'Predictions', icon: BarChart3 },
   ]
 
   return (
@@ -64,6 +70,9 @@ function SettingsTabs() {
         <TabsContent value="appearance"><AppearanceSection /></TabsContent>
         <TabsContent value="privacy"><PrivacySection /></TabsContent>
         <TabsContent value="data"><DataSection /></TabsContent>
+        <TabsContent value="live-config"><LiveConfigSection /></TabsContent>
+        <TabsContent value="historical"><HistoricalDataSection /></TabsContent>
+        <TabsContent value="predictions"><PredictionsSection /></TabsContent>
       </div>
     </Tabs>
   )
@@ -240,6 +249,314 @@ function DataSection() {
           </Select>
         </div>
         <Button className="w-full"><Download className="mr-2 h-4 w-4" /> Export All Data</Button>
+      </div>
+    </SettingsCard>
+  )
+}
+
+function LiveConfigSection() {
+  const [sports, setSports] = React.useState<Array<{ name: string; display_name: string; grace_window_minutes: number }>>([])
+  const [loading, setLoading] = React.useState(true)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin')
+        const json = await res.json()
+        if (!json.success) throw new Error(json.error || 'Failed to load')
+        setSports(json.data || [])
+      } catch (e: any) {
+        setError(e?.message || 'Failed to load')
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  const updateGrace = async (sport: string, minutes: number) => {
+    try {
+      const res = await fetch('/api/admin', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport, grace_window_minutes: minutes }),
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Update failed')
+    } catch (e: any) {
+      setError(e?.message || 'Update failed')
+    }
+  }
+
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+  if (error) return <p className="text-sm text-destructive">{error}</p>
+
+  return (
+    <SettingsCard
+      title="Live Status Configuration"
+      description="Per-sport kickoff grace window to treat 0-0 as live after start."
+      footer={undefined}
+    >
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+          <div>
+            <div className="font-medium">Manual Verify</div>
+            <div className="text-xs text-muted-foreground">Trigger a fast refresh for a sport (5s cache).</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select onValueChange={async value => {
+              if (!value) return
+              await fetch(`/api/live-updates?sport=${encodeURIComponent(value)}&verify=true`)
+            }}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="Choose sport" /></SelectTrigger>
+              <SelectContent>
+                {sports.map(s => (
+                  <SelectItem key={s.name} value={s.name}>{s.display_name || s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={async () => { await fetch('/api/live-updates/all?verify=true') }}>
+              <RefreshCw className="mr-2 h-4 w-4" /> Verify All
+            </Button>
+          </div>
+        </div>
+        {sports.map(s => (
+          <div key={s.name} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div>
+              <div className="font-medium">{s.display_name || s.name}</div>
+              <div className="text-xs text-muted-foreground">Grace window (minutes)</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                defaultValue={s.grace_window_minutes}
+                min={0}
+                className="w-24"
+                onBlur={e => {
+                  const val = Number(e.currentTarget.value)
+                  if (Number.isFinite(val)) updateGrace(s.name, val)
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={() => updateGrace(s.name, s.grace_window_minutes)}
+              >
+                Save
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </SettingsCard>
+  )
+}
+
+function HistoricalDataSection() {
+  const [loading, setLoading] = useState(false)
+  const [historicalData, setHistoricalData] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const fetchHistoricalData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/historical-games?days_back=30')
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Failed to fetch historical data')
+      setHistoricalData(json.data)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to fetch historical data')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const cleanupStaleGames = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/admin/cleanup-stale-games', { method: 'POST' })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Cleanup failed')
+      await fetchHistoricalData() // Refresh data
+    } catch (e: any) {
+      setError(e?.message || 'Cleanup failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchHistoricalData()
+  }, [])
+
+  return (
+    <SettingsCard
+      title="Historical Game Data"
+      description="Manage completed games and historical data for predictions."
+    >
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+          <div>
+            <div className="font-medium">Auto-Cleanup Stale Games</div>
+            <div className="text-xs text-muted-foreground">Mark stale live games as completed and preserve for predictions.</div>
+          </div>
+          <Button 
+            onClick={cleanupStaleGames} 
+            disabled={loading}
+            variant="outline"
+          >
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+            Cleanup Now
+          </Button>
+        </div>
+
+        {historicalData && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4 p-3 bg-gray-50 rounded-lg">
+              <div>
+                <div className="text-sm font-medium">Total Historical Games</div>
+                <div className="text-2xl font-bold">{historicalData.total_games}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium">Date Range</div>
+                <div className="text-sm text-muted-foreground">
+                  {new Date(historicalData.date_range.from).toLocaleDateString()} - {new Date(historicalData.date_range.to).toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+
+            <div className="p-3 bg-white rounded-lg border">
+              <div className="text-sm font-medium mb-2">Team Performance Stats</div>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {Object.entries(historicalData.team_performance).slice(0, 10).map(([team, stats]: [string, any]) => (
+                  <div key={team} className="flex justify-between text-xs">
+                    <span>{team}</span>
+                    <span>{stats.wins}W-{stats.losses}L ({Math.round(stats.win_rate * 100)}%)</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <Alert>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </SettingsCard>
+  )
+}
+
+function PredictionsSection() {
+  const [loading, setLoading] = useState(false)
+  const [predictions, setPredictions] = useState<any>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedSport, setSelectedSport] = useState('basketball')
+
+  const generatePredictions = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/predictions/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sport: selectedSport })
+      })
+      const json = await res.json()
+      if (!json.success) throw new Error(json.error || 'Failed to generate predictions')
+      setPredictions(json.data)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate predictions')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <SettingsCard
+      title="Game Predictions"
+      description="Generate predictions based on historical game data."
+    >
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-3 bg-white rounded-lg border">
+          <div>
+            <div className="font-medium">Generate Predictions</div>
+            <div className="text-xs text-muted-foreground">Create predictions for upcoming games using historical data.</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={selectedSport} onValueChange={setSelectedSport}>
+              <SelectTrigger className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="basketball">Basketball</SelectItem>
+                <SelectItem value="football">Football</SelectItem>
+                <SelectItem value="soccer">Soccer</SelectItem>
+                <SelectItem value="baseball">Baseball</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button 
+              onClick={generatePredictions} 
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BarChart3 className="mr-2 h-4 w-4" />}
+              Generate
+            </Button>
+          </div>
+        </div>
+
+        {predictions && (
+          <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-4 p-3 bg-gray-50 rounded-lg">
+              <div>
+                <div className="text-sm font-medium">Predictions Generated</div>
+                <div className="text-2xl font-bold">{predictions.predictions.length}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium">Training Data</div>
+                <div className="text-2xl font-bold">{predictions.training_data_count}</div>
+              </div>
+              <div>
+                <div className="text-sm font-medium">Avg Confidence</div>
+                <div className="text-2xl font-bold">{Math.round(predictions.prediction_confidence * 100)}%</div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {predictions.predictions.slice(0, 5).map((pred: any) => (
+                <div key={pred.game_id} className="p-3 bg-white rounded-lg border">
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="font-medium">
+                      {pred.home_team} vs {pred.away_team}
+                    </div>
+                    <Badge variant="outline">
+                      {Math.round(pred.prediction.confidence * 100)}% confidence
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-muted-foreground">Predicted Score</div>
+                      <div>{pred.prediction.predicted_home_score} - {pred.prediction.predicted_away_score}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground">Win Probability</div>
+                      <div>{Math.round(pred.prediction.home_win_probability * 100)}% - {Math.round(pred.prediction.away_win_probability * 100)}%</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <Alert>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </div>
     </SettingsCard>
   )

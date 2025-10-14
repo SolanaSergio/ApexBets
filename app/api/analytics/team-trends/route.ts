@@ -87,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Process team trends
-    const trends = processTeamTrends(gamesData || [], team, sport)
+    const trends = processTeamTrends(gamesData || [], team)
 
     return NextResponse.json({
       trends,
@@ -104,7 +104,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-function processTeamTrends(gamesData: any[], team: string, sport: string) {
+function processTeamTrends(gamesData: any[], team: string) {
   const trends = []
 
   // Home vs Away Performance
@@ -132,7 +132,7 @@ function processTeamTrends(gamesData: any[], team: string, sport: string) {
   if (totalGames.length > 0) {
     const totalScores = totalGames.map(game => game.home_score + game.away_score)
     const avgTotal = totalScores.reduce((a, b) => a + b, 0) / totalScores.length
-    const expectedTotal = calculateExpectedTotal(sport, totalScores)
+    const expectedTotal = calculateExpectedTotal(totalScores)
     const totalVariance = (((avgTotal - expectedTotal) / expectedTotal) * 100).toFixed(1)
 
     trends.push({
@@ -144,7 +144,7 @@ function processTeamTrends(gamesData: any[], team: string, sport: string) {
             ? 'up'
             : 'down',
       value: `${totalVariance}%`,
-      description: `Games averaging ${avgTotal.toFixed(1)} ${getScoreUnit(sport)} (${parseFloat(totalVariance) > 0 ? 'above' : 'below'} expected)`,
+      description: `Games averaging ${avgTotal.toFixed(1)} ${getScoreUnit()} (${parseFloat(totalVariance) > 0 ? 'above' : 'below'} expected)`,
       confidence: Math.min(0.9, 0.6 + Math.abs(parseFloat(totalVariance)) / 50),
     })
   }
@@ -217,7 +217,7 @@ function processTeamTrends(gamesData: any[], team: string, sport: string) {
   return trends
 }
 
-function calculateExpectedTotal(sport: string, totalScores: number[]) {
+function calculateExpectedTotal(totalScores: number[]) {
   if (totalScores.length === 0) {
     // Dynamic fallback - get from database sport configuration
     // Default fallback for unknown sports
@@ -227,7 +227,7 @@ function calculateExpectedTotal(sport: string, totalScores: number[]) {
   return totalScores.reduce((a, b) => a + b, 0) / totalScores.length
 }
 
-function getScoreUnit(sport: string) {
+function getScoreUnit() {
   // Dynamic score unit - should be loaded from sport configuration
   // Generic fallback for unknown sports
   return 'units'

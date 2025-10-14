@@ -9,6 +9,7 @@ import { envValidator } from '../config/env-validator'
 import { enhancedRateLimiter } from './enhanced-rate-limiter'
 import { apiCostTracker } from './api-cost-tracker'
 import { sportsDBClient } from '../sports-apis/sportsdb-client'
+import { unifiedCacheService } from './unified-cache-service'
 
 export interface ProviderConfig {
   name: string
@@ -618,11 +619,62 @@ export class APIFallbackStrategy {
    */
   private async getSportApiMapping(sport: string): Promise<string | null> {
     try {
-      // This should be implemented to get sport configuration from database
-      // For now, return null to force dynamic configuration
+      // Check cache first
+      const cacheKey = `sport-api-mapping:${sport}`
+      const cached = await unifiedCacheService.get<string>(cacheKey)
+      if (cached) return cached
+
+      // Query database for API mapping
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY!
+      )
+
+      const { data, error } = await supabase
+        .from('api_mappings')
+        .select('sport_name_mapping')
+        .eq('sport', sport)
+        .eq('provider', 'api-sports')
+        .eq('is_active', true)
+        .single()
+
+      if (error) {
+        structuredLogger.warn('Failed to get sport API mapping from database', {
+          sport,
+          error: error.message
+        })
+        return null
+      }
+
+      if (data?.sport_name_mapping?.apiName) {
+        const apiName = data.sport_name_mapping.apiName
+        // Cache for 1 hour
+        await unifiedCacheService.set(cacheKey, apiName, 3600000)
+        return apiName
+      }
+
+      // Fallback: try to find any mapping for this sport
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('api_mappings')
+        .select('sport_name_mapping')
+        .eq('sport', sport)
+        .eq('is_active', true)
+        .limit(1)
+        .single()
+
+      if (!fallbackError && fallbackData?.sport_name_mapping?.apiName) {
+        const apiName = fallbackData.sport_name_mapping.apiName
+        await unifiedCacheService.set(cacheKey, apiName, 1800000) // 30 minute cache for fallback
+        return apiName
+      }
+
+      structuredLogger.warn('No API mapping found for sport', { sport })
       return null
     } catch (error) {
-      console.error('Error getting sport API mapping:', error)
+      structuredLogger.error('Error getting sport API mapping', {
+        sport,
+        error: error instanceof Error ? error.message : String(error)
+      })
       return null
     }
   }

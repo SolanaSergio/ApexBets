@@ -22,7 +22,7 @@ export async function GET() {
     try {
       const { createClient } = await import('@/lib/supabase/server')
       const supabase = await createClient()
-      const { data, error } = await supabase.from('games').select('*').limit(1)
+      const { error } = await supabase.from('games').select('*').limit(1)
       healthChecks.database = !error
     } catch (error) {
       structuredLogger.error('Database health check failed', {

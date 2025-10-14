@@ -62,13 +62,16 @@ function GamesPageContent() {
   }, [selectedSport, date])
 
   useEffect(() => {
-    const sports = SportConfigManager.getSupportedSports()
-    setSupportedSports(sports)
-    if (sports.length > 0 && selectedSport === 'all') {
-      // Default to the first sport if 'all' is not desired as default
-      // setSelectedSport(sports[0]);
-    }
-  }, [selectedSport])
+    const loadSports = async () => {
+      const sports = await SportConfigManager.getSupportedSports();
+      setSupportedSports(sports);
+      if (sports.length > 0 && selectedSport === 'all') {
+        // Default to the first sport if 'all' is not desired as default
+        // setSelectedSport(sports[0]);
+      }
+    };
+    loadSports();
+  }, [selectedSport]);
 
   useEffect(() => {
     fetchGames()
@@ -157,10 +160,9 @@ function Filters({ selectedSport, setSelectedSport, supportedSports, searchTerm,
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Sports</SelectItem>
-            {supportedSports.map(sport => {
-              const config = SportConfigManager.getSportConfig(sport)
-              return <SelectItem key={sport} value={sport}>{config?.icon} {config?.name}</SelectItem>
-            })}
+            {supportedSports.map(sport => (
+              <SportSelectItem key={sport} sport={sport} />
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -181,6 +183,20 @@ function Filters({ selectedSport, setSelectedSport, supportedSports, searchTerm,
       </div>
     </div>
   )
+}
+
+function SportSelectItem({ sport }: { sport: string }) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const sportConfig = await SportConfigManager.getSportConfig(sport);
+      setConfig(sportConfig);
+    };
+    fetchConfig();
+  }, [sport]);
+
+  return <SelectItem value={sport}>{config?.icon} {config?.name}</SelectItem>;
 }
 
 function GameTabs({ liveGames, upcomingGames, completedGames, loading }: { liveGames: any[]; upcomingGames: any[]; completedGames: any[]; loading: boolean }) {

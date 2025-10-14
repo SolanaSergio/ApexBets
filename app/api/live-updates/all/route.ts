@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { normalizeGameData, normalizeTeamData } from '@/lib/utils/data-utils'
+import { normalizeGameData, normalizeTeamData, isGameActuallyLive } from '@/lib/utils/data-utils'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 30 // 30 seconds
@@ -9,9 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const useRealData = searchParams.get('real') === 'true'
+    const verify = searchParams.get('verify') === 'true'
     // const includeInactive = searchParams.get("include_inactive") === "true"
 
-    const cacheKey = `live-updates-all-${useRealData}`
+    const cacheKey = `live-updates-all-${useRealData}-${verify ? 'verify' : 'std'}`
     const cached = await databaseCacheService.get(cacheKey)
     if (cached) {
       return NextResponse.json(cached)
@@ -126,7 +127,7 @@ export async function GET(request: NextRequest) {
       },
     }
 
-    await databaseCacheService.set(cacheKey, result, CACHE_TTL)
+    await databaseCacheService.set(cacheKey, result, verify ? 5 : CACHE_TTL)
 
     return NextResponse.json(result)
   } catch (error) {
@@ -276,19 +277,40 @@ async function getSportLiveData(supabase: any, sport: string, _useRealData: bool
 
   // Normalize and validate data
   const normalizedLiveGames = normalizeGames(liveGames || [], sport)
+
+  // Read per-sport grace window
+  let graceWindowMinutes: number | undefined
+  try {
+    const { data: cfg } = await supabase
+      .from('sports')
+      .select('grace_window_minutes')
+      .eq('name', sport)
+      .single()
+    if (cfg && typeof cfg.grace_window_minutes === 'number') {
+      graceWindowMinutes = cfg.grace_window_minutes
+    }
+  } catch {}
+
+  const trulyLiveGames = normalizedLiveGames.filter(game => {
+    try {
+      return isGameActuallyLive(game, graceWindowMinutes ? { graceWindowMinutes } : {})
+    } catch {
+      return false
+    }
+  })
   const normalizedRecentGames = normalizeGames(recentGames || [], sport)
   const normalizedUpcomingGames = normalizeGames(upcomingGames || [], sport)
 
   // Validate live games
   const { dataValidationService } = await import('@/lib/services/data-validation-service')
-  const validatedLiveGames = dataValidationService.validateLiveGames(normalizedLiveGames)
+  const validatedLiveGames = dataValidationService.validateLiveGames(trulyLiveGames)
 
   return {
     live: validatedLiveGames,
     recent: normalizedRecentGames,
     upcoming: normalizedUpcomingGames,
     summary: {
-      totalLive: Array.isArray(normalizedLiveGames) ? normalizedLiveGames.length : 0,
+      totalLive: Array.isArray(trulyLiveGames) ? trulyLiveGames.length : 0,
       totalRecent: normalizedRecentGames.length,
       totalUpcoming: normalizedUpcomingGames.length,
       lastUpdated: new Date().toISOString(),

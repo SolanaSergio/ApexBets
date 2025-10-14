@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { RefreshCw, TrendingUp, Target, DollarSign } from 'lucide-react'
 import { databaseFirstApiClient } from '@/lib/api-client-database-first'
 import { SportConfigManager, SupportedSport } from '@/lib/services/core/sport-config'
+import { SportSelector } from '@/components/shared/sport-selector'
 import TeamPerformanceChart from './team-performance-chart'
 import PredictionAccuracyChart from './prediction-accuracy-chart'
 import OddsAnalysisChart from './odds-analysis-chart'
@@ -56,18 +57,18 @@ export default function AnalyticsDashboard({
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
 
-  const loadSupportedSports = useCallback(() => {
+  const loadSupportedSports = useCallback(async () => {
     try {
-      const sports = SportConfigManager.getSupportedSports()
-      setSupportedSports(sports)
+      const sports = await SportConfigManager.getSupportedSports();
+      setSupportedSports(sports);
       // Set default sport if none selected
       if (!propSelectedSport && sports.length > 0) {
-        setSelectedSport(sports[0])
+        setSelectedSport(sports[0]);
       }
     } catch (error) {
-      console.error('Error loading supported sports:', error)
+      console.error('Error loading supported sports:', error);
     }
-  }, [propSelectedSport])
+  }, [propSelectedSport]);
 
   const loadAvailableTeams = useCallback(async () => {
     if (!selectedSport) return
@@ -169,17 +170,9 @@ export default function AnalyticsDashboard({
                   <SelectValue placeholder="Select a sport..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {supportedSports.map(sport => {
-                    const config = SportConfigManager.getSportConfig(sport)
-                    return (
-                      <SelectItem key={sport} value={sport}>
-                        <div className="flex items-center gap-2">
-                          <span className={config?.color}>{config?.icon}</span>
-                          {config?.name}
-                        </div>
-                      </SelectItem>
-                    )
-                  })}
+                  {supportedSports.map((sport) => (
+                    <SportSelectItem key={sport} sport={sport} onSelect={(value) => { setSelectedSport(value); onSportChange?.(value); }} />
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -191,38 +184,9 @@ export default function AnalyticsDashboard({
 
   return (
     <div className="space-y-6">
-      {/* Sport and League Selectors */}
       <div className="flex flex-wrap gap-4 mb-6">
-        <div className="min-w-[200px]">
-          <label className="text-sm font-medium mb-2 block">Sport</label>
-          <Select
-            value={selectedSport}
-            onValueChange={value => {
-              setSelectedSport(value)
-              onSportChange?.(value)
-            }}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {supportedSports.map(sport => {
-                const config = SportConfigManager.getSportConfig(sport)
-                return (
-                  <SelectItem key={sport} value={sport}>
-                    <div className="flex items-center gap-2">
-                      <span className={config?.color}>{config?.icon}</span>
-                      {config?.name}
-                    </div>
-                  </SelectItem>
-                )
-              })}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="min-w-[200px]">
-          <label className="text-sm font-medium mb-2 block">League</label>
+        <SportSelector selectedSport={selectedSport} onSportChange={(value) => { setSelectedSport(value); onSportChange?.(value); }} />
+        <div className="flex items-center gap-2">
           <Select
             value={selectedLeague}
             onValueChange={value => {
@@ -230,23 +194,15 @@ export default function AnalyticsDashboard({
               onLeagueChange?.(value)
             }}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="All Leagues" />
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Select a league..." />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Leagues</SelectItem>
-              {(() => {
-                const sportConfig = SportConfigManager.getSportConfig(
-                  selectedSport as SupportedSport
-                )
-                return (
-                  (sportConfig?.leagues || []).map((league: any) => (
-                    <SelectItem key={league.id} value={league.id}>
-                      {league.name}
-                    </SelectItem>
-                  )) || []
-                )
-              })()}
+              <SelectItem value="all">All Leagues</SelectItem>
+              <SelectItem value="nfl">NFL</SelectItem>
+              <SelectItem value="nba">NBA</SelectItem>
+              <SelectItem value="mlb">MLB</SelectItem>
+              <SelectItem value="nhl">NHL</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -431,4 +387,25 @@ export default function AnalyticsDashboard({
       </Tabs>
     </div>
   )
+}
+
+function SportSelectItem({ sport, onSelect }: { sport: string; onSelect: (sport: string) => void }) {
+  const [config, setConfig] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const sportConfig = await SportConfigManager.getSportConfig(sport);
+      setConfig(sportConfig);
+    };
+    fetchConfig();
+  }, [sport]);
+
+  return (
+    <SelectItem value={sport} onClick={() => onSelect(sport)}>
+      <div className="flex items-center gap-2">
+        <span className={config?.color}>{config?.icon}</span>
+        {config?.name}
+      </div>
+    </SelectItem>
+  );
 }

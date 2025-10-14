@@ -22,7 +22,7 @@ export class DataValidationService {
     return DataValidationService.instance
   }
 
-  validateLiveGames(games: any[]): ValidationResult {
+  validateLiveGames(games: any[], options?: { graceWindowMinutes?: number }): ValidationResult {
     const errors: string[] = []
     const warnings: string[] = []
     let validatedCount = 0
@@ -57,6 +57,33 @@ export class DataValidationService {
         ) {
           warnings.push(`Game ${game.id} has invalid status: ${game.status}`)
         }
+
+        // Post-grace check: in_progress/live with 0-0 and no live indicators beyond grace window
+        try {
+          const statusLower = String(game.status || '').toLowerCase()
+          const isLiveLike =
+            statusLower.includes('live') ||
+            statusLower.includes('in progress') ||
+            statusLower.includes('in_progress')
+
+          if (isLiveLike) {
+            const home = Number(game.home_score ?? game.homeScore ?? 0)
+            const away = Number(game.away_score ?? game.awayScore ?? 0)
+            const indicatorsText = `${game.quarter ?? ''} ${game.period ?? ''} ${game.half ?? ''} ${game.time_remaining ?? ''}`.toLowerCase()
+            const hasIndicators = /quarter|period|inning|half|ot|overtime|q\d|p\d/.test(indicatorsText)
+
+            const graceMinutes = options?.graceWindowMinutes ?? 15
+            const startMs = game.game_date ? new Date(game.game_date).getTime() : NaN
+            const now = Date.now()
+            const beyondGrace = !Number.isNaN(startMs) && now - startMs > graceMinutes * 60 * 1000
+
+            if (home === 0 && away === 0 && !hasIndicators && beyondGrace) {
+              warnings.push(
+                `Game ${game.id} appears stale in_progress beyond ${graceMinutes}m with 0-0 and no indicators`
+              )
+            }
+          }
+        } catch {}
 
         // Validate scores if present
         if (

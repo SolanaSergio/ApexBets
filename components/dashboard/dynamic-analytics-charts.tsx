@@ -26,7 +26,7 @@ export function DynamicAnalyticsCharts() {
       setLoading(true)
 
       // Get supported sports
-      const supportedSports = SportConfigManager.getSupportedSports()
+      const supportedSports = await SportConfigManager.getSupportedSports()
 
       let totalGames = 0
       let totalTeams = 0
@@ -46,7 +46,7 @@ export function DynamicAnalyticsCharts() {
           totalTeams += teams.length
           totalLiveGames += liveGames.length
 
-          const config = SportConfigManager.getSportConfig(sport)
+          const config = await SportConfigManager.getSportConfig(sport)
           sportStats[config?.name || sport] = games.length
         } catch (error) {
           console.error(`Error loading data for ${sport}:`, error)

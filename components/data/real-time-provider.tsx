@@ -11,6 +11,7 @@ import {
   useRef,
 } from 'react'
 import { subscribeToTable, unsubscribeFromTable } from '@/lib/supabase/realtime'
+import { isGameActuallyLive } from '@/lib/utils/data-utils'
 import { databaseFirstApiClient } from '@/lib/api-client-database-first'
 import type { Game, Prediction, BettingOdds as Odd, LeagueStanding as Standing, Player, PlayerStats } from '@/types/api-responses'
 
@@ -266,7 +267,13 @@ export function useLiveGames(sport?: string) {
   const { data, selectedSport } = useRealTimeData()
   const targetSport = sport || selectedSport
   const liveGames = Array.isArray(data.games)
-    ? data.games.filter(game => game.status === 'live')
+    ? data.games.filter(game => {
+        try {
+          return isGameActuallyLive(game)
+        } catch {
+          return false
+        }
+      })
     : []
 
   return {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
@@ -135,7 +135,20 @@ function Header({ overallAccuracy }: { overallAccuracy: number }) {
 
 function PredictionCard({ prediction }: { prediction: any }) {
   const gameDate = new Date(prediction.game?.game_date || prediction.created_at)
-  const sportConfig = SportConfigManager.getSportConfig(prediction.game?.sport as any)
+  const [sportConfig, setSportConfig] = useState<any>(null)
+
+  useEffect(() => {
+    const loadSportConfig = async () => {
+      try {
+        const config = await SportConfigManager.getSportConfig(prediction.game?.sport as any)
+        setSportConfig(config)
+      } catch (error) {
+        console.error('Failed to load sport config:', error)
+        setSportConfig(null)
+      }
+    }
+    loadSportConfig()
+  }, [prediction.game?.sport])
 
   const getConfidenceColor = (confidence: number) => {
     if (confidence >= 80) return 'text-green-600'

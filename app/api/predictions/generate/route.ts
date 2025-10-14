@@ -1,315 +1,240 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { envValidator } from '@/lib/config/env-validator'
-import { EnsembleModel, TeamStats, GameContext } from '@/lib/ml/prediction-algorithms'
 
-/**
- * Generate new ML predictions for upcoming games
- * This endpoint creates fresh predictions using advanced ML algorithms
- */
 export async function POST(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const sport = searchParams.get('sport')
-    if (!sport) {
-      return NextResponse.json({ success: false, error: 'sport required' }, { status: 400 })
-    }
-    const league = searchParams.get('league') || undefined
-    const gameId = searchParams.get('gameId') || undefined
-
-    // Edge Function config - get from environment validator
-    const config = envValidator.getServerConfig()
-    const edgeBaseUrl = config.NEXT_PUBLIC_SUPABASE_URL
-    const fnName = 'generate-predictions' // Use standard function name
-    const edgeSecret = config.SUPABASE_SERVICE_ROLE_KEY
-
-    // Get Supabase client
     const supabase = await createClient()
-    if (!supabase) {
-      return NextResponse.json({ success: false, error: 'Database connection failed' }, { status: 500 })
+    const url = new URL(request.url)
+
+    let parsedBody: any = null
+    try {
+      parsedBody = await request.json()
+    } catch (_) {
+      // Ignore parse errors; we'll fall back to query params
+      parsedBody = null
     }
 
-    // Get games to predict (upcoming or specific game)
-    let gamesQuery = supabase
-      .from('games')
-      .select(
-        `
-        *,
-        home_team_data:teams!games_home_team_id_fkey(
-          id, name, abbreviation,
-          league_standings!league_standings_team_id_fkey(*)
-        ),
-        away_team_data:teams!games_away_team_id_fkey(
-          id, name, abbreviation,
-          league_standings!league_standings_team_id_fkey(*)
-        )
-      `
-      )
-      .eq('sport', sport)
-      .in('status', ['scheduled', 'live'])
+    const sport: string | null = (parsedBody && typeof parsedBody === 'object' ? parsedBody.sport : null) ?? url.searchParams.get('sport')
+    const features = (parsedBody && typeof parsedBody === 'object' ? parsedBody.features : null) ?? null
 
-    if (league) {
-      gamesQuery = gamesQuery.eq('league_name', league)
-    }
-
-    if (gameId) {
-      gamesQuery = gamesQuery.eq('id', gameId)
-    } else {
-      gamesQuery = gamesQuery.limit(5) // Limit to 5 games for performance
-    }
-
-    // Fetch candidate games via read path (database-first APIs) using same-origin
-    const listUrl = new URL('/api/database-first/games', request.url)
-    listUrl.searchParams.set('sport', sport)
-    if (league) listUrl.searchParams.set('league', league)
-    if (gameId) listUrl.searchParams.set('id', gameId)
-    listUrl.searchParams.set('status', 'scheduled')
-    const listRes = await fetch(listUrl.toString(), { method: 'GET' })
-    if (!listRes.ok) {
-      return NextResponse.json({ success: false, error: 'Failed to fetch games' }, { status: 502 })
-    }
-    const listPayload = await listRes.json()
-    const games = Array.isArray(listPayload?.data)
-      ? listPayload.data
-      : Array.isArray(listPayload)
-        ? listPayload
-        : []
-
-    if (!games || games.length === 0) {
+    if (!sport) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'No games found for prediction',
-          details: undefined,
-        },
-        { status: 404 }
+        { success: false, error: 'Sport is required' },
+        { status: 400 }
       )
     }
 
-    const predictions = []
+    // Get historical games for the sport
+    const { data: historicalGames, error } = await supabase
+      .from('games')
+      .select(`
+        id,
+        sport,
+        home_team_name,
+        away_team_name,
+        home_score,
+        away_score,
+        game_date,
+        completed_at,
+        league_name,
+        season,
+        venue,
+        game_type
+      `)
+      .eq('sport', sport)
+      .eq('status', 'completed')
+      .eq('is_historical', true)
+      .not('completed_at', 'is', null)
+      .gte('completed_at', new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()) // Last 90 days
+      .order('completed_at', { ascending: false })
 
-    // Generate predictions for each game
-    for (const game of games) {
-      try {
-        // Get team standings data
-        const homeStandings = game.home_team_data?.league_standings?.[0]
-        const awayStandings = game.away_team_data?.league_standings?.[0]
-
-        if (!homeStandings || !awayStandings) {
-          console.warn(`Missing standings data for game ${game.id}`)
-          continue
-        }
-
-        // Convert to TeamStats format for ML algorithms
-        const homeStats: TeamStats = {
-          wins: homeStandings.wins || 0,
-          losses: homeStandings.losses || 0,
-          ties: homeStandings.ties || 0,
-          pointsFor: homeStandings.points_for || 0,
-          pointsAgainst: homeStandings.points_against || 0,
-          homeRecord: {
-            wins: homeStandings.home_wins || 0,
-            losses: homeStandings.home_losses || 0,
-            ties: homeStandings.home_ties || 0,
-          },
-          awayRecord: {
-            wins: homeStandings.away_wins || 0,
-            losses: homeStandings.away_losses || 0,
-            ties: homeStandings.away_ties || 0,
-          },
-          recentForm: homeStandings.streak ? parseStreakToForm(homeStandings.streak) : [],
-          strengthOfSchedule: 0.5, // Default - could be calculated
-          avgMarginOfVictory: homeStandings.point_differential || 0,
-          consistency: 0.7, // Default - could be calculated from game-by-game variance
-        }
-
-        const awayStats: TeamStats = {
-          wins: awayStandings.wins || 0,
-          losses: awayStandings.losses || 0,
-          ties: awayStandings.ties || 0,
-          pointsFor: awayStandings.points_for || 0,
-          pointsAgainst: awayStandings.points_against || 0,
-          homeRecord: {
-            wins: awayStandings.home_wins || 0,
-            losses: awayStandings.home_losses || 0,
-            ties: awayStandings.home_ties || 0,
-          },
-          awayRecord: {
-            wins: awayStandings.away_wins || 0,
-            losses: awayStandings.away_losses || 0,
-            ties: awayStandings.away_ties || 0,
-          },
-          recentForm: awayStandings.streak ? parseStreakToForm(awayStandings.streak) : [],
-          strengthOfSchedule: 0.5,
-          avgMarginOfVictory: awayStandings.point_differential || 0,
-          consistency: 0.7,
-        }
-
-        // Create game context
-        const gameContext: GameContext = {
-          isPlayoffs: game.game_type === 'playoffs' || game.season?.includes('playoffs'),
-          isRivalry: false, // Could be enhanced with rivalry detection
-          restDays: calculateRestDays(game.game_date),
-          travelDistance: 0, // Could be calculated
-          venue: game.venue ?? null,
-          weather: game.weather_conditions,
-          sport: game.sport,
-        }
-
-        // Generate ML prediction using ensemble model
-        const mlPrediction = EnsembleModel.predict(homeStats, awayStats, gameContext)
-
-        // Persist via Edge Function if configured
-        let storedPredictionId: string | undefined
-        if (edgeBaseUrl && fnName && edgeSecret) {
-          try {
-            const res = await fetch(`${edgeBaseUrl}/${fnName}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${edgeSecret}`,
-              },
-              body: JSON.stringify({
-                action: 'insert_prediction',
-                sport: game.sport,
-                league: game.league_name,
-                gameId: game.id,
-                winner: mlPrediction.homeWinProbability > 0.5 ? 'home' : 'away',
-                confidence: mlPrediction.confidence,
-                model: mlPrediction.model,
-                featureImportance: mlPrediction.featureImportance,
-                confidenceInterval: {
-                  low: Math.max(0, mlPrediction.homeWinProbability - 0.1),
-                  high: Math.min(1, mlPrediction.homeWinProbability + 0.1),
-                },
-              }),
-            })
-            if (res.ok) {
-              const j = await res.json()
-              storedPredictionId = j?.id
-            }
-          } catch {}
-        }
-
-        // Add to results
-        predictions.push({
-          gameId: game.id,
-          homeTeam: game.home_team_data?.name ?? null,
-          awayTeam: game.away_team_data?.name ?? null,
-          prediction: mlPrediction,
-          game: {
-            date: game.game_date,
-            venue: game.venue,
-            status: game.status,
-          },
-          storedPredictionId,
-        })
-
-        // Also generate spread and total predictions
-        if (mlPrediction.predictedSpread !== 0 && edgeBaseUrl && fnName && edgeSecret) {
-          try {
-            await fetch(`${edgeBaseUrl}/${fnName}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${edgeSecret}`,
-              },
-              body: JSON.stringify({
-                action: 'insert_prediction_spread',
-                sport: game.sport,
-                league: game.league_name,
-                gameId: game.id,
-                spread: mlPrediction.predictedSpread,
-                confidence: mlPrediction.confidence * 0.9,
-                model: mlPrediction.model,
-              }),
-            })
-          } catch {}
-        }
-
-        if (mlPrediction.predictedTotal > 0 && edgeBaseUrl && fnName && edgeSecret) {
-          try {
-            await fetch(`${edgeBaseUrl}/${fnName}`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${edgeSecret}`,
-              },
-              body: JSON.stringify({
-                action: 'insert_prediction_total',
-                sport: game.sport,
-                league: game.league_name,
-                gameId: game.id,
-                total: mlPrediction.predictedTotal,
-                confidence: mlPrediction.confidence * 0.85,
-                model: mlPrediction.model,
-              }),
-            })
-          } catch {}
-        }
-      } catch (error) {
-        console.error(`Error generating prediction for game ${game.id}:`, error)
-      }
+    if (error) {
+      console.error('Error fetching historical games:', error)
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 }
+      )
     }
+
+    if (!historicalGames || historicalGames.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: 'No historical data available for predictions',
+        data: {
+          predictions: [],
+          training_data_count: 0,
+          features_used: features || []
+        }
+      })
+    }
+
+    // Calculate team performance metrics
+    const teamStats = historicalGames.reduce((acc: any, game: any) => {
+      const homeTeam = game.home_team_name
+      const awayTeam = game.away_team_name
+      
+      if (!acc[homeTeam]) {
+        acc[homeTeam] = {
+          total_games: 0,
+          wins: 0,
+          losses: 0,
+          total_score: 0,
+          avg_score: 0,
+          home_games: 0,
+          away_games: 0,
+          recent_form: []
+        }
+      }
+      if (!acc[awayTeam]) {
+        acc[awayTeam] = {
+          total_games: 0,
+          wins: 0,
+          losses: 0,
+          total_score: 0,
+          avg_score: 0,
+          home_games: 0,
+          away_games: 0,
+          recent_form: []
+        }
+      }
+
+      // Update home team stats
+      acc[homeTeam].total_games++
+      acc[homeTeam].home_games++
+      acc[homeTeam].total_score += game.home_score || 0
+      acc[homeTeam].avg_score = acc[homeTeam].total_score / acc[homeTeam].total_games
+      if ((game.home_score || 0) > (game.away_score || 0)) {
+        acc[homeTeam].wins++
+        acc[homeTeam].recent_form.push('W')
+      } else {
+        acc[homeTeam].losses++
+        acc[homeTeam].recent_form.push('L')
+      }
+
+      // Update away team stats
+      acc[awayTeam].total_games++
+      acc[awayTeam].away_games++
+      acc[awayTeam].total_score += game.away_score || 0
+      acc[awayTeam].avg_score = acc[awayTeam].total_score / acc[awayTeam].total_games
+      if ((game.away_score || 0) > (game.home_score || 0)) {
+        acc[awayTeam].wins++
+        acc[awayTeam].recent_form.push('W')
+      } else {
+        acc[awayTeam].losses++
+        acc[awayTeam].recent_form.push('L')
+      }
+
+      return acc
+    }, {})
+
+    // Calculate win rates and recent form
+    Object.keys(teamStats).forEach(team => {
+      const stats = teamStats[team]
+      stats.win_rate = stats.total_games > 0 ? stats.wins / stats.total_games : 0
+      stats.recent_form = stats.recent_form.slice(-5) // Last 5 games
+      stats.recent_form_str = stats.recent_form.join('')
+    })
+
+    // Get upcoming games for predictions
+    const { data: upcomingGames, error: upcomingError } = await supabase
+      .from('games')
+      .select(`
+        id,
+        sport,
+        home_team_name,
+        away_team_name,
+        game_date,
+        league_name,
+        season,
+        venue
+      `)
+      .eq('sport', sport)
+      .eq('status', 'scheduled')
+      .gte('game_date', new Date().toISOString())
+      .order('game_date', { ascending: true })
+      .limit(10)
+
+    if (upcomingError) {
+      console.error('Error fetching upcoming games:', upcomingError)
+      return NextResponse.json(
+        { success: false, error: upcomingError.message },
+        { status: 500 }
+      )
+    }
+
+    // Generate predictions for upcoming games
+    const predictions = upcomingGames?.map((game: any) => {
+      const homeStats = teamStats[game.home_team_name] || {
+        win_rate: 0.5,
+        avg_score: 0,
+        recent_form: [],
+        home_games: 0,
+        total_games: 0
+      }
+      
+      const awayStats = teamStats[game.away_team_name] || {
+        win_rate: 0.5,
+        avg_score: 0,
+        recent_form: [],
+        away_games: 0,
+        total_games: 0
+      }
+
+      // Simple prediction algorithm (can be enhanced with ML)
+      const homeAdvantage = 0.05 // 5% home advantage
+      const homeWinProbability = (homeStats.win_rate + homeAdvantage) / 
+        (homeStats.win_rate + awayStats.win_rate + homeAdvantage)
+      
+      const predictedHomeScore = Math.round(homeStats.avg_score * 0.8 + awayStats.avg_score * 0.2)
+      const predictedAwayScore = Math.round(awayStats.avg_score * 0.8 + homeStats.avg_score * 0.2)
+
+      return {
+        game_id: game.id,
+        sport: game.sport,
+        home_team: game.home_team_name,
+        away_team: game.away_team_name,
+        game_date: game.game_date,
+        prediction: {
+          home_win_probability: Math.round(homeWinProbability * 100) / 100,
+          away_win_probability: Math.round((1 - homeWinProbability) * 100) / 100,
+          predicted_home_score: predictedHomeScore,
+          predicted_away_score: predictedAwayScore,
+          confidence: Math.min(homeStats.total_games + awayStats.total_games, 20) / 20 // Based on data availability
+        },
+        team_analysis: {
+          home_team_stats: {
+            win_rate: homeStats.win_rate,
+            avg_score: homeStats.avg_score,
+            recent_form: homeStats.recent_form_str,
+            total_games: homeStats.total_games
+          },
+          away_team_stats: {
+            win_rate: awayStats.win_rate,
+            avg_score: awayStats.avg_score,
+            recent_form: awayStats.recent_form_str,
+            total_games: awayStats.total_games
+          }
+        }
+      }
+    }) || []
 
     return NextResponse.json({
       success: true,
-      sport,
-      league: league || 'all',
-      predictionsGenerated: predictions.length,
-      predictions,
-      meta: {
-        timestamp: new Date().toISOString(),
-        model: 'ensemble_ml_v2.1',
-        gamesAnalyzed: games.length,
-      },
+      data: {
+        predictions,
+        training_data_count: historicalGames.length,
+        team_stats_count: Object.keys(teamStats).length,
+        features_used: features || ['win_rate', 'avg_score', 'recent_form', 'home_advantage'],
+        prediction_confidence: predictions.length > 0 ? 
+          predictions.reduce((sum: number, p: any) => sum + p.prediction.confidence, 0) / predictions.length : 0
+      }
     })
+
   } catch (error) {
-    console.error('Error in prediction generation:', error)
+    console.error('Prediction error:', error)
     return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString(),
-      },
+      { success: false, error: 'Internal server error' },
       { status: 500 }
     )
   }
-}
-
-/**
- * Helper function to parse streak string to recent form array
- */
-function parseStreakToForm(streak: string): string[] {
-  if (!streak) return []
-
-  // Handle different streak formats
-  // Example: "W3" = ["W", "W", "W"], "L2" = ["L", "L"]
-  const match = streak.match(/([WL])(\d+)/)
-  if (match) {
-    const [, result, count] = match
-    return Array(parseInt(count)).fill(result)
-  }
-
-  // Handle comma-separated format: "W,W,L,W,W"
-  if (streak.includes(',')) {
-    return streak
-      .split(',')
-      .map(s => s.trim())
-      .filter(s => s === 'W' || s === 'L')
-  }
-
-  // Handle simple format: "WWLWW"
-  return streak.split('').filter(s => s === 'W' || s === 'L')
-}
-
-/**
- * Calculate rest days between games
- */
-function calculateRestDays(gameDate: string): number {
-  const gameTime = new Date(gameDate)
-  const now = new Date()
-  const diffTime = gameTime.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-  return Math.max(0, diffDays)
 }
