@@ -1,5 +1,5 @@
 import { dal } from '@/lib/data/data-access-layer'
-import inMemoryCache from '@/lib/cache/in-memory-cache'
+import { cacheService } from '@/lib/services/cache-service'
 
 export interface LazyDataOptions {
   limit?: number
@@ -31,13 +31,13 @@ class LazyDataService {
 
   async loadDataForSport(sport: string, dataType: string, options: LazyDataOptions = {}): Promise<any[]> {
     const cacheKey = `${sport}_${dataType}_${JSON.stringify(options)}`
-    const cachedData = inMemoryCache.get(cacheKey)
+    const cachedData = cacheService.get(cacheKey)
     if (cachedData) {
       return cachedData as any[]
     }
 
     const data = await this.fetchDataForSport(sport, dataType, options)
-    inMemoryCache.set(cacheKey, data)
+    cacheService.set(cacheKey, data, 5 * 60 * 1000) // 5 minutes TTL
     return data
   }
 
@@ -100,27 +100,27 @@ class LazyDataService {
 
   async getSportConfig(sport: string): Promise<any> {
     const cacheKey = `sport_config_${sport}`
-    const cachedData = inMemoryCache.get(cacheKey)
+    const cachedData = cacheService.get(cacheKey)
     if (cachedData) {
       return cachedData
     }
 
     const data = await dal.query('sports', { match: { name: sport, is_active: true }, limit: 1 })
     const config = data[0]
-    inMemoryCache.set(cacheKey, config)
+    cacheService.set(cacheKey, config, 10 * 60 * 1000) // 10 minutes TTL
     return config
   }
 
   async getAllSports(): Promise<string[]> {
     const cacheKey = 'all_sports'
-    const cachedData = inMemoryCache.get(cacheKey)
+    const cachedData = cacheService.get(cacheKey)
     if (cachedData) {
       return cachedData as string[]
     }
 
     const data = await dal.query('sports', { match: { is_active: true }, select: 'name', orderBy: 'name' })
     const sports = data.map((sport: any) => sport.name)
-    inMemoryCache.set(cacheKey, sports)
+    cacheService.set(cacheKey, sports, 15 * 60 * 1000) // 15 minutes TTL
     return sports
   }
 }
