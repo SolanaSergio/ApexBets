@@ -1,22 +1,12 @@
 'use client'
 
-import { useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useRealTimeData, useDashboardStats } from '@/components/data/real-time-provider';
+import { Card, CardContent } from '@/components/ui/card';
+import { useDashboardStats } from '@/components/data/real-time-provider';
 import { BarChart3, Target, TrendingUp, Activity, AlertCircle } from 'lucide-react';
-import { AreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { TopPerforming } from './top-performing';
 
 export function AnalyticsOverview() {
   const { stats, loading, error, isConnected } = useDashboardStats()
-
-  // Real historical data from database
-  const chartData = useMemo(() => {
-    // This should be fetched from database analytics table
-    // For now, return empty array to avoid mock data
-    return []
-  }, [stats.accuracy])
 
   if (loading) {
     return (
@@ -38,10 +28,10 @@ export function AnalyticsOverview() {
     <div className="space-y-6">
       <Header isConnected={isConnected} />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard icon={Activity} title="Live Games" value={stats.liveGames} color="text-red-600" gradient="bg-gradient-to-br from-red-500 to-orange-400" />
-        <StatCard icon={Target} title="Accuracy Rate" value={`${stats.accuracy}%`} color="text-green-600" gradient="bg-gradient-to-br from-green-500 to-teal-400" />
-        <StatCard icon={BarChart3} title="Predictions" value={stats.dataPoints.toLocaleString()} color="text-blue-600" gradient="bg-gradient-to-br from-blue-500 to-indigo-400" />
-        <StatCard icon={TrendingUp} title="Success Trend" value={stats.accuracy > 75 ? 'Rising' : 'Stable'} color="text-indigo-600" gradient="bg-gradient-to-br from-indigo-500 to-purple-400" />
+        <StatCard icon={Activity} title="Live Games" value={stats.liveGames} gradient="bg-gradient-to-br from-red-500 to-orange-400" />
+        <StatCard icon={Target} title="Accuracy Rate" value={`${stats.accuracy}%`} gradient="bg-gradient-to-br from-green-500 to-teal-400" />
+        <StatCard icon={BarChart3} title="Predictions" value={stats.dataPoints.toLocaleString()} gradient="bg-gradient-to-br from-blue-500 to-indigo-400" />
+        <StatCard icon={TrendingUp} title="Success Trend" value={stats.accuracy > 75 ? 'Rising' : 'Stable'} gradient="bg-gradient-to-br from-indigo-500 to-purple-400" />
       </div>
     </div>
   )
@@ -99,40 +89,6 @@ function StatCard({ icon: Icon, title, value, gradient }: { icon: any; title: st
           <Icon className="h-6 w-6" />
         </div>
         <p className={`text-3xl font-bold`}>{value}</p>
-      </CardContent>
-    </Card>
-  )
-}
-
-function PerformanceChart({ data }: { data: any[] }) {
-  return (
-    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 h-full">
-      <CardHeader>
-        <CardTitle>Prediction Accuracy Trend</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={250}>
-          <AreaChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 0 }}>
-            <defs>
-              <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-              </linearGradient>
-            </defs>
-            <XAxis dataKey="name" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `${value}%`} />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(5px)',
-                border: '1px solid #e5e7eb',
-                borderRadius: '0.5rem',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)',
-              }}
-            />
-            <Area type="monotone" dataKey="accuracy" stroke="#10b981" strokeWidth={2} fill="url(#colorAccuracy)" />
-          </AreaChart>
-        </ResponsiveContainer>
       </CardContent>
     </Card>
   )

@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
       limit,
     })
 
+    // Check if result is an error
+    if ('error' in result) {
+      throw new Error(result.error)
+    }
+
     structuredLogger.info('Teams API request processed', {
       sport,
       league,

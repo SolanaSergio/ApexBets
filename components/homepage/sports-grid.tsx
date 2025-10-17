@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import Link from 'next/link'
+import Masonry from 'react-masonry-css'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useRealTimeData } from '@/components/data/real-time-provider'
@@ -51,10 +52,6 @@ export function SportsGrid() {
   return (
     <div className="space-y-6">
       <Header totalLiveGames={totalLiveGames} />
-
-import Masonry from 'react-masonry-css';
-
-// ... (rest of the file)
 
       {sportsData.length === 0 ? (
         <EmptyState />
@@ -108,11 +105,6 @@ function Header({ totalLiveGames }: { totalLiveGames: number }) {
     </div>
   )
 }
-
-import Masonry from 'react-masonry-css';
-import './sports-grid.css';
-
-// ... (rest of the file)
 
 function SportCard({ sport }: { sport: SportData }) {
   return (

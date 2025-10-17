@@ -37,13 +37,14 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const supabase = await createClient()
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client initialization failed' }, { status: 500 })
     }
 
+    const { id: alertId } = await params
     const { error } = await supabase.from('user_alerts').delete().eq('id', alertId)
 
     if (error) {
