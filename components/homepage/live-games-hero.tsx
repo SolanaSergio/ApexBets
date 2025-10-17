@@ -188,7 +188,8 @@ function Header({ autoAdvance, setAutoAdvance }: { autoAdvance: boolean; setAuto
 
 function GameDisplay({ currentGame, nextGame, prevGame, gameCount }: { currentGame: any; nextGame: any; prevGame: any; gameCount: number }) {
   return (
-    <div className="h-full flex items-center justify-center relative bg-gradient-to-br from-gray-50 to-gray-100">
+    <div className="h-full flex items-center justify-center relative bg-cover bg-center" style={{ backgroundImage: "url('https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=1935&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')" }}>
+      <div className="absolute inset-0 bg-black/50" />
       {gameCount > 1 && (
         <>
           <Button variant="ghost" size="icon" onClick={prevGame} className="absolute left-4 z-10 h-10 w-10 rounded-full bg-white/80 backdrop-blur-sm hover:bg-white shadow-md">
@@ -200,13 +201,13 @@ function GameDisplay({ currentGame, nextGame, prevGame, gameCount }: { currentGa
         </>
       )}
 
-      <div className="text-center space-y-6 max-w-3xl mx-auto px-8">
-        <div className="flex items-center justify-around space-x-4 md:space-x-8">
+      <div className="text-center space-y-8 max-w-4xl mx-auto px-8">
+        <div className="flex items-center justify-around space-x-8 md:space-x-16">
           <TeamSide team={currentGame.away_team} score={currentGame.away_score} />
           
           <div className="text-center px-4">
-            <div className="text-3xl font-bold text-muted-foreground">VS</div>
-            <div className="text-sm text-muted-foreground mt-2">
+            <div className="text-4xl font-bold text-muted-foreground">VS</div>
+            <div className="text-md text-muted-foreground mt-2">
               {isGameActuallyLive(currentGame) ? 'Live' : format(new Date(currentGame.game_date), 'h:mm a')}
             </div>
           </div>
@@ -214,7 +215,7 @@ function GameDisplay({ currentGame, nextGame, prevGame, gameCount }: { currentGa
           <TeamSide team={currentGame.home_team} score={currentGame.home_score} />
         </div>
 
-        <div className="pt-4">
+        <div className="pt-8">
           <Button variant="default" size="lg" onClick={() => window.location.href = `/games/${currentGame.id}`}>
             View Live Match
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -227,42 +228,68 @@ function GameDisplay({ currentGame, nextGame, prevGame, gameCount }: { currentGa
 
 function TeamSide({ team, score }: { team: any; score: number }) {
   return (
-    <div className="text-center space-y-3 flex-1">
+    <div className="text-center space-y-4 flex-1">
       <TeamLogo
         teamName={team?.name || ''}
         alt={team?.abbreviation || 'Team'}
-        width={64}
-        height={64}
+        width={80}
+        height={80}
         className="mx-auto drop-shadow-lg"
         {...(team?.logo_url && { logoUrl: team.logo_url })}
         sport={team?.sport}
         {...(team?.league && { league: team.league })}
       />
       <div>
-        <div className="text-lg md:text-xl font-semibold text-foreground">{team?.name}</div>
-        <div className="text-sm text-muted-foreground">{team?.abbreviation}</div>
+        <div className="text-xl md:text-2xl font-semibold text-foreground">{team?.name}</div>
+        <div className="text-md text-muted-foreground">{team?.abbreviation}</div>
       </div>
-      <div className="text-4xl md:text-5xl font-bold text-primary">
-        {score || 0}
-      </div>
+      <Score score={score || 0} />
     </div>
   )
 }
 
-function GameCounter({ count, currentIndex }: { count: number; currentIndex: number }) {
-  if (count <= 1) return null
+function Score({ score }: { score: number }) {
   return (
-    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-      <div className="flex space-x-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
-        {Array.from({ length: count }).map((_, index) => (
-          <div
-            key={index}
-            className={`h-2 w-2 rounded-full transition-all duration-300 ${
-              index === currentIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'
-            }`}
-          />
-        ))}
-      </div>
+    <div className="text-4xl md:text-5xl font-bold text-primary score-flip">
+      {score}
     </div>
   )
+}
+
+import './live-games-hero.css';
+
+
+
+function GameCounter({ count, currentIndex }: { count: number; currentIndex: number }) {
+
+  if (count <= 1) return null
+
+  return (
+
+    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+
+      <div className="flex space-x-2 p-1 bg-white/50 backdrop-blur-sm rounded-full">
+
+        {Array.from({ length: count }).map((_, index) => (
+
+          <div
+
+            key={index}
+
+            className={`h-2 w-2 rounded-full transition-all duration-300 ${
+
+              index === currentIndex ? 'bg-primary w-4' : 'bg-muted-foreground/30'
+
+            }`}
+
+          />
+
+        ))}
+
+      </div>
+
+    </div>
+
+  )
+
 }

@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { serviceFactory, SupportedSport } from '@/lib/services/core/service-factory'
 import { SportPredictionService } from '@/lib/services/predictions/sport-prediction-service'
 
-export async function GET(request: NextRequest, { params }: { params: { sport: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ sport: string }> }) {
   try {
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'predictions'
@@ -17,7 +17,8 @@ export async function GET(request: NextRequest, { params }: { params: { sport: s
     const limit = parseInt(searchParams.get('limit') || '10')
     const minValue = parseFloat(searchParams.get('minValue') || '0.1')
 
-    const sport = params.sport as SupportedSport
+    const { sport: sportParam } = await params
+    const sport = sportParam as SupportedSport
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {
@@ -82,23 +83,25 @@ export async function GET(request: NextRequest, { params }: { params: { sport: s
       meta,
     })
   } catch (error) {
-    console.error(`Predictions API error for ${params.sport}:`, error)
+    const { sport: sportParam } = await params
+    console.error(`Predictions API error for ${sportParam}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: params.sport,
+        sport: sportParam,
       },
       { status: 500 }
     )
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { sport: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ sport: string }> }) {
   try {
     const body = await request.json()
     const { action, data: requestData } = body
-    const sport = params.sport as SupportedSport
+    const { sport: sportParam } = await params
+    const sport = sportParam as SupportedSport
 
     // Validate sport
     if (!serviceFactory.isSportSupported(sport)) {
@@ -161,12 +164,13 @@ export async function POST(request: NextRequest, { params }: { params: { sport: 
       meta,
     })
   } catch (error) {
-    console.error(`Predictions API POST error for ${params.sport}:`, error)
+    const { sport: sportParam } = await params
+    console.error(`Predictions API POST error for ${sportParam}:`, error)
     return NextResponse.json(
       {
         success: false,
         error: 'Internal server error',
-        sport: params.sport,
+        sport: sportParam,
       },
       { status: 500 }
     )

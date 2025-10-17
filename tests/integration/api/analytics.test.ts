@@ -4,48 +4,48 @@
  */
 
 describe('Analytics API Integration Tests', () => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL as string;
 
   describe('GET /api/analytics/stats', () => {
     it('should fetch real analytics statistics', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(200);
       expect(data).toMatchObject({
         data: expect.any(Object),
         meta: expect.any(Object),
-      })
+      });
       expect(data.data).toMatchObject({
         total_games: expect.any(Number),
         total_predictions: expect.any(Number),
         accuracy_rate: expect.any(Number),
-      })
+      });
 
       // Verify numeric values are reasonable
-      expect(data.data.total_games).toBeGreaterThanOrEqual(0)
-      expect(data.data.total_predictions).toBeGreaterThanOrEqual(0)
-      expect(data.data.accuracy_rate).toBeGreaterThanOrEqual(0)
-      expect(data.data.accuracy_rate).toBeLessThanOrEqual(1)
-    })
+      expect(data.data.total_games).toBeGreaterThanOrEqual(0);
+      expect(data.data.total_predictions).toBeGreaterThanOrEqual(0);
+      expect(data.data.accuracy_rate).toBeGreaterThanOrEqual(0);
+      expect(data.data.accuracy_rate).toBeLessThanOrEqual(1);
+    });
 
     it('should include recent performance data', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
-      expect(data.data.recent_performance).toBeDefined()
+      expect(response.status).toBe(200);
+      expect(data.data.recent_performance).toBeDefined();
       expect(data.data.recent_performance).toMatchObject({
         accuracy_by_type: expect.any(Object),
         daily_stats: expect.any(Array),
-      })
+      });
 
       // Verify accuracy_by_type structure
       Object.values(data.data.recent_performance.accuracy_by_type).forEach(accuracy => {
-        expect(typeof accuracy).toBe('number')
-        expect(accuracy).toBeGreaterThanOrEqual(0)
-        expect(accuracy).toBeLessThanOrEqual(1)
-      })
+        expect(typeof accuracy).toBe('number');
+        expect(accuracy).toBeGreaterThanOrEqual(0);
+        expect(accuracy).toBeLessThanOrEqual(1);
+      });
 
       // Verify daily_stats structure
       data.data.recent_performance.daily_stats.forEach((day: any) => {
@@ -53,80 +53,145 @@ describe('Analytics API Integration Tests', () => {
           date: expect.any(String),
           predictions_made: expect.any(Number),
           correct_predictions: expect.any(Number),
-        })
-        expect(day.predictions_made).toBeGreaterThanOrEqual(0)
-        expect(day.correct_predictions).toBeGreaterThanOrEqual(0)
-        expect(day.correct_predictions).toBeLessThanOrEqual(day.predictions_made)
-      })
-    })
+        });
+        expect(day.predictions_made).toBeGreaterThanOrEqual(0);
+        expect(day.correct_predictions).toBeGreaterThanOrEqual(0);
+        expect(day.correct_predictions).toBeLessThanOrEqual(day.predictions_made);
+      });
+    });
 
     it('should return valid date format in daily stats', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(200);
 
       if (data.data.recent_performance.daily_stats.length > 0) {
         data.data.recent_performance.daily_stats.forEach((day: any) => {
           // Verify date format (YYYY-MM-DD)
-          expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+          expect(day.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 
           // Verify date is valid
-          const date = new Date(day.date)
-          expect(date).toBeInstanceOf(Date)
-          expect(date.getTime()).not.toBeNaN()
-        })
+          const date = new Date(day.date);
+          expect(date).toBeInstanceOf(Date);
+          expect(date.getTime()).not.toBeNaN();
+        });
       }
-    })
+    });
 
     it('should include accuracy breakdown by prediction type', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(200);
 
-      const accuracyByType = data.data.recent_performance.accuracy_by_type
+      const accuracyByType = data.data.recent_performance.accuracy_by_type;
       // This might be empty if no predictions exist, which is acceptable
-      expect(Object.keys(accuracyByType).length).toBeGreaterThanOrEqual(0)
+      expect(Object.keys(accuracyByType).length).toBeGreaterThanOrEqual(0);
 
       // Common prediction types that might be present
-      const possibleTypes = ['spread', 'total', 'moneyline', 'over_under', 'winner']
+      const possibleTypes = ['spread', 'total', 'moneyline', 'over_under', 'winner'];
       const hasKnownType = possibleTypes.some(type =>
         Object.keys(accuracyByType).some(key => key.toLowerCase().includes(type))
-      )
+      );
 
       // If there are prediction types, at least one should be known
       if (Object.keys(accuracyByType).length > 0) {
-        expect(hasKnownType).toBe(true)
+        expect(hasKnownType).toBe(true);
       }
-    })
+    });
 
     it('should return consistent data structure', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(200);
 
       // Verify all required fields are present and have correct types
-      expect(typeof data.data.total_games).toBe('number')
-      expect(typeof data.data.total_predictions).toBe('number')
-      expect(typeof data.data.accuracy_rate).toBe('number')
-      expect(typeof data.data.recent_performance).toBe('object')
-      expect(typeof data.data.recent_performance.accuracy_by_type).toBe('object')
-      expect(Array.isArray(data.data.recent_performance.daily_stats)).toBe(true)
-    })
+      expect(typeof data.data.total_games).toBe('number');
+      expect(typeof data.data.total_predictions).toBe('number');
+      expect(typeof data.data.accuracy_rate).toBe('number');
+      expect(typeof data.data.recent_performance).toBe('object');
+      expect(typeof data.data.recent_performance.accuracy_by_type).toBe('object');
+      expect(Array.isArray(data.data.recent_performance.daily_stats)).toBe(true);
+    });
 
     it('should handle edge cases gracefully', async () => {
-      const response = await fetch(`${baseUrl}/analytics/stats`)
-      const data = await response.json()
+      const response = await fetch(`${baseUrl}/analytics/stats`);
+      const data = await response.json();
 
-      expect(response.status).toBe(200)
+      expect(response.status).toBe(200);
 
       // Even with no data, structure should be consistent
-      expect(data.data.total_games).toBeDefined()
-      expect(data.data.total_predictions).toBeDefined()
-      expect(data.data.accuracy_rate).toBeDefined()
-      expect(data.data.recent_performance).toBeDefined()
-    })
-  })
-})
+      expect(data.data.total_games).toBeDefined();
+      expect(data.data.total_predictions).toBeDefined();
+      expect(data.data.accuracy_rate).toBeDefined();
+      expect(data.data.recent_performance).toBeDefined();
+    });
+  });
+
+  describe('GET /api/analytics/team-performance', () => {
+    it('should fetch team performance data for a valid team', async () => {
+      const sport = 'basketball';
+      const team = 'Lakers'; // A known team
+      const response = await fetch(`${baseUrl}/analytics/team-performance?sport=${sport}&team=${team}`);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toMatchObject({
+        team: expect.any(Object),
+        performance: expect.any(Array),
+        stats: expect.any(Object),
+      });
+      expect(data.team.name).toContain(team);
+      expect(data.stats.wins).toBeGreaterThanOrEqual(0);
+      expect(data.stats.losses).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should return a 404 for an invalid team', async () => {
+      const sport = 'basketball';
+      const team = 'InvalidTeam';
+      const response = await fetch(`${baseUrl}/analytics/team-performance?sport=${sport}&team=${team}`);
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.error).toBe('No teams found for the specified criteria');
+    });
+
+    it('should return a 400 for a missing sport', async () => {
+      const team = 'Lakers';
+      const response = await fetch(`${baseUrl}/analytics/team-performance?team=${team}`);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain('Sport parameter is required');
+    });
+  });
+
+  describe('GET /api/analytics/trends', () => {
+    it('should fetch analytics trends data', async () => {
+      const sport = 'basketball';
+      const response = await fetch(`${baseUrl}/analytics/trends?sport=${sport}`);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data).toMatchObject({
+        success: true,
+        sport: sport,
+        trends: expect.any(Object),
+        meta: expect.any(Object),
+      });
+      expect(data.trends.trend_direction).toBeDefined();
+      expect(data.trends.confidence).toBeDefined();
+    });
+
+    it('should return a 400 for an unsupported sport', async () => {
+      const sport = 'unsupported-sport';
+      const response = await fetch(`${baseUrl}/analytics/trends?sport=${sport}`);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toContain('Unsupported sport');
+    });
+  });
+});

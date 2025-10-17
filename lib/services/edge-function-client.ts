@@ -189,6 +189,22 @@ class EdgeFunctionClient {
     return this.callEdgeFunction('query-predictions', params)
   }
 
+  async batchInsertStandings(standings: any[]): Promise<EdgeFunctionResponse | EdgeFunctionError> {
+    return this.callEdgeFunction('batch-insert-standings', { standings });
+  }
+
+  async batchInsertPlayers(players: any[]): Promise<EdgeFunctionResponse | EdgeFunctionError> {
+    return this.callEdgeFunction('batch-insert-players', { players });
+  }
+
+  async batchInsertTeams(teams: any[]): Promise<EdgeFunctionResponse | EdgeFunctionError> {
+    return this.callEdgeFunction('batch-insert-teams', { teams });
+  }
+
+  async batchInsertGames(games: any[]): Promise<EdgeFunctionResponse | EdgeFunctionError> {
+    return this.callEdgeFunction('batch-insert-games', { games });
+  }
+
   /**
    * Set retry configuration
    */

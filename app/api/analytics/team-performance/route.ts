@@ -9,6 +9,9 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get('sport')
     const league = searchParams.get('league')
 
+    console.log(`[team-performance] Received request with params: team=${team}, sport=${sport}, league=${league}`)
+
+
     // Validate sport parameter dynamically
     const supportedSports: SupportedSport[] = await SportConfigManager.getSupportedSports()
     if (!sport || !supportedSports.includes(sport as SupportedSport)) {
@@ -32,7 +35,7 @@ export async function GET(request: NextRequest) {
     let teamQuery = supabase.from('teams').select('*').eq('sport', finalSport)
 
     if (team && team !== 'all') {
-      teamQuery = teamQuery.eq('name', team)
+      teamQuery = teamQuery.ilike('name', `%${team}%`)
     }
 
     if (league) {
@@ -40,6 +43,9 @@ export async function GET(request: NextRequest) {
     }
 
     const { data: teamData, error: teamError } = await teamQuery
+
+    console.log(`[team-performance] Team query result: data=${JSON.stringify(teamData)}, error=${JSON.stringify(teamError)}`)
+
 
     if (teamError) {
       return NextResponse.json({ error: 'Failed to fetch team data' }, { status: 500 })

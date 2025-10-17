@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { databaseService } from '@/lib/services/database-service'
+
 import { productionSupabaseClient } from '@/lib/supabase/production-client'
 
 // Explicitly set runtime to suppress warnings
@@ -17,10 +17,12 @@ export async function GET(request: NextRequest) {
     const includeTables = searchParams.get('includeTables') === 'true'
 
     // Get basic health check
-    const healthCheck = await databaseService.healthCheck()
+    const { supabaseAdmin } = await import('@/lib/supabase/admin');
+    const { data: _data, error } = await supabaseAdmin.from('sports').select('id').limit(1);
+    const healthCheck = !error;
 
     // Get connection status
-    const isConnected = await databaseService.getConnectionStatus()
+    const isConnected = healthCheck;
 
     // Get all tables if requested
     let tables: string[] = []

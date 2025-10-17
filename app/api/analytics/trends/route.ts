@@ -9,7 +9,7 @@ import { SeasonManager } from '@/lib/services/core/season-manager'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
 const CACHE_TTL = 5 * 60 // 5 minutes cache
-const REQUEST_TIMEOUT = 8000 // 8 seconds timeout
+const REQUEST_TIMEOUT = 15000 // 15 seconds timeout
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
     const dataPromise = Promise.all([
       sportService.getGames({
         season,
-        limit: 50, // Reduced limit for faster response
+        limit: 30, // Reduced limit for faster response
         status: 'completed',
       }),
-      sportService.getTeams({ limit: 30 }), // Reduced limit
-      sportService.getPlayers({ limit: 50 }), // Reduced limit
+      sportService.getTeams({ limit: 20 }), // Reduced limit
+      sportService.getPlayers({ limit: 30 }), // Reduced limit
     ])
 
     let games: any[] = []
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
     let predictions: any[] = []
     try {
       if ('getPredictions' in sportService && typeof sportService.getPredictions === 'function') {
-        const predictionsPromise = sportService.getPredictions({ limit: 30 })
+        const predictionsPromise = sportService.getPredictions({ limit: 20 })
         predictions = (await Promise.race([predictionsPromise, timeoutPromise])) as any[]
       }
     } catch (error) {
@@ -106,11 +106,11 @@ export async function GET(request: NextRequest) {
         sportService
           .getGames({
             season: previousSeason,
-            limit: 50,
+            limit: 30,
             status: 'completed',
           })
           .catch(() => []),
-        sportService.getTeams({ limit: 30 }).catch(() => []),
+        sportService.getTeams({ limit: 20 }).catch(() => []),
       ])
 
       const [histGames, histTeams] = (await Promise.race([historicalPromise, timeoutPromise])) as [

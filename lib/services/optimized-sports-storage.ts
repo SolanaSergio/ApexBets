@@ -53,8 +53,7 @@ export class OptimizedSportsStorage {
       const batches = this.chunkArray(games, batchSize)
 
       for (const batch of batches) {
-        // TODO: Implement batch insert using Edge Functions
-        console.log(`Would insert ${batch.length} games for ${sport}/${league}`)
+        await edgeFunctionClient.batchInsertGames(batch);
       }
 
       // Clear cache for this sport
@@ -80,8 +79,7 @@ export class OptimizedSportsStorage {
       const batches = this.chunkArray(teams, batchSize)
 
       for (const batch of batches) {
-        // TODO: Implement batch insert using Edge Functions
-        console.log(`Would insert ${batch.length} teams for ${sport}/${league}`)
+        await edgeFunctionClient.batchInsertTeams(batch);
       }
 
       // Clear cache for this sport
@@ -107,8 +105,7 @@ export class OptimizedSportsStorage {
       const batches = this.chunkArray(players, batchSize)
 
       for (const batch of batches) {
-        // TODO: Implement batch insert using Edge Functions
-        console.log(`Would insert ${batch.length} players for ${sport}/${league}`)
+        await edgeFunctionClient.batchInsertPlayers(batch);
       }
 
       // Clear cache for this sport
@@ -236,8 +233,7 @@ export class OptimizedSportsStorage {
       const batches = this.chunkArray(standings, batchSize)
 
       for (const batch of batches) {
-        // TODO: Implement batch insert using Edge Functions
-        console.log(`Would insert ${batch.length} standings for ${sport}/${league}`)
+        await edgeFunctionClient.batchInsertStandings(batch);
       }
 
       structuredLogger.info('Stored standings', { count: standings.length, sport, league })
@@ -329,7 +325,7 @@ export class OptimizedSportsStorage {
         totalTeams: ('data' in teamsResult) ? teamsResult.data?.length || 0 : 0,
         totalPlayers: ('data' in playersResult) ? playersResult.data?.length || 0 : 0,
         totalStandings: ('data' in standingsResult) ? standingsResult.data?.length || 0 : 0,
-        cacheEntries: 0, // TODO: Get from cache service
+        cacheEntries: databaseCacheService.getStats().totalEntries, // TODO: Get from cache service
         lastUpdated: new Date().toISOString(),
       }
     } catch (error) {

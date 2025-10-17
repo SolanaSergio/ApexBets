@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { databaseFirstApiClient } from '@/lib/services/api/database-first-api-client'
+import { queryTeams } from '@/lib/services/edge-function-client'
 import { structuredLogger } from '@/lib/services/structured-logger'
 import { databaseCacheService } from '@/lib/services/database-cache-service'
 
@@ -19,8 +19,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cached)
     }
 
-    // Use database-first API client - no external API calls
-    const result = await databaseFirstApiClient.getTeams({
+    // Use edge function client directly
+    const result = await queryTeams({
       sport,
       ...(league && { league }),
       limit,

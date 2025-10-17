@@ -52,15 +52,27 @@ export function SportsGrid() {
     <div className="space-y-6">
       <Header totalLiveGames={totalLiveGames} />
 
+import Masonry from 'react-masonry-css';
+
+// ... (rest of the file)
+
       {sportsData.length === 0 ? (
         <EmptyState />
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <Masonry
+            breakpointCols={{
+              default: 4,
+              1100: 3,
+              700: 2,
+              500: 1
+            }}
+            className="my-masonry-grid"
+            columnClassName="my-masonry-grid_column">
             {sportsData.map(sport => (
               <SportCard key={sport.sport} sport={sport} />
             ))}
-          </div>
+          </Masonry>
           <SummaryStats sportsData={sportsData} totalLiveGames={totalLiveGames} />
         </>
       )}
@@ -97,32 +109,41 @@ function Header({ totalLiveGames }: { totalLiveGames: number }) {
   )
 }
 
+import Masonry from 'react-masonry-css';
+import './sports-grid.css';
+
+// ... (rest of the file)
+
 function SportCard({ sport }: { sport: SportData }) {
   return (
     <Link href={`/games?sport=${sport.sport}`} passHref>
-      <Card className="shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer h-full flex flex-col">
-        <CardHeader className="flex-row items-center gap-4">
+      <Card 
+        className="shadow-md hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group cursor-pointer h-full flex flex-col bg-cover bg-center text-white"
+        style={{ backgroundImage: `url('https://source.unsplash.com/featured/?${sport.name}')` }}
+      >
+        <div className="absolute inset-0 bg-black/50" />
+        <CardHeader className="flex-row items-center gap-4 z-10">
           <div className="text-4xl">{sport.icon}</div>
           <div>
             <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">
               {sport.name}
             </CardTitle>
-            <p className="text-sm text-muted-foreground">{sport.teams} teams</p>
+            <p className="text-sm">{sport.teams} teams</p>
           </div>
         </CardHeader>
-        <CardContent className="flex-grow space-y-3">
+        <CardContent className="flex-grow space-y-3 z-10">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Games Today</span>
+            <span>Games Today</span>
             <span className="font-semibold">{sport.totalGames}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Live Now</span>
-            <span className={`font-semibold ${sport.liveGames > 0 ? 'text-red-600' : 'text-foreground'}`}>
+            <span>Live Now</span>
+            <span className={`font-semibold ${sport.liveGames > 0 ? 'text-red-400' : ''}`}>
               {sport.liveGames}
             </span>
           </div>
         </CardContent>
-        <CardFooter className="pt-4 border-t mt-auto">
+        <CardFooter className="pt-4 border-t mt-auto z-10">
           <div className="flex items-center justify-between w-full text-sm font-medium text-primary">
             <span>Explore</span>
             <ChevronRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />

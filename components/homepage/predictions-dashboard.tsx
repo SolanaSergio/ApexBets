@@ -109,6 +109,8 @@ function EmptyState({ selectedSport }: { selectedSport: string }) {
   )
 }
 
+import { AccuracyChart } from './accuracy-chart';
+
 function Header({ overallAccuracy }: { overallAccuracy: number }) {
   return (
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -120,6 +122,7 @@ function Header({ overallAccuracy }: { overallAccuracy: number }) {
         </div>
       </div>
       <div className="flex items-center gap-4 p-3 bg-gray-100 rounded-lg">
+        <AccuracyChart accuracy={overallAccuracy} />
         <div className="text-right">
           <div className="text-sm font-medium text-muted-foreground">Overall Accuracy</div>
           <div className="text-2xl font-bold text-primary">{overallAccuracy}%</div>
@@ -132,6 +135,11 @@ function Header({ overallAccuracy }: { overallAccuracy: number }) {
     </div>
   )
 }
+
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+
+
+
 
 function PredictionCard({ prediction }: { prediction: any }) {
   const gameDate = new Date(prediction.game?.game_date || prediction.created_at)
@@ -156,62 +164,80 @@ function PredictionCard({ prediction }: { prediction: any }) {
     return 'text-gray-500'
   }
 
+  const getPredictionColor = (predictionType: string) => {
+    switch (predictionType) {
+      case 'moneyline':
+        return 'border-blue-500';
+      case 'spread':
+        return 'border-green-500';
+      case 'totals':
+        return 'border-yellow-500';
+      default:
+        return 'border-gray-200';
+    }
+  }
+
   return (
-    <Card className="shadow-md hover:shadow-lg transition-shadow duration-300 group">
-      <CardHeader className="pb-3">
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="text-lg font-bold">
-              {prediction.game?.away_team?.abbreviation} vs {prediction.game?.home_team?.abbreviation}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-              <Calendar className="h-4 w-4" />
-              {format(gameDate, 'MMM d, h:mm a')}
-            </p>
-          </div>
-          {sportConfig && (
-            <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-gray-100 px-2 py-1 rounded-md">
-              {sportConfig.icon} {sportConfig.name}
+    <Collapsible>
+      <Card className={`shadow-md hover:shadow-lg transition-shadow duration-300 group border-l-4 ${getPredictionColor(prediction.prediction_type)}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="text-lg font-bold">
+                {prediction.game?.away_team?.abbreviation} vs {prediction.game?.home_team?.abbreviation}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                <Calendar className="h-4 w-4" />
+                {format(gameDate, 'MMM d, h:mm a')}
+              </p>
             </div>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <p className="text-sm text-muted-foreground mb-1">Prediction: <span className="font-bold text-foreground capitalize">{prediction.prediction_type.replace('_', ' ')}</span></p>
-          {prediction.predicted_value && (
-            <p className="text-2xl font-bold text-primary">
-              {prediction.predicted_value}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between text-sm mb-1">
-            <span className="font-medium text-muted-foreground">Confidence</span>
-            <span className={`font-bold ${getConfidenceColor(prediction.confidence)}`}>
-              {prediction.confidence}%
-            </span>
+            {sportConfig && (
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground bg-gray-100 px-2 py-1 rounded-md">
+                {sportConfig.icon} {sportConfig.name}
+              </div>
+            )}
           </div>
-          <Progress value={prediction.confidence} className="h-2" />
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Prediction: <span className="font-bold text-foreground capitalize">{prediction.prediction_type.replace('_', ' ')}</span></p>
+            {prediction.predicted_value && (
+              <p className="text-2xl font-bold text-primary">
+                {prediction.predicted_value}
+              </p>
+            )}
+          </div>
 
-        {prediction.reasoning && (
+          <div>
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="font-medium text-muted-foreground">Confidence</span>
+              <span className={`font-bold ${getConfidenceColor(prediction.confidence)}`}>
+                {prediction.confidence}%
+              </span>
+            </div>
+            <Progress value={prediction.confidence} className="h-2" />
+          </div>
+        </CardContent>
+        <CardFooter className="flex gap-2 pt-4">
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" size="sm" className="flex-1">
+              <Eye className="h-4 w-4 mr-2" />
+              Details
+            </Button>
+          </CollapsibleTrigger>
+          <Button variant="ghost" size="sm">
+            <TrendingUp className="h-4 w-4" />
+          </Button>
+        </CardFooter>
+      </Card>
+      <CollapsibleContent>
+        <div className="p-4 bg-gray-50 rounded-b-lg">
           <p className="text-sm text-muted-foreground italic border-l-2 pl-3">
             &ldquo;{prediction.reasoning}&rdquo;
           </p>
-        )}
-      </CardContent>
-      <CardFooter className="flex gap-2 pt-4">
-        <Button variant="outline" size="sm" className="flex-1" onClick={() => window.location.href = `/predictions/${prediction.id}`}>
-          <Eye className="h-4 w-4 mr-2" />
-          Details
-        </Button>
-        <Button variant="ghost" size="sm">
-          <TrendingUp className="h-4 w-4" />
-        </Button>
-      </CardFooter>
-    </Card>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
   )
 }
 

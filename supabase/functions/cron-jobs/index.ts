@@ -1,5 +1,6 @@
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { dataIngestionService } from './data-ingestion-service';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,22 +15,11 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { teams } = await req.json();
-
-    const { data, error } = await supabaseClient.from('teams').upsert(teams);
-
-    if (error) {
-      throw error;
-    }
+    await dataIngestionService.ingestData();
 
     return new Response(JSON.stringify({
       success: true,
-      data: data || []
+      message: 'Cron jobs completed successfully'
     }), {
       headers: {
         ...corsHeaders,

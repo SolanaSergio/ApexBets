@@ -216,7 +216,7 @@ describe('Webhook Authentication Integration', () => {
 
       // Generate signatures for all payloads
       const signatures = payloads.map(payload =>
-        hmacWebhookAuthenticator.generateSignature(payload, process.env.WEBHOOK_SECRET!)
+        hmacWebhookAuthenticator.generateSignature(payload, process.env.WEBHOOK_SECRET || '')
       )
 
       // Validate all signatures concurrently
@@ -225,7 +225,7 @@ describe('Webhook Authentication Integration', () => {
           hmacWebhookAuthenticator.validateSignature(
             payload,
             signatures[index],
-            process.env.WEBHOOK_SECRET!
+            process.env.WEBHOOK_SECRET || ''
           )
         )
       )

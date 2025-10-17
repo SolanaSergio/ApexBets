@@ -182,19 +182,19 @@ describe('Enhanced Webhook Processing', () => {
   describe('Webhook Deduplication', () => {
     test('should generate consistent hashes for identical payloads', () => {
       const payload1 = {
-        type: 'full_sync' as const,
+        type: 'full_sync',
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const },
+        data: { sync_type: 'games' },
       }
 
       const payload2 = {
-        type: 'full_sync' as const,
+        type: 'full_sync',
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const },
+        data: { sync_type: 'games' },
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)
@@ -206,19 +206,19 @@ describe('Enhanced Webhook Processing', () => {
 
     test('should generate different hashes for different payloads', () => {
       const payload1 = {
-        type: 'full_sync' as const,
+        type: 'full_sync',
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'games' as const },
+        data: { sync_type: 'games' },
       }
 
       const payload2 = {
-        type: 'full_sync' as const,
+        type: 'full_sync',
         sport: 'basketball',
         league: 'NBA',
         source: 'webhook',
-        data: { sync_type: 'teams' as const },
+        data: { sync_type: 'teams' },
       }
 
       const hash1 = WebhookValidator.generateHash(payload1)

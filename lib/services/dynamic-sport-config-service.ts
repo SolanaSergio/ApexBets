@@ -66,12 +66,19 @@ class DynamicSportConfigService {
     }
 
     try {
-      // Use proper Supabase client for database operations
-      const { createClient } = await import('@supabase/supabase-js')
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-      )
+      // Use appropriate Supabase client based on context
+      let supabase
+      
+      // Check if we're on the server side
+      if (typeof window === 'undefined') {
+        // Server-side: use admin client
+        const { supabaseAdmin } = await import('@/lib/supabase/admin')
+        supabase = supabaseAdmin
+      } else {
+        // Client-side: use regular client (read-only access)
+        const { createClient } = await import('@/lib/supabase/client')
+        supabase = createClient()
+      }
 
       // Load sports configuration
       const { data: sports, error: sportsError } = await supabase
